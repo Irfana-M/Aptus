@@ -1,16 +1,16 @@
-import { MentorRepository } from "../repositories/mentor.repository";
-import type { AuthUser } from "../interfaces/auth.interface";
-
+import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository.js";
+import type { AuthUser } from "../interfaces/auth/auth.interface.js";
+    
 export class MentorService {
-    constructor(private mentorRepo: MentorRepository){}
-
+    constructor(private _mentorRepo: IMentorRepository){}
     async registerMentor(data: AuthUser): Promise<AuthUser> {
-        const verified = await this.mentorRepo.findUserByEmail(data.email);
+        const verified = await this._mentorRepo.findByEmail(data.email);
         if(verified) {
             throw new Error('Mentor already exists');
         }
 
-        const mentor = await this.mentorRepo.createUser(data);
+        const mentor = await this._mentorRepo.createUser(data);
         return mentor;
    }
-}  
+}
+    

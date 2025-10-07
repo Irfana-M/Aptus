@@ -1,82 +1,131 @@
-import React from 'react';
-import { BookOpen, Menu, X } from 'lucide-react';
-import Button from '../ui/Button';
-import { useNavigate } from 'react-router-dom';
+import * as React from "react";
+import Logo from "./logo";
+import { NAV_ITEMS } from "../../config/nav";
+import { Button } from "../ui/Button";
+import { Menu, X } from "lucide-react";
 
-const Header: React.FC = () => {
-  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  const navigate = useNavigate();
 
-const handleRegisterClick = () => {
-  navigate('/register');
-}
+export default function Header() {
+  const [open, setOpen] = React.useState(false);
+  const [scrolled, setScrolled] = React.useState(false);
+
+  // add shadow & backdrop when scrolling
+  React.useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // close mobile menu when resizing to desktop
+  React.useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth >= 1024) setOpen(false);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // smooth-scroll for hash links
+  const handleNavClick = (href: string) => (e: React.MouseEvent) => {
+    if (!href.startsWith("#")) return;
+    e.preventDefault();
+    setOpen(false);
+    const el = document.querySelector(href);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
-    <header className="bg-white shadow-sm sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center">
-            <div className="w-8 h-8 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-lg flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-white" />
-            </div>
-            <span className="ml-2 text-xl font-bold text-gray-900">Mentora</span>
-          </div>
-          <nav className="hidden md:flex space-x-8">
-            <a href="#" className="text-gray-600 hover:text-teal-600 transition-colors">
-              Home
-            </a>
-            <a href="#" className="text-gray-600 hover:text-teal-600 transition-colors">
-              About
-            </a>
-            <a href="#" className="text-gray-600 hover:text-teal-600 transition-colors">
-              Services
-            </a>
-            <a href="#" className="text-gray-600 hover:text-teal-600 transition-colors">
-              Contact
-            </a>
-          </nav>
-          <div className="hidden md:flex items-center space-x-4">
-            <Button variant="outline" size="sm">
-              Log In
-            </Button>
-            <Button size="sm" onClick={handleRegisterClick}>Get Started</Button>
-          </div>
-          <button
-            className="md:hidden"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+    <header
+      className={[
+        "sticky top-0 z-50 w-full transition",
+        "backdrop-blur bg-white/70",
+        scrolled ? "shadow-md" : "shadow-none",
+      ].join(" ")}
+      aria-label="Primary"
+    >
+      {/* Skip link for accessibility */}
+      <a
+        href="#content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2
+                   rounded-md bg-blue-600 px-3 py-2 text-white"
+      >
+        Skip to content
+      </a>
+
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 lg:px-6">
+        {/* Left: Logo */}
+        <a href="/" aria-label="Mentora Home" className="flex items-center">
+          <Logo />
+        </a>
+
+        {/* Desktop nav */}
+        <nav className="hidden lg:block">
+          <ul className="flex items-center gap-8">
+            {NAV_ITEMS.map((item) => (
+              <li key={item.href}>
+                <a
+                  href={item.href}
+                  onClick={handleNavClick(item.href)}
+                  className="text-sm font-medium text-slate-700 hover:text-slate-900"
+                >
+                  {item.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        {/* Right: CTAs (Desktop) */}
+        <div className="hidden items-center gap-3 lg:flex">
+          <Button variant="ghost">Sign in</Button>
+          <Button variant="primary">Get Started</Button>
         </div>
-        {isMenuOpen && (
-          <div className="md:hidden py-4 border-t">
-            <nav className="flex flex-col space-y-4">
-              <a href="#" className="text-gray-600 hover:text-teal-600 transition-colors">
-                Home
-              </a>
-              <a href="#" className="text-gray-600 hover:text-teal-600 transition-colors">
-                About
-              </a>
-              <a href="#" className="text-gray-600 hover:text-teal-600 transition-colors">
-                Services
-              </a>
-              <a href="#" className="text-gray-600 hover:text-teal-600 transition-colors">
-                Contact
-              </a>
-              <div className="pt-4 space-y-2">
-                <Button variant="outline" size="sm" className="w-full">
-                  Log In
-                </Button>
-                <Button size="sm" className="w-full" onClick={handleRegisterClick}>
-                  Get Started
-                </Button>
-              </div>
-            </nav>
-          </div>
-        )}
+
+        {/* Mobile hamburger */}
+        <button
+          className="inline-flex items-center justify-center rounded-xl p-2 lg:hidden
+                     hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2
+                     focus-visible:ring-blue-600"
+          aria-label="Toggle menu"
+          aria-expanded={open}
+          onClick={() => setOpen((s) => !s)}
+        >
+          {open ? <X /> : <Menu />}
+        </button>
+      </div>
+
+      {/* Mobile drawer */}
+      <div
+        className={[
+          "lg:hidden transition-[max-height] overflow-hidden",
+          open ? "max-h-[420px]" : "max-h-0",
+        ].join(" ")}
+      >
+        <nav className="border-t border-slate-200">
+          <ul className="flex flex-col gap-1 p-3">
+            {NAV_ITEMS.map((item) => (
+              <li key={item.href}>
+                <a
+                  href={item.href}
+                  onClick={handleNavClick(item.href)}
+                  className="block rounded-xl px-3 py-2 text-slate-700 hover:bg-slate-100"
+                >
+                  {item.label}
+                </a>
+              </li>
+            ))}
+            <li className="mt-1 flex gap-2 px-3">
+              <Button className="w-full" variant="ghost">
+                Sign in
+              </Button>
+              <Button className="w-full" variant="primary">
+                Get Started
+              </Button>
+            </li>
+          </ul>
+        </nav>
       </div>
     </header>
   );
-};
-
-export default Header;
+}

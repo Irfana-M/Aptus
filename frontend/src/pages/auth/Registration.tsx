@@ -1,211 +1,224 @@
-import React, { useState } from 'react';
-import FormField from '../../components/ui/FormField';
-import Button from '../../components/ui/Button';
-import Tab from '../../components/ui/Tab';
-import Logo from '../../components/ui/Logo';
-import { UserRepository } from '../../repositories/UserRepository';
-import type { User } from '../../types';
-import  registerBanner from '../../assets/images/register_banner.jpeg';
+import * as React from "react";
+import { useForm } from "react-hook-form";
+import { Button } from "../../components/ui/Button";
+import { Input } from "../../components/ui/Input";
+import registerImage from "../../assets/images/register_banner.jpeg";
+import googleIcon from "../../assets/images/googleIcon.png";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
+import { clearError } from "../../features/auth/authSlice";
 
+import { useDispatch, useSelector } from "react-redux";
+import { registerUser } from "../../features/auth/authThunks";
+import {
+  selectAuthLoading,
+  selectAuthError,
+} from "../../features/auth/authSelector";
+import type { AppDispatch } from "../../app/store";
 
+type FormValues = {
+  fullName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  phoneNumber: string;
+};
 
-const RegistrationPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'student' | 'mentor'>('student');
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<User>({
-    email: '',
-    fullName: '',
-    password: '',
-    confirmPassword: '',
-    mobileNumber: ''
-  });
-  const [errors, setErrors] = useState<Partial<User>>({});
+export default function Register() {
+  const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
+  const loading = useSelector(selectAuthLoading);
+  const error = useSelector(selectAuthError);
 
-  const validateForm = (): boolean => {
-    const newErrors: Partial<User> = {};
+  const [role, setRole] = React.useState<"student" | "mentor">("student");
 
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!UserRepository.validateEmail(formData.email)) {
-      newErrors.email = 'Please enter a valid email';
-    }
+  React.useEffect(() => {
+    dispatch(clearError());
+  }, [dispatch]);
 
-    if (!formData.fullName) {
-      newErrors.fullName = 'Full name is required';
-    }
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<FormValues>();
 
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (!UserRepository.validatePassword(formData.password)) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
+  const password = watch("password");
 
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
+  const onSubmit = async (data: FormValues) => {
+    console.log(data);
+    const fullData = { ...data, role };
 
-    if (!formData.mobileNumber) {
-      newErrors.mobileNumber = 'Mobile number is required';
-    } else if (!UserRepository.validateMobile(formData.mobileNumber)) {
-      newErrors.mobileNumber = 'Please enter a valid mobile number';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleRegister = async () => {
-    if (!validateForm()) return;
-
-    setLoading(true);
     try {
-      const result = await UserRepository.register({
-        ...formData,
-        role: activeTab});
-
-      if (result.success) {
-        alert('Registration successful!');
-        setFormData({
-          email: '',
-          fullName: '',
-          password: '',
-          confirmPassword: '',
-          mobileNumber: '',
-          role: activeTab,
-        });
+      const resultAction = await dispatch(registerUser(fullData));
+      if (registerUser.fulfilled.match(resultAction)) {
+        localStorage.setItem("signupEmail", data.email);
+        toast.success("Signup successful! Check your email for OTP.");
+        navigate("/verify-otp");
+      } else {
+        toast.error(resultAction.payload as string);
       }
-    } catch (error) {
-      console.error('Registration failed:', error);
-      alert('Registration failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateField = (field: keyof User, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
+    } catch (err) {
+      toast.error("Registration failed!");
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-teal-400 to-blue-500 p-12 items-center justify-center">
-        <div className="max-w-md text-center">
-          <div className="bg-white rounded-lg p-8 shadow-lg">
-            <img
-            src={registerBanner}
-            alt="Join Our Learnig Community"
-            className="w-full h-full object-cover rounded-lg"
-            />
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Join Our Learning Community</h2>
-            <p className="text-gray-600">Connect with mentors and expand your knowledge</p>
-          </div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="max-w-5xl w-full bg-white rounded-2xl shadow-lg grid grid-cols-1 lg:grid-cols-2 overflow-hidden">
+        <div className="hidden lg:block">
+          <img
+            src={registerImage}
+            alt="Happy Students"
+            className="h-full w-full object-cover"
+          />
         </div>
-      </div>
 
-   
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
-        <div className="max-w-md w-full">
-          <Logo />
-          
-          <div className="mb-6 text-center">
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">Welcome to Mentora!</h1>
+        <div className="p-8 lg:p-12 flex flex-col justify-center">
+          <h2 className="text-2xl font-bold text-slate-900 mb-6 text-center">
+            Welcome to Mentora!
+          </h2>
+
+          <div className="flex mx-auto mb-6 rounded-full border border-teal-500 overflow-hidden w-fit">
+            <button
+              type="button"
+              className={`px-6 py-2 font-medium ${
+                role === "student"
+                  ? "bg-teal-500 text-white"
+                  : "bg-white text-teal-600"
+              }`}
+              onClick={() => setRole("student")}
+            >
+              Student
+            </button>
+            <button
+              type="button"
+              className={`px-6 py-2 font-medium ${
+                role === "mentor"
+                  ? "bg-teal-500 text-white"
+                  : "bg-white text-teal-600"
+              }`}
+              onClick={() => setRole("mentor")}
+            >
+              Mentor
+            </button>
           </div>
 
-         
-          <div className="flex space-x-2 mb-8 bg-gray-100 p-1 rounded-full">
-            <Tab
-              label="Student"
-              isActive={activeTab === 'student'}
-              onClick={() => setActiveTab('student')}
-            />
-            <Tab
-              label="Mentor"
-              isActive={activeTab === 'mentor'}
-              onClick={() => setActiveTab('mentor')}
-            />
-          </div>
-
-          
-          <div className="space-y-4">
-            <FormField
-              label="Email Address"
-              type="email"
-              value={formData.email}
-              onChange={(value) => updateField('email', value)}
-              placeholder="Enter your email"
-              required
-              error={errors.email}
-            />
-
-            <FormField
-              label="First Name"
-              type="text"
-              value={formData.fullName}
-              onChange={(value) => updateField('fullName', value)}
-              placeholder="Enter your first name"
-              required
-              error={errors.fullName}
-            />
-
-            <FormField
-              label="Password"
-              type="password"
-              value={formData.password}
-              onChange={(value) => updateField('password', value)}
-              placeholder="Enter your password"
-              required
-              error={errors.password}
-            />
-
-            <FormField
-              label="Confirm Password"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={(value) => updateField('confirmPassword', value)}
-              placeholder="Confirm your password"
-              required
-              error={errors.confirmPassword}
-            />
-
-            <FormField
-              label="Mobile Number"
-              type="tel"
-              value={formData.mobileNumber}
-              onChange={(value) => updateField('mobileNumber', value)}
-              placeholder="Enter your mobile number"
-              required
-              error={errors.mobileNumber}
-            />
-
-            <div className="pt-4">
-              <Button
-                variant="primary"
-                onClick={handleRegister}
-                disabled={loading}
-                className="w-full"
-              >
-                {loading ? 'Creating Account...' : 'Sign Up'}
-              </Button>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div>
+              <Input
+                type="email"
+                placeholder="Enter your Email Address"
+                {...register("email", { 
+                  required: "Email is required",
+                  pattern: {
+                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                    message: "Invalid email address"
+                  }
+                })}
+              />
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+              )}
             </div>
 
-            <div className="text-center mt-6">
-              <p className="text-sm text-gray-600">
-                Already have an account?{' '}
-                <button className="text-teal-500 hover:text-teal-600 font-medium">
-                  Sign Up
-                </button>
-              </p>
+            <div>
+              <Input
+                type="text"
+                placeholder="Enter your User Name"
+                {...register("fullName", { 
+                  required: "Full name is required",
+                  minLength: {
+                    value: 2,
+                    message: "Full name must be at least 2 characters"
+                  }
+                })}
+              />
+              {errors.fullName && (
+                <p className="text-red-500 text-sm mt-1">{errors.fullName.message}</p>
+              )}
             </div>
-          </div>
+
+            <div>
+              <Input
+                type="password"
+                placeholder="Enter your Password"
+                {...register("password", {
+                  required: "Password is required",
+                  minLength: { 
+                    value: 6, 
+                    message: "Password must be at least 6 characters" 
+                  },
+                })}
+              />
+              {errors.password && (
+                <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+              )}
+            </div>
+
+            <div>
+              <Input
+                type="password"
+                placeholder="Confirm Password"
+                {...register("confirmPassword", {
+                  required: "Please confirm your password",
+                  validate: (value) =>
+                    value === password || "Passwords do not match",
+                })}
+              />
+              {errors.confirmPassword && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.confirmPassword.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Input
+                type="tel"
+                placeholder="Enter your Mobile Number"
+                {...register("phoneNumber", {
+                  required: "Mobile number is required",
+                  pattern: { 
+                    value: /^[0-9]{10}$/, 
+                    message: "Invalid mobile number (10 digits required)" 
+                  },
+                })}
+              />
+              {errors.phoneNumber && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.phoneNumber.message}
+                </p>
+              )}
+            </div>
+
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Registering..." : "Register"}
+            </Button>
+
+            <Button
+              variant="secondary"
+              className="w-full flex items-center gap-2"
+              type="button"
+            >
+              <img src={googleIcon} alt="Google" className="w-5 h-5" />
+              Sign in with Google
+            </Button>
+
+            {error && <p className="text-red-500 text-center">{error}</p>}
+          </form>
+
+          <p className="text-sm text-gray-600 mt-6 text-center">
+            Already have an account?{" "}
+            <a
+              href="/login"
+              className="text-blue-600 font-medium hover:underline"
+            >
+              Sign in
+            </a>
+          </p>
         </div>
       </div>
     </div>
   );
-};
-
-export default RegistrationPage;
+}

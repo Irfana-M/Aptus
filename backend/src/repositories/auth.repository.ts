@@ -1,34 +1,34 @@
-import type { IAuthRepository } from "../interfaces/IAuthRepository";
-import { MentorAuthRepository } from "./mentorAuth.repository";
-import { StudentAuthRepository } from "./studentAuth.repository";
-import type { AuthUser } from "../interfaces/auth.interface";
-import type { RegisterUserDto } from "../dto/RegisteruserDTO";
+import type { IAuthRepository } from "../interfaces/auth/IAuthRepository.js";
+import { MentorAuthRepository } from "./mentorAuth.repository.js";
+import { StudentAuthRepository } from "./studentAuth.repository.js";
+import type { AuthUser } from "../interfaces/auth/auth.interface.js";
+import type { RegisterUserDto } from "../dto/RegisteruserDTO.js";
 
 export class AuthRepository implements IAuthRepository {
-  private mentorRepo = new MentorAuthRepository();
-  private studentRepo = new StudentAuthRepository();
+  private _mentorRepo = new MentorAuthRepository();
+  private _studentRepo = new StudentAuthRepository();
 
   async markUserVerified(email: string): Promise<void> {
-    let user = await this.mentorRepo.findUserByEmail(email);
+    let user = await this._mentorRepo.findByEmail(email);
     if(user) {
-      await this.mentorRepo.markUserVerified(email);
+      await this._mentorRepo.markUserVerified(email);
       return;
     }
 
-    user = await this.studentRepo.findUserByEmail(email);
+    user = await this._studentRepo.findByEmail(email);
     if (user) {
-        await this.studentRepo.markUserVerified(email);
+        await this._studentRepo.markUserVerified(email);
         return;
     }
 
     throw new Error("User not found");
   }
 
-  async findUserByEmail(email: string): Promise<AuthUser | null> {
-    let user = await this.mentorRepo.findUserByEmail(email);
+  async findByEmail(email: string): Promise<AuthUser | null> {
+    let user = await this._mentorRepo.findByEmail(email);
     if (user) return user;
 
-    user = await this.studentRepo.findUserByEmail(email);
+    user = await this._studentRepo.findByEmail(email);
     if (user) return user;
 
     return null;
@@ -36,33 +36,33 @@ export class AuthRepository implements IAuthRepository {
 
   async createUser(data: RegisterUserDto): Promise<AuthUser> {
     if (data.role === 'mentor') {
-      return this.mentorRepo.createUser(data);
+      return this._mentorRepo.createUser(data);
     } else if (data.role === 'student') {
-      return this.studentRepo.createUser(data);
+      return this._studentRepo.createUser(data);
     }
     throw new Error('Invalid role');
   }
 
   async findById(id: string): Promise<AuthUser | null> {
-    let user = await this.mentorRepo.findById(id);
+    let user = await this._mentorRepo.findById(id);
     if (user) return user;
 
-    user = await this.studentRepo.findById(id);
+    user = await this._studentRepo.findById(id);
     if (user) return user;
 
     return null;
   }
 
   async updatePassword(email: string, hashedPassword: string): Promise<void> {
-    let user = await this.mentorRepo.findUserByEmail(email);
+    let user = await this._mentorRepo.findByEmail(email);
     if (user) {
-      await this.mentorRepo.updatePassword(email, hashedPassword);
+      await this._mentorRepo.updatePassword(email, hashedPassword);
       return;
     }
 
-    user = await this.studentRepo.findUserByEmail(email);
+    user = await this._studentRepo.findByEmail(email);
     if (user) {
-      await this.studentRepo.updatePassword(email, hashedPassword);
+      await this._studentRepo.updatePassword(email, hashedPassword);
       return;
     }
 
@@ -70,10 +70,10 @@ export class AuthRepository implements IAuthRepository {
   }
 
   async block(id: string): Promise<boolean> {
-    let success = await this.mentorRepo.block(id);
+    let success = await this._mentorRepo.block(id);
     if (success) return true;
 
-    success = await this.studentRepo.block(id);
+    success = await this._studentRepo.blockStudent(id);
     if (success) return true;
 
     return false;

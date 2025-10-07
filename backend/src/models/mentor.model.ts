@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import type { MentorProfile } from '../interfaces/mentor.interface.js';
+import type { MentorProfile } from '../interfaces/models/mentor.interface.js';
 
 const academicQualificationSchema = new Schema({
     institutionName: String,
@@ -31,14 +31,14 @@ const mentorSchema = new Schema<MentorProfile>(
   {
     fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    phone: { type: String, required: true },
+    phoneNumber: { type: String, required: true },
     password: { type: String, required: true },
     location: { type: String },
     bio: { type: String },
     academicQualification: [academicQualificationSchema],
     experience: [experienceSchema],
     certification: [certificationSchema],
-    subjectProficiency: subjectProficiencySchema,
+    subjectProficiency: [subjectProficiencySchema],
     profileMediaUrl: { type: String },
     isVerified: { type: Boolean, default: false },
     isBlocked: { type: Boolean, default: false },

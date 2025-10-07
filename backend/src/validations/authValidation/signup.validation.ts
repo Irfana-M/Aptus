@@ -8,7 +8,7 @@ export const studentRegisterSchema = z.object({
     email: z.string()
         .email('Invalid email address'),
         
-    phone: z.string()
+    phoneNumber: z.string()
         .min(10, 'Phone must be at least 10 digits')
         .max(15, 'Phone must be at most 15 digits')
         .regex(/^[0-9]+$/, 'Phone must contain only numbers'),
