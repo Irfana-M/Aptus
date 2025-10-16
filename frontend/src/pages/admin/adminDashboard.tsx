@@ -16,7 +16,7 @@ import {
   LogOut,
 } from "lucide-react";
 
-// ===== StatCard Component =====
+
 const StatCard = ({
   title,
   value,
@@ -195,7 +195,7 @@ export default function Dashboard() {
                   {recentStudents.map((student: any) => (
                     <tr key={student._id} className="border-b border-gray-800">
                       <td className="py-2">
-                        {student.student?.name ?? student.name}
+                        {student.student?.fullName ?? student.fullName}
                       </td>
                       <td>{student.student?.email ?? student.email}</td>
                       <td>
@@ -230,7 +230,7 @@ export default function Dashboard() {
                   {recentMentors.map((mentor: any) => (
                     <tr key={mentor._id} className="border-b border-gray-800">
                       <td className="py-2">
-                        {mentor.mentor?.name ?? mentor.name}
+                        {mentor.mentor?.fullName ?? mentor.fullName}
                       </td>
                       <td>{mentor.mentor?.email ?? mentor.email}</td>
                       <td>

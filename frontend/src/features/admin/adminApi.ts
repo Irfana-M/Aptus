@@ -1,5 +1,5 @@
 import api from "../../api/api"; 
-import type { LoginResponse } from "../../types/dtoTypes";
+import type { AdminLoginResponse } from "../../types/dtoTypes";
 
 export interface AdminLoginDto {
   email: string;
@@ -7,7 +7,7 @@ export interface AdminLoginDto {
 }
 
 export const adminApi = {
-  login: (data: AdminLoginDto) => api.post<LoginResponse>("/admin/login", data),
+  login: (data: AdminLoginDto) => api.post<AdminLoginResponse>("/admin/login", data),
   logout: () => api.post<{ message: string }>("/admin/logout"),
  
 };

@@ -69,7 +69,7 @@ export class StudentAuthRepository
   }
 
   async block(id: string): Promise<boolean> {
-    return this.blockStudent(id); // delegate to student-specific method
+    return this.blockStudent(id); 
   }
 
   async updateProfile(id: string, data: Partial<StudentProfile>): Promise<StudentProfile | null> {
@@ -78,7 +78,7 @@ export class StudentAuthRepository
   }
 
   async blockStudent(id: string): Promise<boolean> {
-    const result = await StudentModel.findByIdAndUpdate(id, { $set: { blocked: true } });
+    const result = await StudentModel.findByIdAndUpdate(id, { $set: { isBlocked: true } });
     return result !== null;
   }
 

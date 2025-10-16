@@ -13,10 +13,10 @@ export class AdminRepository implements IAdminRepository {
         return Admin.create(admin);
     }
     async getAllStudents() {
-    return await StudentModel.find({}, "name email createdAt");
+    return await StudentModel.find({}, "fullName email createdAt");
   }
 
   async getAllMentors() {
-    return await MentorModel.find({}, "name email createdAt");
+    return await MentorModel.find({}, "fullName email createdAt");
   }
 }

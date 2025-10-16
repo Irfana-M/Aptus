@@ -3,13 +3,13 @@ import type { IOtpRepository } from "../interfaces/repositories/IOtpRepository.j
 import type { IVerificationRepository } from "../interfaces/repositories/IVerificationRepository.js";
 import { generateRandomOtp } from "../utils/otp.utils.js";
 import type { IOtp } from "../interfaces/models/otp.interface.js";
-import { EmailService } from "./email.service.js";
+import { NodemailerService } from "./email.service.js";
 import type { IAuthRepository } from "../interfaces/auth/IAuthRepository.js";
 
 export class OtpService implements IOtpService {
   constructor(
     private _otpRepository: IOtpRepository,
-    private _emailService: EmailService,
+    private _emailService: NodemailerService,
     private _verificationRepositories: Map<string, IVerificationRepository>,
     private _authRepositories: Map<string, IAuthRepository>
   ) {}
@@ -21,6 +21,8 @@ export class OtpService implements IOtpService {
     expiresAt: Date,
     role: "student" | "mentor"
   ): Promise<IOtp> {
+    await this._otpRepository.deleteOtp(email, otpPurpose);
+
     const otp = generateRandomOtp();
 
     const savedOtp = await this._otpRepository.saveOtp(
@@ -32,15 +34,15 @@ export class OtpService implements IOtpService {
       role
     );
 
-    if (deliveryMethod === "email") {
-      await this._emailService.sendMail(
-        email,
-        otpPurpose === "signup"
-          ? "Verify your Mentora account"
-          : "Mentora Password Reset",
-        `<p>Your OTP is <b>${otp}</b>. It expires in 5 minutes.</p>`
-      );
-    }
+    // if (deliveryMethod === "email") {
+    //   await this._emailService.sendMail(
+    //     email,
+    //     otpPurpose === "signup"
+    //       ? "Verify your Mentora account"
+    //       : "Mentora Password Reset",
+    //     `<p>Your OTP is <b>${otp}</b>. It expires in 5 minutes.</p>`
+    //   );
+    // }
     return savedOtp;
   }
 
@@ -57,16 +59,17 @@ export class OtpService implements IOtpService {
       throw new Error("OTP expired");
     }
     if (savedOtp.otp !== enteredOtp) throw new Error("Invalid OTP");
+    if (otpPurpose === "signup") {
+      if (!savedOtp.role || !["student", "mentor"].includes(savedOtp.role)) {
+        throw new Error(`Invalid or missing role in OTP for email: ${email}`);
+      }
 
-    if (!savedOtp.role || !["student", "mentor"].includes(savedOtp.role)) {
-      throw new Error(`Invalid or missing role in OTP for email: ${email}`);
+      const authRepository = this._verificationRepositories.get(savedOtp.role);
+      if (!authRepository) {
+        throw new Error(`No repository found for role: ${savedOtp.role}`);
+      }
+      await authRepository.markUserVerified(email);
     }
-
-    const authRepository = this._verificationRepositories.get(savedOtp.role);
-    if (!authRepository) {
-      throw new Error(`No repository found for role: ${savedOtp.role}`);
-    }
-    await authRepository.markUserVerified(email);
 
     await this._otpRepository.deleteOtp(email, otpPurpose);
 
@@ -74,43 +77,37 @@ export class OtpService implements IOtpService {
   }
 
   async resendOtp(email: string): Promise<void> {
-  let user = null;
-  let role: "student" | "mentor" | null = null;
+    let user = null;
+    let role: "student" | "mentor" | null = null;
 
- 
-  user = await this._authRepositories.get("student")?.findByEmail(email);
-  if (user) role = "student";
+    user = await this._authRepositories.get("student")?.findByEmail(email);
+    if (user) role = "student";
 
- 
-  if (!user) {
-    user = await this._authRepositories.get("mentor")?.findByEmail(email);
-    if (user) role = "mentor";
+    if (!user) {
+      user = await this._authRepositories.get("mentor")?.findByEmail(email);
+      if (user) role = "mentor";
+    }
+
+    if (!user || !role) throw new Error("User not found");
+
+    await this._otpRepository.deleteOtp(email, "signup");
+
+    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    await this._otpRepository.saveOtp(
+      email,
+      newOtp,
+      "signup",
+      expiresAt,
+      "email",
+      role
+    );
+
+    await this._emailService.sendMail(
+      email,
+      "Resend OTP - Mentora",
+      `<p>Your new OTP is <b>${newOtp}</b>. It expires in 5 minutes.</p>`
+    );
   }
-
-  if (!user || !role) throw new Error("User not found");
-
-  await this._otpRepository.deleteOtp(email, "signup");
-
-  
-  const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
-
-  await this._otpRepository.saveOtp(
-    email,
-    newOtp,
-    "signup",
-    expiresAt,
-    "email",
-    role
-  );
-
-  
-  await this._emailService.sendMail(
-    email,
-    "Resend OTP - Mentora",
-    `<p>Your new OTP is <b>${newOtp}</b>. It expires in 5 minutes.</p>`
-  );
-}
-
 }

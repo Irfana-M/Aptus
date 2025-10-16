@@ -47,7 +47,7 @@ export class MentorAuthRepository implements IAuthRepository,IMentorRepository,I
   }
 
   async comparePasswords(user: AuthUser, password: string): Promise<boolean> {
-    return await bcrypt.compare(user.password, password);
+    return await bcrypt.compare(password, user.password);
   }
 
   async updateProfile(id: string, data: Partial<MentorProfile>): Promise<MentorProfile | null> {

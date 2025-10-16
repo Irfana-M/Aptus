@@ -25,7 +25,7 @@ export interface LoginResponse {
   accessToken: string;
 }
 
-export interface LoginResponse {
+export interface AdminLoginResponse {
   admin: {
     _id: string;
     email: string;

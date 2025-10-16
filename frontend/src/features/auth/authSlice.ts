@@ -8,6 +8,7 @@ const initialState: AuthState = {
   accessToken: null,
   error: null,
   isVerified: false,
+  isAuthenticated: false
 };
 
 const authSlice = createSlice({
@@ -19,11 +20,18 @@ const authSlice = createSlice({
       state.isVerified = false;
       state.error = null;
       state.loading = false;
-      localStorage.removeItem("token");
-      localStorage.removeItem("signupEmail");
+      state.accessToken = null;
+      state.isAuthenticated = false;
     },
     clearError: (state) => {
       state.error = null;
+    },
+    setCredentials: (state, action) => {
+  const { user, accessToken } = action.payload;
+  state.user = user;
+  state.accessToken = accessToken;
+  state.isAuthenticated = true;
+  state.error = null;
     },
   },
   extraReducers: (builder) => {
@@ -78,9 +86,15 @@ const authSlice = createSlice({
         state.isVerified = false;
         state.error = null;
         state.loading = false;
+        state.accessToken = null;
+        state.isAuthenticated = false;
       });
   },
 });
 
-export const { logout,clearError } = authSlice.actions;
+export const { logout,clearError, setCredentials } = authSlice.actions;
 export default authSlice.reducer;
+// features/auth/authSlice.ts (add at the end)
+export const selectCurrentToken = (state: { auth: AuthState }) => state.auth.accessToken;
+export const selectCurrentUser = (state: { auth: AuthState }) => state.auth.user;
+export const selectIsAuthenticated = (state: { auth: AuthState }) => state.auth.isAuthenticated;

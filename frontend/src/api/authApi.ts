@@ -1,41 +1,43 @@
 import api from "./api"; 
 import { store } from "../app/store";
 import { refreshAccessToken } from "../features/auth/authThunks";
+import { logout } from "../features/auth/authSlice";
+import type { AxiosRequestConfig } from "axios";
 
-const authApi = api.create({
-  withCredentials: true, 
-});
+interface OriginalRequestConfig extends AxiosRequestConfig {
+  _retry?: boolean;
+}
+
+const authApi = api.create({ withCredentials: true });
 
 authApi.interceptors.request.use(
   (config) => {
-    const state = store.getState();
-    const accessToken = state.auth.accessToken;
-    if (accessToken && config.headers) {
-      config.headers["Authorization"] = `Bearer ${accessToken}`;
+    const token = store.getState().auth.accessToken;
+    if (token && config.headers) {
+      config.headers["Authorization"] = `Bearer ${token}`;
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-
 authApi.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const originalRequest = error.config as OriginalRequestConfig;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        
         const result = await store.dispatch(refreshAccessToken() as any);
-        const newAccessToken = (result.payload as { accessToken: string }).accessToken;
-
-        
-        originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
+        const newAccessToken = result.payload?.accessToken;
+        if (newAccessToken && originalRequest.headers) {
+          originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
+        }
         return authApi(originalRequest);
       } catch (err) {
+        store.dispatch(logout());
         return Promise.reject(err);
       }
     }

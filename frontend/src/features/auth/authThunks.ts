@@ -49,7 +49,7 @@ export const resendOtp = createAsyncThunk<void, string>(
   }
 );
 
-export const refreshAccessToken = createAsyncThunk<{ accessToken: string}, void>(
+export const refreshAccessToken = createAsyncThunk<{ accessToken: string}, void, { rejectValue: string }>(
   "auth/refreshToken",
   async (_,{ rejectWithValue }) => {
     try {
@@ -63,9 +63,9 @@ export const refreshAccessToken = createAsyncThunk<{ accessToken: string}, void>
 
 );
 
-export const loginUser = createAsyncThunk<LoginResponse, LoginDto>(
+export const loginUser = createAsyncThunk<LoginResponse, LoginDto, { rejectValue: string }>(
   "auth/login",
-  async (data: LoginDto, { rejectWithValue }) => {
+  async (data, { rejectWithValue }): Promise<LoginResponse | ReturnType<typeof rejectWithValue>>  => {
     try {
       const res = await authApi.login(data);
       const { user, accessToken } = res.data;

@@ -109,16 +109,18 @@ export default function Register() {
               <Input
                 type="email"
                 placeholder="Enter your Email Address"
-                {...register("email", { 
+                {...register("email", {
                   required: "Email is required",
                   pattern: {
                     value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: "Invalid email address"
-                  }
+                    message: "Invalid email address",
+                  },
                 })}
               />
               {errors.email && (
-                <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.email.message}
+                </p>
               )}
             </div>
 
@@ -126,16 +128,18 @@ export default function Register() {
               <Input
                 type="text"
                 placeholder="Enter your User Name"
-                {...register("fullName", { 
+                {...register("fullName", {
                   required: "Full name is required",
                   minLength: {
                     value: 2,
-                    message: "Full name must be at least 2 characters"
-                  }
+                    message: "Full name must be at least 2 characters",
+                  },
                 })}
               />
               {errors.fullName && (
-                <p className="text-red-500 text-sm mt-1">{errors.fullName.message}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.fullName.message}
+                </p>
               )}
             </div>
 
@@ -145,14 +149,16 @@ export default function Register() {
                 placeholder="Enter your Password"
                 {...register("password", {
                   required: "Password is required",
-                  minLength: { 
-                    value: 6, 
-                    message: "Password must be at least 6 characters" 
+                  minLength: {
+                    value: 6,
+                    message: "Password must be at least 6 characters",
                   },
                 })}
               />
               {errors.password && (
-                <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.password.message}
+                </p>
               )}
             </div>
 
@@ -179,9 +185,9 @@ export default function Register() {
                 placeholder="Enter your Mobile Number"
                 {...register("phoneNumber", {
                   required: "Mobile number is required",
-                  pattern: { 
-                    value: /^[0-9]{10}$/, 
-                    message: "Invalid mobile number (10 digits required)" 
+                  pattern: {
+                    value: /^[0-9]{10}$/,
+                    message: "Invalid mobile number (10 digits required)",
                   },
                 })}
               />
@@ -200,6 +206,9 @@ export default function Register() {
               variant="secondary"
               className="w-full flex items-center gap-2"
               type="button"
+              onClick={() => {
+                window.location.href = "http://localhost:5000/api/auth/google";
+              }}
             >
               <img src={googleIcon} alt="Google" className="w-5 h-5" />
               Sign in with Google

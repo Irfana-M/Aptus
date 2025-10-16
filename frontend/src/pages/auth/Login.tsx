@@ -124,6 +124,9 @@ export default function Login() {
               variant="secondary"
               className="w-full flex items-center gap-2"
               type="button"
+               onClick={() => {
+                window.location.href = "http://localhost:5000/api/auth/google";
+              }}
             >
               <img src={googleIcon} alt="Google" className="w-5 h-5" />
               Sign in with Google
