@@ -23,6 +23,8 @@ export interface LoginDto {
 export interface LoginResponse {
   user: User;
   accessToken: string;
+  isProfileComplete?: boolean;
+  isPaid?: boolean;
 }
 
 export interface AdminLoginResponse {

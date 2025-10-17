@@ -62,5 +62,6 @@ export interface MentorProfile {
      isBlocked: boolean;
      createdAt?: Date;
      updatedAt?: Date;
+     isProfileComplete?: boolean;
 }
 

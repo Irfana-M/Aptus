@@ -76,7 +76,7 @@ const authService = new AuthService(
   studentRepo,
   mentorRepo
 );
-const authController = new AuthController(authService);
+const authController = new AuthController(authService, otpService);
 const otpController = new OtpController(otpService);
 
 

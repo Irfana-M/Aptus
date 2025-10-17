@@ -1,6 +1,13 @@
 import { createSlice } from "@reduxjs/toolkit";
-import type { AuthState} from "../../types/authTypes";
-import { registerUser, verifyOtp, resendOtp, logoutUser, loginUser, refreshAccessToken } from "./authThunks";
+import type { AuthState } from "../../types/authTypes";
+import {
+  registerUser,
+  verifyOtp,
+  resendOtp,
+  logoutUser,
+  loginUser,
+  refreshAccessToken,
+} from "./authThunks";
 
 const initialState: AuthState = {
   loading: false,
@@ -8,7 +15,9 @@ const initialState: AuthState = {
   accessToken: null,
   error: null,
   isVerified: false,
-  isAuthenticated: false
+  isAuthenticated: false,
+  isProfileComplete: undefined,
+  isPaid: undefined,
 };
 
 const authSlice = createSlice({
@@ -22,16 +31,32 @@ const authSlice = createSlice({
       state.loading = false;
       state.accessToken = null;
       state.isAuthenticated = false;
+      state.isProfileComplete = undefined;
+      state.isPaid = undefined;
     },
     clearError: (state) => {
       state.error = null;
     },
     setCredentials: (state, action) => {
-  const { user, accessToken } = action.payload;
-  state.user = user;
-  state.accessToken = accessToken;
-  state.isAuthenticated = true;
-  state.error = null;
+      const { user, accessToken, isProfileComplete, isPaid } = action.payload;
+      state.user = user;
+      state.accessToken = accessToken;
+      state.isAuthenticated = true;
+      state.isProfileComplete = isProfileComplete;
+      state.isPaid = isPaid;
+      state.error = null;
+    },
+    updateProfileStatus: (state, action) => {
+      state.isProfileComplete = action.payload.isProfileComplete;
+      if (state.user) {
+        state.user.isProfileComplete = action.payload.isProfileComplete;
+      }
+    },
+    updatePaymentStatus: (state, action) => {
+      state.isPaid = action.payload.isPaid;
+      if (state.user) {
+        state.user.isPaid = action.payload.isPaid;
+      }
     },
   },
   extraReducers: (builder) => {
@@ -65,14 +90,19 @@ const authSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload.user;
-        state.accessToken = action.payload.accessToken; 
+        state.accessToken = action.payload.accessToken;
         state.isAuthenticated = true;
+        state.isProfileComplete = action.payload.isProfileComplete;
+        state.isPaid = action.payload.isPaid;
+        state.error = null;
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+        state.isProfileComplete = undefined;
+        state.isPaid = undefined;
       })
-       .addCase(refreshAccessToken.fulfilled, (state, action) => {
+      .addCase(refreshAccessToken.fulfilled, (state, action) => {
         state.accessToken = action.payload.accessToken;
         state.isAuthenticated = true;
       })
@@ -92,9 +122,13 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout,clearError, setCredentials } = authSlice.actions;
+export const { logout, clearError, setCredentials } = authSlice.actions;
 export default authSlice.reducer;
-// features/auth/authSlice.ts (add at the end)
-export const selectCurrentToken = (state: { auth: AuthState }) => state.auth.accessToken;
-export const selectCurrentUser = (state: { auth: AuthState }) => state.auth.user;
-export const selectIsAuthenticated = (state: { auth: AuthState }) => state.auth.isAuthenticated;
+export const selectCurrentToken = (state: { auth: AuthState }) =>
+  state.auth.accessToken;
+export const selectCurrentUser = (state: { auth: AuthState }) =>
+  state.auth.user;
+export const selectIsAuthenticated = (state: { auth: AuthState }) =>
+  state.auth.isAuthenticated;
+export const selectIsProfileComplete = (state: { auth: AuthState }) => state.auth.isProfileComplete;
+export const selectIsPaid = (state: { auth: AuthState }) => state.auth.isPaid;

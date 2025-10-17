@@ -68,8 +68,16 @@ export const loginUser = createAsyncThunk<LoginResponse, LoginDto, { rejectValue
   async (data, { rejectWithValue }): Promise<LoginResponse | ReturnType<typeof rejectWithValue>>  => {
     try {
       const res = await authApi.login(data);
-      const { user, accessToken } = res.data;
-      return {user, accessToken};
+      const { user, accessToken, isProfileComplete, isPaid } = res.data;
+      return { user: {
+          ...user,
+          isProfileComplete,
+          isPaid
+        },
+        accessToken,
+        isProfileComplete,
+        isPaid
+      };
 
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || "Login failed");

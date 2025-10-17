@@ -28,12 +28,19 @@ export class AuthRepository implements IAuthRepository {
   }
 
   async updatePassword(email: string, hashedPassword: string): Promise<void> {
-    const user = await this.findByEmail(email);
-    if (!user) throw new Error('User not found');
+  let user = await this._mentorRepo.findByEmail(email);
+  if (user) {
+    await this._mentorRepo.updatePassword(email, hashedPassword);
+    return;
+  }
 
-    user.role === 'mentor'
-      ? await this._mentorRepo.updatePassword(email, hashedPassword)
-      : await this._studentRepo.updatePassword(email, hashedPassword);
+  user = await this._studentRepo.findByEmail(email);
+  if (user) {
+    await this._studentRepo.updatePassword(email, hashedPassword);
+    return;
+  }
+
+  throw new Error("User not found");
   }
 
   async block(id: string): Promise<boolean> {

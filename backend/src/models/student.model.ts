@@ -35,6 +35,7 @@ const studentSchema = new Schema<StudentProfile>(
     goal: { type: String },
     isVerified: { type: Boolean,required:true, default: false },
     isBlocked: { type: Boolean, default: false },
+    hasPaid: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

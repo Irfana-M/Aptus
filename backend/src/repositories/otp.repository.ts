@@ -28,4 +28,8 @@ export class OtpRepository {
   async deleteOtp(email: string, otpPurpose: string): Promise<void> {
     await OtpModel.deleteMany({ email, otpPurpose });
   }
+  async findByOtp(otp: string, otpPurpose: "signup" | "forgotPassword"): Promise<IOtp | null> {
+
+    return await OtpModel.findOne({otp,otpPurpose});
+   }
 }

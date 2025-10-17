@@ -42,6 +42,7 @@ const mentorSchema = new Schema<MentorProfile>(
     profileMediaUrl: { type: String },
     isVerified: { type: Boolean, default: false },
     isBlocked: { type: Boolean, default: false },
+    isProfileComplete: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

@@ -87,7 +87,6 @@ async updateVerificationStatus(id: string, isVerified: boolean, reason?: string)
   }
 
   async blockMentor(id: string): Promise<boolean> {
-    // Can just call the same logic internally
     return this.block(id);
 }
 

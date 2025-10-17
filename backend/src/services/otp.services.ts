@@ -110,4 +110,16 @@ export class OtpService implements IOtpService {
       `<p>Your new OTP is <b>${newOtp}</b>. It expires in 5 minutes.</p>`
     );
   }
+
+
+  async findByOtp(otp: string, otpPurpose: "signup" | "forgotPassword"): Promise<IOtp | null> {
+    const otpRecord = await this._otpRepository.findByOtp(otp, otpPurpose);
+    console.log(otpRecord)
+    if (!otpRecord) return null;
+    if (otpRecord.expiresAt < new Date()) {
+      await this._otpRepository.deleteOtp(otpRecord.email, otpPurpose);
+      return null;
+    }
+    return otpRecord;
+  }
 }

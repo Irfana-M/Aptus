@@ -56,5 +56,6 @@ export interface StudentProfile {
      isBlocked: boolean;
      createdAt?: Date;
      updatedAt?: Date;
+     hasPaid?: boolean;
 }
 

@@ -13,4 +13,6 @@ export interface IOtpRepository {
   findOtp(email: string, otpPurpose: string): Promise<IOtp | null>;
 
   deleteOtp(email: string, otpPurpose: string): Promise<void>;
+
+  findByOtp(email: string, otpPurpose: string): Promise<IOtp | null>;
 }
