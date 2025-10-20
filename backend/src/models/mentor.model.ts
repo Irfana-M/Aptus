@@ -27,6 +27,8 @@ const subjectProficiencySchema = new Schema({
   },
 });
 
+
+
 const mentorSchema = new Schema<MentorProfile>(
   {
     fullName: { type: String, required: true },
@@ -35,14 +37,21 @@ const mentorSchema = new Schema<MentorProfile>(
     password: { type: String, required: true },
     location: { type: String },
     bio: { type: String },
-    academicQualification: [academicQualificationSchema],
-    experience: [experienceSchema],
+    academicQualifications: [academicQualificationSchema],
+    experiences: [experienceSchema],
     certification: [certificationSchema],
     subjectProficiency: [subjectProficiencySchema],
-    profileMediaUrl: { type: String },
+    profilePicture: { type: String },
     isVerified: { type: Boolean, default: false },
     isBlocked: { type: Boolean, default: false },
     isProfileComplete: { type: Boolean, default: false },
+    approvalStatus: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+    },
+    submittedForApprovalAt: { type: Date },
+    rejectionReason: { type: String},
   },
   { timestamps: true }
 );

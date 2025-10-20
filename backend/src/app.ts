@@ -5,6 +5,8 @@ import { connectDB } from './config/db.config.js';
 import router from './routes/auth.routes.js';
 import adminRouter from "./routes/admin.routes.js";
 import passport from './config/passport.config.js';
+import mentorRouter from './routes/mentor.routes.js';
+import path from 'path';
 
 dotenv.config();
 const app = express();
@@ -21,6 +23,11 @@ app.use(passport.initialize());
 
 app.use('/api/auth', router);
 app.use('/api/admin', adminRouter);
+app.use("/api/mentor", mentorRouter);
+
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
+
 
 connectDB();
 

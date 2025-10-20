@@ -1,4 +1,3 @@
-// // interfaces/auth/auth.interface.ts
 export interface AuthUser {
     _id: string;
     fullName: string;
@@ -7,19 +6,17 @@ export interface AuthUser {
     phoneNumber: string;
     role: 'student' | 'mentor';
     isVerified: boolean;
-    isProfileComplete?: boolean; 
-    isPaid?: boolean;  // Change from hasPaid to isPaid for consistency
+    isProfileComplete?: boolean | undefined; 
+    isPaid?: boolean | undefined;
+    id?: string | undefined; 
 }
-
 export interface MentorAuthUser extends AuthUser {
   role: "mentor";
-  academicQualification?: { institutionName: string; degree: string; graduationYear: string }[];
-  subjectProficiency?: { subject: string; level: string }[];
+  academicQualification?: { institutionName: string; degree: string; graduationYear: string }[] | undefined;
+  subjectProficiency?: { subject: string; level: string }[] | undefined;
 }
 
 export interface StudentAuthUser extends AuthUser {
-  isPaid?: boolean;  // Change from hasPaid to isPaid
+  isPaid?: boolean; 
   role: "student";
-  academicDetails?: { institutionName: string; grade: string; syllabus: string };
-  contactInfo?: { parentInfo: { name: string; email: string; phoneNumber: string }; address?: string };
 }

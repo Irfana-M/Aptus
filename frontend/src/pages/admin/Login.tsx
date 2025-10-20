@@ -28,15 +28,13 @@ export default function AdminLoginPage() {
     e.preventDefault();
 
     try {
-      const result = await dispatch(adminLoginThunk({ email, password }));
+        await dispatch(adminLoginThunk({ email, password })).unwrap();
 
-      if (adminLoginThunk.fulfilled.match(result)) {
         toast.success("Admin logged in successfully!");
         navigate("/admin/dashboard");
-        toast.error(result.payload as unknown as string);
-      }
-    } catch (err) {
-      toast.error("Login failed!");
+      
+    } catch (err: any) {
+      toast.error(err.message || "Login failed!");
     }
   };
 

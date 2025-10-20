@@ -15,6 +15,7 @@ import express from "express";
 import passport from   "../config/passport.config.js"
 import jwt from "jsonwebtoken";
 import { generateAccessToken } from "../utils/jwt.util.js";
+import { ProfileService } from "../services/profile.service.js";
 
 const router = Router();
 
@@ -56,6 +57,7 @@ const mentorRepo = new MentorAuthRepository();
 const authRepository = new AuthRepository(mentorRepo, studentRepo);
 const otpRepository = new OtpRepository();
 const emailService = new NodemailerService();
+const profileService = new ProfileService();
 
 const verificationRepositories = new Map<string, any>([
   ["student", studentRepo],
@@ -74,7 +76,8 @@ const authService = new AuthService(
   otpService,
   emailService,
   studentRepo,
-  mentorRepo
+  mentorRepo,
+  profileService
 );
 const authController = new AuthController(authService, otpService);
 const otpController = new OtpController(otpService);

@@ -5,6 +5,8 @@ import { generateRandomOtp } from "../utils/otp.utils.js";
 import type { IOtp } from "../interfaces/models/otp.interface.js";
 import { NodemailerService } from "./email.service.js";
 import type { IAuthRepository } from "../interfaces/auth/IAuthRepository.js";
+import { logger } from "../utils/logger.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
 
 export class OtpService implements IOtpService {
   constructor(
@@ -21,29 +23,43 @@ export class OtpService implements IOtpService {
     expiresAt: Date,
     role: "student" | "mentor"
   ): Promise<IOtp> {
-    await this._otpRepository.deleteOtp(email, otpPurpose);
+    try {
+      await this._otpRepository.deleteOtp(email, otpPurpose);
+      const otp = generateRandomOtp();
 
-    const otp = generateRandomOtp();
+      const savedOtp = await this._otpRepository.saveOtp(
+        email,
+        otp,
+        otpPurpose,
+        expiresAt,
+        deliveryMethod,
+        role
+      );
 
-    const savedOtp = await this._otpRepository.saveOtp(
-      email,
-      otp,
-      otpPurpose,
-      expiresAt,
-      deliveryMethod,
-      role
-    );
+      logger.info(`OTP generated and saved for ${email}, purpose: ${otpPurpose}`);
 
-    // if (deliveryMethod === "email") {
-    //   await this._emailService.sendMail(
-    //     email,
-    //     otpPurpose === "signup"
-    //       ? "Verify your Mentora account"
-    //       : "Mentora Password Reset",
-    //     `<p>Your OTP is <b>${otp}</b>. It expires in 5 minutes.</p>`
-    //   );
-    // }
-    return savedOtp;
+      if (deliveryMethod === "email") {
+        let subject: string;
+        let html: string;
+
+        if (otpPurpose === "signup") {
+          subject = "Verify your Mentora account";
+          html = `<p>Your verification OTP is <b>${otp}</b>. It expires in 10 minutes.</p>`;
+        } else {
+          subject = "Mentora Password Reset OTP";
+          html = `<p>Your password reset OTP is <b>${otp}</b>. It expires in 10 minutes.</p>`;
+        }
+
+        await this._emailService.sendMail(email, subject, html);
+        logger.info(`OTP email sent to ${email}`);
+      }
+
+      return savedOtp;
+    } catch (error: any) {
+      logger.error(`Failed to generate OTP for ${email}: ${error.message}`);
+      (error as any).statusCode = HttpStatusCode.INTERNAL_SERVER_ERROR;
+      throw error;
+    }
   }
 
   async verifyOtp(

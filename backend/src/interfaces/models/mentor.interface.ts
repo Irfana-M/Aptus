@@ -42,7 +42,7 @@ export interface SubjectProficency {
 
 export interface Certification {
     name: string;
-    IssuingOrganization: string;
+    issuingOrganization: string;
 }
 
 export interface MentorProfile {
@@ -53,15 +53,18 @@ export interface MentorProfile {
      phoneNumber: string;
      location?: string;
      bio?: string;
-     academicQualification?: AcademicQualification[];
-     experience?: Experience[];
-     subjectProficiency?: SubjectProficency;
+     academicQualifications?: AcademicQualification[];
+     experiences?: Experience[];
+     subjectProficiency?: SubjectProficency[];
      certification?: Certification[];
-     profileMediaUrl?: string;
+     profilePicture?: string;
      isVerified?: boolean;
      isBlocked: boolean;
      createdAt?: Date;
      updatedAt?: Date;
      isProfileComplete?: boolean;
+     approvalStatus?: 'pending' | 'approved' | 'rejected';
+     submittedForApprovalAt?: Date;
+     rejectionReason?: string;
 }
 

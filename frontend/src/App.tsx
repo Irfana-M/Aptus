@@ -10,6 +10,7 @@ import Dashboard from "./pages/admin/adminDashboard";
 import GoogleCallback from "./pages/auth/GoogleCallback";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
+import MentorProfileSetup from "./pages/mentor/ProfileSetup";
 
 const App: React.FC = () => {
   return (
@@ -25,6 +26,7 @@ const App: React.FC = () => {
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/admin/dashboard" element={<Dashboard />} />
         <Route path="/auth/google/callback" element={<GoogleCallback />} />
+        <Route path="/mentor/profile-setup" element={<MentorProfileSetup />} />
       </Routes>
     </Router>
   );
