@@ -11,6 +11,9 @@ import type { IAuthService } from "../interfaces/services/IauthService.js";
 import type { AuthUser, MentorAuthUser, StudentAuthUser } from "../interfaces/auth/auth.interface.js";
 import type { IProfileService } from "../interfaces/services/IProfileService.js";
 import { logger } from "../utils/logger.js";
+import type { SendOtpDto } from "../dto/otp.dto.js";
+import type { VerifyOtpDto } from "../dto/VerifyOtpDTO.js";
+import type { ForgotPasswordDto } from "../dto/forgotPassword.dto.js";
 
 export class AuthService implements IAuthService {
   constructor(
@@ -32,7 +35,7 @@ export class AuthService implements IAuthService {
       const hashedPassword = await hashPassword(data.password);
       const user = await this._authRepo.createUser({ ...data, password: hashedPassword });
 
-      await this.sendSignupOtp(user.email, data.role);
+      await this.sendSignupOtp({email: user.email, role: data.role});
 
       logger.info(`User registered successfully: ${data.email}, role: ${data.role}`);
       return { message: "User registered. Please verify your email" };
@@ -42,44 +45,45 @@ export class AuthService implements IAuthService {
     }
   }
 
-  async sendSignupOtp(email: string, role: "student" | "mentor"): Promise<void> {
+  async sendSignupOtp(data: SendOtpDto): Promise<void> {
     try {
       await this._otpService.generateAndSaveOtp(
-        email,
+        data.email,
         "signup",
         "email",
         new Date(Date.now() + 10 * 60 * 1000),
-        role
+        data.role
       );
-      logger.info(`Signup OTP sent to: ${email}, role: ${role}`);
+      logger.info(`Signup OTP sent to: ${data.email}, role: ${data.role}`);
     } catch (error: any) {
-      logger.error(`Failed to send signup OTP to ${email} - ${error.message}`);
+      logger.error(`Failed to send signup OTP to ${data.email} - ${error.message}`);
       throw error;
     }
   }
+  
 
-  async verifySignupOtp(email: string, otp: string) {
+  async verifySignupOtp(data:VerifyOtpDto) {
     try {
-      const savedOtp = await this._otpService.verifyOtp(email, "signup", otp);
+      const savedOtp = await this._otpService.verifyOtp(data.email, "signup", data.otp);
       if (!savedOtp) throw new Error("Invalid or expired OTP");
 
-      const role = savedOtp.role ?? (await this._authRepo.findByEmail(email))?.role;
+      const role = savedOtp.role ?? (await this._authRepo.findByEmail(data.email))?.role;
       if (!role) throw new Error("Cannot determine user role");
 
       await (role === "student"
-        ? this._studentRepo.markUserVerified(email)
-        : this._mentorRepo.markUserVerified(email));
+        ? this._studentRepo.markUserVerified(data.email)
+        : this._mentorRepo.markUserVerified(data.email));
 
       await this._emailService.sendMail(
-        email,
+        data.email,
         "Welcome to Mentora",
         `<p>Your account has been verified successfully!</p>`
       );
 
-      logger.info(`User verified successfully: ${email}, role: ${role}`);
+      logger.info(`User verified successfully: ${data.email}, role: ${role}`);
       return true;
     } catch (error: any) {
-      logger.error(`Signup verification failed for ${email} - ${error.message}`);
+      logger.error(`Signup verification failed for ${data.email} - ${error.message}`);
       throw error;
     }
   }
@@ -144,47 +148,50 @@ export class AuthService implements IAuthService {
     }
   }
 
-  async markUserAsVerified(email: string, role: "student" | "mentor") {
+  async markUserAsVerified(data: SendOtpDto) {
     try {
-      if (role === "student") await this._studentRepo.markUserVerified(email);
-      else await this._mentorRepo.markUserVerified(email);
-      logger.info(`User marked verified: ${email}, role: ${role}`);
+      if (data.role === "student") await this._studentRepo.markUserVerified(data.email);
+      else await this._mentorRepo.markUserVerified(data.email);
+      logger.info(`User marked verified: ${data.email}, role: ${data.role}`);
     } catch (error: any) {
-      logger.error(`Failed to mark user verified: ${email} - ${error.message}`);
+      logger.error(`Failed to mark user verified: ${data.email} - ${error.message}`);
       throw error;
     }
   }
 
-  async sendForgotPasswordOtp(email: string, role: "student" | "mentor"): Promise<void> {
+  async sendForgotPasswordOtp(data: SendOtpDto): Promise<void> {
     try {
-      const repo = role === "student" ? this._studentRepo : this._mentorRepo;
-      const user = await repo.findByEmail(email);
-      if (!user) throw new Error(`No ${role} account found with this email`);
+      const repo = data.role === "student" ? this._studentRepo : this._mentorRepo;
+      const user = await repo.findByEmail(data.email);
+      if (!user) throw new Error(`No ${data.role} account found with this email`);
 
-      await this._otpService.generateAndSaveOtp(email, "forgotPassword", "email", new Date(Date.now() + 10 * 60 * 1000), role);
-      logger.info(`Forgot password OTP sent to: ${email}, role: ${role}`);
+      await this._otpService.generateAndSaveOtp(data.email, "forgotPassword", "email", new Date(Date.now() + 10 * 60 * 1000), data.role);
+      logger.info(`Forgot password OTP sent to: ${data.email}, role: ${data.role}`);
     } catch (error: any) {
-      logger.error(`Failed to send forgot password OTP: ${email} - ${error.message}`);
+      logger.error(`Failed to send forgot password OTP: ${data.email} - ${error.message}`);
       throw error;
     }
   }
 
-  async resetPassword(email: string, otp: string, password: string, confirmPassword: string): Promise<void> {
-    try {
-      if (password !== confirmPassword) throw new Error("Passwords do not match");
+  async resetPassword(data: ForgotPasswordDto): Promise<void> {
+  try {
+    const { email, otp, password, confirmPassword } = data;
 
-      const verifiedOtp = await this._otpService.verifyOtp(email, "forgotPassword", otp);
-      if (!verifiedOtp) throw new Error("Invalid or expired OTP");
+    if (password !== confirmPassword) throw new Error("Passwords do not match");
 
-      const hashedPassword = await hashPassword(password);
-      await this._authRepo.updatePassword(email, hashedPassword);
+    const verifiedOtp = await this._otpService.verifyOtp(email, "forgotPassword", otp);
+    if (!verifiedOtp) throw new Error("Invalid or expired OTP");
 
-      logger.info(`Password reset successful: ${email}`);
-    } catch (error: any) {
-      logger.error(`Password reset failed: ${email} - ${error.message}`);
-      throw error;
-    }
+    const hashedPassword = await hashPassword(password);
+    await this._authRepo.updatePassword(email, hashedPassword);
+
+    logger.info(`Password reset successful: ${email}`);
+  } catch (error: any) {
+    logger.error(`Password reset failed: ${data.email} - ${error.message}`);
+    throw error;
   }
+}
+
 
   async findUserByEmail(email: string): Promise<AuthUser | null> {
     try {

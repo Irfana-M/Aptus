@@ -8,6 +8,8 @@ import type { MentorProfile } from "../interfaces/models/mentor.interface.js";
 import type { IMentorService } from "../interfaces/services/IMentorService.js";
 import { MentorModel } from "../models/mentor.model.js";
 import { logger } from "../utils/logger.js";
+import fs from 'fs';
+import path from 'path';
 
 export class MentorService implements IMentorService {
   constructor(
@@ -258,20 +260,82 @@ export class MentorService implements IMentorService {
   }
 
 
-  private async handleProfilePictureUpload(file: any): Promise<string> {
-    try {
-      logger.debug(`Handling profile picture upload: ${file.originalname}`);
-      
-      // Implement your file upload logic here
-      // This could be to AWS S3, Cloudinary, or your local storage
-      // For now, return a placeholder or the filename
-      const fileUrl = `uploads/${Date.now()}-${file.originalname}`;
-      
-      logger.debug(`Profile picture upload completed: ${fileUrl}`);
-      return fileUrl;
-    } catch (error: any) {
-      logger.error(`Error in handleProfilePictureUpload: ${error.message}`, { error: error.stack });
-      throw new Error(`Failed to upload profile picture: ${error.message}`);
+
+
+private async handleProfilePictureUpload(file: any): Promise<string> {
+  try {
+    logger.debug(`Handling profile picture upload:`, {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      fieldname: file.fieldname
+    });
+
+    if (!file) throw new Error('No file provided for profile picture');
+
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new Error(`Invalid file type: ${file.mimetype}. Allowed types: ${allowedMimeTypes.join(', ')}`);
     }
+
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      throw new Error(`File too large: ${file.size} bytes. Maximum size: 5MB`);
+    }
+
+    // Ensure uploads directory exists
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+      logger.info(`Created uploads directory: ${uploadsDir}`);
+    }
+
+    // Generate safe filename
+    const extension = path.extname(file.originalname) || '.jpg';
+    const fileName = `profile-${Date.now()}-${Math.round(Math.random() * 1e9)}${extension}`;
+    const filePath = path.join(uploadsDir, fileName);
+
+    // Save file to disk
+    let fileData: Buffer;
+    if (file.buffer) {
+      fileData = file.buffer;
+    } else if (file.path) {
+      fileData = await fs.promises.readFile(file.path);
+    } else {
+      throw new Error('File data not found in buffer or path');
+    }
+
+    await fs.promises.writeFile(filePath, fileData);
+
+    // Remove temp file if uploaded via multer disk storage
+    if (file.path && file.path !== filePath) {
+      try { await fs.promises.unlink(file.path); } catch {}
+    }
+
+    // Construct full URL for frontend
+    const fileUrl = `${process.env.SERVER_URL || 'http://localhost:5000'}/uploads/${fileName}`;
+
+    logger.info(`Profile picture uploaded successfully: ${fileUrl}`, {
+      originalName: file.originalname,
+      finalName: fileName,
+      size: file.size,
+      type: file.mimetype,
+      savedPath: filePath
+    });
+
+    return fileUrl;
+
+  } catch (error: any) {
+    logger.error(`Error in handleProfilePictureUpload: ${error.message}`, {
+      error: error.stack,
+      fileInfo: {
+        originalname: file?.originalname,
+        mimetype: file?.mimetype,
+        size: file?.size
+      }
+    });
+    throw new Error(`Failed to upload profile picture: ${error.message}`);
   }
+}
+
 }

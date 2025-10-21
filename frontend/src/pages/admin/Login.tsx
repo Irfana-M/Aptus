@@ -28,8 +28,8 @@ export default function AdminLoginPage() {
     e.preventDefault();
 
     try {
-        await dispatch(adminLoginThunk({ email, password })).unwrap();
-
+        const result = await dispatch(adminLoginThunk({ email, password })).unwrap();
+console.log("✅ Login successful! Response:", result);
         toast.success("Admin logged in successfully!");
         navigate("/admin/dashboard");
       

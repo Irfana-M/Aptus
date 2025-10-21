@@ -17,6 +17,6 @@ export class AdminRepository implements IAdminRepository {
   }
 
   async getAllMentors() {
-    return await MentorModel.find({}, "fullName email createdAt");
+    return await MentorModel.find({}, "fullName email createdAt approvalStatus");
   }
 }

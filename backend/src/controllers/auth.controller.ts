@@ -4,6 +4,10 @@ import { studentRegisterSchema } from "../validations/authValidation/signup.vali
 import type { IOtpService } from "../interfaces/services/IOtpService.js";
 import { HttpStatusCode } from "../constants/httpStatus.js";
 import { logger } from "../utils/logger.js"; // Winston logger
+import type { RegisterUserDto } from "../dto/RegisteruserDTO.js";
+import type { LoginUserDto } from "../dto/LoginUserDTO.js";
+import type { SendOtpDto } from "../dto/otp.dto.js";
+import type { ForgotPasswordDto } from "../dto/forgotPassword.dto.js";
 
 export class AuthController {
   constructor(
@@ -15,12 +19,14 @@ export class AuthController {
     try {
       const parsedData = studentRegisterSchema.parse(req.body);
 
-      const result = await this._authService.registerUser({
+      const userData: RegisterUserDto = {
         ...parsedData,
-        role: req.body.role,
-      });
+        role: req.body.role ?? "student",
+      };
 
-      logger.info(`User registration success: ${parsedData.email}`);
+      const result = await this._authService.registerUser(userData);
+
+      logger.info(`User registration success: ${userData.email}`);
 
       return res.status(HttpStatusCode.OK).json({
         success: true,
@@ -37,9 +43,9 @@ export class AuthController {
 
   login = async (req: Request, res: Response) => {
     try {
-      const { email, password, role } = req.body;
+      const loginData: LoginUserDto = req.body;
 
-      const result = await this._authService.loginUser({ email, password, role });
+      const result = await this._authService.loginUser(loginData);
 
       res.cookie("refreshToken", result.refreshToken, {
         httpOnly: true,
@@ -48,7 +54,9 @@ export class AuthController {
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      logger.info(`User login success: ${email}, role: ${role}`);
+      logger.info(
+        `User login success: ${loginData.email}, role: ${loginData.role}`
+      );
 
       return res.status(HttpStatusCode.OK).json({
         success: true,
@@ -68,21 +76,26 @@ export class AuthController {
 
   sendForgotPasswordOtp = async (req: Request, res: Response) => {
     try {
-      const { email, role } = req.body;
+      const data: SendOtpDto = req.body;
 
-      if (!email) throw new Error("Email is required");
-      if (!role || !["student", "mentor"].includes(role)) throw new Error("Role is required");
+      if (!data.email) throw new Error("Email is required");
+      if (!data.role || !["student", "mentor"].includes(data.role))
+        throw new Error("Role is required");
 
-      await this._authService.sendForgotPasswordOtp(email, role);
+      await this._authService.sendForgotPasswordOtp(data);
 
-      logger.info(`Forgot password OTP sent to: ${email}, role: ${role}`);
+      logger.info(
+        `Forgot password OTP sent to: ${data.email}, role: ${data.role}`
+      );
 
       return res.status(HttpStatusCode.OK).json({
         success: true,
         message: "OTP sent successfully",
       });
     } catch (error: any) {
-      logger.error(`Forgot password OTP failed: ${req.body.email} - ${error.message}`);
+      logger.error(
+        `Forgot password OTP failed: ${req.body.email} - ${error.message}`
+      );
       return res.status(HttpStatusCode.BAD_REQUEST).json({
         success: false,
         message: error.message,
@@ -92,25 +105,39 @@ export class AuthController {
 
   resetPassword = async (req: Request, res: Response) => {
     try {
-      const { otp, password, confirmPassword } = req.body;
+      const { email, otp, password, confirmPassword, role } =
+        req.body as ForgotPasswordDto;
 
-      if (!otp || !password || !confirmPassword) {
+      if (!email || !otp || !password || !confirmPassword || !role) {
         logger.warn(`Reset password attempt failed: missing fields`);
-        return res.status(HttpStatusCode.BAD_REQUEST).json({ message: "All fields are required" });
+        return res
+          .status(HttpStatusCode.BAD_REQUEST)
+          .json({ message: "All fields are required" });
       }
 
       const otpData = await this._otpService.findByOtp(otp, "forgotPassword");
       if (!otpData) {
-        logger.warn(`Reset password attempt failed: invalid/expired OTP`);
-        return res.status(HttpStatusCode.BAD_REQUEST).json({ message: "Invalid or expired OTP" });
+        logger.warn(
+          `Reset password attempt failed: invalid/expired OTP for ${email}`
+        );
+        return res
+          .status(HttpStatusCode.BAD_REQUEST)
+          .json({ message: "Invalid or expired OTP" });
       }
 
-      const email = otpData.email;
-      await this._authService.resetPassword(email, otp, password, confirmPassword);
+      await this._authService.resetPassword({
+        email,
+        otp,
+        password,
+        confirmPassword,
+        role,
+      });
 
-      logger.info(`Password reset successful for: ${email}`);
+      logger.info(`Password reset successful for: ${email} (${role})`);
 
-      return res.status(HttpStatusCode.OK).json({ message: "Password reset successful" });
+      return res
+        .status(HttpStatusCode.OK)
+        .json({ message: "Password reset successful" });
     } catch (error: any) {
       logger.error(`Reset password failed: ${error.message}`);
       return res.status(HttpStatusCode.BAD_REQUEST).json({

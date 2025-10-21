@@ -9,35 +9,36 @@ import {
 } from "./mentorThunk";
 
 export interface MentorProfile {
-  _id?: string;
-  personalDetails: {
-    fullName: string;
-    email: string;
-    phoneNumber: string;
-    location: string;
-    briefBio: string;
-  };
+  
+ _id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  location?: string;
+  bio?: string;
+  
   academicQualifications: {
+    institutionName: string;
     degree: string;
-    university: string;
     graduationYear: string;
-  };
-  experienceDetails: {
-    yearsOfExperience: string;
-    previousInstitutions: string;
-  };
-  subjectPreferences: {
-    subjects: string[];
-    preferredGrades: string[];
-  };
-  certifications: {
-    title: string;
-    organization: string;
-    year: string;
   }[];
-  profilePicture?: string; // ✅ newly added field
-  isProfileComplete?: boolean;
-  approvalStatus?: "pending" | "approved" | "rejected";
+  experiences: {
+    institution: string;
+    jobTitle: string;
+    duration: string;
+  }[];
+  certification: {
+    name: string;
+    issuingOrganization: string;
+  }[];
+  subjectProficiency: {
+    subject: string;
+    level: 'basic' | 'intermediate' | 'expert';
+  }[];
+  profilePicture?: string;
+  approvalStatus: 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string;
+  createdAt: string;
 }
 
 interface MentorState {
@@ -59,7 +60,6 @@ export const mentorSlice = createSlice({
   initialState,
   reducers: {},
   extraReducers: (builder) => {
-    // ✅ Fetch Mentor Profile
     builder
       .addCase(fetchMentorProfile.pending, (state) => {
         state.loading = true;

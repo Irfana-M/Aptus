@@ -7,7 +7,7 @@ import { NodemailerService } from "../services/email.service.js";
 import { requireRole } from "../middleware/role.middleware.js";
 import { MentorAuthRepository } from "../repositories/mentorAuth.repository.js";
 import { requireAuth } from "../middleware/authMiddleware.js";
-import { upload } from "../middleware/upload.middleware.js";
+import  upload  from "../middleware/upload.middleware.js";
 
 const mentorRouter = Router();
 
@@ -25,9 +25,6 @@ mentorRouter.put("/me/profile-update",requireAuth,upload.single("profilePicture"
 // Mentor submits profile
 mentorRouter.post("/me/submit-approval", requireAuth, mentorController.submitForApproval);
 
-// Admin endpoints
-mentorRouter.get("/admin/pending", requireAuth, requireRole("admin"), mentorController.getPending);
-mentorRouter.post("/admin/:mentorId/approve", requireAuth, requireRole("admin"), mentorController.approve);
-mentorRouter.post("/admin/:mentorId/reject", requireAuth, requireRole("admin"), mentorController.reject);
+
 
 export default mentorRouter;

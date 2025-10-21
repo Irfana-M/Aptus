@@ -80,7 +80,7 @@ export default function Login() {
   };
 
   const handleGoogleAuth = () => {
-    window.location.href = "http://localhost:5000/api/auth/google";
+    window.location.href = `http://localhost:5000/api/auth/google`
   };
 
   const handleForgotPassword = () => {

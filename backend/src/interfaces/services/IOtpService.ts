@@ -18,6 +18,7 @@ export interface IOtpService {
   resendOtp(
     email: string,
   ): Promise<void>
+  
 findByOtp(
   otp: string,
   otpPurpose: "signup" | "forgotPassword"

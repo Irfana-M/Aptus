@@ -12,7 +12,10 @@ const authApi = api.create({ withCredentials: true });
 
 authApi.interceptors.request.use(
   (config) => {
-    const token = store.getState().auth.accessToken;
+    
+    const state = store.getState();
+    const token = state.auth.accessToken || state.admin.accessToken;
+    
     if (token && config.headers) {
       config.headers["Authorization"] = `Bearer ${token}`;
     }

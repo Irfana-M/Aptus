@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { RootState } from '../../app/store';
-import api from '../../api/api';
+import authApi from '../../api/authApi';
 
 export interface Stat {
   id: string;
@@ -31,7 +31,7 @@ export const fetchDashboardData = createAsyncThunk(
   'dashboard/fetchDashboardData',
   async (_, thunkAPI) => {
     try {
-      const response = await api.get('/admin/dashboard');
+      const response = await authApi.get('/admin/dashboard');
       return response.data;
     } catch (error: any) {
       return thunkAPI.rejectWithValue(error.response?.data?.message || error.message);

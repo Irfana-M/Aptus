@@ -71,8 +71,16 @@ export default function Dashboard() {
   ];
 
   useEffect(() => {
-    dispatch(fetchDashboardData());
+    dispatch(fetchDashboardData())
+    .unwrap() // unwraps the fulfilled payload
+    .then((data) => {
+      console.log("✅ Dashboard data:", data);
+    })
+    .catch((err) => {
+      console.error("❌ Failed to fetch dashboard data:", err);
+    });
   }, [dispatch]);
+  
 
   if (loading) return <p className="p-6">Loading...</p>;
   if (error) return <p className="p-6 text-red-500">{error}</p>;
@@ -85,23 +93,58 @@ export default function Dashboard() {
   ];
 
   const mentorColumns = [
-    { header: "Name", accessor: (m: any) => m.mentor?.fullName ?? m.fullName },
-    { header: "Email", accessor: (m: any) => m.mentor?.email ?? m.email },
-    { header: "Joined On", accessor: (m: any) => new Date(m.createdAt).toLocaleDateString() },
-    { 
-      header: "Actions", 
-      accessor: (m: any) => (
-        <div className="flex gap-2">
-          <button
+  { header: "Name", accessor: (m: any) => m.mentor?.fullName ?? m.fullName },
+  { header: "Email", accessor: (m: any) => m.mentor?.email ?? m.email },
+  { header: "Joined On", accessor: (m: any) => new Date(m.createdAt).toLocaleDateString() },
+
+
+  {
+  header: "Approval Status",
+  accessor: (m: any) => {
+    let label = "";
+    let bgColor = "";
+    let textColor = "";
+
+    switch (m.approvalStatus) {
+      case "accepted":
+        label = "Approved";
+        bgColor = "bg-green-100";
+        textColor = "text-green-700";
+        break;
+      case "rejected":
+        label = "Rejected";
+        bgColor = "bg-red-100";
+        textColor = "text-red-700";
+        break;
+      default:
+        label = "Pending";
+        bgColor = "bg-yellow-100";
+        textColor = "text-yellow-700";
+    }
+
+    return (
+      <span className={`px-3 py-1 rounded-full text-xs font-medium ${bgColor} ${textColor}`}>
+        {label}
+      </span>
+    );
+  },
+},
+
+
+  {
+    header: "Actions",
+    accessor: (m: any) => (
+      <div className="flex gap-2">
+        <button
           className="bg-indigo-600 px-3 py-1 rounded text-white hover:bg-indigo-700 transition"
-          onClick={() => navigate(`/admin/mentor/${m._id}`)} // navigate to MentorProfilePage
+          onClick={() => navigate(`/admin/mentor/${m._id}`)}
         >
           View Profile
         </button>
-        </div>
-      )
-    }
-  ];
+      </div>
+    ),
+  },
+];
 
   return (
     <div className="flex h-screen bg-gray-900 text-gray-100">

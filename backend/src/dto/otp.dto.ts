@@ -1,4 +1,4 @@
-export interface OtpDto {
+export interface SendOtpDto {
     email: string;
-    otp: string;
+    role: "student" | "mentor";
 }

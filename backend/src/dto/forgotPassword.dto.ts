@@ -1,5 +1,7 @@
 export interface ForgotPasswordDto {
-    email: string;
-    newPassword: string;
-    otp: string;
+  email: string;
+  otp: string;
+  password: string;
+  confirmPassword: string;
+  role: "mentor" | "student"
 }

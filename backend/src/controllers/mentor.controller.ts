@@ -25,7 +25,7 @@ updateProfile = async (req: Request, res: Response) => {
 
     // Check if file exists and add it to updatedData
     if (req.file) {
-      updatedData.profilePicture = req.file.filename; // Use filename for storage path
+      updatedData.profilePicture = req.file; // Use filename for storage path
       logger.debug(`Profile picture file received: ${req.file.originalname}, stored as: ${req.file.filename}`);
     }
 
