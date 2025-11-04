@@ -1,9 +1,11 @@
+import { injectable, inject } from "inversify";
+import { TYPES } from "../types";
 import type { Request, Response } from "express";
-import type { IOtpService } from "../interfaces/services/IOtpService.js";
-import { success } from "zod";
+import type { IOtpService } from "../interfaces/services/IOtpService";
 
+@injectable()
 export class OtpController {
-  constructor(private _otpService: IOtpService) {}
+  constructor(@inject(TYPES.IOtpService) private _otpService: IOtpService) {}
 
   verifySignupOtp = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -36,16 +38,17 @@ export class OtpController {
     }
   };
 
- resendOtp = async (req: Request, res: Response) => {
-  try {
-    const { email } = req.body;  // only email
-    if (!email) throw new Error("Email is required");
+  resendOtp = async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      if (!email) throw new Error("Email is required");
 
-    await this._otpService.resendOtp(email);  // call service without role
-    res.status(200).json({ success: true, message: "OTP resent successfully" });
-  } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
-
+      await this._otpService.resendOtp(email);
+      res
+        .status(200)
+        .json({ success: true, message: "OTP resent successfully" });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  };
 }

@@ -1,8 +1,8 @@
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import dotenv from "dotenv";
-import { StudentModel } from "../models/student.model.js";
-import { MentorModel } from "../models/mentor.model.js";
+import { StudentModel } from "../models/student.model";
+import { MentorModel } from "../models/mentor.model";
 
 dotenv.config();
 
@@ -11,7 +11,7 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      callbackURL: "http://localhost:5000/api/auth/google/callback",
+      callbackURL: process.env.GOOGLE_CALLBACK_URL,
       passReqToCallback: true,
     },
     async (req, _accessToken, _refreshToken, profile, done) => {
@@ -19,7 +19,6 @@ passport.use(
         const email = profile.emails?.[0]?.value;
         if (!email) return done(new Error("No email found"), undefined);
 
-        
         let user =
           (await StudentModel.findOne({ email })) ||
           (await MentorModel.findOne({ email }));
@@ -28,7 +27,7 @@ passport.use(
           user = await StudentModel.create({
             fullName: profile.displayName,
             email,
-            password: "", 
+            password: "",
             phoneNumber: "",
             isVerified: true,
           });

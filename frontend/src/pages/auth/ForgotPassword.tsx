@@ -4,7 +4,7 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import forgotImage from "../../assets/images/register_banner.jpeg"; // same login side image
+import forgotImage from "../../assets/images/register_banner.jpeg"; 
 
 type ForgotPasswordFormValues = {
   email: string;

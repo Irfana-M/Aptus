@@ -1,19 +1,22 @@
-import type { IOtpService } from "../interfaces/services/IOtpService.js";
-import type { IOtpRepository } from "../interfaces/repositories/IOtpRepository.js";
-import type { IVerificationRepository } from "../interfaces/repositories/IVerificationRepository.js";
-import { generateRandomOtp } from "../utils/otp.utils.js";
-import type { IOtp } from "../interfaces/models/otp.interface.js";
-import { NodemailerService } from "./email.service.js";
-import type { IAuthRepository } from "../interfaces/auth/IAuthRepository.js";
-import { logger } from "../utils/logger.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
+import { injectable, inject } from 'inversify';
+import type { IOtpService } from "../interfaces/services/IOtpService";
+import type { IOtpRepository } from "../interfaces/repositories/IOtpRepository";
+import type { IVerificationRepository } from "../interfaces/repositories/IVerificationRepository";
+import { generateRandomOtp } from "../utils/otp.utils";
+import type { IOtp } from "../interfaces/models/otp.interface";
+import type { IAuthRepository } from '@/interfaces/auth/IAuthRepository';
+import { logger } from "../utils/logger";
+import { HttpStatusCode } from "../constants/httpStatus";
+import type { IEmailService } from "../interfaces/services/IEmailService";
+import { TYPES } from '../types';
 
+@injectable()
 export class OtpService implements IOtpService {
   constructor(
-    private _otpRepository: IOtpRepository,
-    private _emailService: NodemailerService,
-    private _verificationRepositories: Map<string, IVerificationRepository>,
-    private _authRepositories: Map<string, IAuthRepository>
+    @inject(TYPES.IOtpRepository) private _otpRepository: IOtpRepository,
+    @inject(TYPES.EmailService) private _emailService: IEmailService,
+    @inject(TYPES.IVerificationRepository) private _verificationRepositories: Map<string, IVerificationRepository>,
+    @inject(TYPES.IAuthRepository) private _authRepositories: Map<string, IAuthRepository>
   ) {}
 
   async generateAndSaveOtp(
@@ -36,7 +39,9 @@ export class OtpService implements IOtpService {
         role
       );
 
-      logger.info(`OTP generated and saved for ${email}, purpose: ${otpPurpose}`);
+      logger.info(
+        `OTP generated and saved for ${email}, purpose: ${otpPurpose}`
+      );
 
       if (deliveryMethod === "email") {
         let subject: string;
@@ -127,10 +132,12 @@ export class OtpService implements IOtpService {
     );
   }
 
-
-  async findByOtp(otp: string, otpPurpose: "signup" | "forgotPassword"): Promise<IOtp | null> {
+  async findByOtp(
+    otp: string,
+    otpPurpose: "signup" | "forgotPassword"
+  ): Promise<IOtp | null> {
     const otpRecord = await this._otpRepository.findByOtp(otp, otpPurpose);
-    console.log(otpRecord)
+    console.log(otpRecord);
     if (!otpRecord) return null;
     if (otpRecord.expiresAt < new Date()) {
       await this._otpRepository.deleteOtp(otpRecord.email, otpPurpose);

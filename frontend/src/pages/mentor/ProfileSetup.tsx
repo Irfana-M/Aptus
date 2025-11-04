@@ -1,14 +1,25 @@
-import { useState } from "react";
-import { GraduationCap, Bell, User, Camera } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  Camera,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Edit,
+  UserCheck,
+  Eye,
+} from "lucide-react";
 import FormField from "../../components/ui/FormField";
 import { Button } from "../../components/ui/Button";
 import type { AppDispatch } from "../../app/store";
 import {
   updateMentorProfile,
   submitProfileForApproval,
+  fetchMentorProfile,
 } from "../../features/mentor/mentorThunk";
 import { toast } from "react-hot-toast";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import type { RootState } from "../../app/store";
+import Layout from "../../components/layout/Layout";
 
 interface ProfileState {
   personalDetails: {
@@ -30,13 +41,17 @@ interface ProfileState {
   };
   subjectProficiency: {
     subject: string;
-    level: string;
-  };
+    level: "basic" | "intermediate" | "expert" | string;
+  }[];
   certification: {
     name: string;
     issuingOrganization: string;
   };
   profilePicture?: File | null;
+}
+
+interface ValidationErrors {
+  [key: string]: string;
 }
 
 const initialState: ProfileState = {
@@ -48,19 +63,16 @@ const initialState: ProfileState = {
     bio: "",
   },
   academicQualifications: {
-    institutionName: "", 
+    institutionName: "",
     degree: "",
     graduationYear: "",
   },
   experiences: {
     institution: "",
-    jobTitle: "", 
+    jobTitle: "",
     duration: "",
   },
-  subjectProficiency: {
-    subject: "",
-    level: "",
-  },
+  subjectProficiency: [],
   certification: {
     name: "",
     issuingOrganization: "",
@@ -68,19 +80,95 @@ const initialState: ProfileState = {
   profilePicture: null,
 };
 
+const GRADUATION_YEARS = Array.from({ length: 30 }, (_, i) =>
+  (new Date().getFullYear() - i).toString()
+);
+const SUBJECT_OPTIONS = [
+  "Mathematics",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "Computer Science",
+  "English",
+  "History",
+  "Geography",
+  "Economics",
+  "Business Studies",
+  "Psychology",
+  "Sociology",
+  "Art",
+  "Music",
+  "Physical Education",
+];
+
+const LEVEL_OPTIONS = ["basic", "intermediate", "expert"];
+
+type ApprovalStatus = "pending" | "approved" | "rejected" | "not_submitted";
+
 export default function MentorProfileSetup() {
   const dispatch = useDispatch<AppDispatch>();
+  const { profile, loading } = useSelector((state: RootState) => state.mentor);
   const [profileData, setProfileData] = useState<ProfileState>(initialState);
   const [activeTab, setActiveTab] = useState<
     "personal" | "academic" | "experience"
   >("personal");
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
+    {}
+  );
+  const [approvalStatus, setApprovalStatus] =
+    useState<ApprovalStatus>("not_submitted");
+  const [currentSubject, setCurrentSubject] = useState({
+    subject: "",
+    level: "",
+  });
+  const [isEditing, setIsEditing] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load mentor profile data on component mount
+  useEffect(() => {
+    dispatch(fetchMentorProfile());
+  }, [dispatch]);
+
+  // Update local state when mentor data is loaded
+  useEffect(() => {
+    if (profile) {
+      setProfileData({
+        personalDetails: {
+          fullName: profile.fullName || "",
+          email: profile.email || "",
+          phoneNumber: profile.phoneNumber || "",
+          location: profile.location || "",
+          bio: profile.bio || "",
+        },
+        academicQualifications:
+          profile.academicQualifications?.[0] ||
+          initialState.academicQualifications,
+        experiences: profile.experiences?.[0] || initialState.experiences,
+        subjectProficiency: profile.subjectProficiency || [],
+        certification: profile.certification?.[0] || initialState.certification,
+        profilePicture: null,
+      });
+      setApprovalStatus(profile.approvalStatus || "not_submitted");
+
+      // Set editing mode based on approval status
+      if (
+        profile.approvalStatus === "approved" ||
+        profile.approvalStatus === "pending"
+      ) {
+        setIsEditing(false);
+      } else {
+        setIsEditing(true);
+      }
+    }
+  }, [profile]);
 
   const updateField = (
     section: keyof ProfileState,
     field: string,
     value: string
   ) => {
-    if (section === "profilePicture") return; // avoid updating directly
+    if (section === "profilePicture") return;
+
     setProfileData((prev) => ({
       ...prev,
       [section]: {
@@ -88,11 +176,37 @@ export default function MentorProfileSetup() {
         [field]: value,
       },
     }));
+
+    // Clear validation error when user starts typing
+    if (validationErrors[`${section}.${field}`]) {
+      setValidationErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[`${section}.${field}`];
+        return newErrors;
+      });
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
+      const maxSize = 5 * 1024 * 1024;
+
+      if (!validTypes.includes(file.type)) {
+        toast.error("Please upload a valid image file (JPEG, PNG, GIF)", {
+          position: "bottom-right",
+        });
+        return;
+      }
+
+      if (file.size > maxSize) {
+        toast.error("Image size should be less than 5MB", {
+          position: "bottom-right",
+        });
+        return;
+      }
+
       setProfileData((prev) => ({
         ...prev,
         profilePicture: file,
@@ -100,18 +214,108 @@ export default function MentorProfileSetup() {
     }
   };
 
-  const handleSubmit = async () => {
-  try {
+  const addSubjectProficiency = () => {
+    if (currentSubject.subject && currentSubject.level) {
+      setProfileData((prev) => ({
+        ...prev,
+        subjectProficiency: [
+          ...prev.subjectProficiency,
+          {
+            subject: currentSubject.subject,
+            level: currentSubject.level as "basic" | "intermediate" | "expert",
+          },
+        ],
+      }));
+      setCurrentSubject({ subject: "", level: "" });
+    } else {
+      toast.error("Please select both subject and level", {
+        position: "bottom-right",
+      });
+    }
+  };
+
+  const removeSubjectProficiency = (index: number) => {
+    setProfileData((prev) => ({
+      ...prev,
+      subjectProficiency: prev.subjectProficiency.filter((_, i) => i !== index),
+    }));
+  };
+
+  // Helper function to safely get nested values
+  const getNestedValue = (obj: any, path: string): string => {
+    const keys = path.split(".");
+    let result: any = obj;
+
+    for (const key of keys) {
+      if (result === null || result === undefined) {
+        return "";
+      }
+      result = result[key];
+    }
+
+    return result?.toString() || "";
+  };
+
+  const validateForm = (): boolean => {
+    const errors: ValidationErrors = {};
+
+    const requiredFields: { path: string; label: string }[] = [
+      { path: "personalDetails.fullName", label: "Full Name" },
+      { path: "personalDetails.email", label: "Email" },
+      { path: "personalDetails.phoneNumber", label: "Phone Number" },
+      { path: "personalDetails.location", label: "Location" },
+      {
+        path: "academicQualifications.institutionName",
+        label: "Institution Name",
+      },
+      { path: "academicQualifications.degree", label: "Degree" },
+      {
+        path: "academicQualifications.graduationYear",
+        label: "Graduation Year",
+      },
+      { path: "experiences.institution", label: "Institution" },
+      { path: "experiences.jobTitle", label: "Job Title" },
+      { path: "certification.name", label: "Certification Name" },
+    ];
+
+    requiredFields.forEach(({ path, label }) => {
+      const value = getNestedValue(profileData, path);
+      if (!value || value.toString().trim() === "") {
+        errors[path] = `${label} is required`;
+      }
+    });
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (
+      profileData.personalDetails.email &&
+      !emailRegex.test(profileData.personalDetails.email)
+    ) {
+      errors["personalDetails.email"] = "Please enter a valid email address";
+    }
+
+    // Subject proficiency validation
+    if (profileData.subjectProficiency.length === 0) {
+      errors["subjectProficiency"] =
+        "At least one subject proficiency is required";
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Helper function to create FormData
+  const createFormData = (isComplete: boolean = true): FormData => {
     const formData = new FormData();
 
-    // ✅ Personal Details (direct fields in schema)
+    // Personal details
     formData.append("fullName", profileData.personalDetails.fullName);
     formData.append("email", profileData.personalDetails.email);
     formData.append("phoneNumber", profileData.personalDetails.phoneNumber);
     formData.append("location", profileData.personalDetails.location);
     formData.append("bio", profileData.personalDetails.bio);
 
-    // ✅ Academic Qualifications (as array)
+    // Academic qualifications
     const academicQual = {
       institutionName: profileData.academicQualifications.institutionName,
       degree: profileData.academicQualifications.degree,
@@ -119,7 +323,7 @@ export default function MentorProfileSetup() {
     };
     formData.append("academicQualifications", JSON.stringify([academicQual]));
 
-    // ✅ Experiences (as array)
+    // Experiences
     const experience = {
       institution: profileData.experiences.institution,
       jobTitle: profileData.experiences.jobTitle,
@@ -127,259 +331,741 @@ export default function MentorProfileSetup() {
     };
     formData.append("experiences", JSON.stringify([experience]));
 
-    // ✅ Subject Proficiency (as array)
-    const subjectProf = {
-      subject: profileData.subjectProficiency.subject,
-      level: profileData.subjectProficiency.level,
-    };
-    formData.append("subjectProficiency", JSON.stringify([subjectProf]));
+    // Subject proficiency
+    formData.append(
+      "subjectProficiency",
+      JSON.stringify(profileData.subjectProficiency)
+    );
 
-    // ✅ Certification (as array)
+    // Certification
     const certification = {
       name: profileData.certification.name,
       issuingOrganization: profileData.certification.issuingOrganization,
     };
     formData.append("certification", JSON.stringify([certification]));
 
-    // ✅ Profile completion
-    formData.append("isProfileComplete", "true");
+    formData.append("isProfileComplete", isComplete.toString());
 
     if (profileData.profilePicture) {
       formData.append("profilePicture", profileData.profilePicture);
     }
 
-    await dispatch(updateMentorProfile(formData)).unwrap();
-    await dispatch(submitProfileForApproval()).unwrap();
+    return formData;
+  };
 
-    toast.success("Profile submitted for admin approval successfully!", {
-      position: "bottom-right",
-    });
-  } catch (error) {
-    console.error("Submission error:", error);
-    toast.error("Failed to submit profile. Please try again.", {
-      position: "bottom-right",
-    });
-  }
-};
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-2">
-              <GraduationCap className="w-8 h-8 text-blue-600" />
-              <span className="text-xl font-bold text-gray-900">Mentora</span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button className="p-2 hover:bg-gray-100 rounded-full">
-                <Bell className="w-5 h-5 text-gray-600" />
-              </button>
-              <button className="p-2 hover:bg-gray-100 rounded-full">
-                <User className="w-5 h-5 text-gray-600" />
-              </button>
-            </div>
+  const handleSaveDraft = async () => {
+    if (!validateForm()) {
+      toast.error("Please fill all required fields correctly", {
+        position: "bottom-right",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const formData = createFormData(false); // Save as draft
+      await dispatch(updateMentorProfile(formData)).unwrap();
+
+      toast.success("Profile saved as draft successfully!", {
+        position: "bottom-right",
+      });
+    } catch (error) {
+      console.error("Save draft error:", error);
+      toast.error("Failed to save profile. Please try again.", {
+        position: "bottom-right",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmitForApproval = async () => {
+    if (!validateForm()) {
+      toast.error("Please fill all required fields correctly", {
+        position: "bottom-right",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const formData = createFormData(true); // Submit for approval
+      await dispatch(updateMentorProfile(formData)).unwrap();
+      await dispatch(submitProfileForApproval()).unwrap();
+
+      setApprovalStatus("pending");
+      setIsEditing(false);
+
+      toast.success(
+        "Profile submitted for admin approval successfully! You will hear back within 24-48 hours.",
+        {
+          position: "bottom-right",
+          duration: 5000,
+        }
+      );
+    } catch (error: any) {
+      console.error("Submission error:", error);
+      const errorMessage =
+        error?.message || "Failed to submit profile. Please try again.";
+      toast.error(errorMessage, {
+        position: "bottom-right",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditProfile = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    // Reload original profile data
+    if (profile) {
+      setProfileData({
+        personalDetails: {
+          fullName: profile.fullName || "",
+          email: profile.email || "",
+          phoneNumber: profile.phoneNumber || "",
+          location: profile.location || "",
+          bio: profile.bio || "",
+        },
+        academicQualifications:
+          profile.academicQualifications?.[0] ||
+          initialState.academicQualifications,
+        experiences: profile.experiences?.[0] || initialState.experiences,
+        subjectProficiency: profile.subjectProficiency || [],
+        certification: profile.certification?.[0] || initialState.certification,
+        profilePicture: null,
+      });
+    }
+  };
+
+  const getStatusIcon = () => {
+    switch (approvalStatus) {
+      case "approved":
+        return <CheckCircle className="w-5 h-5 text-green-600" />;
+      case "rejected":
+        return <XCircle className="w-5 h-5 text-red-600" />;
+      case "pending":
+        return <Clock className="w-5 h-5 text-yellow-600" />;
+      default:
+        return null;
+    }
+  };
+
+  const getStatusText = () => {
+    switch (approvalStatus) {
+      case "approved":
+        return "Your profile has been approved! You can now start accepting students.";
+      case "rejected":
+        return "Your profile submission was rejected. Please update your information and try again.";
+      case "pending":
+        return "Your profile is under review. You'll hear back within 24-48 hours.";
+      default:
+        return "Complete your profile and submit for approval to start mentoring.";
+    }
+  };
+
+  const getStatusColor = () => {
+    switch (approvalStatus) {
+      case "approved":
+        return "bg-green-50 border-green-200 text-green-800";
+      case "rejected":
+        return "bg-red-50 border-red-200 text-red-800";
+      case "pending":
+        return "bg-yellow-50 border-yellow-200 text-yellow-800";
+      default:
+        return "bg-blue-50 border-blue-200 text-blue-800";
+    }
+  };
+
+  // Render form fields in view or edit mode
+  const renderFormField = (
+    section: keyof ProfileState,
+    field: string,
+    props: any
+  ) => {
+    if (
+      !isEditing &&
+      (approvalStatus === "approved" || approvalStatus === "pending")
+    ) {
+      return (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {props.label}{" "}
+            {props.required && <span className="text-red-500">*</span>}
+          </label>
+          <div className="px-3 py-2 bg-gray-50 rounded-md border border-gray-200 min-h-[42px]">
+            <p className="text-gray-900">
+              {getNestedValue(profileData, `${section}.${field}`) ||
+                "Not provided"}
+            </p>
           </div>
         </div>
-      </header>
+      );
+    }
 
-      {/* Tabs */}
-      <div className="border-b flex">
-        {["personal", "academic", "experience"].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab as any)}
-            className={`px-6 py-3 font-medium ${
-              activeTab === tab
-                ? "border-b-2 border-blue-600 text-blue-600"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            {tab === "personal"
-              ? "Personal Details"
-              : tab === "academic"
-              ? "Academic Qualifications"
-              : "Experience"}
-          </button>
-        ))}
-      </div>
+    return <FormField {...props} />;
+  };
 
-      {/* Form */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-white rounded-lg shadow-sm mt-4">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">
-          Tutor Profile Setup
-        </h2>
-
-        {activeTab === "personal" && (
-          <>
-            <section className="space-y-4">
-              <FormField
-                label="Full Name"
-                type="text"
-                value={profileData.personalDetails.fullName}
-                onChange={(v) => updateField("personalDetails", "fullName", v)}
-              />
-              <FormField
-                label="Email"
-                type="email"
-                value={profileData.personalDetails.email}
-                onChange={(v) => updateField("personalDetails", "email", v)}
-              />
-              <FormField
-                label="Phone Number"
-                type="tel"
-                value={profileData.personalDetails.phoneNumber}
-                onChange={(v) =>
-                  updateField("personalDetails", "phoneNumber", v)
-                }
-              />
-              <FormField
-                label="Location"
-                type="text"
-                value={profileData.personalDetails.location}
-                onChange={(v) => updateField("personalDetails", "location", v)}
-              />
-              <FormField
-                label="Bio"
-                type="text"
-                value={profileData.personalDetails.bio}
-                onChange={(v) => updateField("personalDetails", "bio", v)}
-                placeholder="Tell us about yourself"
-              />
-            </section>
-
-            {/* Profile Picture Upload */}
-            <section className="mt-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                Profile Picture
-              </h3>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
-                <Camera className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-                <p className="text-sm text-gray-600 mb-2">
-                  Upload your profile picture (optional)
-                </p>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  id="profile-upload"
-                  className="hidden"
-                />
-                <label
-                  htmlFor="profile-upload"
-                  className="inline-block px-5 py-2 bg-gray-100 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-200"
+  // Render subject proficiency in view mode
+  const renderSubjectProficiencyView = () => {
+    if (
+      !isEditing &&
+      (approvalStatus === "approved" || approvalStatus === "pending")
+    ) {
+      return (
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-3">
+            Subject Proficiency
+          </h3>
+          {profileData.subjectProficiency.length === 0 ? (
+            <p className="text-gray-500">No subjects added</p>
+          ) : (
+            <div className="space-y-2">
+              {profileData.subjectProficiency.map((subject, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded"
                 >
-                  Choose File
-                </label>
-                {profileData.profilePicture && (
-                  <p className="text-sm text-green-600 mt-2">
-                    {profileData.profilePicture.name}
-                  </p>
+                  <span className="font-medium">
+                    {subject.subject} -{" "}
+                    {subject.level.charAt(0).toUpperCase() +
+                      subject.level.slice(1)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Edit mode
+    return (
+      <div className="mt-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-3">
+          Subject Proficiency <span className="text-red-500">*</span>
+        </h3>
+        {validationErrors["subjectProficiency"] && (
+          <p className="text-red-500 text-sm mb-3">
+            {validationErrors["subjectProficiency"]}
+          </p>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Subject
+            </label>
+            <select
+              value={currentSubject.subject}
+              onChange={(e) =>
+                setCurrentSubject((prev) => ({
+                  ...prev,
+                  subject: e.target.value,
+                }))
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[rgb(73,187,189)] focus:border-[rgb(73,187,189)] transition-colors"
+              disabled={!isEditing}
+            >
+              <option value="">Select a subject</option>
+              {SUBJECT_OPTIONS.map((subject) => (
+                <option key={subject} value={subject}>
+                  {subject}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Level
+            </label>
+            <select
+              value={currentSubject.level}
+              onChange={(e) =>
+                setCurrentSubject((prev) => ({
+                  ...prev,
+                  level: e.target.value,
+                }))
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[rgb(73,187,189)] focus:border-[rgb(73,187,189)] transition-colors"
+              disabled={!isEditing}
+            >
+              <option value="">Select level</option>
+              {LEVEL_OPTIONS.map((level) => (
+                <option key={level} value={level}>
+                  {level.charAt(0).toUpperCase() + level.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {isEditing && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addSubjectProficiency}
+            disabled={!currentSubject.subject || !currentSubject.level}
+          >
+            Add Subject
+          </Button>
+        )}
+
+        {/* Display added subjects */}
+        {profileData.subjectProficiency.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {profileData.subjectProficiency.map((subject, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded"
+              >
+                <span className="font-medium">
+                  {subject.subject} -{" "}
+                  {subject.level.charAt(0).toUpperCase() +
+                    subject.level.slice(1)}
+                </span>
+                {isEditing && (
+                  <button
+                    type="button"
+                    onClick={() => removeSubjectProficiency(index)}
+                    className="text-red-600 hover:text-red-800 transition-colors"
+                  >
+                    Remove
+                  </button>
                 )}
               </div>
-            </section>
-          </>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Action buttons based on approval status
+  const renderActionButtons = () => {
+    switch (approvalStatus) {
+      case "approved":
+        return (
+          <div className="flex justify-end space-x-4 mt-8">
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleEditProfile}
+              disabled={loading}
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Edit Profile
+            </Button>
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => (window.location.href = "/mentor/dashboard")}
+            >
+              <UserCheck className="w-4 h-4 mr-2" />
+              Go to Dashboard
+            </Button>
+          </div>
+        );
+
+      case "pending":
+        return (
+          <div className="flex justify-end mt-8">
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleEditProfile}
+              disabled={loading}
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Edit Profile
+            </Button>
+          </div>
+        );
+
+      case "rejected":
+        return (
+          <div className="flex justify-end space-x-4 mt-8">
+            {isEditing ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={handleCancelEdit}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={handleSubmitForApproval}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Submitting..." : "Resubmit for Approval"}
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handleEditProfile}
+                disabled={loading}
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit Profile
+              </Button>
+            )}
+          </div>
+        );
+
+      case "not_submitted":
+      default:
+        return (
+          <div className="flex justify-end space-x-4 mt-8">
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleSaveDraft}
+              disabled={isSubmitting || !isEditing}
+            >
+              Save Draft
+            </Button>
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={handleSubmitForApproval}
+              disabled={isSubmitting || !isEditing}
+            >
+              {isSubmitting ? "Submitting..." : "Submit for Approval"}
+            </Button>
+          </div>
+        );
+    }
+  };
+
+  const handleLoginClick = () => {
+    window.location.href = "/login";
+  };
+
+  const handleGetStartedClick = () => {
+    window.location.href = "/signup";
+  };
+
+  return (
+    <Layout
+      onLoginClick={handleLoginClick}
+      onGetStartedClick={handleGetStartedClick}
+    >
+      <div className="min-h-screen bg-gray-50">
+        {/* Approval Status Banner */}
+        {approvalStatus !== "not_submitted" && (
+          <div className={`border-l-4 ${getStatusColor()} p-4 mt-4 rounded-r`}>
+            <div className="flex items-center space-x-2">
+              {getStatusIcon()}
+              <p className="font-medium">{getStatusText()}</p>
+            </div>
+          </div>
         )}
 
-        {activeTab === "academic" && (
-          <>
-            <FormField
-              label="Institution Name"
-              type="text"
-              value={profileData.academicQualifications.institutionName}
-              onChange={(v) =>
-                updateField("academicQualifications", "institutionName", v)
-              }
-              placeholder="e.g., Bachelor of Science"
-            />
-            <FormField
-              label="Degree"
-              type="text"
-              value={profileData.academicQualifications.degree}
-              onChange={(v) =>
-                updateField("academicQualifications", "degree", v)
-              }
-            />
-            <FormField
-              label="Graduation Year"
-              type="text"
-              value={profileData.academicQualifications.graduationYear}
-              onChange={(v) =>
-                updateField("academicQualifications", "graduationYear", v)
-              }
-              placeholder="e.g., 2020"
-            />
-          </>
-        )}
+        {/* Header */}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold text-gray-900">
+              Tutor Profile{" "}
+              {!isEditing &&
+                (approvalStatus === "approved" ||
+                  approvalStatus === "pending") &&
+                "(View Mode)"}
+            </h2>
+            {!isEditing &&
+              (approvalStatus === "approved" ||
+                approvalStatus === "pending") && (
+                <div className="flex items-center space-x-2 text-gray-600">
+                  <Eye className="w-5 h-5" />
+                  <span className="text-sm">Viewing Profile</span>
+                </div>
+              )}
+          </div>
+        </div>
 
-        {activeTab === "experience" && (
-          <>
-            <FormField
-              label="Institution"
-              type="text"
-              value={profileData.experiences.institution}
-              onChange={(v) => updateField("experiences", "institution", v)}
-            />
-            <FormField
-              label="Job Title"
-              type="text"
-              value={profileData.experiences.jobTitle}
-              onChange={(v) => updateField("experiences", "jobTitle", v)}
-            />
-            <FormField
-              label="Duration"
-              type="text"
-              value={profileData.experiences.duration}
-              onChange={(v) => updateField("experiences", "duration", v)}
-              placeholder="e.g., 2 years"
-            />
+        {/* Tabs - Always show but conditionally enable */}
+        <div className="border-b flex">
+          {["personal", "academic", "experience"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab as any)}
+              className={`px-6 py-3 font-medium transition-colors ${
+                activeTab === tab
+                  ? "border-b-2 border-[rgb(73,187,189)] text-[rgb(73,187,189)]"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              {tab === "personal"
+                ? "Personal Details"
+                : tab === "academic"
+                ? "Academic Qualifications"
+                : "Experience"}
+            </button>
+          ))}
+        </div>
 
-            <h3 className="text-lg font-semibold text-gray-900 mt-6 mb-3">
-              Subject Proficiency
-            </h3>
-            <FormField
-              label="Subjects"
-              type="text"
-              value={profileData.subjectProficiency.subject}
-              onChange={(v) => updateField("subjectProficiency", "subject", v)}
-              placeholder="e.g., Math, Physics"
-            />
-            <FormField
-              label="Level"
-              type="text"
-              value={profileData.subjectProficiency.level}
-              onChange={(v) => updateField("subjectProficiency", "level", v)}
-              placeholder="e.g., High School, College"
-            />
+        {/* Form */}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-white rounded-lg shadow-sm mt-4">
+          {activeTab === "personal" && (
+            <>
+              <section className="space-y-4">
+                {renderFormField("personalDetails", "fullName", {
+                  label: "Full Name",
+                  type: "text",
+                  value: profileData.personalDetails.fullName,
+                  onChange: (v: string) =>
+                    updateField("personalDetails", "fullName", v),
+                  required: true,
+                  error: validationErrors["personalDetails.fullName"],
+                  disabled: !isEditing,
+                })}
+                {renderFormField("personalDetails", "email", {
+                  label: "Email",
+                  type: "email",
+                  value: profileData.personalDetails.email,
+                  onChange: (v: string) =>
+                    updateField("personalDetails", "email", v),
+                  required: true,
+                  error: validationErrors["personalDetails.email"],
+                  disabled: !isEditing,
+                })}
+                {renderFormField("personalDetails", "phoneNumber", {
+                  label: "Phone Number",
+                  type: "tel",
+                  value: profileData.personalDetails.phoneNumber,
+                  onChange: (v: string) =>
+                    updateField("personalDetails", "phoneNumber", v),
+                  required: true,
+                  error: validationErrors["personalDetails.phoneNumber"],
+                  disabled: !isEditing,
+                })}
+                {renderFormField("personalDetails", "location", {
+                  label: "Location",
+                  type: "text",
+                  value: profileData.personalDetails.location,
+                  onChange: (v: string) =>
+                    updateField("personalDetails", "location", v),
+                  required: true,
+                  error: validationErrors["personalDetails.location"],
+                  disabled: !isEditing,
+                })}
+                {renderFormField("personalDetails", "bio", {
+                  label: "Bio",
+                  type: "textarea",
+                  value: profileData.personalDetails.bio,
+                  onChange: (v: string) =>
+                    updateField("personalDetails", "bio", v),
+                  placeholder:
+                    "Tell us about yourself, your teaching philosophy, and why you'd make a great mentor...",
+                  rows: 4,
+                  disabled: !isEditing,
+                })}
+              </section>
 
-            <h3 className="text-lg font-semibold text-gray-900 mt-6 mb-3">
-              Certifications
-            </h3>
-            <FormField
-              label="Certification Name"
-              type="text"
-              value={profileData.certification.name}
-              onChange={(v) =>
-                updateField("certification", "name", v)
-              }
-            />
-            <FormField
-              label="Issuing Organization"
-              type="text"
-              value={profileData.certification.issuingOrganization}
-              onChange={(v) =>
-                updateField("certification", "issuingOrganization", v)
-              }
-            />
-          </>
-        )}
+              {/* Profile Picture Upload */}
+              <section className="mt-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  Profile Picture
+                </h3>
+                {!isEditing &&
+                (approvalStatus === "approved" ||
+                  approvalStatus === "pending") ? (
+                  <div className="px-3 py-2 bg-gray-50 rounded-md border border-gray-200 min-h-[42px]">
+                    <p className="text-gray-900">
+                      {profileData.profilePicture
+                        ? profileData.profilePicture.name
+                        : "No file uploaded"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[rgb(73,187,189)] transition-colors">
+                    <Camera className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+                    <p className="text-sm text-gray-600 mb-2">
+                      Upload your profile picture (optional)
+                    </p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      id="profile-upload"
+                      className="hidden"
+                      disabled={!isEditing}
+                    />
+                    <label
+                      htmlFor="profile-upload"
+                      className="inline-block px-5 py-2 bg-gray-100 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors"
+                    >
+                      Choose File
+                    </label>
+                    {profileData.profilePicture && (
+                      <p className="text-sm text-green-600 mt-2">
+                        {profileData.profilePicture.name}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </section>
+            </>
+          )}
 
-        <div className="flex justify-end mt-8">
-          <Button variant="primary" size="lg" onClick={handleSubmit}>
-            Request Admin Approval
-          </Button>
+          {activeTab === "academic" && (
+            <>
+              {renderFormField("academicQualifications", "institutionName", {
+                label: "Institution Name",
+                type: "text",
+                value: profileData.academicQualifications.institutionName,
+                onChange: (v: string) =>
+                  updateField("academicQualifications", "institutionName", v),
+                placeholder: "e.g., University of California, Berkeley",
+                required: true,
+                error:
+                  validationErrors["academicQualifications.institutionName"],
+                disabled: !isEditing,
+              })}
+              {renderFormField("academicQualifications", "degree", {
+                label: "Degree",
+                type: "text",
+                value: profileData.academicQualifications.degree,
+                onChange: (v: string) =>
+                  updateField("academicQualifications", "degree", v),
+                placeholder: "e.g., Bachelor of Science in Computer Science",
+                required: true,
+                error: validationErrors["academicQualifications.degree"],
+                disabled: !isEditing,
+              })}
+
+              {/* Graduation Year */}
+              {!isEditing &&
+              (approvalStatus === "approved" ||
+                approvalStatus === "pending") ? (
+                renderFormField("academicQualifications", "graduationYear", {
+                  label: "Graduation Year",
+                  type: "text",
+                  value: profileData.academicQualifications.graduationYear,
+                  onChange: (v: string) =>
+                    updateField("academicQualifications", "graduationYear", v),
+                  required: true,
+                  error:
+                    validationErrors["academicQualifications.graduationYear"],
+                  disabled: true,
+                })
+              ) : (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Graduation Year <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={profileData.academicQualifications.graduationYear}
+                    onChange={(e) =>
+                      updateField(
+                        "academicQualifications",
+                        "graduationYear",
+                        e.target.value
+                      )
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[rgb(73,187,189)] focus:border-[rgb(73,187,189)] transition-colors"
+                    disabled={!isEditing}
+                  >
+                    <option value="">Select Graduation Year</option>
+                    {GRADUATION_YEARS.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                  {validationErrors[
+                    "academicQualifications.graduationYear"
+                  ] && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {
+                        validationErrors[
+                          "academicQualifications.graduationYear"
+                        ]
+                      }
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === "experience" && (
+            <>
+              {renderFormField("experiences", "institution", {
+                label: "Institution",
+                type: "text",
+                value: profileData.experiences.institution,
+                onChange: (v: string) =>
+                  updateField("experiences", "institution", v),
+                placeholder: "e.g., ABC High School or XYZ Tutoring Center",
+                required: true,
+                error: validationErrors["experiences.institution"],
+                disabled: !isEditing,
+              })}
+              {renderFormField("experiences", "jobTitle", {
+                label: "Job Title",
+                type: "text",
+                value: profileData.experiences.jobTitle,
+                onChange: (v: string) =>
+                  updateField("experiences", "jobTitle", v),
+                placeholder: "e.g., Math Teacher, Private Tutor",
+                required: true,
+                error: validationErrors["experiences.jobTitle"],
+                disabled: !isEditing,
+              })}
+              {renderFormField("experiences", "duration", {
+                label: "Duration",
+                type: "text",
+                value: profileData.experiences.duration,
+                onChange: (v: string) =>
+                  updateField("experiences", "duration", v),
+                placeholder: "e.g., 2 years, 2018-2020",
+                disabled: !isEditing,
+              })}
+
+              {/* Subject Proficiency */}
+              {renderSubjectProficiencyView()}
+
+              <h3 className="text-lg font-semibold text-gray-900 mt-6 mb-3">
+                Certifications
+              </h3>
+              {renderFormField("certification", "name", {
+                label: "Certification Name",
+                type: "text",
+                value: profileData.certification.name,
+                onChange: (v: string) =>
+                  updateField("certification", "name", v),
+                placeholder:
+                  "e.g., Teaching Certificate, Subject Matter Certification",
+                required: true,
+                error: validationErrors["certification.name"],
+                disabled: !isEditing,
+              })}
+              {renderFormField("certification", "issuingOrganization", {
+                label: "Issuing Organization",
+                type: "text",
+                value: profileData.certification.issuingOrganization,
+                onChange: (v: string) =>
+                  updateField("certification", "issuingOrganization", v),
+                placeholder:
+                  "e.g., State Board of Education, Professional Association",
+                disabled: !isEditing,
+              })}
+            </>
+          )}
+
+          {renderActionButtons()}
         </div>
       </div>
-    </div>
+    </Layout>
   );
 }

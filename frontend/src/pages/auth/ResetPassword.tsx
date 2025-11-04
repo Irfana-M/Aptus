@@ -4,7 +4,7 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import resetImage from "../../assets/images/register_banner.jpeg"; // same left-side image
+import resetImage from "../../assets/images/register_banner.jpeg"; 
 
 type ResetPasswordFormValues = {
   otp: string;
@@ -42,8 +42,9 @@ export default function ResetPassword() {
   const onSubmit = async (data: ResetPasswordFormValues) => {
     setLoading(true);
     try {
+      const API_URL = import.meta.env.VITE_API_URL;
       const response = await fetch(
-        "http://localhost:5000/api/auth/forgot-password/reset",
+         `${API_URL}/auth/forgot-password/send-otp`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

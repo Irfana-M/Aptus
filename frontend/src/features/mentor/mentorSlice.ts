@@ -9,14 +9,13 @@ import {
 } from "./mentorThunk";
 
 export interface MentorProfile {
-  
- _id: string;
+  _id: string;
   fullName: string;
   email: string;
   phoneNumber: string;
   location?: string;
   bio?: string;
-  
+
   academicQualifications: {
     institutionName: string;
     degree: string;
@@ -33,10 +32,12 @@ export interface MentorProfile {
   }[];
   subjectProficiency: {
     subject: string;
-    level: 'basic' | 'intermediate' | 'expert';
+    level: "basic" | "intermediate" | "expert";
   }[];
   profilePicture?: string;
-  approvalStatus: 'pending' | 'approved' | 'rejected';
+  profileImageUrl?: string | null;
+  profileImageKey?: string;
+  approvalStatus: "pending" | "approved" | "rejected";
   rejectionReason?: string;
   createdAt: string;
 }
@@ -65,46 +66,53 @@ export const mentorSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchMentorProfile.fulfilled, (state, action: PayloadAction<MentorProfile>) => {
-        state.loading = false;
-        state.profile = action.payload;
-      })
+      .addCase(
+        fetchMentorProfile.fulfilled,
+        (state, action: PayloadAction<MentorProfile>) => {
+          state.loading = false;
+          state.profile = action.payload;
+        }
+      )
       .addCase(fetchMentorProfile.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || "Failed to fetch mentor profile";
       });
 
-    // ✅ Update Mentor Profile
     builder
       .addCase(updateMentorProfile.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(updateMentorProfile.fulfilled, (state, action: PayloadAction<MentorProfile>) => {
-        state.loading = false;
-        state.profile = action.payload;
-      })
+      .addCase(
+        updateMentorProfile.fulfilled,
+        (state, action: PayloadAction<MentorProfile>) => {
+          state.loading = false;
+          state.profile = action.payload;
+        }
+      )
       .addCase(updateMentorProfile.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || "Failed to update mentor profile";
       });
 
-    // ✅ Submit Profile for Approval
     builder
       .addCase(submitProfileForApproval.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(submitProfileForApproval.fulfilled, (state, action: PayloadAction<MentorProfile>) => {
-        state.loading = false;
-        state.profile = action.payload;
-      })
+      .addCase(
+        submitProfileForApproval.fulfilled,
+        (state, action: PayloadAction<MentorProfile>) => {
+          state.loading = false;
+          state.profile = action.payload;
+        }
+      )
       .addCase(submitProfileForApproval.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || "Failed to submit profile for approval";
+        state.error =
+          action.error.message || "Failed to submit profile for approval";
       });
 
-    // ✅ Admin Approve Mentor
     builder
       .addCase(approveMentor.pending, (state) => {
         state.loading = true;
@@ -117,7 +125,6 @@ export const mentorSlice = createSlice({
         state.error = action.error.message || "Failed to approve mentor";
       });
 
-    // ✅ Admin Reject Mentor
     builder
       .addCase(rejectMentor.pending, (state) => {
         state.loading = true;

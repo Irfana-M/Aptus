@@ -1,19 +1,25 @@
-import type { Request, Response } from "express";
-import type { IAuthService } from "../interfaces/services/IauthService.js";
-import { studentRegisterSchema } from "../validations/authValidation/signup.validation.js";
-import type { IOtpService } from "../interfaces/services/IOtpService.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { logger } from "../utils/logger.js"; // Winston logger
-import type { RegisterUserDto } from "../dto/RegisteruserDTO.js";
-import type { LoginUserDto } from "../dto/LoginUserDTO.js";
-import type { SendOtpDto } from "../dto/otp.dto.js";
-import type { ForgotPasswordDto } from "../dto/forgotPassword.dto.js";
+import { injectable, inject } from "inversify";
+import { TYPES } from "../types";
+import type { NextFunction, Request, Response } from "express";
+import type { IAuthService } from "../interfaces/services/IauthService";
+import { studentRegisterSchema } from "../validations/authValidation/signup.validation";
+import type { IOtpService } from "../interfaces/services/IOtpService";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { logger } from "../utils/logger";
+import type { RegisterUserDto } from "../dto/auth/RegisteruserDTO";
+import type { LoginUserDto } from "../dto/auth/LoginUserDTO";
+import type { SendOtpDto } from "../dto/auth/OtpDTO";
+import type { ForgotPasswordDto } from "../dto/auth/ForgotPasswordDTO";
+import { generateAccessToken, verifyRefreshToken } from "@/utils/jwt.util";
+import { AppError } from "@/utils/AppError";
 
+@injectable()
 export class AuthController {
   constructor(
-    private _authService: IAuthService,
-    private _otpService: IOtpService
+    @inject(TYPES.IAuthService) private _authService: IAuthService,
+    @inject(TYPES.IOtpService) private _otpService: IOtpService
   ) {}
+
 
   registerUser = async (req: Request, res: Response) => {
     try {
@@ -32,11 +38,12 @@ export class AuthController {
         success: true,
         message: result.message,
       });
-    } catch (error: any) {
-      logger.error(`User registration failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      logger.error(`User registration failed: ${errorMessage}`);
       return res.status(HttpStatusCode.BAD_REQUEST).json({
         success: false,
-        message: error.message,
+        message: errorMessage,
       });
     }
   };
@@ -54,8 +61,10 @@ export class AuthController {
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
+      console.log(result);
+
       logger.info(
-        `User login success: ${loginData.email}, role: ${loginData.role}`
+        `User login success: ${loginData.email}, role: ${loginData.role}}`
       );
 
       return res.status(HttpStatusCode.OK).json({
@@ -65,12 +74,62 @@ export class AuthController {
         isProfileComplete: result.isProfileComplete,
         isPaid: result.isPaid,
       });
-    } catch (error: any) {
-      logger.error(`User login failed: ${req.body.email} - ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      logger.error(`User login failed: ${req.body.email} - ${errorMessage}`);
       return res.status(HttpStatusCode.BAD_REQUEST).json({
         success: false,
-        message: error.message,
+        message: errorMessage,
       });
+    }
+  };
+
+  refreshAccessToken = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const refreshToken = req.cookies?.refreshToken;
+      if (!refreshToken) {
+        throw new AppError(
+          "No refresh token provided",
+          HttpStatusCode.UNAUTHORIZED
+        );
+      }
+
+      const payload = verifyRefreshToken(refreshToken);
+      if (!payload) {
+        throw new AppError(
+          "Invalid or expired refresh token",
+          HttpStatusCode.FORBIDDEN
+        );
+      }
+
+      const newAccessToken = generateAccessToken({
+        id: payload.id,
+        role: payload.role,
+        email: payload.email,
+      });
+
+      logger.info(
+        `Access token refreshed for user ${payload.id} (${payload.role})`
+      );
+
+      return res.status(HttpStatusCode.OK).json({
+        success: true,
+        accessToken: newAccessToken,
+        message: "Access token refreshed successfully",
+      });
+    } catch (error) {
+      next(
+        error instanceof AppError
+          ? error
+          : new AppError(
+              "Token refresh failed",
+              HttpStatusCode.INTERNAL_SERVER_ERROR
+            )
+      );
     }
   };
 
@@ -92,58 +151,16 @@ export class AuthController {
         success: true,
         message: "OTP sent successfully",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       logger.error(
-        `Forgot password OTP failed: ${req.body.email} - ${error.message}`
+        `Forgot password OTP failed: ${req.body.email} - ${errorMessage}`
       );
       return res.status(HttpStatusCode.BAD_REQUEST).json({
         success: false,
-        message: error.message,
+        message: errorMessage,
       });
     }
   };
 
-  resetPassword = async (req: Request, res: Response) => {
-    try {
-      const { email, otp, password, confirmPassword, role } =
-        req.body as ForgotPasswordDto;
-
-      if (!email || !otp || !password || !confirmPassword || !role) {
-        logger.warn(`Reset password attempt failed: missing fields`);
-        return res
-          .status(HttpStatusCode.BAD_REQUEST)
-          .json({ message: "All fields are required" });
-      }
-
-      const otpData = await this._otpService.findByOtp(otp, "forgotPassword");
-      if (!otpData) {
-        logger.warn(
-          `Reset password attempt failed: invalid/expired OTP for ${email}`
-        );
-        return res
-          .status(HttpStatusCode.BAD_REQUEST)
-          .json({ message: "Invalid or expired OTP" });
-      }
-
-      await this._authService.resetPassword({
-        email,
-        otp,
-        password,
-        confirmPassword,
-        role,
-      });
-
-      logger.info(`Password reset successful for: ${email} (${role})`);
-
-      return res
-        .status(HttpStatusCode.OK)
-        .json({ message: "Password reset successful" });
-    } catch (error: any) {
-      logger.error(`Reset password failed: ${error.message}`);
-      return res.status(HttpStatusCode.BAD_REQUEST).json({
-        success: false,
-        message: error.message,
-      });
-    }
-  };
 }

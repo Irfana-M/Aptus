@@ -1,22 +1,31 @@
 {
-  // Visit https://aka.ms/tsconfig to read more about this file
+  
   "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     // File Layout
     "rootDir": "./src",
     "outDir": "./dist",
+    "baseUrl": "./src",
+    "paths": {
+      "@/*": ["*"],
+      "@services/*": ["interfaces/services/*"],
+      "@utils/*": ["utils/*"],
+      "@constants/*": ["constants/*"],
+    },
 
     // Environment Settings
-    // See also https://aka.ms/tsconfig/module
-    "module": "nodenext",
+    "module": "ESNext",
     "target": "ES2020",
 
     //"types": [],
     "esModuleInterop": true,
+    "allowImportingTsExtensions": false,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule":true,
     // For nodejs:
     "lib": ["ES2020"],
-    "types": ["node"],
+    "types": ["reflect-metadata", "node"],
     // and npm install -D @types/node
 
     // Other Outputs
@@ -38,7 +47,7 @@
 
     // Recommended Options
     "strict": true,
-    "moduleResolution": "nodenext",
+    "moduleResolution": "Node",
     "ignoreDeprecations": "6.0",
     "verbatimModuleSyntax": true,
     "isolatedModules": true,

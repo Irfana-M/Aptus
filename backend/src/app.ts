@@ -1,38 +1,41 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import { connectDB } from './config/db.config.js';
-import router from './routes/auth.routes.js';
-import adminRouter from "./routes/admin.routes.js";
-import passport from './config/passport.config.js';
-import mentorRouter from './routes/mentor.routes.js';
-import path from 'path';
-
+import "reflect-metadata";
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import { connectDB } from "./config/db.config";
+import router from "./routes/auth.routes";
+import adminRouter from "./routes/admin.routes";
+import passport from "./config/passport.config";
+import mentorRouter from "./routes/mentor.routes";
+import path from "path";
+import s3Routes from "./routes/s3Routes";
 dotenv.config();
 const app = express();
 
-app.use(cors({
-  origin: process.env.CLIENT_URI, 
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true 
-}));
+app.use(
+  cors({
+    origin: process.env.CLIENT_URI,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 app.use(passport.initialize());
 
-app.use('/api/auth', router);
-app.use('/api/admin', adminRouter);
+app.use("/api/auth", router);
+app.use("/api/admin", adminRouter);
 app.use("/api/mentor", mentorRouter);
 
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
-
+app.use("/api", s3Routes);
 
 connectDB();
 
-app.get('/', (req, res) => {
-  res.send('API is working');
+app.get("/", (req, res) => {
+  res.send("API is working");
 });
 
 export default app;

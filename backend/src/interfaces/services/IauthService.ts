@@ -1,9 +1,9 @@
-import type { ForgotPasswordDto } from "../../dto/forgotPassword.dto.js";
-import type { LoginUserDto } from "../../dto/LoginUserDTO.js";
-import type { SendOtpDto } from "../../dto/otp.dto.js";
-import type { RegisterUserDto } from "../../dto/RegisteruserDTO.js";
-import type { VerifyOtpDto } from "../../dto/VerifyOtpDTO.js";
-import type { AuthUser } from "../auth/auth.interface.js";
+import type { ForgotPasswordDto } from "../../dto/auth/ForgotPasswordDTO";
+import type { LoginUserDto } from "../../dto/auth/LoginUserDTO";
+import type { SendOtpDto } from "../../dto/auth/OtpDTO";
+import type { RegisterUserDto } from "../../dto/auth/RegisteruserDTO";
+import type { VerifyOtpDto } from "../../dto/auth/VerifyOtpDTO";
+import type { AuthUser } from "../auth/auth.interface";
 
 export interface IAuthService {
   registerUser(data: RegisterUserDto): Promise<{ message: string }>;
@@ -20,11 +20,10 @@ export interface IAuthService {
     refreshToken: string;
     isProfileComplete?: boolean;
     isPaid?: boolean | undefined;
+    approvalStatus?: "pending" | "approved" | "rejected";
   }>;
 
   sendForgotPasswordOtp(data: SendOtpDto): Promise<void>;
-
-  resetPassword(data: ForgotPasswordDto): Promise<void>;
-
+  
   findUserByEmail(email: string): Promise<AuthUser | null>;
 }

@@ -5,8 +5,9 @@ export interface User {
   role: "student" | "mentor";
   isVerified: boolean;
   accessToken?: string;
-  isProfileComplete?: boolean; 
-  isPaid?: boolean; 
+  isProfileComplete?: boolean;
+  isPaid?: boolean;
+  approvalStatus?: "pending" | "approved" | "rejected";
 }
 
 export interface AuthState {
@@ -16,6 +17,6 @@ export interface AuthState {
   error: string | null;
   isVerified: boolean;
   isAuthenticated?: boolean;
-  isProfileComplete?: boolean; 
+  isProfileComplete?: boolean;
   isPaid?: boolean;
 }

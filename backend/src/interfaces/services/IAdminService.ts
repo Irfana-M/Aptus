@@ -1,25 +1,21 @@
-import type { IAdmin } from "../models/admin.interface.js";
-import type { MentorProfile } from "../models/mentor.interface.js";
+import type { AdminLoginResponseDto } from "@/dto/admin/AdminLoginResponseDTO";
+import type { DashboardDataDto } from "@/dto/admin/AdminLoginResponseDTO";
+import type { MentorResponseDto } from "@/dto/mentor/MentorResponseDTO";
+import type { StudentBaseResponseDto } from "@/dto/auth/UserResponseDTO";
+
 export interface IAdminService {
-  login(email: string, password: string): Promise<{
-    admin: IAdmin;
-    accessToken: string;
-    refreshToken: string;
-  }>;
+  login(email: string, password: string): Promise<AdminLoginResponseDto>;
 
-   getDashboardData(): Promise<{
-    totalStudents: number;
-    totalMentors: number;
-    recentStudents: any[];
-    recentMentors: any[];
-  }>;
+  getDashboardData(): Promise<DashboardDataDto>;
 
-  fetchMentorProfile(mentorId: string): Promise<MentorProfile | null>;
-
+  getAllMentors(): Promise<MentorResponseDto[]>;
+  fetchMentorProfile(mentorId: string): Promise<MentorResponseDto>;
   updateMentorApprovalStatus(
     mentorId: string,
     status: "approved" | "rejected",
     adminId: string,
     reason?: string
-  ): Promise<MentorProfile | null>;
+  ): Promise<MentorResponseDto>;
+
+  getAllStudents(): Promise<StudentBaseResponseDto[]>;
 }

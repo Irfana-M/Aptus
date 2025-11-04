@@ -3,44 +3,65 @@ import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../../app/store";
 import { fetchDashboardData } from "../../features/admin/dashboardSlice";
 import { Table } from "../../components/admin/Table";
+import { Sidebar } from "../../components/admin/Sidebar";
+import { Topbar } from "../../components/admin/Topbar";
 import { useNavigate } from "react-router-dom";
-import {
-  Menu,
-  X,
-  Users,
-  BookOpen,
-  DollarSign,
-  Calendar,
-  Bell,
-  Search,
-  MessageSquare,
-  HelpCircle,
-  LogOut,
-} from "lucide-react";
+import { Users, BookOpen, DollarSign } from "lucide-react";
 
 const StatCard = ({
   title,
   value,
+  subtitle,
   icon,
-  color,
+  trend,
+  color = "cyan",
 }: {
   title: string;
   value: string | number;
+  subtitle?: string;
   icon: React.ReactNode;
-  color: string;
-}) => (
-  <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-gray-400 text-sm">{title}</p>
-        <p className="text-3xl font-bold mt-2">{value}</p>
-      </div>
-      <div className={`w-12 h-12 rounded-full flex items-center justify-center bg-${color}-600`}>
-        {icon}
+  trend?: {
+    value: number;
+    isPositive: boolean;
+  };
+  color?: "cyan" | "green" | "orange" | "purple";
+}) => {
+  const colorClasses = {
+    cyan: "from-cyan-500 to-teal-600",
+    green: "from-green-500 to-emerald-600",
+    orange: "from-orange-500 to-amber-600",
+    purple: "from-purple-500 to-indigo-600",
+  };
+
+  return (
+    <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <p className="text-gray-600 text-sm font-medium mb-1">{title}</p>
+          <div className="flex items-baseline space-x-2">
+            <p className="text-3xl font-bold text-gray-900">{value}</p>
+            {trend && (
+              <span
+                className={`text-sm font-medium ${
+                  trend.isPositive ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                {trend.isPositive ? "+" : ""}
+                {trend.value}%
+              </span>
+            )}
+          </div>
+          {subtitle && <p className="text-gray-500 text-sm mt-2">{subtitle}</p>}
+        </div>
+        <div
+          className={`w-12 h-12 rounded-xl bg-gradient-to-r ${colorClasses[color]} flex items-center justify-center shadow-md`}
+        >
+          <div className="text-white">{icon}</div>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default function Dashboard() {
   const dispatch = useDispatch<AppDispatch>();
@@ -55,186 +76,286 @@ export default function Dashboard() {
   } = useSelector((state: RootState) => state.dashboard);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [active, setActive] = useState("Dashboard");
-
-  const links = [
-    { icon: <Users size={20} />, label: "Dashboard" },
-    { icon: <Users size={20} />, label: "Students" },
-    { icon: <Users size={20} />, label: "Mentors" },
-    { icon: <BookOpen size={20} />, label: "Courses" },
-    { icon: <DollarSign size={20} />, label: "Finance" },
-    { icon: <Calendar size={20} />, label: "Statistics" },
-    { icon: <MessageSquare size={20} />, label: "Reports" },
-    { icon: <HelpCircle size={20} />, label: "Feedback & Support" },
-    { icon: <Bell size={20} />, label: "Notification" },
-    { icon: <LogOut size={20} />, label: "Logout" },
-  ];
+  const [activeNav, setActiveNav] = useState("Dashboard");
 
   useEffect(() => {
     dispatch(fetchDashboardData())
-    .unwrap() // unwraps the fulfilled payload
-    .then((data) => {
-      console.log("✅ Dashboard data:", data);
-    })
-    .catch((err) => {
-      console.error("❌ Failed to fetch dashboard data:", err);
-    });
+      .unwrap()
+      .then((data) => {
+        console.log("✅ Dashboard data:", data);
+      })
+      .catch((err) => {
+        console.error("❌ Failed to fetch dashboard data:", err);
+      });
   }, [dispatch]);
-  
 
-  if (loading) return <p className="p-6">Loading...</p>;
-  if (error) return <p className="p-6 text-red-500">{error}</p>;
-
-  
   const studentColumns = [
-    { header: "Name", accessor: (s: any) => s.student?.fullName ?? s.fullName },
-    { header: "Email", accessor: (s: any) => s.student?.email ?? s.email },
-    { header: "Joined On", accessor: (s: any) => new Date(s.createdAt).toLocaleDateString() },
+    {
+      header: "Name",
+      accessor: (s: any) => (
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-cyan-100 rounded-full flex items-center justify-center">
+            <span className="text-cyan-600 text-sm font-medium">
+              {(s.student?.fullName ?? s.fullName)?.[0]?.toUpperCase()}
+            </span>
+          </div>
+          <span className="font-medium text-gray-900">
+            {s.student?.fullName ?? s.fullName}
+          </span>
+        </div>
+      ),
+    },
+    {
+      header: "Email",
+      accessor: (s: any) => (
+        <span className="text-gray-600">{s.student?.email ?? s.email}</span>
+      ),
+    },
+    {
+      header: "Joined On",
+      accessor: (s: any) => (
+        <span className="text-gray-500">
+          {new Date(s.createdAt).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          })}
+        </span>
+      ),
+    },
   ];
 
   const mentorColumns = [
-  { header: "Name", accessor: (m: any) => m.mentor?.fullName ?? m.fullName },
-  { header: "Email", accessor: (m: any) => m.mentor?.email ?? m.email },
-  { header: "Joined On", accessor: (m: any) => new Date(m.createdAt).toLocaleDateString() },
-
-
-  {
-  header: "Approval Status",
-  accessor: (m: any) => {
-    let label = "";
-    let bgColor = "";
-    let textColor = "";
-
-    switch (m.approvalStatus) {
-      case "accepted":
-        label = "Approved";
-        bgColor = "bg-green-100";
-        textColor = "text-green-700";
-        break;
-      case "rejected":
-        label = "Rejected";
-        bgColor = "bg-red-100";
-        textColor = "text-red-700";
-        break;
-      default:
-        label = "Pending";
-        bgColor = "bg-yellow-100";
-        textColor = "text-yellow-700";
-    }
-
-    return (
-      <span className={`px-3 py-1 rounded-full text-xs font-medium ${bgColor} ${textColor}`}>
-        {label}
-      </span>
-    );
-  },
-},
-
-
-  {
-    header: "Actions",
-    accessor: (m: any) => (
-      <div className="flex gap-2">
-        <button
-          className="bg-indigo-600 px-3 py-1 rounded text-white hover:bg-indigo-700 transition"
-          onClick={() => navigate(`/admin/mentor/${m._id}`)}
-        >
-          View Profile
-        </button>
-      </div>
-    ),
-  },
-];
-
-  return (
-    <div className="flex h-screen bg-gray-900 text-gray-100">
-      {/* Sidebar */}
-      <aside
-        className={`${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-64 transition-transform duration-300 ease-in-out`}
-        style={{ background: "linear-gradient(to bottom, #49BBBD, #2C7A7B)" }}
-      >
-        <div className="flex items-center justify-between p-6">
-          <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#49BBBD" }}>
-              <BookOpen className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-gray-800">Mentora</span>
+    {
+      header: "Name",
+      accessor: (m: any) => (
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+            <span className="text-orange-600 text-sm font-medium">
+              {(m.mentor?.fullName ?? m.fullName)?.[0]?.toUpperCase()}
+            </span>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-white">
-            <X size={24} />
+          <span className="font-medium text-gray-900">
+            {m.mentor?.fullName ?? m.fullName}
+          </span>
+        </div>
+      ),
+    },
+    {
+      header: "Email",
+      accessor: (m: any) => (
+        <span className="text-gray-600">{m.mentor?.email ?? m.email}</span>
+      ),
+    },
+    {
+      header: "Joined On",
+      accessor: (m: any) => (
+        <span className="text-gray-500">
+          {new Date(m.createdAt).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          })}
+        </span>
+      ),
+    },
+    {
+      header: "Approval Status",
+      accessor: (m: any) => {
+        const status = m.approvalStatus?.toLowerCase();
+        const statusConfig = {
+          approved: {
+            label: "Approved",
+            bg: "bg-green-100",
+            text: "text-green-700",
+          },
+          accepted: {
+            label: "Approved",
+            bg: "bg-green-100",
+            text: "text-green-700",
+          },
+          rejected: {
+            label: "Rejected",
+            bg: "bg-red-100",
+            text: "text-red-700",
+          },
+          pending: {
+            label: "Pending",
+            bg: "bg-yellow-100",
+            text: "text-yellow-700",
+          },
+        };
+
+        const config =
+          statusConfig[status as keyof typeof statusConfig] ||
+          statusConfig.pending;
+
+        return (
+          <span
+            className={`px-3 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}
+          >
+            {config.label}
+          </span>
+        );
+      },
+    },
+    {
+      header: "Actions",
+      accessor: (m: any) => (
+        <div className="flex gap-2">
+          <button
+            className="bg-cyan-600 px-3 py-1 rounded text-white hover:bg-cyan-700 transition-colors duration-200 text-sm font-medium"
+            onClick={() => navigate(`/admin/mentor/${m._id}`)}
+          >
+            View Profile
           </button>
         </div>
+      ),
+    },
+  ];
 
-        <nav className="mt-8 px-4 space-y-2">
-          {links.map((item) => (
-            <a
-              key={item.label}
-              href="#"
-              onClick={() => setActive(item.label)}
-              className="flex items-center space-x-3 px-4 py-3 rounded-lg transition text-white"
-              style={{
-                backgroundColor: active === item.label ? "#187c80ff" : "#49BBBD",
-              }}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </a>
-          ))}
-        </nav>
-      </aside>
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar
+          isOpen={sidebarOpen}
+          activeItem={activeNav}
+          onItemClick={setActiveNav}
+          onClose={() => setSidebarOpen(false)}
+        />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-cyan-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading dashboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar
+          isOpen={sidebarOpen}
+          activeItem={activeNav}
+          onItemClick={setActiveNav}
+          onClose={() => setSidebarOpen(false)}
+        />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center text-red-600">
+            <p className="text-lg font-semibold">Error loading dashboard</p>
+            <p className="text-sm mt-2">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-screen bg-gray-50">
+      {/* Reusable Sidebar */}
+      <Sidebar
+        isOpen={sidebarOpen}
+        activeItem={activeNav}
+        onItemClick={setActiveNav}
+        onClose={() => setSidebarOpen(false)}
+      />
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
-        {/* Header */}
-        <header className="bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-white">
-              <Menu size={24} />
-            </button>
-            <h1 className="text-2xl font-bold">Dashboard</h1>
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <Topbar
+          onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+          title="Dashboard Overview"
+        />
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <StatCard
+              title="Total Students"
+              value={totalStudents}
+              subtitle="Active learners"
+              icon={<Users size={24} />}
+              trend={{ value: 12, isPositive: true }}
+              color="cyan"
+            />
+            <StatCard
+              title="Total Mentors"
+              value={totalMentors}
+              subtitle="Expert educators"
+              icon={<Users size={24} />}
+              trend={{ value: 8, isPositive: true }}
+              color="orange"
+            />
+            <StatCard
+              title="Active Courses"
+              value="24"
+              subtitle="Running currently"
+              icon={<BookOpen size={24} />}
+              trend={{ value: 5, isPositive: true }}
+              color="green"
+            />
+            <StatCard
+              title="Revenue"
+              value="$12,458"
+              subtitle="This month"
+              icon={<DollarSign size={24} />}
+              trend={{ value: 18, isPositive: true }}
+              color="purple"
+            />
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="relative hidden md:block">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                placeholder="Search here..."
-                className="pl-10 pr-4 py-2 bg-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              />
+
+          {/* Recent Activity Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Students Table */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                  <Users size={20} className="text-cyan-600" />
+                  Recent Students
+                </h2>
+                <p className="text-gray-500 text-sm mt-1">
+                  Students who logged in recently
+                </p>
+              </div>
+              <div className="p-6">
+                {recentStudents?.length ? (
+                  <Table columns={studentColumns} data={recentStudents} />
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Users size={48} className="mx-auto mb-4 text-gray-300" />
+                    <p>No students logged in recently</p>
+                  </div>
+                )}
+              </div>
             </div>
-            <button className="relative p-2 bg-gray-700 rounded-lg">
-              <Bell size={20} />
-              <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
-            <div className="w-10 h-10 bg-cyan-500 rounded-full"></div>
-          </div>
-        </header>
 
-        {/* Stats Cards */}
-        <div className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard title="Total Students" value={totalStudents} icon={<Users size={24} />} color="purple" />
-            <StatCard title="Total Mentors" value={totalMentors} icon={<Users size={24} />} color="orange" />
-          </div>
-
-          {/* Students Table */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">Recently Logged-in Students</h2>
-            {recentStudents?.length ? <Table columns={studentColumns} data={recentStudents} /> :
-              <p className="text-gray-400 text-sm">No students logged in recently.</p>}
-          </div>
-
-          {/* Mentors Table */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">Recently Logged-in Mentors</h2>
-            {recentMentors?.length ? <Table columns={mentorColumns} data={recentMentors} /> :
-              <p className="text-gray-400 text-sm">No mentors logged in recently.</p>}
+            {/* Mentors Table */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                  <Users size={20} className="text-orange-600" />
+                  Recent Mentors
+                </h2>
+                <p className="text-gray-500 text-sm mt-1">
+                  Mentors who logged in recently
+                </p>
+              </div>
+              <div className="p-6">
+                {recentMentors?.length ? (
+                  <Table columns={mentorColumns} data={recentMentors} />
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Users size={48} className="mx-auto mb-4 text-gray-300" />
+                    <p>No mentors logged in recently</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </main>
     </div>
   );
 }
-

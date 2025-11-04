@@ -1,4 +1,3 @@
-// components/TestAuth.tsx
 import { useSelector } from "react-redux";
 import { selectCurrentToken } from "./features/auth/authSlice"
 

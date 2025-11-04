@@ -1,11 +1,11 @@
-import mongoose, { Schema } from 'mongoose';
-import type { MentorProfile } from '../interfaces/models/mentor.interface.js';
+import mongoose, { Schema } from "mongoose";
+import type { MentorProfile } from "../interfaces/models/mentor.interface";
 
 const academicQualificationSchema = new Schema({
-    institutionName: String,
-    degree: String,
-    graduationYear: String,
-})
+  institutionName: String,
+  degree: String,
+  graduationYear: String,
+});
 
 const experienceSchema = new Schema({
   institution: String,
@@ -22,19 +22,17 @@ const subjectProficiencySchema = new Schema({
   subject: { type: String, required: true },
   level: {
     type: String,
-    enum: ['basic', 'intermediate', 'expert'],
+    enum: ["basic", "intermediate", "expert"],
     required: true,
   },
 });
-
-
 
 const mentorSchema = new Schema<MentorProfile>(
   {
     fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    phoneNumber: { type: String, required: true },
-    password: { type: String, required: true },
+    phoneNumber: { type: String },
+    password: { type: String },
     location: { type: String },
     bio: { type: String },
     academicQualifications: [academicQualificationSchema],
@@ -48,12 +46,22 @@ const mentorSchema = new Schema<MentorProfile>(
     approvalStatus: {
       type: String,
       enum: ["pending", "approved", "rejected"],
+      authProvider: {
+        type: String,
+        enum: ["local", "google"],
+        default: "local",
+      },
+      googleId: { type: String },
       default: "pending",
     },
     submittedForApprovalAt: { type: Date },
-    rejectionReason: { type: String},
+    rejectionReason: { type: String },
   },
+
   { timestamps: true }
 );
 
-export const MentorModel = mongoose.model<MentorProfile>('Mentor', mentorSchema)
+export const MentorModel = mongoose.model<MentorProfile>(
+  "Mentor",
+  mentorSchema
+);

@@ -1,40 +1,47 @@
+import { injectable, inject } from 'inversify';
 import type {
-  IMentorAuthRepository,
   IMentorRepository,
-} from "../interfaces/repositories/IMentorRepository.js";
-import type { AuthUser } from "../interfaces/auth/auth.interface.js";
-import type { IEmailService } from "../interfaces/services/IEmailService.js";
-import type { MentorProfile } from "../interfaces/models/mentor.interface.js";
-import type { IMentorService } from "../interfaces/services/IMentorService.js";
-import { MentorModel } from "../models/mentor.model.js";
-import { logger } from "../utils/logger.js";
-import fs from 'fs';
-import path from 'path';
+} from "../interfaces/repositories/IMentorRepository";
+import type { IMentorAuthRepository } from '@/interfaces/repositories/IMentorAuthRepository';
+import type { AuthUser } from "../interfaces/auth/auth.interface";
+import type { IEmailService } from "../interfaces/services/IEmailService";
+import type { MentorProfile } from "../interfaces/models/mentor.interface";
+import type { IMentorService } from "../interfaces/services/IMentorService";
+import { logger } from "../utils/logger";
+import { uploadFileToS3 } from "../utils/s3Upload";
+import { TYPES } from '../types';
+import type { RegisterUserDto } from '@/dto/auth/RegisteruserDTO';
 
+@injectable()
 export class MentorService implements IMentorService {
   constructor(
-    private _mentorAuthRepo: IMentorAuthRepository,
-    private _mentorRepo: IMentorRepository,
-    private _emailService: IEmailService
+    @inject(TYPES.IMentorAuthRepository) private _mentorAuthRepo: IMentorAuthRepository,
+    @inject(TYPES.IMentorRepository) private _mentorRepo: IMentorRepository,
+    @inject(TYPES.EmailService) private _emailService: IEmailService
   ) {}
 
 
-  async registerMentor(data: AuthUser): Promise<AuthUser> {
+  async registerMentor(data: RegisterUserDto): Promise<AuthUser> {
     try {
       logger.info(`Registering new mentor with email: ${data.email}`);
-      
+
       const existingMentor = await this._mentorAuthRepo.findByEmail(data.email);
       if (existingMentor) {
-        logger.warn(`Mentor registration failed - Email already exists: ${data.email}`);
-        throw new Error('Mentor with this email already exists');
+        logger.warn(
+          `Mentor registration failed - Email already exists: ${data.email}`
+        );
+        throw new Error("Mentor with this email already exists");
       }
 
       const mentor = await this._mentorAuthRepo.createUser(data);
       logger.info(`Mentor registered successfully: ${mentor.email}`);
-      
+
       return mentor;
     } catch (error: any) {
-      logger.error(`Error in registerMentor for email ${data.email}: ${error.message}`, { error: error.stack });
+      logger.error(
+        `Error in registerMentor for email ${data.email}: ${error.message}`,
+        { error: error.stack }
+      );
       throw error;
     }
   }
@@ -52,7 +59,6 @@ export class MentorService implements IMentorService {
         throw new Error("Mentor not found");
       }
 
-      // Process the form data
       const updateData: Partial<MentorProfile> = {
         fullName: data.fullName || mentor.fullName,
         email: data.email || mentor.email,
@@ -69,7 +75,6 @@ export class MentorService implements IMentorService {
         updateData,
       });
 
-      // Handle array fields if they're sent as JSON strings
       if (data.academicQualifications) {
         try {
           updateData.academicQualifications =
@@ -132,7 +137,6 @@ export class MentorService implements IMentorService {
         }
       }
 
-      // Handle file upload for profile picture
       if (data.profilePicture) {
         try {
           updateData.profilePicture = await this.handleProfilePictureUpload(
@@ -189,11 +193,17 @@ export class MentorService implements IMentorService {
     return this._mentorRepo.getPendingApprovals();
   }
 
-  async approveMentor(mentorId: string, adminId: string): Promise<{ message: string }> {
+  async approveMentor(
+    mentorId: string,
+    adminId: string
+  ): Promise<{ message: string }> {
     try {
       logger.info(`Approving mentor - Mentor: ${mentorId}, Admin: ${adminId}`);
 
-      const updatedMentor = await this._mentorRepo.updateApprovalStatus(mentorId, "approved");
+      const updatedMentor = await this._mentorRepo.updateApprovalStatus(
+        mentorId,
+        "approved"
+      );
       if (!updatedMentor) {
         logger.error(`Mentor not found for approval: ${mentorId}`);
         throw new Error("Mentor not found");
@@ -209,25 +219,41 @@ export class MentorService implements IMentorService {
           <br>
           <p>Best regards,<br>The Mentora Team</p>`
         );
-        logger.info(`Approval email sent successfully to: ${updatedMentor.email}`);
+        logger.info(
+          `Approval email sent successfully to: ${updatedMentor.email}`
+        );
       } catch (emailError: any) {
-        logger.warn(`Failed to send approval email to ${updatedMentor.email}: ${emailError.message}`);
-        // Don't throw error, just log warning
+        logger.warn(
+          `Failed to send approval email to ${updatedMentor.email}: ${emailError.message}`
+        );
       }
 
       logger.info(`Mentor approved successfully: ${mentorId}`);
       return { message: "Mentor approved and notification sent" };
     } catch (error: any) {
-      logger.error(`Error in approveMentor for mentor ${mentorId}: ${error.message}`, { error: error.stack });
+      logger.error(
+        `Error in approveMentor for mentor ${mentorId}: ${error.message}`,
+        { error: error.stack }
+      );
       throw error;
     }
   }
-  
-  async rejectMentor(mentorId: string, reason: string, adminId: string): Promise<{ message: string }> {
-    try {
-      logger.info(`Rejecting mentor - Mentor: ${mentorId}, Admin: ${adminId}, Reason: ${reason}`);
 
-      const updatedMentor = await this._mentorRepo.updateApprovalStatus(mentorId, "rejected", reason);
+  async rejectMentor(
+    mentorId: string,
+    reason: string,
+    adminId: string
+  ): Promise<{ message: string }> {
+    try {
+      logger.info(
+        `Rejecting mentor - Mentor: ${mentorId}, Admin: ${adminId}, Reason: ${reason}`
+      );
+
+      const updatedMentor = await this._mentorRepo.updateApprovalStatus(
+        mentorId,
+        "rejected",
+        reason
+      );
       if (!updatedMentor) {
         logger.error(`Mentor not found for rejection: ${mentorId}`);
         throw new Error("Mentor not found");
@@ -245,97 +271,56 @@ export class MentorService implements IMentorService {
           <br>
           <p>Best regards,<br>The Mentora Team</p>`
         );
-        logger.info(`Rejection email sent successfully to: ${updatedMentor.email}`);
+        logger.info(
+          `Rejection email sent successfully to: ${updatedMentor.email}`
+        );
       } catch (emailError: any) {
-        logger.warn(`Failed to send rejection email to ${updatedMentor.email}: ${emailError.message}`);
-        // Don't throw error, just log warning
+        logger.warn(
+          `Failed to send rejection email to ${updatedMentor.email}: ${emailError.message}`
+        );
       }
 
       logger.info(`Mentor rejected successfully: ${mentorId}`);
       return { message: "Mentor rejected and notification sent" };
     } catch (error: any) {
-      logger.error(`Error in rejectMentor for mentor ${mentorId}: ${error.message}`, { error: error.stack });
+      logger.error(
+        `Error in rejectMentor for mentor ${mentorId}: ${error.message}`,
+        { error: error.stack }
+      );
       throw error;
     }
   }
 
+  private async handleProfilePictureUpload(file: any): Promise<string> {
+    try {
+      logger.debug("Handling profile picture upload:", {
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+      });
 
+      if (!file) throw new Error("No file provided for profile picture");
 
-
-private async handleProfilePictureUpload(file: any): Promise<string> {
-  try {
-    logger.debug(`Handling profile picture upload:`, {
-      originalname: file.originalname,
-      mimetype: file.mimetype,
-      size: file.size,
-      fieldname: file.fieldname
-    });
-
-    if (!file) throw new Error('No file provided for profile picture');
-
-    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    if (!allowedMimeTypes.includes(file.mimetype)) {
-      throw new Error(`Invalid file type: ${file.mimetype}. Allowed types: ${allowedMimeTypes.join(', ')}`);
-    }
-
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      throw new Error(`File too large: ${file.size} bytes. Maximum size: 5MB`);
-    }
-
-    // Ensure uploads directory exists
-    const uploadsDir = path.join(process.cwd(), 'uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-      logger.info(`Created uploads directory: ${uploadsDir}`);
-    }
-
-    // Generate safe filename
-    const extension = path.extname(file.originalname) || '.jpg';
-    const fileName = `profile-${Date.now()}-${Math.round(Math.random() * 1e9)}${extension}`;
-    const filePath = path.join(uploadsDir, fileName);
-
-    // Save file to disk
-    let fileData: Buffer;
-    if (file.buffer) {
-      fileData = file.buffer;
-    } else if (file.path) {
-      fileData = await fs.promises.readFile(file.path);
-    } else {
-      throw new Error('File data not found in buffer or path');
-    }
-
-    await fs.promises.writeFile(filePath, fileData);
-
-    // Remove temp file if uploaded via multer disk storage
-    if (file.path && file.path !== filePath) {
-      try { await fs.promises.unlink(file.path); } catch {}
-    }
-
-    // Construct full URL for frontend
-    const fileUrl = `${process.env.SERVER_URL || 'http://localhost:5000'}/uploads/${fileName}`;
-
-    logger.info(`Profile picture uploaded successfully: ${fileUrl}`, {
-      originalName: file.originalname,
-      finalName: fileName,
-      size: file.size,
-      type: file.mimetype,
-      savedPath: filePath
-    });
-
-    return fileUrl;
-
-  } catch (error: any) {
-    logger.error(`Error in handleProfilePictureUpload: ${error.message}`, {
-      error: error.stack,
-      fileInfo: {
-        originalname: file?.originalname,
-        mimetype: file?.mimetype,
-        size: file?.size
+      const allowedMimeTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/jpg",
+        "image/webp",
+      ];
+      if (!allowedMimeTypes.includes(file.mimetype)) {
+        throw new Error(`Invalid file type: ${file.mimetype}`);
       }
-    });
-    throw new Error(`Failed to upload profile picture: ${error.message}`);
-  }
-}
 
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) throw new Error("File too large (max 5MB)");
+
+      const imageUrl = await uploadFileToS3(file);
+
+      logger.info(`Profile picture uploaded successfully to S3: ${imageUrl}`);
+      return imageUrl;
+    } catch (error: any) {
+      logger.error(`Error uploading profile picture: ${error.message}`);
+      throw new Error(`Failed to upload profile picture: ${error.message}`);
+    }
+  }
 }

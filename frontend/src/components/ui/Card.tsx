@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface CardProps {
   children: React.ReactNode;
@@ -6,11 +6,15 @@ interface CardProps {
   hover?: boolean;
 }
 
-const Card: React.FC<CardProps> = ({ children, className = '', hover = false }) => {
+const Card: React.FC<CardProps> = ({
+  children,
+  className = "",
+  hover = false,
+}) => {
   return (
     <div
       className={`bg-white rounded-xl shadow-lg ${
-        hover ? 'hover:shadow-2xl transition-shadow duration-300' : ''
+        hover ? "hover:shadow-2xl transition-shadow duration-300" : ""
       } ${className}`}
     >
       {children}

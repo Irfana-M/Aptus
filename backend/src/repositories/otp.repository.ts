@@ -1,6 +1,6 @@
-import { OtpModel } from "../models/otp.model.js";
-import type { IOtp } from "../interfaces/models/otp.interface.js";
-import { logger } from "../utils/logger.js";
+import { OtpModel } from "../models/otp.model";
+import type { IOtp } from "../interfaces/models/otp.interface";
+import { logger } from "../utils/logger";
 
 export class OtpRepository {
   async saveOtp(
@@ -21,7 +21,9 @@ export class OtpRepository {
         role,
       });
       const savedOtp = await newOtp.save();
-      logger.info(`OTP saved for ${email}, purpose: ${otpPurpose}, role: ${role}`);
+      logger.info(
+        `OTP saved for ${email}, purpose: ${otpPurpose}, role: ${role}`
+      );
       return savedOtp;
     } catch (error: any) {
       logger.error(`Failed to save OTP for ${email}: ${error.message}`);
@@ -47,7 +49,9 @@ export class OtpRepository {
   async deleteOtp(email: string, otpPurpose: string): Promise<void> {
     try {
       const result = await OtpModel.deleteMany({ email, otpPurpose });
-      logger.info(`Deleted ${result.deletedCount} OTP(s) for ${email}, purpose: ${otpPurpose}`);
+      logger.info(
+        `Deleted ${result.deletedCount} OTP(s) for ${email}, purpose: ${otpPurpose}`
+      );
     } catch (error: any) {
       logger.error(`Failed to delete OTP for ${email}: ${error.message}`);
       throw new Error("Failed to delete OTP");
@@ -59,9 +63,13 @@ export class OtpRepository {
     otpPurpose: "signup" | "forgotPassword"
   ): Promise<IOtp | null> {
     try {
-      const foundOtp = await OtpModel.findOne({ otp, otpPurpose }).lean().exec();
+      const foundOtp = await OtpModel.findOne({ otp, otpPurpose })
+        .lean()
+        .exec();
       if (foundOtp) {
-        logger.info(`OTP matched for email: ${foundOtp.email}, purpose: ${otpPurpose}`);
+        logger.info(
+          `OTP matched for email: ${foundOtp.email}, purpose: ${otpPurpose}`
+        );
       } else {
         logger.warn(`OTP not found or expired: ${otp}, purpose: ${otpPurpose}`);
       }

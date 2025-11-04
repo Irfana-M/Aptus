@@ -1,5 +1,5 @@
-import mongoose, { Schema } from 'mongoose';
-import type { StudentProfile } from '../interfaces/models/student.interface.js';
+import mongoose, { Schema } from "mongoose";
+import type { StudentProfile } from "../interfaces/models/student.interface";
 
 const parentInfoSchema = new Schema({
   name: String,
@@ -24,8 +24,8 @@ const studentSchema = new Schema<StudentProfile>(
   {
     fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true, index: true },
-    phoneNumber: { type: String, required: true },
-    password: { type: String, required: true },
+    phoneNumber: { type: String },
+    password: { type: String },
     age: { type: Number },
     gender: { type: String },
     dateOfBirth: { type: Date },
@@ -33,11 +33,20 @@ const studentSchema = new Schema<StudentProfile>(
     academicDetails: academicDetailsSchema,
     profileImage: { type: String },
     goal: { type: String },
-    isVerified: { type: Boolean,required:true, default: false },
+    isVerified: { type: Boolean, required: true, default: false },
     isBlocked: { type: Boolean, default: false },
     hasPaid: { type: Boolean, default: false },
+    authProvider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
+    googleId: { type: String },
   },
   { timestamps: true }
 );
 
-export const StudentModel = mongoose.model<StudentProfile>('Student', studentSchema)
+export const StudentModel = mongoose.model<StudentProfile>(
+  "Student",
+  studentSchema
+);

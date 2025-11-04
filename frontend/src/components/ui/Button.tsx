@@ -8,11 +8,13 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-blue-600",
+          "bg-[rgb(73,187,189)] text-white hover:bg-[rgb(59,167,169)] focus-visible:ring-[rgb(73,187,189)]",
         secondary:
           "bg-slate-100 text-slate-900 hover:bg-slate-200 focus-visible:ring-slate-400",
         ghost:
           "bg-transparent text-slate-700 hover:bg-slate-50 focus-visible:ring-slate-400",
+        outline:
+          "border border-slate-300 bg-transparent text-slate-700 hover:bg-slate-50 focus-visible:ring-slate-400",
       },
       size: {
         sm: "h-9 px-3",

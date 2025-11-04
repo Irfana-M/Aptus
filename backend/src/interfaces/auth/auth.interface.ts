@@ -1,22 +1,43 @@
-export interface AuthUser {
-    _id: string;
-    fullName: string;
-    email: string;
-    password: string;
-    phoneNumber: string;
-    role: 'student' | 'mentor';
-    isVerified: boolean;
-    isProfileComplete?: boolean | undefined; 
-    isPaid?: boolean | undefined;
-    id?: string | undefined; 
-}
-export interface MentorAuthUser extends AuthUser {
-  role: "mentor";
-  academicQualification?: { institutionName: string; degree: string; graduationYear: string }[] | undefined;
-  subjectProficiency?: { subject: string; level: string }[] | undefined;
+export interface BaseUser {
+  _id: string; 
+  email: string;
+  password: string;
+  role: 'mentor' | 'student';
+  isVerified: boolean;
+  isBlocked?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-export interface StudentAuthUser extends AuthUser {
-  isPaid?: boolean; 
+export interface AuthUser extends BaseUser {
+  fullName: string;
+  phoneNumber: string;
+  isProfileComplete?: boolean;
+  approvalStatus?: "pending" | "approved" | "rejected";
+  id?: string;
+}
+
+
+export interface MentorAuthUser extends Omit<AuthUser, 'role'> {
+  role: "mentor"; 
+  academicQualifications?: { 
+    institutionName: string; 
+    degree: string; 
+    graduationYear: string 
+  }[] | undefined;
+  subjectProficiency?: { 
+    subject: string; 
+    level: string 
+  }[] | undefined;
+  profilePicture?: string | undefined;
+  profileImageUrl?: string | undefined;
+}
+
+export interface StudentAuthUser extends Omit<AuthUser, 'role'> {
   role: "student";
+  isPaid?: boolean;
+  gradeLevel?: string;
+  school?: string;
+  parentName?: string;
+  parentPhone?: string; 
 }

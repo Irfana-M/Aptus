@@ -1,10 +1,16 @@
-import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository.js";
-import type { AuthUser } from "../interfaces/auth/auth.interface.js";
-import { logger } from "../utils/logger.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
+import { injectable, inject } from 'inversify';
+import type { IStudentService } from "../interfaces/services/IStudentService";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
+import type { AuthUser } from "../interfaces/auth/auth.interface";
+import { logger } from "../utils/logger";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { TYPES } from '../types';
 
-export class StudentService {
-  constructor(private studentRepo: IStudentRepository) {}
+@injectable()
+export class StudentService implements IStudentService {
+  constructor(
+    @inject(TYPES.IStudentRepository) private studentRepo: IStudentRepository
+  ) {}
 
   async registerStudent(data: AuthUser): Promise<AuthUser> {
     try {
@@ -20,8 +26,12 @@ export class StudentService {
       logger.info(`Student registered successfully: ${student.email}`);
       return student;
     } catch (error: any) {
-      logger.error(`Student registration failed for ${data.email}: ${error.message}`);
+      logger.error(
+        `Student registration failed for ${data.email}: ${error.message}`
+      );
       throw error;
     }
   }
+
+  // You can add more methods here that implement IStudentService
 }

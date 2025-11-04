@@ -1,4 +1,4 @@
-import type { IOtp } from "../models/otp.interface.js";
+import type { IOtp } from "../models/otp.interface";
 
 export interface IOtpService {
   generateAndSaveOtp(
@@ -6,24 +6,19 @@ export interface IOtpService {
     otpPurpose: "signup" | "forgotPassword",
     deliveryMethod: "email",
     expiresAt: Date,
-    role: "student" | "mentor",
+    role: "student" | "mentor"
   ): Promise<IOtp>;
 
   verifyOtp(
     email: string,
     otpPurpose: "signup" | "forgotPassword",
-    otp: string,
+    otp: string
   ): Promise<IOtp>;
 
-  resendOtp(
-    email: string,
-  ): Promise<void>
-  
-findByOtp(
-  otp: string,
-  otpPurpose: "signup" | "forgotPassword"
-): Promise<IOtp | null>;
+  resendOtp(email: string): Promise<void>;
 
-  
-
+  findByOtp(
+    otp: string,
+    otpPurpose: "signup" | "forgotPassword"
+  ): Promise<IOtp | null>;
 }

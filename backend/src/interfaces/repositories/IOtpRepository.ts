@@ -1,4 +1,4 @@
-import type { IOtp } from "../models/otp.interface.js";
+import type { IOtp } from "../models/otp.interface";
 
 export interface IOtpRepository {
   saveOtp(
@@ -7,7 +7,7 @@ export interface IOtpRepository {
     otpPurpose: "signup" | "forgotPassword",
     expiresAt: Date,
     deliveryMethod: "email",
-    role: "student" | "mentor",
+    role: "student" | "mentor"
   ): Promise<IOtp>;
 
   findOtp(email: string, otpPurpose: string): Promise<IOtp | null>;

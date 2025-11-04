@@ -1,14 +1,21 @@
-import type { IAuthRepository } from "../interfaces/auth/IAuthRepository.js";
-import type { AuthUser } from "../interfaces/auth/auth.interface.js";
-import type { RegisterUserDto } from "../dto/RegisteruserDTO.js";
-import { logger } from "../utils/logger.js"; 
-import { HttpStatusCode } from "../constants/httpStatus.js"; 
+import type { IAuthRepository } from "../interfaces/auth/IAuthRepository";
+import type { AuthUser } from "../interfaces/auth/auth.interface";
+import type { RegisterUserDto } from "../dto/auth/RegisteruserDTO";
+import { logger } from "../utils/logger"; 
+import { HttpStatusCode } from "../constants/httpStatus"; 
 
-export class AuthRepository implements IAuthRepository {
+import { injectable, inject } from "inversify";
+import { TYPES } from "../types";
+import type { IMentorAuthRepository } from "@/interfaces/repositories/IMentorAuthRepository";
+import type { IStudentAuthRepository } from "@/interfaces/repositories/IStudentAuthRepository";
+
+@injectable()
+export class AuthRepository implements IAuthRepository<AuthUser> {
   constructor(
-    private _mentorRepo: IAuthRepository,
-    private _studentRepo: IAuthRepository
+    @inject(TYPES.IMentorAuthRepository) private _mentorRepo: IMentorAuthRepository,
+    @inject(TYPES.IStudentAuthRepository) private _studentRepo: IStudentAuthRepository
   ) {}
+
 
   async findByEmail(email: string): Promise<AuthUser | null> {
     try {
@@ -59,31 +66,6 @@ export class AuthRepository implements IAuthRepository {
       throw error;
     }
   }
-
-  async updatePassword(email: string, hashedPassword: string): Promise<void> {
-    try {
-      let user = await this._mentorRepo.findByEmail(email);
-      if (user) {
-        await this._mentorRepo.updatePassword(email, hashedPassword);
-        logger.info(`Password updated for mentor: ${email}`);
-        return;
-      }
-
-      user = await this._studentRepo.findByEmail(email);
-      if (user) {
-        await this._studentRepo.updatePassword(email, hashedPassword);
-        logger.info(`Password updated for student: ${email}`);
-        return;
-      }
-
-      logger.warn(`Password update failed: User not found (${email})`);
-      throw { statusCode: HttpStatusCode.NOT_FOUND, message: "User not found" };
-    } catch (error: any) {
-      logger.error(`Error updating password: ${email} - ${error.message}`);
-      throw error;
-    }
-  }
-
 
   async block(id: string): Promise<boolean> {
     try {

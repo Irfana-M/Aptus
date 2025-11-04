@@ -1,20 +1,98 @@
+import { injectable, inject } from "inversify";
+import { TYPES } from "../types";
 import type { Request, Response, NextFunction } from "express";
-import type { IAdminService } from "../interfaces/services/IAdminService.js";
-import { logger } from "../utils/logger.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
+import type { IAdminService } from "../interfaces/services/IAdminService";
+import { logger } from "../utils/logger";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { generateAccessToken, verifyRefreshToken } from "@/utils/jwt.util";
+import { AppError } from "@/utils/AppError";
 
+@injectable()
 export class AdminController {
-  constructor(private _adminService: IAdminService) {}
+  constructor(
+    @inject(TYPES.IAdminService) private _adminService: IAdminService
+  ) {}
+
+  refreshAccessToken = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const refreshToken = req.cookies?.refreshToken;
+      console.log("🔐 Backend Refresh - Cookies:", req.cookies);
+      console.log(
+        "🔐 Backend Refresh - Refresh token present:",
+        !!refreshToken
+      );
+      if (!refreshToken) {
+        throw new AppError(
+          "No refresh token provided",
+          HttpStatusCode.UNAUTHORIZED
+        );
+      }
+
+      const payload = verifyRefreshToken(refreshToken);
+      console.log("🔐 Backend Refresh - Token payload:", payload);
+      if (!payload || payload.role !== "admin") {
+        throw new AppError(
+          "Unauthorized refresh attempt",
+          HttpStatusCode.FORBIDDEN
+        );
+      }
+
+      const newAccessToken = generateAccessToken({
+        id: payload.id,
+        role: payload.role,
+        email: payload.email,
+      });
+
+      logger.info(`Admin ${payload.id} refreshed access token`);
+
+      return res.status(HttpStatusCode.OK).json({
+        success: true,
+        accessToken: newAccessToken,
+        admin: {
+          _id: payload.id,
+          email: payload.email,
+          role: payload.role,
+        },
+        message: "Admin access token refreshed successfully",
+      });
+    } catch (error) {
+      next(
+        error instanceof AppError
+          ? error
+          : new AppError(
+              "Admin token refresh failed",
+              HttpStatusCode.INTERNAL_SERVER_ERROR
+            )
+      );
+    }
+  };
 
   login = async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
-      logger.info(`Admin login attempt: ${email}`);
 
       const result = await this._adminService.login(email, password);
 
+      const { accessToken, refreshToken, admin } = result;
+
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        path: "/",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
       logger.info(`Admin login successful: ${email}`);
-      res.status(HttpStatusCode.OK).json(result);
+      return res.status(HttpStatusCode.OK).json({
+        success: true,
+        accessToken,
+        admin,
+        message: "Login successful",
+      });
     } catch (error: any) {
       logger.error(`Admin login failed: ${req.body.email} - ${error.message}`);
       res.status(HttpStatusCode.UNAUTHORIZED).json({ message: error.message });
@@ -32,6 +110,46 @@ export class AdminController {
       res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
         .json({ message: error.message });
+    }
+  };
+
+  getAllMentors = async (req: Request, res: Response) => {
+    try {
+      logger.info("Admin: Fetching all mentors");
+      const mentors = await this._adminService.getAllMentors();
+      logger.info(`Admin: Found ${mentors.length} mentors`);
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: mentors,
+        count: mentors.length,
+      });
+    } catch (error: any) {
+      logger.error(`Error fetching all mentors: ${error.message}`);
+      res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  };
+
+  getAllStudents = async (req: Request, res: Response) => {
+    try {
+      logger.info("Admin: Fetching all students");
+      const students = await this._adminService.getAllStudents();
+
+      console.log("Students found", students);
+      logger.info(`Admin: Found ${students.length} students`);
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: students,
+        count: students.length,
+      });
+    } catch (error: any) {
+      logger.error(`Error fetching all mentors: ${error.message}`);
+      res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: error.message,
+      });
     }
   };
 

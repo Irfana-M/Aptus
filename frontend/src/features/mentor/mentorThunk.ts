@@ -3,7 +3,6 @@ import { mentorApi } from "./mentorApi";
 import type { MentorProfile } from "./mentorSlice";
 import type { RootState } from "../../app/store";
 
-// ✅ Update mentor profile
 export const updateMentorProfile = createAsyncThunk<
   MentorProfile,
   FormData,
@@ -13,7 +12,6 @@ export const updateMentorProfile = createAsyncThunk<
   return data;
 });
 
-// ✅ Submit profile for approval
 export const submitProfileForApproval = createAsyncThunk<
   MentorProfile,
   void,
@@ -23,7 +21,6 @@ export const submitProfileForApproval = createAsyncThunk<
   return data;
 });
 
-// ✅ Get mentor profile
 export const fetchMentorProfile = createAsyncThunk<
   MentorProfile,
   void,
@@ -33,7 +30,6 @@ export const fetchMentorProfile = createAsyncThunk<
   return data;
 });
 
-// ✅ Admin approve mentor
 export const approveMentor = createAsyncThunk<
   { message: string },
   string,
@@ -43,7 +39,6 @@ export const approveMentor = createAsyncThunk<
   return data;
 });
 
-// ✅ Admin reject mentor
 export const rejectMentor = createAsyncThunk<
   { message: string },
   { mentorId: string; reason: string },

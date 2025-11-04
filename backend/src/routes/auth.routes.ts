@@ -1,76 +1,109 @@
 import { Router } from "express";
-import { AuthController } from "../controllers/auth.controller.js";
-import { AuthService } from "../services/authService.js";
-import { AuthRepository } from "../repositories/auth.repository.js";
-import { OtpService } from "../services/otp.services.js";
-import { NodemailerService } from "../services/email.service.js";
-import { OtpRepository } from "../repositories/otp.repository.js";
-import { OtpController } from "../controllers/otp.controller.js";
+import { AuthController } from "../controllers/auth.controller";
+import { AuthService } from "../services/auth.service";
+import { AuthRepository } from "../repositories/auth.repository";
+import { OtpService } from "../services/otp.services";
+import { NodemailerService } from "../services/email.service";
+import { OtpRepository } from "../repositories/otp.repository";
+import { OtpController } from "../controllers/otp.controller";
 
-import { StudentAuthRepository } from "../repositories/studentAuth.repository.js";
-import { MentorAuthRepository } from "../repositories/mentorAuth.repository.js";
-import type { IAuthRepository } from "../interfaces/auth/IAuthRepository.js";
+import { StudentAuthRepository } from "../repositories/studentAuth.repository";
+import { MentorAuthRepository } from "../repositories/mentorAuth.repository";
+import type { IAuthRepository } from "../interfaces/auth/IAuthRepository";
+import type { IVerificationRepository } from "../interfaces/repositories/IVerificationRepository";
 
-import express from "express";
-import passport from   "../config/passport.config.js"
-import jwt from "jsonwebtoken";
-import { generateAccessToken } from "../utils/jwt.util.js";
-import { ProfileService } from "../services/profile.service.js";
+import passport from "../config/passport.config";
+import { generateAccessToken } from "../utils/jwt.util";
+import { ProfileService } from "../services/profile.service";
+import { env } from "../utils/env";
+import type { Request, Response } from "express";
+import { container } from "@/inversify.config";
+import { TYPES } from "@/types";
 
 const router = Router();
 
-router.get("/google", passport.authenticate("google", { scope: ["profile", "email"],session: false,
-    prompt: "select_account" }));
+router.get(
+  "/google",
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    session: false,
+    prompt: "select_account",
+  })
+);
 
 router.get(
   "/google/callback",
-  passport.authenticate("google", { failureRedirect: "http://localhost:5173/login?error=google_auth_failed",session: false }),
-  (req, res) => {
-    try{
-    const user = req.user as any;
-
-    if (!user) {
-        return res.redirect("http://localhost:5173/login?error=no_user");
+  passport.authenticate("google", {
+    failureRedirect: `${env.frontend.loginUrl}?error=google_auth_failed`,
+    session: false,
+  }),
+  (req: Request, res: Response) => {
+  
+    try {
+      interface GoogleUser {
+        email?: string;
+        _id?: string;
+        id?: string;
+        role?: string;
       }
-    
-    const token = generateAccessToken({
-      email: user.email,
-      id: user._id || user.id,
-        role: user.role || "student"
-    });
 
-    console.log("Google auth successful, redirecting with token");
-    
-    res.redirect(`http://localhost:5173/auth/google/callback?token=${token}&email=${user.email}`);
-  }
-  catch (error) {
+      const user = req.user as GoogleUser;
+
+      if (!user) {
+        return res.redirect(`${env.frontend.loginUrl}?error=no_user`);
+      }
+
+      if (!user.email) {
+        return res.redirect(`${env.frontend.loginUrl}?error=no_email`);
+      }
+
+      const validRole = (user.role && ["student", "admin", "mentor"].includes(user.role)) 
+        ? user.role as "student" | "admin" | "mentor"
+        : "student";
+
+      const token = generateAccessToken({
+        email: user.email,
+        id: user._id || user.id || "unknown",
+        role: validRole, 
+      });
+
+      console.log("Google auth successful, redirecting with token");
+
+      res.redirect(
+        `${env.frontend.googleCallbackUrl}?token=${token}&email=${user.email}`
+      );
+    } catch (error: unknown) {
       console.error("Token generation error:", error);
-      res.redirect("http://localhost:5173/login?error=token_error");
+      res.redirect(`${env.frontend.loginUrl}?error=token_error`);
     }
-}
+  }
 );
 
-
-
-const studentRepo = new StudentAuthRepository();   
+const studentRepo = new StudentAuthRepository();
 const mentorRepo = new MentorAuthRepository();
 const authRepository = new AuthRepository(mentorRepo, studentRepo);
 const otpRepository = new OtpRepository();
 const emailService = new NodemailerService();
 const profileService = new ProfileService();
 
-const verificationRepositories = new Map<string, any>([
-  ["student", studentRepo],
-  ["mentor", mentorRepo],
+
+const verificationRepositories: Map<string, IVerificationRepository> = new Map([
+  ["student", studentRepo as IVerificationRepository],
+  ["mentor", mentorRepo as IVerificationRepository],
 ]);
 
-const authRepositories: Map<string, IAuthRepository> = new Map<string, IAuthRepository>([
+
+const authRepositories: Map<string, IAuthRepository> = new Map([
   ["student", studentRepo as IAuthRepository],
   ["mentor", mentorRepo as IAuthRepository],
 ]);
 
-
-const otpService = new OtpService(otpRepository, emailService, verificationRepositories, authRepositories );
+const otpService = new OtpService(
+  otpRepository,
+  emailService,
+  verificationRepositories,
+  authRepositories
+);
 const authService = new AuthService(
   authRepository,
   otpService,
@@ -79,15 +112,14 @@ const authService = new AuthService(
   mentorRepo,
   profileService
 );
-const authController = new AuthController(authService, otpService);
-const otpController = new OtpController(otpService);
-
+const authController = container.get<AuthController>(TYPES.AuthController);
+const otpController = container.get<OtpController>(TYPES.OtpController);
 
 router.post("/signup", authController.registerUser);
 router.post("/signup/verify-otp", otpController.verifySignupOtp);
 router.post("/signup/resend-otp", otpController.resendOtp);
 router.post("/login", authController.login);
 router.post("/forgot-password/send-otp", authController.sendForgotPasswordOtp);
-router.post("/forgot-password/reset", authController.resetPassword);
+router.post("/refresh", authController.refreshAccessToken);
 
 export default router;

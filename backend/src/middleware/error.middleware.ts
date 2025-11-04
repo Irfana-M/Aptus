@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
-import { AppError } from "../utils/AppError.js";
-import { logger } from "../utils/logger.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
+import { AppError } from "../utils/AppError";
+import { logger } from "../utils/logger";
+import { HttpStatusCode } from "../constants/httpStatus";
 
 export const errorHandler = (
     err: any,

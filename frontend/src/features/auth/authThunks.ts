@@ -49,36 +49,44 @@ export const resendOtp = createAsyncThunk<void, string>(
   }
 );
 
-export const refreshAccessToken = createAsyncThunk<{ accessToken: string}, void, { rejectValue: string }>(
-  "auth/refreshToken",
-  async (_,{ rejectWithValue }) => {
-    try {
-      const res = await authApi.refreshToken();
-      return res.data;
-
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || "Token refresh failed");
-    }
+export const refreshAccessToken = createAsyncThunk<
+  { accessToken: string },
+  void,
+  { rejectValue: string }
+>("auth/refreshToken", async (_, { rejectWithValue }) => {
+  try {
+    const res = await authApi.refreshToken();
+    return res.data;
+  } catch (err: any) {
+    return rejectWithValue(
+      err.response?.data?.message || "Token refresh failed"
+    );
   }
+});
 
-);
-
-export const loginUser = createAsyncThunk<LoginResponse, LoginDto, { rejectValue: string }>(
+export const loginUser = createAsyncThunk<
+  LoginResponse,
+  LoginDto,
+  { rejectValue: string }
+>(
   "auth/login",
-  async (data, { rejectWithValue }): Promise<LoginResponse | ReturnType<typeof rejectWithValue>>  => {
+  async (
+    data,
+    { rejectWithValue }
+  ): Promise<LoginResponse | ReturnType<typeof rejectWithValue>> => {
     try {
       const res = await authApi.login(data);
       const { user, accessToken, isProfileComplete, isPaid } = res.data;
-      return { user: {
+      return {
+        user: {
           ...user,
           isProfileComplete,
-          isPaid
+          isPaid,
         },
         accessToken,
         isProfileComplete,
-        isPaid
+        isPaid,
       };
-
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || "Login failed");
     }

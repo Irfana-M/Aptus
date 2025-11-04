@@ -1,11 +1,11 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import type { RootState } from '../../app/store';
-import authApi from '../../api/authApi';
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import type { RootState } from "../../app/store";
+import authApi from "../../api/authApi";
 
 export interface Stat {
   id: string;
   name: string;
-  role: 'student' | 'mentor';
+  role: "student" | "mentor";
 }
 
 export interface DashboardState {
@@ -18,7 +18,7 @@ export interface DashboardState {
 }
 
 const initialState: DashboardState = {
- totalStudents: 0,
+  totalStudents: 0,
   totalMentors: 0,
   recentStudents: [],
   recentMentors: [],
@@ -26,26 +26,27 @@ const initialState: DashboardState = {
   error: null,
 };
 
-// Fetch dashboard data (students + mentors)
 export const fetchDashboardData = createAsyncThunk(
-  'dashboard/fetchDashboardData',
+  "dashboard/fetchDashboardData",
   async (_, thunkAPI) => {
     try {
-      const response = await authApi.get('/admin/dashboard');
+      const response = await authApi.get("/admin/dashboard");
       return response.data;
     } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.response?.data?.message || error.message);
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || error.message
+      );
     }
   }
 );
 
 const dashboardSlice = createSlice({
-  name: 'dashboard',
+  name: "dashboard",
   initialState,
   reducers: {},
-  extraReducers: builder => {
+  extraReducers: (builder) => {
     builder
-      .addCase(fetchDashboardData.pending, state => {
+      .addCase(fetchDashboardData.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
@@ -54,7 +55,7 @@ const dashboardSlice = createSlice({
         state.totalStudents = action.payload.totalStudents;
         state.totalMentors = action.payload.totalMentors;
         state.recentStudents = action.payload.recentStudents;
-        state.recentMentors = action.payload.recentMentors; 
+        state.recentMentors = action.payload.recentMentors;
       })
       .addCase(fetchDashboardData.rejected, (state, action) => {
         state.loading = false;
@@ -66,4 +67,3 @@ const dashboardSlice = createSlice({
 export const selectDashboard = (state: RootState) => state.dashboard;
 
 export default dashboardSlice.reducer;
-
