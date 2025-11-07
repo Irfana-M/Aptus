@@ -33,5 +33,27 @@ export class StudentService implements IStudentService {
     }
   }
 
-  // You can add more methods here that implement IStudentService
+  async findStudentByEmail(email: string): Promise<any> {
+    try {
+      logger.debug(`Finding student by email: ${email}`);
+      return await this.studentRepo.findByEmail(email);
+    } catch (error: any) {
+      logger.error(`Error finding student by email ${email}`, { error: error.message });
+      throw error;
+    }
+  }
+
+  async createStudent(studentData: any): Promise<any> {
+    try {
+      logger.info(`Creating student: ${studentData.email}`);
+      const student = await this.studentRepo.createUser(studentData);
+      logger.info(`Student created successfully: ${student.email}`);
+      return student;
+    } catch (error: any) {
+      logger.error(`Error creating student ${studentData.email}`, { error: error.message });
+      throw error;
+    }
+  }
 }
+
+  

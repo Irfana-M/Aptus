@@ -1,125 +1,111 @@
 import { Router } from "express";
-import { AuthController } from "../controllers/auth.controller";
-import { AuthService } from "../services/auth.service";
-import { AuthRepository } from "../repositories/auth.repository";
-import { OtpService } from "../services/otp.services";
-import { NodemailerService } from "../services/email.service";
-import { OtpRepository } from "../repositories/otp.repository";
-import { OtpController } from "../controllers/otp.controller";
-
-import { StudentAuthRepository } from "../repositories/studentAuth.repository";
-import { MentorAuthRepository } from "../repositories/mentorAuth.repository";
-import type { IAuthRepository } from "../interfaces/auth/IAuthRepository";
-import type { IVerificationRepository } from "../interfaces/repositories/IVerificationRepository";
-
 import passport from "../config/passport.config";
 import { generateAccessToken } from "../utils/jwt.util";
-import { ProfileService } from "../services/profile.service";
 import { env } from "../utils/env";
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import { container } from "@/inversify.config";
 import { TYPES } from "@/types";
 
+
+import type { AuthController } from "../controllers/auth.controller";
+import type { OtpController } from "../controllers/otp.controller";
+import type { MentorModel } from "../models/mentor.model";
+import type { StudentModel } from "../models/student.model";
+
 const router = Router();
+
+
+const authController = container.get<AuthController>(TYPES.AuthController);
+const otpController = container.get<OtpController>(TYPES.OtpController);
 
 router.get(
   "/google",
-  passport.authenticate("google", {
-    scope: ["profile", "email"],
-    session: false,
-    prompt: "select_account",
-  })
+  (req: Request, res: Response, next: NextFunction) => {
+
+    const role = req.query.role as string || 'student';
+    
+    
+    const state = Buffer.from(JSON.stringify({ 
+      role,
+      timestamp: Date.now() 
+    })).toString('base64');
+
+    console.log(`🔐 Starting Google OAuth for role: ${role}`);
+    
+    passport.authenticate("google", {
+      scope: ["profile", "email"],
+      state: state, 
+      accessType: "offline",
+      prompt: "consent"
+    })(req, res, next);
+  }
 );
 
 router.get(
   "/google/callback",
-  passport.authenticate("google", {
-    failureRedirect: `${env.frontend.loginUrl}?error=google_auth_failed`,
-    session: false,
-  }),
-  (req: Request, res: Response) => {
-  
-    try {
-      interface GoogleUser {
-        email?: string;
-        _id?: string;
-        id?: string;
-        role?: string;
+  (req: Request, res: Response, next: NextFunction) => {
+    passport.authenticate("google", {
+      failureRedirect: `${env.frontend.loginUrl}?error=google_auth_failed`,
+      session: false,
+    }, async (err: any, user: any, info: any) => {
+      try {
+        if (err || !user) {
+          console.error('Google auth failed:', err || info);
+          return res.redirect(`${env.frontend.loginUrl}?error=auth_failed`);
+        }
+
+    
+        let role = 'student';
+        try {
+          if (req.query.state) {
+            const stateData = JSON.parse(Buffer.from(req.query.state as string, 'base64').toString());
+            role = stateData.role || 'student';
+          }
+        } catch (error) {
+          console.warn('Failed to decode state, using default role');
+        }
+
+        const googleUser = user;
+        const userEmail = googleUser.emails?.[0]?.value || googleUser.email;
+
+        if (!userEmail) {
+          return res.redirect(`${env.frontend.loginUrl}?error=no_email`);
+        }
+
+        const token = generateAccessToken({
+          email: userEmail,
+          id: googleUser.id || `google-${Date.now()}`,
+          role: role as "student" | "mentor",
+        });
+
+        console.log(`Google auth successful for ${role}: ${userEmail}`);
+
+        const redirectParams = new URLSearchParams({
+          token: token,
+          email: userEmail,
+          role: role,
+          isProfileComplete: 'false',
+          approvalStatus: role === 'mentor' ? 'pending' : 'approved',
+          isPaid: 'false',
+        });
+
+        console.log('🔗 Redirect URL:', `${env.frontend.googleCallbackUrl}?${redirectParams}`);
+
+        return res.redirect(`${env.frontend.googleCallbackUrl}?${redirectParams}`);
+
+      } catch (error: unknown) {
+        console.error("Google callback error:", error);
+        return res.redirect(`${env.frontend.loginUrl}?error=token_error`);
       }
-
-      const user = req.user as GoogleUser;
-
-      if (!user) {
-        return res.redirect(`${env.frontend.loginUrl}?error=no_user`);
-      }
-
-      if (!user.email) {
-        return res.redirect(`${env.frontend.loginUrl}?error=no_email`);
-      }
-
-      const validRole = (user.role && ["student", "admin", "mentor"].includes(user.role)) 
-        ? user.role as "student" | "admin" | "mentor"
-        : "student";
-
-      const token = generateAccessToken({
-        email: user.email,
-        id: user._id || user.id || "unknown",
-        role: validRole, 
-      });
-
-      console.log("Google auth successful, redirecting with token");
-
-      res.redirect(
-        `${env.frontend.googleCallbackUrl}?token=${token}&email=${user.email}`
-      );
-    } catch (error: unknown) {
-      console.error("Token generation error:", error);
-      res.redirect(`${env.frontend.loginUrl}?error=token_error`);
-    }
+    })(req, res, next);
   }
 );
 
-const studentRepo = new StudentAuthRepository();
-const mentorRepo = new MentorAuthRepository();
-const authRepository = new AuthRepository(mentorRepo, studentRepo);
-const otpRepository = new OtpRepository();
-const emailService = new NodemailerService();
-const profileService = new ProfileService();
-
-
-const verificationRepositories: Map<string, IVerificationRepository> = new Map([
-  ["student", studentRepo as IVerificationRepository],
-  ["mentor", mentorRepo as IVerificationRepository],
-]);
-
-
-const authRepositories: Map<string, IAuthRepository> = new Map([
-  ["student", studentRepo as IAuthRepository],
-  ["mentor", mentorRepo as IAuthRepository],
-]);
-
-const otpService = new OtpService(
-  otpRepository,
-  emailService,
-  verificationRepositories,
-  authRepositories
-);
-const authService = new AuthService(
-  authRepository,
-  otpService,
-  emailService,
-  studentRepo,
-  mentorRepo,
-  profileService
-);
-const authController = container.get<AuthController>(TYPES.AuthController);
-const otpController = container.get<OtpController>(TYPES.OtpController);
-
-router.post("/signup", authController.registerUser);
-router.post("/signup/verify-otp", otpController.verifySignupOtp);
-router.post("/signup/resend-otp", otpController.resendOtp);
-router.post("/login", authController.login);
-router.post("/forgot-password/send-otp", authController.sendForgotPasswordOtp);
-router.post("/refresh", authController.refreshAccessToken);
+router.post("/signup", (req, res) => authController.registerUser(req, res));
+router.post("/signup/verify-otp", (req, res) => otpController.verifySignupOtp(req, res));
+router.post("/signup/resend-otp", (req, res) => otpController.resendOtp(req, res));
+router.post("/login", (req, res) => authController.login(req, res));
+router.post("/forgot-password/send-otp", (req, res) => authController.sendForgotPasswordOtp(req, res));
+router.post("/refresh", (req, res, next) => authController.refreshAccessToken(req, res, next));
 
 export default router;

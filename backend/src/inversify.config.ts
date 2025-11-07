@@ -57,28 +57,20 @@ container.bind<IEmailService>(TYPES.EmailService).to(NodemailerService);
 container.bind<IVerificationRepository>(TYPES.IVerificationRepository).to(StudentAuthRepository);
 
 
-container.bind<Map<string, IVerificationRepository>>("VerificationRepositories")
-  .toDynamicValue(() => {
-    const studentRepo = container.get<IStudentAuthRepository>(TYPES.IStudentAuthRepository);
-    const mentorRepo = container.get<IMentorAuthRepository>(TYPES.IMentorAuthRepository);
-    
-    return new Map<string, IVerificationRepository>([
-      ["student", studentRepo as unknown as IVerificationRepository],
-      ["mentor", mentorRepo as unknown as IVerificationRepository],
-    ]);
-  });
+container.bind<Map<string, IVerificationRepository>>(TYPES.VerificationRepositoryMap).toDynamicValue(() => {
+  const map = new Map<string, IVerificationRepository>();
+  map.set('student', container.get<IStudentAuthRepository>(TYPES.IStudentAuthRepository));
+  map.set('mentor', container.get<IMentorAuthRepository>(TYPES.IMentorAuthRepository));
+  return map;
+});
 
 
-container.bind<Map<string, IAuthRepository>>("AuthRepositories")
-  .toDynamicValue(() => {
-    const studentRepo = container.get<IStudentAuthRepository>(TYPES.IStudentAuthRepository);
-    const mentorRepo = container.get<IMentorAuthRepository>(TYPES.IMentorAuthRepository);
-    
-    return new Map<string, IAuthRepository>([
-      ["student", studentRepo as unknown as IAuthRepository],
-      ["mentor", mentorRepo as unknown as IAuthRepository],
-    ]);
-  });
+container.bind<Map<string, IAuthRepository>>(TYPES.AuthRepositoryMap).toDynamicValue(() => {
+  const map = new Map<string, IAuthRepository>();
+  map.set('student', container.get<IStudentAuthRepository>(TYPES.IStudentAuthRepository));
+  map.set('mentor', container.get<IMentorAuthRepository>(TYPES.IMentorAuthRepository));
+  return map;
+});
 
 container.bind<IStudentService>(TYPES.IStudentService).to(StudentService);
 container.bind<IAuthService>(TYPES.IAuthService).to(AuthService); 

@@ -14,10 +14,28 @@ import { TYPES } from '../types';
 export class OtpService implements IOtpService {
   constructor(
     @inject(TYPES.IOtpRepository) private _otpRepository: IOtpRepository,
-    @inject(TYPES.EmailService) private _emailService: IEmailService,
-    @inject(TYPES.IVerificationRepository) private _verificationRepositories: Map<string, IVerificationRepository>,
-    @inject(TYPES.IAuthRepository) private _authRepositories: Map<string, IAuthRepository>
-  ) {}
+    @inject(TYPES.IEmailService) private _emailService: IEmailService,
+    @inject(TYPES.VerificationRepositoryMap) private _verificationRepositories: any, // Use any for debugging
+    @inject(TYPES.AuthRepositoryMap) private _authRepositories: any // Use any for debugging
+  ) {
+    console.log('🔍 OTP Service Constructor Debug:');
+    console.log('_verificationRepositories:', this._verificationRepositories);
+    console.log('_authRepositories:', this._authRepositories);
+    console.log('Type of _verificationRepositories:', typeof this._verificationRepositories);
+    console.log('Type of _authRepositories:', typeof this._authRepositories);
+    
+    if (this._verificationRepositories && typeof this._verificationRepositories.get === 'function') {
+      console.log('✅ _verificationRepositories is a valid Map');
+    } else {
+      console.log('❌ _verificationRepositories is NOT a valid Map');
+    }
+    
+    if (this._authRepositories && typeof this._authRepositories.get === 'function') {
+      console.log('✅ _authRepositories is a valid Map');
+    } else {
+      console.log('❌ _authRepositories is NOT a valid Map');
+    }
+  }
 
   async generateAndSaveOtp(
     email: string,

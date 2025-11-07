@@ -8,6 +8,18 @@ export interface AdminLoginDto {
   password: string;
 }
 
+export interface AddStudentRequestDto {
+  fullName: string;
+  email: string;
+  phoneNumber?: string;
+}
+
+export interface AddStudentResponseDto {
+  success: boolean;
+  message: string;
+  data: StudentBaseResponseDto;
+}
+
 export const adminApi = {
   login: (data: AdminLoginDto) =>
     authApi.post<AdminLoginResponse>("/admin/login", data),
@@ -29,5 +41,10 @@ export const adminStudentApi = {
   getAllStudents: (): Promise<any> => {
     logger.api("/admin/students", "GET");
     return authApi.get<StudentBaseResponseDto[]>("/admin/students");
+  },
+
+  addStudent: (studentData: AddStudentRequestDto): Promise<any> => {
+    logger.api("/admin/students", "POST", studentData);
+    return authApi.post<AddStudentResponseDto>("/admin/students", studentData);
   },
 };

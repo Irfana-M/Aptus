@@ -8,9 +8,11 @@ import {
   fetchAllMentorsAdmin,
   fetchAllStudentsAdmin,
   refreshAdminToken,
+  addStudentAdmin
 } from "./adminThunk";
 import type { AdminLoginResponse } from "../../types/dtoTypes";
 import type { StudentBaseResponseDto } from "../../types/studentTypes";
+import type { AddStudentResponseDto } from "./adminApi";
 
 interface Admin {
   role: "admin";
@@ -25,6 +27,7 @@ interface AdminState {
   mentorProfile: MentorProfile | null;
   loading: boolean;
   error: string | null;
+   success: string | null;
   mentorsList: MentorProfile[];
   studentsList: StudentBaseResponseDto[];
   selectedStudent: StudentBaseResponseDto | null;
@@ -40,6 +43,7 @@ const initialState: AdminState = {
   selectedStudent: null,
   loading: false,
   error: null,
+  success: null,
 };
 
 const adminSlice = createSlice({
@@ -55,6 +59,7 @@ const adminSlice = createSlice({
       state.studentsList = [];
       state.selectedStudent = null;
       state.error = null;
+      state.success = null;
     },
     clearMentorProfile(state) {
       state.mentorProfile = null;
@@ -72,6 +77,9 @@ const adminSlice = createSlice({
     clearError(state) {
       state.error = null;
     },
+    clearSuccess(state) { 
+      state.success = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -79,6 +87,27 @@ const adminSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
+      .addCase(addStudentAdmin.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.success = null;
+      })
+      .addCase(
+        addStudentAdmin.fulfilled,
+        (state, action: PayloadAction<AddStudentResponseDto>) => {
+          state.loading = false;
+          state.success = action.payload.message;
+          if (action.payload.data) {
+            state.studentsList.push(action.payload.data);
+          }
+        }
+      )
+      .addCase(addStudentAdmin.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+        state.success = null;
+      })
+
       .addCase(
         refreshAdminToken.fulfilled,
         (state, action: PayloadAction<AdminLoginResponse>) => {
@@ -199,5 +228,6 @@ export const {
   setSelectedStudent,
   clearStudentsList,
   clearError,
+  clearSuccess
 } = adminSlice.actions;
 export default adminSlice.reducer;

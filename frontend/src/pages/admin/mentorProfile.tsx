@@ -181,7 +181,7 @@ const MentorProfilePage: React.FC = () => {
               )}
 
               {/* Debug info */}
-              <div className="mt-2 text-xs text-gray-500 text-center">
+              {/* <div className="mt-2 text-xs text-gray-500 text-center">
                 <p>
                   Status:{" "}
                   {imageError
@@ -191,7 +191,7 @@ const MentorProfilePage: React.FC = () => {
                     : "✅ Loaded"}
                 </p>
                 <p>Method: Backend Signed URL</p>
-              </div>
+              </div> */}
             </div>
 
             <div className="text-center space-y-2">

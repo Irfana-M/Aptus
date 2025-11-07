@@ -1,5 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { adminApi, adminStudentApi, type AdminLoginDto } from "./adminApi";
+import { adminApi, adminStudentApi, type AddStudentRequestDto, type AddStudentResponseDto, type AdminLoginDto } from "./adminApi";
 import type { AdminLoginResponse } from "../../types/dtoTypes";
 import { adminMentorApi } from "./adminApi";
 import type { RootState } from "../../app/store";
@@ -186,7 +186,38 @@ export const fetchAllStudentsAdmin = createAsyncThunk<
   }
 });
 
+export const addStudentAdmin = createAsyncThunk<
+  AddStudentResponseDto,
+  AddStudentRequestDto,
+  { rejectValue: string }
+>("admin/addStudent", async (studentData, { rejectWithValue }) => {
+  try {
+    logger.debug("🔄 Starting addStudentAdmin", studentData);
+
+    const response = await adminStudentApi.addStudent(studentData);
+
+    if (!response.data) {
+      logger.error("❌ No response data received from add student API");
+      return rejectWithValue("No response received from server");
+    }
+
+    logger.info("✅ Student added successfully:", response.data);
+    return response.data;
+  } catch (error: any) {
+    logger.error("❌ Error adding student:", {
+      error: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
+    return rejectWithValue(
+      error.response?.data?.message || "Failed to add student"
+    );
+  }
+});
+
 export const setSelectedStudent = (student: StudentBaseResponseDto | null) => ({
   type: "admin/setSelectedStudent",
   payload: student,
 });
+
+

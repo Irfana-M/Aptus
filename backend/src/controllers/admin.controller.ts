@@ -6,12 +6,70 @@ import { logger } from "../utils/logger";
 import { HttpStatusCode } from "../constants/httpStatus";
 import { generateAccessToken, verifyRefreshToken } from "@/utils/jwt.util";
 import { AppError } from "@/utils/AppError";
+import type { IStudentService } from "@/interfaces/services/IStudentService";
 
 @injectable()
 export class AdminController {
   constructor(
-    @inject(TYPES.IAdminService) private _adminService: IAdminService
+    @inject(TYPES.IAdminService) private _adminService: IAdminService,
+    @inject(TYPES.IStudentService) private _studentService: IStudentService
   ) {}
+
+  addStudent = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { fullName, email, phoneNumber } = req.body;
+
+      logger.info(`Admin: Attempting to add student - ${email}`);
+
+      
+      if (!fullName || !email) {
+        logger.warn(`Admin: Add student validation failed - missing name or email for ${email}`);
+        res.status(HttpStatusCode.BAD_REQUEST).json({ 
+          success: false, 
+          message: 'Full name and email are required' 
+        });
+        return;
+      }
+
+      
+      const existingStudent = await this._studentService.findStudentByEmail(email);
+      if (existingStudent) {
+        logger.warn(`Admin: Add student failed - student already exists: ${email}`);
+        res.status(HttpStatusCode.CONFLICT).json({ 
+          success: false, 
+          message: 'Student with this email already exists' 
+        });
+        return;
+      }
+
+      
+      const student = await this._studentService.createStudent({
+        fullName,
+        email,
+        phoneNumber: phoneNumber || "",
+        role: 'student',
+        isVerified: true,
+        isProfileComplete: false,
+        approvalStatus: 'approved'
+      });
+
+      logger.info(`Admin: Student added successfully - ${email}`);
+
+      res.status(HttpStatusCode.CREATED).json({
+        success: true,
+        message: 'Student added successfully',
+        data: student
+      });
+
+    } catch (error) {
+      logger.error(`Admin: Add student error for ${req.body.email}:`, error);
+      res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ 
+        success: false, 
+        message: 'Internal server error' 
+      });
+    }
+  };
+
 
   refreshAccessToken = async (
     req: Request,

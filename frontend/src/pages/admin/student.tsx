@@ -12,7 +12,7 @@ import {
   Clock,
 } from "lucide-react";
 import type { AppDispatch } from "../../app/store";
-import { fetchAllStudentsAdmin } from "../../features/admin/adminThunk";
+import { addStudentAdmin, fetchAllStudentsAdmin } from "../../features/admin/adminThunk";
 import {
   selectAllStudents,
   selectAdminLoading,
@@ -20,12 +20,15 @@ import {
   selectSelectedStudent,
   selectFilteredStudents,
   selectStudentStats,
+  selectAdminSuccess,
 } from "../../features/admin/adminSelectors";
 import {
   setSelectedStudent,
   clearError,
+  clearSuccess,
 } from "../../features/admin/adminSlice";
 import type { StudentBaseResponseDto } from "../../types/studentTypes";
+//import type { AddStudentRequestDto } from "../../features/admin/adminApi";
 import { Sidebar } from "../../components/admin/Sidebar";
 import { Topbar } from "../../components/admin/Topbar";
 import { DataTable } from "../../components/ui/DataTable";
@@ -49,6 +52,7 @@ export const StudentsManagement: React.FC = () => {
   const students = useSelector(selectAllStudents);
   const loading = useSelector(selectAdminLoading);
   const error = useSelector(selectAdminError);
+  const success = useSelector(selectAdminSuccess); // MOVED INSIDE COMPONENT
   const selectedStudent = useSelector(selectSelectedStudent);
   const stats = useSelector(selectStudentStats);
 
@@ -101,6 +105,16 @@ export const StudentsManagement: React.FC = () => {
     }
   }, [error, dispatch]);
 
+  // Add effect to clear success message
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        dispatch(clearSuccess());
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success, dispatch]);
+
   const filteredStudents = useSelector((state: any) =>
     selectFilteredStudents(state, searchTerm)
   );
@@ -127,6 +141,23 @@ export const StudentsManagement: React.FC = () => {
     if (isBlocked) return "Blocked";
     if (isVerified) return "Verified";
     return "Pending";
+  };
+
+  // UPDATE: Proper handleSaveStudent function
+  const handleSaveStudent = async (studentData: Partial<StudentBaseResponseDto>) => {
+    try {
+      await dispatch(addStudentAdmin({
+        fullName: studentData.fullName!,
+        email: studentData.email!,
+        phoneNumber: studentData.phoneNumber,
+      })).unwrap();
+      
+      // Modal will close automatically due to the success action
+      handleCloseModal();
+    } catch (error) {
+      // Error is handled by the thunk
+      console.error('Failed to add student:', error);
+    }
   };
 
   const columns: Column<StudentBaseResponseDto>[] = [
@@ -255,11 +286,6 @@ export const StudentsManagement: React.FC = () => {
     dispatch(setSelectedStudent(null));
   };
 
-  const handleSaveStudent = (studentData: Partial<StudentBaseResponseDto>) => {
-    console.log("Save student:", studentData);
-    handleCloseModal();
-  };
-
   const handleDeleteStudent = (studentId: string) => {
     if (window.confirm("Are you sure you want to delete this student?")) {
       console.log("Delete student:", studentId);
@@ -376,6 +402,13 @@ export const StudentsManagement: React.FC = () => {
             </div>
           </div>
 
+          {/* Success Display */}
+          {success && (
+            <div className="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg">
+              {success}
+            </div>
+          )}
+
           {/* Error Display */}
           {error && (
             <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
@@ -478,6 +511,8 @@ const StudentModal: React.FC<StudentModalProps> = ({
   onClose,
   onSave,
 }) => {
+//  const dispatch = useDispatch<AppDispatch>();
+  const loading = useSelector(selectAdminLoading);
   const [formData, setFormData] = useState<Partial<StudentBaseResponseDto>>(
     student || {
       fullName: "",
@@ -486,13 +521,39 @@ const StudentModal: React.FC<StudentModalProps> = ({
     }
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.fullName?.trim()) {
+      newErrors.fullName = 'Full name is required';
+    }
+
+    if (!formData.email?.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    
+    if (!validateForm()) return;
+
+    await onSave(formData);
   };
 
   const handleChange = (field: keyof StudentBaseResponseDto, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: '' }));
+    }
   };
 
   return (
@@ -505,6 +566,7 @@ const StudentModal: React.FC<StudentModalProps> = ({
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
+            disabled={loading}
           >
             <XCircle size={24} />
           </button>
@@ -513,53 +575,75 @@ const StudentModal: React.FC<StudentModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Full Name
+              Full Name *
             </label>
             <input
               type="text"
               value={formData.fullName || ""}
               onChange={(e) => handleChange("fullName", e.target.value)}
-              className="w-full p-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+              className={`w-full p-2 bg-white border rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-600 focus:border-transparent ${
+                errors.fullName ? 'border-red-500' : 'border-gray-300'
+              }`}
               required
+              disabled={loading}
             />
+            {errors.fullName && (
+              <p className="text-red-500 text-xs mt-1">{errors.fullName}</p>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
+              Email *
             </label>
             <input
               type="email"
               value={formData.email || ""}
               onChange={(e) => handleChange("email", e.target.value)}
-              className="w-full p-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+              className={`w-full p-2 bg-white border rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-600 focus:border-transparent ${
+                errors.email ? 'border-red-500' : 'border-gray-300'
+              }`}
               required
+              disabled={loading}
             />
+            {errors.email && (
+              <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Phone
+              Phone Number
             </label>
             <input
               type="tel"
               value={formData.phoneNumber || ""}
               onChange={(e) => handleChange("phoneNumber", e.target.value)}
               className="w-full p-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+              disabled={loading}
             />
           </div>
 
           <div className="flex space-x-3 pt-4">
             <button
               type="submit"
-              className="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors font-medium"
+              disabled={loading}
+              className="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:bg-purple-400 disabled:cursor-not-allowed"
             >
-              {student ? "Update" : "Add"} Student
+              {loading ? (
+                <div className="flex items-center justify-center">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Adding...
+                </div>
+              ) : (
+                `${student ? "Update" : "Add"} Student`
+              )}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors font-medium"
+              disabled={loading}
+              className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors font-medium disabled:bg-gray-200 disabled:cursor-not-allowed"
             >
               Cancel
             </button>

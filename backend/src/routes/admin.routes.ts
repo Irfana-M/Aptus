@@ -48,5 +48,6 @@ adminRouter.get(
   adminController.getAllStudents
 );
 adminRouter.post("/refresh", adminController.refreshAccessToken);
+adminRouter.post('/students', adminController.addStudent);
 
 export default adminRouter;

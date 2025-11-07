@@ -9,6 +9,8 @@ const TYPES = {
   IMentorAuthRepository: Symbol.for("IMentorAuthRepository"),
   IVerificationRepository: Symbol.for("IVerificationRepository"),
 
+  VerificationRepositoryMap: Symbol.for("VerificationRepositoryMap"),
+  AuthRepositoryMap: Symbol.for("AuthRepositoryMap"),
   // Services
   IAuthService: Symbol.for("IAuthService"),
   IAdminService: Symbol.for("IAdminService"),

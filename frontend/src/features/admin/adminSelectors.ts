@@ -18,6 +18,7 @@ export const selectMentorProfile = (state: RootState) =>
   state.admin.mentorProfile;
 export const selectAdminLoading = (state: RootState) => state.admin.loading;
 export const selectAdminError = (state: RootState) => state.admin.error;
+export const selectAdminSuccess = (state: RootState) => state.admin.success;
 
 export const selectAllStudents = (state: RootState) => {
   const students = state.admin.studentsList;
