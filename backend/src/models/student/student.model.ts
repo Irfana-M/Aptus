@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import type { StudentProfile } from "../interfaces/models/student.interface";
+import type { StudentProfile } from "../../interfaces/models/student.interface";
 
 const parentInfoSchema = new Schema({
   name: String,

@@ -1,25 +1,19 @@
 import type { IAdminRepository } from "../interfaces/repositories/IAdminRepository";
-import { Admin } from "../models/admin.model";
-import { StudentModel } from "../models/student.model";
-import { MentorModel } from "../models/mentor.model";
+import { Admin } from "../models/admin/admin.model";
+import { StudentModel } from "../models/student/student.model";
+import { MentorModel } from "../models/mentor/mentor.model";
 import type { IAdmin } from "../interfaces/models/admin.interface";
+import { BaseRepository } from "./baseRepository";
+import { injectable } from "inversify";
 
-export class AdminRepository implements IAdminRepository {
+@injectable()
+export class AdminRepository extends BaseRepository<IAdmin> implements IAdminRepository {
+  constructor() {
+    super(Admin);
+  }
+
   async findByEmail(email: string): Promise<IAdmin | null> {
-    return Admin.findOne({ email });
+    return await this.findOne({ email });
   }
 
-  async create(admin: Partial<IAdmin>): Promise<IAdmin> {
-    return Admin.create(admin);
-  }
-  async getAllStudents() {
-    return await StudentModel.find({}, "fullName email createdAt");
-  }
-
-  async getAllMentors() {
-    return await MentorModel.find(
-      {},
-      "fullName email createdAt approvalStatus"
-    );
-  }
 }

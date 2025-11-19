@@ -6,8 +6,10 @@ export interface BaseUserResponseDto {
   role: "student" | "mentor";
   isVerified: boolean;
   isProfileComplete?: boolean;
+  isBlocked?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
-
 export interface MentorBaseResponseDto extends BaseUserResponseDto {
   approvalStatus?: "approved" | "pending" | "rejected";
 }

@@ -4,7 +4,6 @@ import type { IAdminRepository } from "../interfaces/repositories/IAdminReposito
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt.util";
 import { comparePasswords } from "../utils/password.utils";
 import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository";
-import { NodemailerService } from "./email.service";
 import { logger } from "../utils/logger";
 import type { MentorProfile } from "../interfaces/models/mentor.interface";
 import type { IStudentRepository } from "@/interfaces/repositories/IStudentRepository";
@@ -21,6 +20,15 @@ import type {
 } from "@/dto/admin/AdminLoginResponseDTO";
 import { getSignedFileUrl } from "@/utils/s3Upload";
 import type { IEmailService } from "@/interfaces/services/IEmailService";
+import { StudentMapper } from "@/mappers/StudentMapper";
+import bcrypt from "bcryptjs";
+import type { StudentAuthUser } from "@/interfaces/auth/auth.interface";
+import { TrialClassMapper } from "@/mappers/trialClassMapper";
+import { TrialClass, type ITrialClassDocument } from "@/models/student/trialClass.model";
+import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
+import type { TrialClassResponseDto } from "@/dto/student/trialClassDTO";
+import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository";
+
 
 @injectable()
 export class AdminService implements IAdminService {
@@ -28,7 +36,9 @@ export class AdminService implements IAdminService {
     @inject(TYPES.IAdminRepository) private _adminRepo: IAdminRepository,
     @inject(TYPES.IMentorRepository) private _mentorRepo: IMentorRepository,
     @inject(TYPES.IEmailService) private _emailService: IEmailService,
-    @inject(TYPES.IStudentRepository) private _studentRepo: IStudentRepository
+    @inject(TYPES.IStudentRepository) private _studentRepo: IStudentRepository,
+    @inject(TYPES.ITrialClassRepository) private _trialClassRepo: ITrialClassRepository,
+    @inject(TYPES.ISubjectRepository) private _subjectRepo: ISubjectRepository,
   ) {}
 
   async login(email: string, password: string): Promise<AdminLoginResponseDto> {
@@ -264,4 +274,548 @@ export class AdminService implements IAdminService {
       );
     }
   }
+
+  async blockMentor(mentorId: string): Promise<MentorResponseDto> {
+    try {
+      logger.info(`Blocking mentor: ${mentorId}`);
+
+      const blocked = await this._mentorRepo.block(mentorId);
+      if (!blocked) {
+        throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
+      }
+
+      const mentor = await this._mentorRepo.findById(mentorId);
+      if (!mentor) {
+        throw new AppError(
+          "Mentor not found after blocking",
+          HttpStatusCode.NOT_FOUND
+        );
+      }
+
+      const mentorDto = MentorMapper.toResponseDto(mentor);
+
+      logger.info(`Mentor blocked successfully: ${mentorId}`);
+      return mentorDto;
+    } catch (error) {
+      logger.error(`Error blocking mentor: ${mentorId}`, error);
+      if (error instanceof AppError) throw error;
+      throw new AppError(
+        "Failed to block mentor",
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async unblockMentor(mentorId: string): Promise<MentorResponseDto> {
+    try {
+      logger.info(`Unblocking mentor: ${mentorId}`);
+
+      const unblocked = await this._mentorRepo.unblock(mentorId);
+      if (!unblocked) {
+        throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
+      }
+
+      const mentor = await this._mentorRepo.findById(mentorId);
+      if (!mentor) {
+        throw new AppError(
+          "Mentor not found after unblocking",
+          HttpStatusCode.NOT_FOUND
+        );
+      }
+
+      const mentorDto = MentorMapper.toResponseDto(mentor);
+
+      logger.info(`Mentor unblocked successfully: ${mentorId}`);
+      return mentorDto;
+    } catch (error) {
+      logger.error(`Error unblocking mentor: ${mentorId}`, error);
+      if (error instanceof AppError) throw error;
+      throw new AppError(
+        "Failed to unblock mentor",
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+ 
+async blockStudent(studentId: string): Promise<StudentBaseResponseDto> {
+  try {
+    logger.info(`Blocking student: ${studentId}`);
+
+    const blockedStudent = await this._studentRepo.blockStudent(studentId);
+    console.log("🔍 StudentRepository - Blocked student raw:", blockedStudent);
+    const studentDto = StudentMapper.toStudentResponseDto(blockedStudent);
+console.log("🔍 StudentRepository - Blocked student mapped:", studentDto);
+    logger.info(`Student blocked successfully: ${studentId}`);
+    return studentDto;
+  } catch (error) {
+    logger.error(`Error blocking student: ${studentId}`, error);
+    if (error instanceof AppError) throw error;
+    throw new AppError(
+      "Failed to block student",
+      HttpStatusCode.INTERNAL_SERVER_ERROR
+    );
+  }
+}
+
+async unblockStudent(studentId: string): Promise<StudentBaseResponseDto> {
+  try {
+    logger.info(`Unblocking student: ${studentId}`);
+
+    const unblockedStudent = await this._studentRepo.unblockStudent(studentId);
+    console.log("🔍 StudentRepository - Unblocked student raw:", unblockedStudent);
+    const studentDto = StudentMapper.toStudentResponseDto(unblockedStudent);
+console.log("🔍 StudentRepository - Unblocked student mapped:", studentDto);
+    logger.info(`Student unblocked successfully: ${studentId}`);
+    return studentDto;
+  } catch (error) {
+    logger.error(`Error unblocking student: ${studentId}`, error);
+    if (error instanceof AppError) throw error;
+    throw new AppError(
+      "Failed to unblock student",
+      HttpStatusCode.INTERNAL_SERVER_ERROR
+    );
+  }
+}
+
+
+// AdminService.ts - Fix the type issues in update methods
+async updateMentor(mentorId: string, data: Partial<MentorProfile>): Promise<MentorResponseDto> {
+  try {
+    logger.info(`Updating mentor: ${mentorId}`, data);
+
+    // Remove fields that shouldn't be updated directly
+    const { _id, password, email, createdAt, updatedAt, ...updateData } = data;
+
+    const updatedMentor = await this._mentorRepo.updateById(mentorId, updateData);
+    
+    if (!updatedMentor) {
+      throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
+    }
+
+    const mentorDto = MentorMapper.toResponseDto(updatedMentor);
+
+    logger.info(`Mentor updated successfully: ${mentorId}`);
+    return mentorDto;
+  } catch (error) {
+    logger.error(`Error updating mentor: ${mentorId}`, error);
+    if (error instanceof AppError) throw error;
+    throw new AppError(
+      "Failed to update mentor",
+      HttpStatusCode.INTERNAL_SERVER_ERROR
+    );
+  }
+}
+
+async updateStudent(studentId: string, data: Partial<StudentBaseResponseDto>): Promise<StudentBaseResponseDto> {
+  try {
+    logger.info(`Updating student: ${studentId}`, data);
+
+    // Use the safe mapper to handle undefined values properly
+    const studentUpdateData = StudentMapper.toSafeUpdateData(data);
+
+    const updatedStudent = await this._studentRepo.updateById(studentId, studentUpdateData);
+    
+    if (!updatedStudent) {
+      throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
+    }
+
+    const studentDto = StudentMapper.toStudentResponseDto(updatedStudent);
+
+    logger.info(`Student updated successfully: ${studentId}`);
+    return studentDto;
+  } catch (error) {
+    logger.error(`Error updating student: ${studentId}`, error);
+    if (error instanceof AppError) throw error;
+    throw new AppError(
+      "Failed to update student",
+      HttpStatusCode.INTERNAL_SERVER_ERROR
+    );
+  }
+}
+
+
+  async addStudent(studentData: {
+    fullName: string;
+    email: string;
+    phoneNumber?: string;
+  }): Promise<StudentBaseResponseDto> {
+    try {
+      logger.info(`Adding new student: ${studentData.email}`);
+
+      const existingStudent = await this._studentRepo.findByEmail(
+        studentData.email
+      );
+      if (existingStudent) {
+        throw new AppError(
+          "Student with this email already exists",
+          HttpStatusCode.CONFLICT
+        );
+      }
+
+      const temporaryPassword = Math.random().toString(36).slice(-8);
+      const hashedPassword = await bcrypt.hash(temporaryPassword, 12);
+
+      const studentAuthData = {
+        fullName: studentData.fullName,
+        email: studentData.email,
+        phoneNumber: studentData.phoneNumber || "",
+        password: hashedPassword,
+        role: "student" as const,
+        isVerified: true,
+        isProfileComplete: false,
+        approvalStatus: "approved" as const,
+        isBlocked: false,
+        isPaid: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const newStudent = await this._studentRepo.create(studentAuthData);
+
+
+      const studentDto = StudentMapper.toStudentResponseDto(newStudent);
+
+      logger.info(`Student added successfully: ${studentData.email}`);
+      return studentDto;
+    } catch (error) {
+      logger.error(`Error adding student: ${studentData.email}`, error);
+      if (error instanceof AppError) throw error;
+      throw new AppError(
+        "Failed to add student",
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+
+  async addMentor(mentorData: {
+  fullName: string;
+  email: string;
+  phoneNumber?: string;
+  location?: string;
+  bio?: string;
+}): Promise<MentorResponseDto> {
+  try {
+    logger.info(`Adding new mentor: ${mentorData.email}`);
+
+
+    const existingMentor = await this._mentorRepo.findByEmail(mentorData.email);
+    if (existingMentor) {
+      throw new AppError("Mentor with this email already exists", HttpStatusCode.CONFLICT);
+    }
+
+    
+    const temporaryPassword = Math.random().toString(36).slice(-8);
+    const hashedPassword = await bcrypt.hash(temporaryPassword, 12);
+
+    
+    const mentorAuthData = {
+      fullName: mentorData.fullName,
+      email: mentorData.email,
+      phoneNumber: mentorData.phoneNumber || "",
+      password: hashedPassword,
+      role: "mentor" as const,
+      location: mentorData.location || "",
+      bio: mentorData.bio || "",
+      academicQualifications: [],
+      experiences: [],
+      subjectProficiency: [],
+      certification: [],
+      isVerified: true,
+      isBlocked: false,
+      isProfileComplete: false,
+      approvalStatus: "approved" as const,
+      authProvider: "local" as const,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    
+    const newMentor = await this._mentorRepo.create(mentorAuthData);
+    
+    if (!newMentor) {
+      throw new AppError("Failed to create mentor", HttpStatusCode.INTERNAL_SERVER_ERROR);
+    }
+
+    const mentorDto = MentorMapper.toResponseDto(newMentor);
+    
+    logger.info(`Mentor added successfully: ${mentorData.email}`);
+    return mentorDto;
+  } catch (error) {
+    logger.error(`Error adding mentor: ${mentorData.email}`, error);
+    if (error instanceof AppError) throw error;
+    throw new AppError(
+      "Failed to add mentor",
+      HttpStatusCode.INTERNAL_SERVER_ERROR
+    );
+  }
+}
+
+
+async getStudentsWithTrialStats(page: number, limit: number) {
+    try {
+      logger.info(`AdminService: Fetching students with trial stats - Page: ${page}, Limit: ${limit}`);
+
+      const result = await this._studentRepo.findAllWithTrialStats(page, limit);
+
+      logger.info(`AdminService: Successfully fetched ${result.students.length} students with trial stats`);
+
+      return {
+        success: true,
+        data: {
+          students: result.students,
+          pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(result.totalStudents / limit),
+            totalStudents: result.totalStudents,
+            hasNextPage: page < Math.ceil(result.totalStudents / limit),
+            hasPrevPage: page > 1
+          }
+        }
+      };
+    } catch (error) {
+      logger.error("AdminService: Error fetching students with trial stats", error);
+      throw error; 
+    }
+  }
+
+
+// AdminService.ts - Fix the getStudentTrialClasses method
+async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialClassResponseDto[]> {
+  try {
+    logger.info(`AdminService: Fetching trial classes for student - ${studentId}`, { status });
+
+    // Validate student exists
+    // const student = await this._studentRepo.findById(studentId);
+    // if (!student) {
+    //   throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
+    // }
+
+    const trialClasses = await this._trialClassRepo.findByStudentId(studentId, status);
+    
+    // Use the mapper to transform the data
+    const trialClassesDto = trialClasses.map(trialClass => 
+      TrialClassMapper.toResponseDto(trialClass)
+    );
+
+    logger.info(`AdminService: Successfully fetched ${trialClassesDto.length} trial classes for student ${studentId}`);
+    
+    return trialClassesDto;
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    logger.error(`AdminService: Error fetching trial classes for student ${studentId}`, error);
+    throw new AppError(
+      "Failed to fetch student trial classes",
+      HttpStatusCode.INTERNAL_SERVER_ERROR
+    );
+  }
+}
+
+
+
+  async assignMentorToTrialClass(
+    trialClassId: string,
+    mentorId: string,
+    scheduledDate: string,
+    scheduledTime: string,
+    meetLink?: string
+  ) {
+    try {
+      logger.info(`AdminService: Assigning mentor to trial class - ${trialClassId}`, {
+        mentorId,
+        scheduledDate,
+        scheduledTime,
+      });
+
+      // Check if mentor exists using mentor repository
+      const mentor = await this._mentorRepo.findById(mentorId);
+      if (!mentor) {
+        logger.warn(`AdminService: Mentor not found - ${mentorId}`);
+        throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
+      }
+
+      const updates: Partial<ITrialClassDocument> = {
+        preferredDate: new Date(scheduledDate),
+        preferredTime: scheduledTime,
+        ...(meetLink && { meetLink }),
+      };
+
+      const updatedTrialClass = await this._trialClassRepo.assignMentor(
+        trialClassId, 
+        mentorId, 
+        updates
+      );
+
+      if (!updatedTrialClass) {
+        throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
+      }
+
+      const trialClassDto = TrialClassMapper.toResponseDto(updatedTrialClass);
+
+      logger.info(`AdminService: Successfully assigned mentor to trial class ${trialClassId}`);
+      
+      return trialClassDto;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(`AdminService: Error assigning mentor to trial class ${trialClassId}`, error);
+      throw new AppError(
+        "Failed to assign mentor to trial class",
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async updateTrialClassStatus(trialClassId: string, status: string, reason?: string) {
+    try {
+      logger.info(`AdminService: Updating trial class status - ${trialClassId}`, { status, reason });
+
+      const updatedTrialClass = await this._trialClassRepo.updateStatus(trialClassId, status, reason);
+
+      if (!updatedTrialClass) {
+        logger.warn(`AdminService: Trial class not found - ${trialClassId}`);
+        throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
+      }
+
+      const trialClassDto = TrialClassMapper.toResponseDto(updatedTrialClass);
+
+      logger.info(`AdminService: Successfully updated trial class status for ${trialClassId}`);
+      
+      return trialClassDto;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(`AdminService: Error updating trial class status ${trialClassId}`, error);
+      throw new AppError(
+        "Failed to update trial class status",
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async getAllTrialClasses(filters: { status?: string; page?: number; limit?: number }): Promise<any> {
+  try {
+    const { status, page = 1, limit = 10 } = filters;
+
+    logger.info("AdminService: Fetching all trial classes", { status, page, limit });
+
+    // Create a clean filters object that handles undefined properly
+    const cleanFilters: { status?: string; page?: number; limit?: number } = {
+      page,
+      limit
+    };
+
+    // Only add status if it's defined and not empty
+    if (status && status.trim() !== '') {
+      cleanFilters.status = status;
+    }
+
+    const result = await this._trialClassRepo.findAll(cleanFilters);
+    
+    const trialClassesDto = result.trialClasses.map(trialClass => 
+      TrialClassMapper.toResponseDto(trialClass)
+    );
+
+    const response = {
+      trialClasses: trialClassesDto,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(result.total / limit),
+        totalTrialClasses: result.total,
+        hasNextPage: page < Math.ceil(result.total / limit),
+        hasPrevPage: page > 1,
+      },
+    };
+
+    logger.info(`AdminService: Successfully fetched ${trialClassesDto.length} trial classes`);
+    
+    return response;
+  } catch (error) {
+    logger.error("AdminService: Error fetching all trial classes", error);
+    if (error instanceof AppError) throw error;
+    throw new AppError(
+      "Failed to fetch trial classes",
+      HttpStatusCode.INTERNAL_SERVER_ERROR
+    );
+  }
+  }
+
+
+  
+async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto> {
+  try {
+    logger.info(`AdminService: Fetching trial class details - ${trialClassId}`);
+
+    // Validate trialClassId
+    if (!trialClassId || trialClassId.trim() === '') {
+      throw new AppError("Trial class ID is required", HttpStatusCode.BAD_REQUEST);
+    }
+
+    const trialClass = await this._trialClassRepo.findById(trialClassId);
+
+    if (!trialClass) {
+      logger.warn(`AdminService: Trial class not found - ${trialClassId}`);
+      throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
+    }
+
+    // Use the mapper to transform the data
+    const trialClassDto = TrialClassMapper.toResponseDto(trialClass);
+
+    logger.info(`AdminService: Successfully fetched trial class details for ${trialClassId}`);
+    
+    return trialClassDto;
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    logger.error(`AdminService: Error fetching trial class details ${trialClassId}`, error);
+    throw new AppError(
+      "Failed to fetch trial class details",
+      HttpStatusCode.INTERNAL_SERVER_ERROR
+    );
+  }
+}
+
+// In your AdminService - fix the findBySubjectProficiency method
+async getAvailableMentors(subjectId: string, preferredDate: string): Promise<MentorResponseDto[]> {
+  try {
+    logger.info(`AdminService: Fetching available mentors for subject ${subjectId} on ${preferredDate}`);
+
+    // First, get the subject details
+    const subject = await this._subjectRepo.findById(subjectId);
+    if (!subject) {
+      throw new AppError("Subject not found", HttpStatusCode.NOT_FOUND);
+    }
+
+    console.log('🔍 Looking for mentors with subject:', subject.subjectName);
+
+    // Find mentors who have this subject in their subjectProficiency
+    const availableMentors = await this._mentorRepo.findBySubjectProficiency(
+      subject.subjectName,
+      preferredDate
+    );
+
+    console.log('🔍 Found mentors:', availableMentors.length);
+    console.log('🔍 Mentors details:', availableMentors.map(m => ({
+      id: m._id,
+      name: m.fullName,
+      subjects: m.subjectProficiency,
+      isBlocked: m.isBlocked,
+      approvalStatus: m.approvalStatus
+    })));
+
+    // Map to response DTOs
+    const mentorDtos = availableMentors.map(mentor => 
+      MentorMapper.toResponseDto(mentor)
+    );
+
+    logger.info(`AdminService: Found ${mentorDtos.length} available mentors for subject ${subject.subjectName}`);
+    return mentorDtos;
+  } catch (error) {
+    logger.error(`AdminService: Error fetching available mentors for subject ${subjectId}`, error);
+    if (error instanceof AppError) throw error;
+    throw new AppError(
+      "Failed to fetch available mentors",
+      HttpStatusCode.INTERNAL_SERVER_ERROR
+    );
+  }
+}
+
 }

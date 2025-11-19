@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "sync-schemas": "cp src/schemas/*.ts ../frontend/src/schemas/",
     "start": "tsc && node dist/server.js",
-    "dev": "node --import tsx --require tsconfig-paths/register --require reflect-metadata src/server.ts",
+    "seed-grades": "tsx src/scripts/seeders/grade.seeder.ts",
+    "dev": "tsx watch --require tsconfig-paths/register --require reflect-metadata src/server.ts",
     "build": "tsc",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

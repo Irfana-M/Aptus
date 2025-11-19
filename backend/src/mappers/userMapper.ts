@@ -47,6 +47,9 @@ export class UserMapper {
       isVerified: user.isVerified,
       isProfileComplete: user.isProfileComplete ?? true,
       approvalStatus: user.approvalStatus ?? "pending",
+      isBlocked: user.isBlocked ?? false,
+      createdAt: user.createdAt ?? new Date(),
+      updatedAt: user.updatedAt ?? new Date(),
     };
   }
 

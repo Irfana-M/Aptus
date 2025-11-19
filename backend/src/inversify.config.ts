@@ -10,6 +10,9 @@ import { StudentRepository } from "./repositories/studentRepository";
 import { OtpRepository } from "./repositories/otp.repository";
 import { StudentAuthRepository } from "./repositories/studentAuth.repository";
 import { MentorAuthRepository } from "./repositories/mentorAuth.repository";
+import { TrialClassRepository } from "./repositories/trialClass.repository";
+import { GradeRepository } from "@/repositories/grade.repository";
+import { SubjectRepository } from "@/repositories/subject.repository";
 
 // Import services
 import { AuthService } from "./services/auth.service";
@@ -18,13 +21,19 @@ import { MentorService } from "./services/mentor.services";
 import { OtpService } from "./services/otp.services";
 import { NodemailerService } from "./services/email.service";
 import { ProfileService } from "./services/profile.service";
-import { StudentService } from "./services/student.services"
+import { StudentService } from "./services/student.services";
+import { TrialClassService } from "./services/trialClass.service";
+import { GradeService } from "@/services/grade.service";
+import { SubjectService } from "@/services/subject.service";
 
 // Import controllers
 import { AuthController } from "./controllers/auth.controller";
 import { AdminController } from "./controllers/admin.controller";
 import { MentorController } from "./controllers/mentor.controller";
 import { OtpController } from "./controllers/otp.controller";
+import { TrialClassController } from "./controllers/trialClass.controller";
+import { GradeController } from "@/controllers/grade.controller";
+import { SubjectController } from "@/controllers/subject.controller";
 
 // Import interfaces
 import type { IAuthRepository } from "./interfaces/auth/IAuthRepository";
@@ -42,6 +51,12 @@ import type { IOtpService } from "./interfaces/services/IOtpService";
 import type { IEmailService } from "./interfaces/services/IEmailService";
 import type { IProfileService } from "./interfaces/services/IProfileService";
 import type { IStudentService } from "./interfaces/services/IStudentService";
+import type { ITrialClassRepository } from "./interfaces/repositories/ITrialClassRepository";
+import type { ITrialClassService } from "./interfaces/services/ITrialClassService";
+import type { IGradeService } from "./interfaces/services/IGradeService";
+import type { IGradeRepository } from "./interfaces/repositories/IGradeRepository";
+import type { ISubjectService } from "./interfaces/services/ISubjectService";
+import type { ISubjectRepository } from "./interfaces/repositories/ISubjectRepository";
 
 const container = new Container();
 
@@ -53,8 +68,10 @@ container.bind<IStudentRepository>(TYPES.IStudentRepository).to(StudentRepositor
 container.bind<IOtpRepository>(TYPES.IOtpRepository).to(OtpRepository);
 container.bind<IStudentAuthRepository>(TYPES.IStudentAuthRepository).to(StudentAuthRepository);
 container.bind<IMentorAuthRepository>(TYPES.IMentorAuthRepository).to(MentorAuthRepository);
-container.bind<IEmailService>(TYPES.EmailService).to(NodemailerService);
 container.bind<IVerificationRepository>(TYPES.IVerificationRepository).to(StudentAuthRepository);
+container.bind<ITrialClassRepository>(TYPES.ITrialClassRepository).to(TrialClassRepository);
+container.bind<IGradeRepository>(TYPES.IGradeRepository).to(GradeRepository);
+container.bind<ISubjectRepository>(TYPES.ISubjectRepository).to(SubjectRepository);
 
 
 container.bind<Map<string, IVerificationRepository>>(TYPES.VerificationRepositoryMap).toDynamicValue(() => {
@@ -79,11 +96,17 @@ container.bind<IMentorService>(TYPES.IMentorService).to(MentorService);
 container.bind<IOtpService>(TYPES.IOtpService).to(OtpService);
 container.bind<IEmailService>(TYPES.IEmailService).to(NodemailerService);
 container.bind<IProfileService>(TYPES.IProfileService).to(ProfileService);
+container.bind<ITrialClassService>(TYPES.ITrialClassService).to(TrialClassService);
+container.bind<IGradeService>(TYPES.IGradeService).to(GradeService);
+container.bind<ISubjectService>(TYPES.ISubjectService).to(SubjectService);
 
 // Controller Bindings
 container.bind<AuthController>(TYPES.AuthController).to(AuthController);
 container.bind<AdminController>(TYPES.AdminController).to(AdminController);
 container.bind<MentorController>(TYPES.MentorController).to(MentorController);
 container.bind<OtpController>(TYPES.OtpController).to(OtpController);
+container.bind<TrialClassController>(TYPES.TrialClassController).to(TrialClassController);
+container.bind<GradeController>(TYPES.GradeController).to(GradeController);
+container.bind<SubjectController>(TYPES.SubjectController).to(SubjectController);
 
 export { container };

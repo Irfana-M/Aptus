@@ -1,12 +1,13 @@
 import type { IStudentRepository } from "@/interfaces/repositories/IStudentRepository";
 import type {
-  AuthUser,
   StudentAuthUser,
+  AuthUser,
 } from "@/interfaces/auth/auth.interface";
 import type { StudentProfile } from "@/interfaces/models/student.interface";
 import type { StudentBaseResponseDto } from "@/dto/auth/UserResponseDTO";
 import { BaseRepository } from "./baseRepository";
-import { StudentModel } from "@/models/student.model";
+import { StudentModel } from "@/models/student/student.model";
+import { StudentMapper } from "@/mappers/StudentMapper";
 import { AppError } from "@/utils/AppError";
 import { HttpStatusCode } from "@/constants/httpStatus";
 import { logger } from "@/utils/logger";
@@ -17,26 +18,26 @@ export class StudentRepository
   extends BaseRepository<StudentAuthUser>
   implements IStudentRepository
 {
-  private studentModel: any;
-
   constructor() {
     super(StudentModel);
-    this.studentModel = StudentModel;
   }
 
   async findByEmail(email: string): Promise<StudentAuthUser | null> {
     try {
-      const student = await this.studentModel
+      logger.debug(`Finding student by email: ${email}`);
+      const student = await this.model
         .findOne({ email, role: "student" })
         .select("+password")
         .lean()
         .exec();
 
       if (!student) {
+        logger.debug(`Student not found with email: ${email}`);
         return null;
       }
 
-      return student as StudentAuthUser;
+      logger.info(`Student found with email: ${email}`);
+      return StudentMapper.toStudentAuthUser(student); 
     } catch (error) {
       logger.error("Error finding student by email:", error);
       throw new AppError(
@@ -48,7 +49,8 @@ export class StudentRepository
 
   async findById(id: string): Promise<StudentAuthUser | null> {
     try {
-      const student = await this.studentModel
+      logger.debug(`Finding student by ID: ${id}`);
+      const student = await this.model
         .findById(id)
         .where("role")
         .equals("student")
@@ -56,10 +58,12 @@ export class StudentRepository
         .exec();
 
       if (!student) {
+        logger.debug(`Student not found with ID: ${id}`);
         return null;
       }
 
-      return student as StudentAuthUser;
+      logger.info(`Student found with ID: ${id}`);
+      return StudentMapper.toStudentAuthUser(student); 
     } catch (error) {
       logger.error("Error finding student by ID:", error);
       throw new AppError(
@@ -74,39 +78,17 @@ export class StudentRepository
     data: Partial<StudentProfile>
   ): Promise<StudentProfile | null> {
     try {
-      const existingStudent = await this.studentModel
-        .findById(id)
-        .where("role")
-        .equals("student")
-        .exec();
+      logger.debug(`Updating student profile: ${id}`);
 
-      if (!existingStudent) {
-        throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
-      }
+      const updateData = StudentMapper.toProfileUpdate(data);
 
-      const updatedStudent = await this.studentModel
-        .findByIdAndUpdate(
-          id,
-          {
-            $set: {
-              ...data,
-              ...(this.isProfileComplete(data)
-                ? { isProfileComplete: true }
-                : {}),
-            },
-          },
-          {
-            new: true,
-            runValidators: true,
-          }
-        )
-        .lean()
-        .exec();
-
-      return updatedStudent;
+      const result = await this.updateById(
+        id,
+        updateData as Partial<StudentAuthUser>
+      );
+      return StudentMapper.toResponseDto(result);
     } catch (error) {
-      logger.error("Error updating student profile:", error);
-      if (error instanceof AppError) throw error;
+      logger.error(`Error updating student profile: ${id}`, error);
       throw new AppError(
         "Failed to update student profile",
         HttpStatusCode.INTERNAL_SERVER_ERROR
@@ -114,39 +96,46 @@ export class StudentRepository
     }
   }
 
-  async blockStudent(id: string): Promise<boolean> {
+  async blockStudent(id: string): Promise<StudentAuthUser> {
     try {
-      const result = await this.studentModel
-        .findByIdAndUpdate(
-          id,
-          {
-            $set: {
-              isBlocked: true,
-              blockedAt: new Date(),
-            },
-          },
-          { new: true }
-        )
-        .exec();
+      logger.debug(`Blocking student: ${id}`);
 
-      if (!result) {
-        throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
-      }
-
-      return true;
+      const blockedStudent = await this.block(id);
+      logger.info(`Student blocked successfully: ${id}`);
+      return StudentMapper.toStudentAuthUser(blockedStudent);
     } catch (error) {
-      logger.error("Error blocking student:", error);
-      if (error instanceof AppError) throw error;
-      throw new AppError(
-        "Failed to block student",
-        HttpStatusCode.INTERNAL_SERVER_ERROR
-      );
-    }
+    logger.error(`Error blocking student: ${id}`, error);
+    if (error instanceof AppError) throw error;
+    throw new AppError(
+      "Failed to block student",
+      HttpStatusCode.INTERNAL_SERVER_ERROR
+    );
   }
+}
+
+
+async unblockStudent(id: string): Promise<StudentAuthUser> {
+  try {
+    logger.debug(`Unblocking student: ${id}`);
+    
+    const unblockedStudent = await this.unblock(id);
+    logger.info(`Student unblocked successfully: ${id}`);
+    
+    return StudentMapper.toStudentAuthUser(unblockedStudent);
+  } catch (error) {
+    logger.error(`Error unblocking student: ${id}`, error);
+    if (error instanceof AppError) throw error;
+    throw new AppError(
+      "Failed to unblock student",
+      HttpStatusCode.INTERNAL_SERVER_ERROR
+    );
+  }
+}
 
   async markUserVerified(email: string): Promise<void> {
     try {
-      const result = await this.studentModel
+      logger.debug(`Marking student as verified: ${email}`);
+      const result = await this.model
         .findOneAndUpdate(
           { email, role: "student" },
           {
@@ -154,21 +143,25 @@ export class StudentRepository
               isVerified: true,
               verifiedAt: new Date(),
             },
-          }
+          },
+          { new: true }
         )
         .exec();
 
       if (!result) {
+        logger.warn(`Student not found for verification: ${email}`);
         throw new AppError(
           "Student not found with the provided email",
           HttpStatusCode.NOT_FOUND
         );
       }
+
+      logger.info(`Student marked as verified: ${email}`);
     } catch (error) {
-      logger.error("Error marking user as verified:", error);
+      logger.error("Error marking student as verified:", error);
       if (error instanceof AppError) throw error;
       throw new AppError(
-        "Failed to mark user as verified",
+        "Failed to mark student as verified",
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -176,18 +169,21 @@ export class StudentRepository
 
   async createUser(data: AuthUser): Promise<AuthUser> {
     try {
+      logger.debug(`Creating student user: ${data.email}`);
+
       const studentData: StudentAuthUser = {
         ...data,
         role: "student",
-        isProfileComplete: this.isProfileComplete(data),
+        isProfileComplete: StudentMapper.isProfileComplete(data),
         isVerified: data.isVerified || false,
-        isPaid: (data as StudentAuthUser).isPaid || false,
+        isPaid: false,
         approvalStatus: "approved",
       };
 
       const newStudent = await super.create(studentData);
+      logger.info(`Student user created successfully: ${data.email}`);
 
-      return newStudent;
+      return StudentMapper.toAuthUser(newStudent);
     } catch (error) {
       logger.error("Error creating student user:", error);
       if (error instanceof AppError) throw error;
@@ -200,17 +196,17 @@ export class StudentRepository
 
   async findAllStudents(): Promise<StudentBaseResponseDto[]> {
     try {
-      const students = await this.studentModel
+      logger.debug("Finding all students");
+      const students = await this.model
         .find()
         .select("-password")
         .sort({ createdAt: -1 })
         .lean()
         .exec();
 
-      console.log("students from student repo", students);
-      logger.info(`Find all students from repository ${students}`);
+      logger.info(`Found ${students.length} students`);
       return students.map((student: any) =>
-        this.mapToStudentResponseDto(student)
+       StudentMapper.toStudentResponseDto(student)
       );
     } catch (error) {
       logger.error("Error finding all students:", error);
@@ -221,109 +217,76 @@ export class StudentRepository
     }
   }
 
-  private isProfileComplete(data: Partial<StudentProfile | AuthUser>): boolean {
-    const requiredFields = ["fullName", "email", "phoneNumber"];
-    return requiredFields.every(
-      (field) =>
-        data[field as keyof typeof data] &&
-        data[field as keyof typeof data] !== ""
+async countStudents(): Promise<number> {
+  try {
+    const count = await this.model.countDocuments({ role: "student" });
+    logger.debug(`Total students count: ${count}`);
+    return count;
+  } catch (error) {
+    logger.error("Error counting students:", error);
+    throw new AppError(
+      "Failed to count students",
+      HttpStatusCode.INTERNAL_SERVER_ERROR
     );
   }
+}
 
-  private mapToStudentResponseDto(student: any): StudentBaseResponseDto {
+
+  // src/repositories/studentRepository.ts - Fix the findAllWithTrialStats method
+async findAllWithTrialStats(page: number, limit: number) {
+  try {
+    const skip = (page - 1) * limit;
+
+    const studentsWithStats = await StudentModel.aggregate([
+      {
+        $lookup: {
+          from: "trialclasses", // Make sure this matches your MongoDB collection name
+          localField: "_id",
+          foreignField: "student",
+          as: "trialClasses"
+        }
+      },
+      {
+        $addFields: {
+          totalTrialClasses: { $size: "$trialClasses" },
+          pendingTrialClasses: {
+            $size: {
+              $filter: {
+                input: "$trialClasses",
+                as: "trial",
+                cond: { 
+                  $in: ["$$trial.status", ["requested", "assigned"]] 
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          
+          
+          password: 0,
+          trialClasses: 0
+        }
+      },
+      { $skip: skip },
+      { $limit: limit },
+      { $sort: { createdAt: -1 } }
+    ]);
+
+    const totalStudents = await StudentModel.countDocuments();
+
     return {
-      _id: student._id.toString(),
-      fullName: student.fullName,
-      email: student.email,
-      phoneNumber: student.phoneNumber,
-      role: student.role,
-      isVerified: student.isVerified,
-      isProfileComplete: student.isProfileComplete || false,
-      isPaid: student.isPaid || false,
-      approvalStatus: student.approvalStatus || "approved",
-      createdAt: student.createdAt,
-      updatedAt: student.updatedAt,
-
-      ...(student.gradeLevel && { gradeLevel: student.gradeLevel }),
-      ...(student.school && { school: student.school }),
-      ...(student.parentName && { parentName: student.parentName }),
-      ...(student.parentPhone && { parentPhone: student.parentPhone }),
+      students: studentsWithStats,
+      totalStudents
     };
+  } catch (error) {
+    logger.error("StudentRepository: Error finding students with trial stats", error);
+    throw new AppError(
+      "Failed to fetch students with trial statistics",
+      HttpStatusCode.INTERNAL_SERVER_ERROR
+    );
   }
-
-  async updateById(
-    id: string,
-    data: Partial<StudentAuthUser>
-  ): Promise<StudentAuthUser> {
-    try {
-      if (data.role && data.role !== "student") {
-        throw new AppError(
-          "Cannot change user role through this method",
-          HttpStatusCode.BAD_REQUEST
-        );
-      }
-
-      const updateData = {
-        ...data,
-        role: "student" as const,
-        ...(this.isProfileComplete(data) ? { isProfileComplete: true } : {}),
-      } as Partial<StudentAuthUser>;
-
-      const result = await super.updateById(id, updateData as any);
-      return result as StudentAuthUser;
-    } catch (error) {
-      logger.error("Error updating student:", error);
-      if (error instanceof AppError) throw error;
-      throw new AppError(
-        "Failed to update student",
-        HttpStatusCode.INTERNAL_SERVER_ERROR
-      );
-    }
-  }
-
-  async findStudentsByGrade(gradeLevel: string): Promise<StudentAuthUser[]> {
-    try {
-      const students = await this.studentModel
-        .find({
-          role: "student",
-          gradeLevel,
-        })
-        .select("-password")
-        .sort({ fullName: 1 })
-        .lean()
-        .exec();
-
-      return students as StudentAuthUser[];
-    } catch (error) {
-      logger.error("Error finding students by grade:", error);
-      throw new AppError(
-        "Failed to find students by grade level",
-        HttpStatusCode.INTERNAL_SERVER_ERROR
-      );
-    }
-  }
-
-  async getPaidStudents(): Promise<StudentBaseResponseDto[]> {
-    try {
-      const students = await this.studentModel
-        .find({
-          role: "student",
-          isPaid: true,
-        })
-        .select("-password")
-        .sort({ createdAt: -1 })
-        .lean()
-        .exec();
-
-      return students.map((student: any) =>
-        this.mapToStudentResponseDto(student)
-      );
-    } catch (error) {
-      logger.error("Error finding paid students:", error);
-      throw new AppError(
-        "Failed to retrieve paid students",
-        HttpStatusCode.INTERNAL_SERVER_ERROR
-      );
-    }
-  }
+}
 }

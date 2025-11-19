@@ -1,6 +1,10 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import type { JwtPayload } from "jsonwebtoken";
+import { AppError } from "@/utils/AppError";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import { logger } from "@/utils/logger";
+
 declare module "express-serve-static-core" {
   interface Request {
     user?: { id: string; role: "admin" | "mentor" | "student" };
@@ -21,9 +25,22 @@ export const requireAuth = (
   const authHeader = req.headers.authorization;
   console.log(authHeader);
   if (!authHeader || !authHeader.startsWith("Bearer "))
-    return res.status(401).json({ success: false, message: "Unauthorized" });
+    throw new AppError(
+      "Unauthorized - No token provided",
+      HttpStatusCode.UNAUTHORIZED
+    );
 
   const token = authHeader.split(" ")[1];
+
+  console.log('Token:', token);
+  
+  if (!token) {
+    console.log('No token provided - blocking request');
+    return res.status(401).json({
+      success: false,
+      message: 'Unauthorized - No token provided'
+    });
+  }
 
   try {
     const decoded = jwt.verify(
@@ -32,16 +49,14 @@ export const requireAuth = (
     ) as unknown as CustomJwtPayload;
 
     if (!decoded.id || !decoded.role) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Invalid token payload" });
+      throw new AppError("Invalid token payload", HttpStatusCode.UNAUTHORIZED);
     }
 
     req.user = { id: decoded.id, role: decoded.role };
     next();
   } catch (error) {
-    return res
-      .status(401)
-      .json({ success: false, message: "Invalid or expired token" });
+    throw new AppError("Invalid or expired token", HttpStatusCode.UNAUTHORIZED);
   }
 };
+
+

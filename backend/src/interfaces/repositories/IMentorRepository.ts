@@ -16,5 +16,6 @@ export interface IMentorRepository extends IBaseRepository<MentorProfile> {
     rejectionReason?: string
   ): Promise<MentorProfile | null>;
   getAllMentors(): Promise<MentorProfile[]>;
-  //blockMentor(id: string): Promise<boolean>;
+  findByEmail(email: string): Promise<MentorProfile | null>;
+  findBySubjectProficiency(subjectName: string, date?: string): Promise<MentorProfile[]>;
 }

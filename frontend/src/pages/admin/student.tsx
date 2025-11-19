@@ -1,34 +1,22 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import {
-  Plus,
-  Edit2,
-  Trash2,
-  Eye,
-  Users,
-  CheckCircle,
-  XCircle,
-  Clock,
-} from "lucide-react";
 import type { AppDispatch } from "../../app/store";
-import { addStudentAdmin, fetchAllStudentsAdmin } from "../../features/admin/adminThunk";
+import { 
+  fetchAllStudentsAdmin,
+  blockStudentAdmin,
+  unblockStudentAdmin,
+  addStudentAdmin,
+  updateStudentAdmin,
+  fetchStudentTrialClasses
+} from "../../features/admin/adminThunk";
 import {
   selectAllStudents,
   selectAdminLoading,
-  selectAdminError,
-  selectSelectedStudent,
-  selectFilteredStudents,
-  selectStudentStats,
-  selectAdminSuccess,
 } from "../../features/admin/adminSelectors";
-import {
-  setSelectedStudent,
-  clearError,
-  clearSuccess,
-} from "../../features/admin/adminSlice";
 import type { StudentBaseResponseDto } from "../../types/studentTypes";
-//import type { AddStudentRequestDto } from "../../features/admin/adminApi";
+import { StudentModal } from "../../components/admin/StudentModal";
+import { ConfirmationModal } from "../../components/ui/ConfirmationModal";
 import { Sidebar } from "../../components/admin/Sidebar";
 import { Topbar } from "../../components/admin/Topbar";
 import { DataTable } from "../../components/ui/DataTable";
@@ -38,7 +26,18 @@ import {
   type FilterConfig,
 } from "../../components/ui/SearchAndFilters";
 import { usePagination } from "../../hooks/usePagination";
-
+import {
+  Plus,
+  Edit2,
+  Eye,
+  Users,
+  CheckCircle,
+  Clock,
+  Ban,
+  Check,
+  CreditCard,
+} from "lucide-react";
+import { showToast } from "../../utils/toast";
 interface Column<T> {
   header: string;
   accessor: keyof T | ((row: T) => React.ReactNode);
@@ -51,10 +50,6 @@ export const StudentsManagement: React.FC = () => {
   const navigate = useNavigate();
   const students = useSelector(selectAllStudents);
   const loading = useSelector(selectAdminLoading);
-  const error = useSelector(selectAdminError);
-  const success = useSelector(selectAdminSuccess); // MOVED INSIDE COMPONENT
-  const selectedStudent = useSelector(selectSelectedStudent);
-  const stats = useSelector(selectStudentStats);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("Students");
@@ -62,17 +57,19 @@ export const StudentsManagement: React.FC = () => {
   const [filters, setFilters] = useState({
     status: "",
     verification: "",
+    trialClasses: "",
   });
-  const [showModal, setShowModal] = useState(false);
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [showStudentModal, setShowStudentModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<{id: string, name: string, action: 'block' | 'unblock'} | null>(null);
+  const [selectedStudentForEdit, setSelectedStudentForEdit] = useState<StudentBaseResponseDto | null>(null);
 
-  // Initialize pagination
   const pagination = usePagination({
     totalItems: students.length,
     initialPage: 1,
     initialItemsPerPage: 10,
   });
 
-  // Filter configurations
   const filterConfigs: FilterConfig[] = [
     {
       key: "status",
@@ -90,34 +87,51 @@ export const StudentsManagement: React.FC = () => {
         { label: "Pending", value: "pending" },
       ],
     },
+     {
+    key: "trialClasses",
+    label: "Trial Classes",
+    options: [
+      { label: "With Trial Classes", value: "with_trial" },
+      { label: "Pending Assignment", value: "pending" },
+      { label: "No Trial Classes", value: "none" },
+    ],
+  },
   ];
 
   useEffect(() => {
     dispatch(fetchAllStudentsAdmin());
   }, [dispatch]);
 
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => {
-        dispatch(clearError());
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [error, dispatch]);
 
-  // Add effect to clear success message
-  useEffect(() => {
-    if (success) {
-      const timer = setTimeout(() => {
-        dispatch(clearSuccess());
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [success, dispatch]);
 
-  const filteredStudents = useSelector((state: any) =>
-    selectFilteredStudents(state, searchTerm)
-  );
+  const filteredStudents = useMemo(() => {
+    return students.filter((student) => {
+      const matchesSearch =
+        searchTerm === "" ||
+        student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.id.toString().includes(searchTerm) ||
+        (student.phoneNumber && student.phoneNumber.includes(searchTerm));
+
+      const matchesStatus =
+        filters.status === "" || 
+        (filters.status === 'active' && !student.isBlocked) ||
+        (filters.status === 'blocked' && student.isBlocked);
+
+      const matchesVerification =
+        filters.verification === "" ||
+        (filters.verification === 'verified' && student.isVerified) ||
+        (filters.verification === 'pending' && !student.isVerified);
+
+         const matchesTrialClasses =
+      filters.trialClasses === "" ||
+      (filters.trialClasses === 'with_trial' && (student.totalTrialClasses || 0) > 0) ||
+      (filters.trialClasses === 'pending' && (student.pendingTrialClasses || 0) > 0) ||
+      (filters.trialClasses === 'none' && (student.totalTrialClasses || 0) === 0);
+
+      return matchesSearch && matchesStatus && matchesVerification&& matchesTrialClasses;
+    });
+  }, [students, searchTerm, filters]);
 
   useEffect(() => {
     pagination.goToPage(1);
@@ -125,8 +139,31 @@ export const StudentsManagement: React.FC = () => {
 
   const paginatedStudents = pagination.paginatedData(filteredStudents);
 
+  // Calculate stats
+  const stats = useMemo(() => {
+    const total = students.length;
+    const verified = students.filter((student) => student.isVerified).length;
+    const paid = students.filter((student) => student.isPaid).length;
+    const blocked = students.filter((student) => student.isBlocked).length;
+    const profileComplete = students.filter((student) => student.isProfileComplete).length;
+    const totalTrialClasses = students.reduce((sum, student) => sum + (student.totalTrialClasses || 0), 0);
+    const pendingTrialClasses = students.reduce((sum, student) => sum + (student.pendingTrialClasses || 0), 0);
+    const studentsWithTrialClasses = students.filter(student => (student.totalTrialClasses || 0) > 0).length;
+
+    return {
+      total,
+      verified,
+      paid,
+      blocked,
+      profileComplete,
+      totalTrialClasses,
+    pendingTrialClasses,
+    studentsWithTrialClasses,
+    };
+  }, [students]);
+
   const getStatusIcon = (isVerified: boolean, isBlocked?: boolean) => {
-    if (isBlocked) return <XCircle className="w-4 h-4 text-red-500" />;
+    if (isBlocked) return <Ban className="w-4 h-4 text-red-500" />;
     if (isVerified) return <CheckCircle className="w-4 h-4 text-green-500" />;
     return <Clock className="w-4 h-4 text-yellow-500" />;
   };
@@ -143,20 +180,100 @@ export const StudentsManagement: React.FC = () => {
     return "Pending";
   };
 
-  // UPDATE: Proper handleSaveStudent function
-  const handleSaveStudent = async (studentData: Partial<StudentBaseResponseDto>) => {
+  
+  const handleBlockClick = (studentId: string, studentName: string) => {
+    setSelectedStudent({ id: studentId, name: studentName, action: 'block' });
+    setShowBlockModal(true);
+  };
+
+  const handleUnblockClick = (studentId: string, studentName: string) => {
+    setSelectedStudent({ id: studentId, name: studentName, action: 'unblock' });
+    setShowBlockModal(true);
+  };
+
+  
+
+  const handleConfirmAction = async () => {
+    if (!selectedStudent) return;
+
     try {
-      await dispatch(addStudentAdmin({
-        fullName: studentData.fullName!,
-        email: studentData.email!,
-        phoneNumber: studentData.phoneNumber,
-      })).unwrap();
+      const loadingToastId = showToast.loading(
+        `${selectedStudent.action === 'block' ? 'Blocking' : 'Unblocking'} ${selectedStudent.name}...`
+      );
+
+      if (selectedStudent.action === 'block') {
+        await dispatch(blockStudentAdmin(selectedStudent.id)).unwrap();
+        showToast.success(`${selectedStudent.name} has been blocked successfully`);
+      } else {
+        await dispatch(unblockStudentAdmin(selectedStudent.id)).unwrap();
+        showToast.success(`${selectedStudent.name} has been unblocked successfully`);
+      }
+
+      showToast.dismiss(loadingToastId);
+      setShowBlockModal(false);
+      setSelectedStudent(null);
       
-      // Modal will close automatically due to the success action
-      handleCloseModal();
-    } catch (error) {
-      // Error is handled by the thunk
-      console.error('Failed to add student:', error);
+    } catch (error: any) {
+      showToast.dismiss();
+      const action = selectedStudent.action === 'block' ? 'block' : 'unblock';
+      const errorMessage = error?.message || `Failed to ${action} ${selectedStudent.name}`;
+      showToast.error(errorMessage);
+      console.error(`Failed to ${action} student:`, error);
+    }
+  };
+
+  
+  const handleEditStudent = (student: StudentBaseResponseDto) => {
+    setSelectedStudentForEdit(student);
+    setShowStudentModal(true);
+  };
+
+  const handleAddStudent = () => {
+    setSelectedStudentForEdit(null);
+    setShowStudentModal(true);
+  };
+
+  const handleCloseStudentModal = () => {
+    setShowStudentModal(false);
+    setSelectedStudentForEdit(null);
+  };
+
+      const handleViewTrialClasses = (studentId: string) => {
+  dispatch(fetchStudentTrialClasses({ studentId }))
+    .unwrap()
+    .then(trialClasses => {
+      console.log('Fetched trial classes:', trialClasses);
+      // Navigate to trial classes page or show in modal
+      navigate(`/admin/student/${studentId}/trial-classes`);
+    })
+    .catch(error => {
+      showToast.error(error);
+    });
+};
+
+  const handleSaveStudent = async (studentData: any) => {
+    try {
+      if (selectedStudentForEdit) {
+        await dispatch(updateStudentAdmin({
+          studentId: selectedStudentForEdit.id,
+          data: studentData
+        })).unwrap();
+        showToast.success("Student updated successfully");
+        dispatch(fetchAllStudentsAdmin());
+      } else {
+        await dispatch(addStudentAdmin(studentData)).unwrap();
+        showToast.success("Student added successfully");
+        dispatch(fetchAllStudentsAdmin());
+      }
+      
+      handleCloseStudentModal();
+
+
+    } catch (error: any) {
+      const action = selectedStudentForEdit ? "update" : "add";
+      const errorMessage = error?.message || `Failed to ${action} student`;
+      showToast.error(errorMessage);
+      console.error(`Failed to ${action} student:`, error);
     }
   };
 
@@ -167,15 +284,23 @@ export const StudentsManagement: React.FC = () => {
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full flex items-center justify-center">
             <span className="text-white font-semibold text-sm">
-              {row.fullName
-                ?.split(" ")
-                .map((n) => n[0])
-                .join("") || "U"}
+              {row.fullName?.split(" ").map((n) => n[0]).join("") || "U"}
             </span>
           </div>
           <div>
             <p className="font-medium text-gray-900">{row.fullName}</p>
             <p className="text-sm text-gray-500">{row.email}</p>
+            {(row.totalTrialClasses && row.totalTrialClasses > 0) && (
+            <div className="flex items-center space-x-2 mt-1">
+              <div className={`w-2 h-2 rounded-full ${
+                (row.pendingTrialClasses && row.pendingTrialClasses > 0) ? 'bg-yellow-400' : 'bg-green-400'
+              }`} />
+              <span className="text-xs text-gray-600">
+                {row.totalTrialClasses} trial {row.totalTrialClasses === 1 ? 'class' : 'classes'}
+                {(row.pendingTrialClasses && row.pendingTrialClasses > 0) && ` (${row.pendingTrialClasses} pending)`}
+              </span>
+            </div>
+          )}
           </div>
         </div>
       ),
@@ -196,21 +321,22 @@ export const StudentsManagement: React.FC = () => {
         <div className="flex flex-col gap-2">
           <div className="flex items-center space-x-2">
             {getStatusIcon(row.isVerified, row.isBlocked)}
-            <span
-              className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                row.isVerified,
-                row.isBlocked
-              )}`}
-            >
+            <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(row.isVerified, row.isBlocked)}`}>
               {getStatusText(row.isVerified, row.isBlocked)}
             </span>
           </div>
           {row.isPaid && (
             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-              <CheckCircle className="w-3 h-3 mr-1" />
+              <CreditCard className="w-3 h-3 mr-1" />
               Paid
             </span>
           )}
+           {(row.pendingTrialClasses && row.pendingTrialClasses > 0) && (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+            <Clock className="w-3 h-3 mr-1" />
+            {row.pendingTrialClasses} Pending Trial
+          </span>
+        )}
         </div>
       ),
       sortable: true,
@@ -231,28 +357,61 @@ export const StudentsManagement: React.FC = () => {
     {
       header: "Actions",
       accessor: (row) => (
-        <div className="flex space-x-2">
+        <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
+    <button
+        onClick={() => handleViewTrialClasses(row.id)}
+        className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
+        title="View Trial Classes"
+      >
+        <Eye size={16} />
+      </button>
           <button
-            onClick={() => handleViewStudent(row)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate(`${row.id}/trial-classes`);
+            }}
             className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors duration-200"
             title="View Profile"
           >
             <Eye size={16} />
           </button>
           <button
-            onClick={() => handleEditStudent(row)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleEditStudent(row);
+            }}
             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
             title="Edit Student"
           >
             <Edit2 size={16} />
           </button>
-          <button
-            onClick={() => handleDeleteStudent(row.id)}
-            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
-            title="Delete Student"
-          >
-            <Trash2 size={16} />
-          </button>
+          {row.isBlocked ? (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleUnblockClick(row.id, row.fullName);
+              }}
+              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-200"
+              title="Unblock Student"
+            >
+              <Check size={16} />
+            </button>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleBlockClick(row.id, row.fullName);
+              }}
+              className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors duration-200"
+              title="Block Student"
+            >
+              <Ban size={16} />
+            </button>
+          )}
         </div>
       ),
     },
@@ -264,32 +423,7 @@ export const StudentsManagement: React.FC = () => {
 
   const handleClearFilters = () => {
     setSearchTerm("");
-    setFilters({ status: "", verification: "" });
-  };
-
-  const handleViewStudent = (student: StudentBaseResponseDto) => {
-    navigate(`/admin/student/${student.id}`);
-  };
-
-  const handleEditStudent = (student: StudentBaseResponseDto) => {
-    dispatch(setSelectedStudent(student));
-    setShowModal(true);
-  };
-
-  const handleAddStudent = () => {
-    dispatch(setSelectedStudent(null));
-    setShowModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowModal(false);
-    dispatch(setSelectedStudent(null));
-  };
-
-  const handleDeleteStudent = (studentId: string) => {
-    if (window.confirm("Are you sure you want to delete this student?")) {
-      console.log("Delete student:", studentId);
-    }
+    setFilters({ status: "", verification: "", trialClasses: "" });
   };
 
   const handleSort = (
@@ -317,10 +451,10 @@ export const StudentsManagement: React.FC = () => {
       </div>
     );
   }
+  
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Reusable Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
         activeItem={activeNav}
@@ -328,9 +462,7 @@ export const StudentsManagement: React.FC = () => {
         onClose={() => setSidebarOpen(false)}
       />
 
-      {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Reusable Topbar */}
         <Topbar
           onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
           title="Students Management"
@@ -340,18 +472,13 @@ export const StudentsManagement: React.FC = () => {
           }}
         />
 
-        {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm font-medium">
-                    Total Students
-                  </p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
-                    {stats.total}
-                  </p>
+                  <p className="text-gray-600 text-sm font-medium">Total Students</p>
+                  <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total}</p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center">
                   <Users className="w-6 h-6 text-white" />
@@ -363,9 +490,7 @@ export const StudentsManagement: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-sm font-medium">Verified</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
-                    {stats.verified}
-                  </p>
+                  <p className="text-3xl font-bold text-gray-900 mt-2">{stats.verified}</p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center">
                   <CheckCircle className="w-6 h-6 text-white" />
@@ -377,12 +502,10 @@ export const StudentsManagement: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-sm font-medium">Paid</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
-                    {stats.paid}
-                  </p>
+                  <p className="text-3xl font-bold text-gray-900 mt-2">{stats.paid}</p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 flex items-center justify-center">
-                  <CheckCircle className="w-6 h-6 text-white" />
+                  <CreditCard className="w-6 h-6 text-white" />
                 </div>
               </div>
             </div>
@@ -391,32 +514,15 @@ export const StudentsManagement: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-sm font-medium">Blocked</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
-                    {stats.blocked}
-                  </p>
+                  <p className="text-3xl font-bold text-gray-900 mt-2">{stats.blocked}</p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 flex items-center justify-center">
-                  <XCircle className="w-6 h-6 text-white" />
+                  <Ban className="w-6 h-6 text-white" />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Success Display */}
-          {success && (
-            <div className="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg">
-              {success}
-            </div>
-          )}
-
-          {/* Error Display */}
-          {error && (
-            <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
-              {error}
-            </div>
-          )}
-
-          {/* Search and Filters */}
           <SearchAndFilters
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
@@ -428,18 +534,13 @@ export const StudentsManagement: React.FC = () => {
             className="mb-6"
           />
 
-          {/* Action Bar */}
           <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm mb-6">
             <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">
-                  All Students
-                </h2>
+                <h2 className="text-xl font-semibold text-gray-900">All Students</h2>
                 <p className="text-gray-500 text-sm mt-1">
-                  Showing {paginatedStudents.length} of{" "}
-                  {filteredStudents.length} students
-                  {filteredStudents.length !== students.length &&
-                    ` (filtered from ${students.length} total)`}
+                  Showing {paginatedStudents.length} of {filteredStudents.length} students
+                  {filteredStudents.length !== students.length && ` (filtered from ${students.length} total)`}
                 </p>
               </div>
 
@@ -453,14 +554,13 @@ export const StudentsManagement: React.FC = () => {
             </div>
           </div>
 
-          {/* Students Table */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
             <DataTable<StudentBaseResponseDto>
               columns={columns}
               data={paginatedStudents}
               loading={loading}
               onSort={handleSort}
-              onRowClick={handleViewStudent}
+              onRowClick={(student) => navigate(`/admin/student/${student.id}`)}
               variant="bordered"
               emptyMessage={
                 searchTerm || Object.values(filters).some((f) => f !== "")
@@ -470,7 +570,6 @@ export const StudentsManagement: React.FC = () => {
             />
           </div>
 
-          {/* Pagination */}
           {filteredStudents.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
               <Pagination
@@ -486,170 +585,39 @@ export const StudentsManagement: React.FC = () => {
             </div>
           )}
 
-          {/* Student Modal */}
-          {showModal && (
+          {/* Confirmation Modal for Block/Unblock */}
+          {showBlockModal && selectedStudent && (
+            <ConfirmationModal
+              isOpen={showBlockModal}
+              onClose={() => {
+                setShowBlockModal(false);
+                setSelectedStudent(null);
+              }}
+              onConfirm={handleConfirmAction}
+              title={`Confirm ${selectedStudent.action === 'block' ? 'Block' : 'Unblock'}`}
+              message={`Are you sure you want to ${selectedStudent.action} ${selectedStudent.name}? ${
+                selectedStudent.action === 'block' 
+                  ? 'They will not be able to access the platform.' 
+                  : 'They will regain access to the platform.'
+              }`}
+              confirmText={selectedStudent.action === 'block' ? 'Block' : 'Unblock'}
+              variant="danger"
+              isLoading={loading}
+            />
+          )}
+
+          {/* Student Modal for Add/Edit */}
+          {showStudentModal && (
             <StudentModal
-              student={selectedStudent}
-              onClose={handleCloseModal}
+              student={selectedStudentForEdit}
+              onClose={handleCloseStudentModal}
               onSave={handleSaveStudent}
+              isOpen={showStudentModal}
+              loading={loading}
             />
           )}
         </div>
       </main>
-    </div>
-  );
-};
-
-interface StudentModalProps {
-  student?: StudentBaseResponseDto | null;
-  onClose: () => void;
-  onSave: (data: Partial<StudentBaseResponseDto>) => void;
-}
-
-const StudentModal: React.FC<StudentModalProps> = ({
-  student,
-  onClose,
-  onSave,
-}) => {
-//  const dispatch = useDispatch<AppDispatch>();
-  const loading = useSelector(selectAdminLoading);
-  const [formData, setFormData] = useState<Partial<StudentBaseResponseDto>>(
-    student || {
-      fullName: "",
-      email: "",
-      phoneNumber: "",
-    }
-  );
-
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.fullName?.trim()) {
-      newErrors.fullName = 'Full name is required';
-    }
-
-    if (!formData.email?.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-
-    await onSave(formData);
-  };
-
-  const handleChange = (field: keyof StudentBaseResponseDto, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: '' }));
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md border border-gray-200 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900">
-            {student ? "Edit Student" : "Add Student"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-            disabled={loading}
-          >
-            <XCircle size={24} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Full Name *
-            </label>
-            <input
-              type="text"
-              value={formData.fullName || ""}
-              onChange={(e) => handleChange("fullName", e.target.value)}
-              className={`w-full p-2 bg-white border rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-600 focus:border-transparent ${
-                errors.fullName ? 'border-red-500' : 'border-gray-300'
-              }`}
-              required
-              disabled={loading}
-            />
-            {errors.fullName && (
-              <p className="text-red-500 text-xs mt-1">{errors.fullName}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email *
-            </label>
-            <input
-              type="email"
-              value={formData.email || ""}
-              onChange={(e) => handleChange("email", e.target.value)}
-              className={`w-full p-2 bg-white border rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-600 focus:border-transparent ${
-                errors.email ? 'border-red-500' : 'border-gray-300'
-              }`}
-              required
-              disabled={loading}
-            />
-            {errors.email && (
-              <p className="text-red-500 text-xs mt-1">{errors.email}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Phone Number
-            </label>
-            <input
-              type="tel"
-              value={formData.phoneNumber || ""}
-              onChange={(e) => handleChange("phoneNumber", e.target.value)}
-              className="w-full p-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-600 focus:border-transparent"
-              disabled={loading}
-            />
-          </div>
-
-          <div className="flex space-x-3 pt-4">
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:bg-purple-400 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <div className="flex items-center justify-center">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                  Adding...
-                </div>
-              ) : (
-                `${student ? "Update" : "Add"} Student`
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors font-medium disabled:bg-gray-200 disabled:cursor-not-allowed"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
     </div>
   );
 };

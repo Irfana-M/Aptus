@@ -1,70 +1,3 @@
-// import { useEffect, useRef } from "react";
-// import { useNavigate, useLocation } from "react-router-dom";
-// import { toast } from "react-hot-toast";
-// import { useDispatch } from "react-redux";
-// import { setCredentials } from "../../features/auth/authSlice"; 
-// import { store } from "../../app/store";
-
-// export default function GoogleCallback() {
-//   const navigate = useNavigate();
-//   const dispatch = useDispatch();
-//   const location = useLocation();
-//   const hasProcessed = useRef(false);
-
-//   useEffect(() => {
-//     if (hasProcessed.current) return;
-//     hasProcessed.current = true;
-
-//     const processAuth = async () => {
-//       const params = new URLSearchParams(location.search);
-//       const token = params.get("token");
-//       const email = params.get("email");
-//       const error = params.get("error");
-
-//       if (error) {
-//         toast.error(`Google authentication failed: ${error}`);
-//         navigate("/login");
-//         return;
-//       }
-
-//       if (token && email) {
-//         try {
-         
-          
-//           dispatch(
-//             setCredentials({
-//               user: { email },
-//               accessToken: token,
-//             })
-//           );
-
-//           console.log("Token stored in Redux:", store.getState().auth.accessToken);
-//           console.log("Token stored in localStorage:", localStorage.getItem("accessToken"));
-
-//           toast.success("Login successful via Google!");
-//           navigate("/book-free-trial");
-//         } catch (error) {
-//           toast.error("Failed to set user credentials");
-//           navigate("/login");
-//         }
-//       } else {
-//         toast.error("Google authentication failed - no token received");
-//         navigate("/login");
-//       }
-//     };
-
-//     processAuth();
-//   }, [navigate, dispatch, location]);
-
-//   return (
-//     <div className="flex justify-center items-center min-h-screen">
-//       <div className="text-center">
-//         <p className="text-lg">Processing Google login...</p>
-//         <div className="mt-4">Please wait</div>
-//       </div>
-//     </div>
-//   );
-// }
 import { useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -87,13 +20,13 @@ export default function GoogleCallback() {
     console.log(`🔍 Redirect logic: role=${userRole}, profileComplete=${profileComplete}, approvalStatus=${approvalStatus}`);
     
     if (userRole === "mentor") {
-      // ✅ MENTORS: Always go to profile setup first (since they just signed up via Google)
+      
       if (!profileComplete) {
         console.log('🚀 Redirecting mentor to profile setup');
         return "/mentor/profile-setup";
       }
       
-      // If profile is already complete (shouldn't happen for new Google signups), use normal flow
+     
       switch (approvalStatus) {
         case "pending":
           return "/mentor/profile-setup";
@@ -107,8 +40,8 @@ export default function GoogleCallback() {
     }
 
     if (userRole === "student") {
-      // ✅ STUDENTS: Go to trial class as before
-      return paid ? "/student/dashboard" : "/book-free-trial";
+     
+      return paid ? "/student/dashboard" : "/student/book-free-trial";
     }
 
     return "/";
@@ -149,7 +82,7 @@ export default function GoogleCallback() {
 
       if (token && email && role) {
         try {
-          // Create complete user object with all data from backend
+
           const user = {
             email,
             role,
@@ -169,7 +102,7 @@ export default function GoogleCallback() {
           console.log("Token stored in Redux:", store.getState().auth.accessToken);
           console.log("Token stored in localStorage:", localStorage.getItem("accessToken"));
 
-          // ✅ USE THE getRedirectPath FUNCTION
+          
           const redirectPath = getRedirectPath(
             role,
             isProfileComplete,

@@ -4,17 +4,17 @@ export interface BaseUser {
   password: string;
   role: 'mentor' | 'student';
   isVerified: boolean;
-  isBlocked?: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
+  isBlocked?: boolean | undefined;
+  createdAt?: Date | undefined;
+  updatedAt?: Date | undefined;
 }
 
 export interface AuthUser extends BaseUser {
   fullName: string;
   phoneNumber: string;
-  isProfileComplete?: boolean;
+  isProfileComplete?: boolean | undefined;
   approvalStatus?: "pending" | "approved" | "rejected";
-  id?: string;
+  id?: string | undefined;
 }
 
 
@@ -35,7 +35,7 @@ export interface MentorAuthUser extends Omit<AuthUser, 'role'> {
 
 export interface StudentAuthUser extends Omit<AuthUser, 'role'> {
   role: "student";
-  isPaid?: boolean;
+  isPaid?: boolean | undefined;
   gradeLevel?: string;
   school?: string;
   parentName?: string;

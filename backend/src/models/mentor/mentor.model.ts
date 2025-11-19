@@ -1,6 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import type { MentorProfile } from "../interfaces/models/mentor.interface";
-
+import type { MentorProfile } from "@/interfaces/models/mentor.interface";
 const academicQualificationSchema = new Schema({
   institutionName: String,
   degree: String,
@@ -27,6 +26,12 @@ const subjectProficiencySchema = new Schema({
   },
 });
 
+const availabilitySchema = new Schema({
+  dayOfWeek: { type: Number, required: true }, 
+  timeSlots: [{ type: String, required: true }], 
+  timezone: { type: String, default: "UTC" },
+});
+
 const mentorSchema = new Schema<MentorProfile>(
   {
     fullName: { type: String, required: true },
@@ -40,20 +45,27 @@ const mentorSchema = new Schema<MentorProfile>(
     certification: [certificationSchema],
     subjectProficiency: [subjectProficiencySchema],
     profilePicture: { type: String },
+    availability: [availabilitySchema],
+    rating: { type: Number, default: 0 },
+    totalRatings: { type: Number, default: 0 },
+    expertise: [{ type: String }], 
+    maxStudentsPerWeek: { type: Number, default: 10 },
+    currentWeeklyBookings: { type: Number, default: 0 },
+    isActive: { type: Boolean, default: true },
     isVerified: { type: Boolean, default: false },
     isBlocked: { type: Boolean, default: false },
     isProfileComplete: { type: Boolean, default: false },
     approvalStatus: {
       type: String,
       enum: ["pending", "approved", "rejected"],
-      authProvider: {
-        type: String,
-        enum: ["local", "google"],
-        default: "local",
-      },
-      googleId: { type: String },
       default: "pending",
     },
+    authProvider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
+    googleId: { type: String },
     submittedForApprovalAt: { type: Date },
     rejectionReason: { type: String },
   },

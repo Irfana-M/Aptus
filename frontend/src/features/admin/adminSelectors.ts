@@ -41,6 +41,12 @@ export const selectStudentStats = createSelector(
     const profileComplete = students.filter(
       (student) => student.isProfileComplete
     ).length;
+    const totalTrialClasses = students.reduce((sum, student) => 
+      sum + (student.totalTrialClasses || 0), 0);
+    const pendingTrialClasses = students.reduce((sum, student) => 
+      sum + (student.pendingTrialClasses || 0), 0);
+    const studentsWithTrialClasses = students.filter(student => 
+      (student.totalTrialClasses || 0) > 0).length;
 
     return {
       total,
@@ -48,6 +54,9 @@ export const selectStudentStats = createSelector(
       paid,
       blocked,
       profileComplete,
+      totalTrialClasses,
+      pendingTrialClasses,
+      studentsWithTrialClasses,
     };
   }
 );
@@ -58,17 +67,70 @@ export const selectStudentById = createSelector(
 );
 
 export const selectFilteredStudents = createSelector(
-  [selectAllStudents, (_state: RootState, searchTerm: string) => searchTerm],
-  (students, searchTerm) => {
-    if (!searchTerm) return students;
+  [selectAllStudents, (_state: RootState, searchTerm: string) => searchTerm, (_state: RootState, _searchTerm: string, filters: any) => filters],
+  (students, searchTerm, filters = {}) => {
+    if (!searchTerm && !filters.status && !filters.verification) return students;
 
-    const searchLower = searchTerm.toLowerCase();
+    const searchLower = searchTerm.toLowerCase() || '';
     return students.filter(
-      (student) =>
+      (student) =>{
+       const matchesSearch = 
+        !searchTerm ||
         student.fullName?.toLowerCase().includes(searchLower) ||
         student.email?.toLowerCase().includes(searchLower) ||
         student.id?.toString().includes(searchTerm) ||
-        student.phoneNumber?.includes(searchTerm)
+        student.phoneNumber?.includes(searchTerm);
+
+     
+      const matchesStatus = 
+        !filters.status || 
+        (filters.status === 'active' && !student.isBlocked) ||
+        (filters.status === 'blocked' && student.isBlocked);
+
+      
+      const matchesVerification = 
+        !filters.verification ||
+        (filters.verification === 'verified' && student.isVerified) ||
+        (filters.verification === 'pending' && !student.isVerified);
+
+        const matchesTrialClasses =
+        !filters.trialClasses ||
+        (filters.trialClasses === 'with_trial' && (student.totalTrialClasses || 0) > 0) ||
+        (filters.trialClasses === 'pending' && (student.pendingTrialClasses || 0) > 0) ||
+        (filters.trialClasses === 'none' && (student.totalTrialClasses || 0) === 0);
+
+      return matchesSearch && matchesStatus && matchesVerification && matchesTrialClasses;
+    });
+  }
+);
+
+export const selectAvailableMentors = (state: RootState) => {
+  const availableMentors = state.admin.availableMentors;
+  return Array.isArray(availableMentors) ? availableMentors : [];
+};
+
+export const selectMentorAssignmentLoading = (state: RootState) => 
+  state.admin.loading;
+
+
+export const selectMentorAssignmentError = (state: RootState) => 
+  state.admin.error;
+
+export const selectAllTrialClasses = (state: RootState) => {
+  const trialClasses = state.admin.trialClasses;
+  return Array.isArray(trialClasses) ? trialClasses : [];
+};
+
+export const selectTrialClassDetails = (state: RootState) => state.admin.trialClassDetails;
+
+export const selectStudentTrialClasses = createSelector(
+  [selectAllTrialClasses, (_state: RootState, studentId?: string) => studentId],
+  (trialClasses, studentId) => {
+    if (!studentId) {
+      return []; 
+    }
+    trialClasses.filter(trialClass => 
+      trialClass.student?.id === studentId 
     );
   }
 );

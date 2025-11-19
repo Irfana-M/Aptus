@@ -1,4 +1,4 @@
-import { MentorModel } from "../models/mentor.model";
+import { MentorModel } from "../models/mentor/mentor.model";
 import type {
   AuthUser,
   MentorAuthUser,

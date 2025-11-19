@@ -10,8 +10,13 @@ export interface IStudentRepository extends IBaseRepository<StudentAuthUser> {
     id: string,
     data: Partial<StudentProfile>
   ): Promise<StudentProfile | null>;
-  blockStudent(id: string): Promise<boolean>;
+  blockStudent(id: string): Promise<StudentAuthUser>;
+  unblockStudent(id: string): Promise<StudentAuthUser>;
   markUserVerified(email: string): Promise<void>;
   createUser(data: AuthUser): Promise<AuthUser>;
   findAllStudents(): Promise<StudentBaseResponseDto[]>;
+  findAllWithTrialStats(page: number, limit: number): Promise<{
+    students: any[];
+    totalStudents: number;
+  }>;
 }

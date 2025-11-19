@@ -8,6 +8,9 @@ const TYPES = {
   IStudentAuthRepository: Symbol.for("IStudentAuthRepository"),
   IMentorAuthRepository: Symbol.for("IMentorAuthRepository"),
   IVerificationRepository: Symbol.for("IVerificationRepository"),
+  ITrialClassRepository: Symbol.for("ITrialClassRepository"),
+  IGradeRepository: Symbol.for("IGradeRepository"),
+  ISubjectRepository: Symbol.for("ISubjectRepository"),
 
   VerificationRepositoryMap: Symbol.for("VerificationRepositoryMap"),
   AuthRepositoryMap: Symbol.for("AuthRepositoryMap"),
@@ -20,13 +23,19 @@ const TYPES = {
   IEmailService: Symbol.for("IEmailService"),
   IProfileService: Symbol.for("IProfileService"),
   ImageService: Symbol.for("ImageService"),
+  ITrialClassService: Symbol.for("ITrialClassService"),
+  IGradeService: Symbol.for("IGradeService"),
+  ISubjectService: Symbol.for("ISubjectService"),
 
   // Controllers
   AuthController: Symbol.for("AuthController"),
   AdminController: Symbol.for("AdminController"),
   MentorController: Symbol.for("MentorController"),
   OtpController: Symbol.for("OtpController"),
-
+  TrialClassController: Symbol.for("TrialClassController"),
+  GradeController: Symbol.for("GradeController"),
+  SubjectController: Symbol.for("SubjectController"),
+  
   // Middleware
   AuthMiddleware: Symbol.for("AuthMiddleware"),
   RoleMiddleware: Symbol.for("RoleMiddleware"),

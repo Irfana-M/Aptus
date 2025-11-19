@@ -1,105 +1,52 @@
-import { MentorModel } from "../models/mentor.model";
+import { MentorModel } from "../models/mentor/mentor.model";
 import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository";
 import type { MentorProfile } from "../interfaces/models/mentor.interface";
+import { BaseRepository } from "./baseRepository";
 import { logger } from "../utils/logger";
 import { HttpStatusCode } from "../constants/httpStatus";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import s3Client from "@/config/s3Config";
 import { injectable } from "inversify";
+import { AppError } from "@/utils/AppError";
 
 @injectable()
-export class MentorRepository implements IMentorRepository {
-  async create(data: Partial<MentorProfile>): Promise<MentorProfile> {
-    try {
-      const mentor = new MentorModel(data);
-      const savedMentor = await mentor.save();
-      logger.info(`Mentor created: ${savedMentor._id}`);
-      return savedMentor.toObject();
-    } catch (error: any) {
-      logger.error(`Error creating mentor: ${error.message}`);
-      throw {
-        statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR,
-        message: error.message,
-      };
-    }
+export class MentorRepository
+  extends BaseRepository<MentorProfile>
+  implements IMentorRepository
+{
+  constructor() {
+    super(MentorModel);
   }
 
-  async updateById(
-    id: string,
-    data: Partial<MentorProfile>
-  ): Promise<MentorProfile> {
+  async findByEmail(email: string): Promise<MentorProfile | null> {
     try {
-      const updatedMentor = await MentorModel.findByIdAndUpdate(id, data, {
-        new: true,
-        runValidators: true,
-      })
+      logger.debug(`Finding mentor by email: ${email}`);
+      const mentor = await this.model
+        .findOne({ email })
+        .select("+password")
         .lean()
         .exec();
 
-      if (!updatedMentor) {
-        logger.warn(`Mentor update failed, ID not found: ${id}`);
-        throw {
-          statusCode: HttpStatusCode.NOT_FOUND,
-          message: `Mentor with ID ${id} not found`,
-        };
-      }
-      logger.info(`Mentor updated: ${id}`);
-      return updatedMentor;
-    } catch (error: any) {
-      logger.error(`Error updating mentor: ${id} - ${error.message}`);
-      throw {
-        statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR,
-        message: error.message,
-      };
-    }
-  }
-
-  async deleteById(id: string): Promise<boolean> {
-    try {
-      const result = await MentorModel.findByIdAndDelete(id).exec();
-      const deleted = !!result;
-
-      if (deleted) {
-        logger.info(`Mentor deleted: ${id}`);
-      } else {
-        logger.warn(`Mentor delete failed, ID not found: ${id}`);
-      }
-
-      return deleted;
-    } catch (error: any) {
-      logger.error(`Error deleting mentor: ${id} - ${error.message}`);
-      throw {
-        statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR,
-        message: error.message,
-      };
-    }
-  }
-
-  async findById(id: string): Promise<MentorProfile | null> {
-    try {
-      const mentor = await MentorModel.findById(id).lean().exec();
       if (!mentor) {
-        logger.warn(`Mentor not found by ID: ${id}`);
+        logger.debug(`Mentor not found with email: ${email}`);
         return null;
       }
-      logger.info(`Mentor found by ID: ${id}`);
-      return mentor;
+
+      logger.info(`Mentor found with email: ${email}`);
+      return mentor as MentorProfile;
     } catch (error: any) {
-      logger.error(`Error finding mentor by ID: ${id} - ${error.message}`);
-      throw {
-        statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR,
-        message: error.message,
-      };
+      logger.error(`Error finding mentor by email - ${error.message}`);
+      throw new AppError(
+        "Failed to find mentor by email",
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
     }
   }
 
   async getAllMentors(): Promise<MentorProfile[]> {
     try {
-      const mentors = await MentorModel.find()
-        .sort({ createdAt: -1 })
-        .lean()
-        .exec();
+      const mentors = await this.findAll();
 
       const mentorsWithImages = await Promise.all(
         mentors.map(async (mentor) => {
@@ -138,10 +85,10 @@ export class MentorRepository implements IMentorRepository {
       return mentorsWithImages;
     } catch (error: any) {
       logger.error(`Error fetching all mentors - ${error.message}`);
-      throw {
-        statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR,
-        message: error.message,
-      };
+      throw new AppError(
+        "Failed to fetch mentors",
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
     }
   }
 
@@ -149,42 +96,21 @@ export class MentorRepository implements IMentorRepository {
     id: string,
     data: Partial<MentorProfile>
   ): Promise<MentorProfile | null> {
-    try {
-      const updatedMentor = await MentorModel.findByIdAndUpdate(id, data, {
-        new: true,
-      })
-        .lean()
-        .exec();
-      if (!updatedMentor) {
-        logger.warn(`Mentor profile update failed, ID not found: ${id}`);
-        return null;
-      }
-      logger.info(`Mentor profile updated: ${id}`);
-      return updatedMentor;
-    } catch (error: any) {
-      logger.error(`Error updating mentor profile: ${id} - ${error.message}`);
-      throw {
-        statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR,
-        message: error.message,
-      };
-    }
+    return await this.updateById(id, data);
   }
 
   async submitForApproval(id: string): Promise<MentorProfile> {
     try {
-      const updatedMentor = await MentorModel.findByIdAndUpdate(
-        id,
-        { approvalStatus: "pending", submittedForApprovalAt: new Date() },
-        { new: true }
-      )
+      const updatedMentor = await this.model
+        .findByIdAndUpdate(
+          id,
+          { approvalStatus: "pending", submittedForApprovalAt: new Date() },
+          { new: true }
+        )
         .lean()
         .exec();
       if (!updatedMentor) {
-        logger.warn(`Mentor submit for approval failed, ID not found: ${id}`);
-        throw {
-          statusCode: HttpStatusCode.NOT_FOUND,
-          message: `Mentor with ID ${id} not found`,
-        };
+        throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
       }
       logger.info(`Mentor submitted for approval: ${id}`);
       return updatedMentor;
@@ -192,26 +118,27 @@ export class MentorRepository implements IMentorRepository {
       logger.error(
         `Error submitting mentor for approval: ${id} - ${error.message}`
       );
-      throw {
-        statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR,
-        message: error.message,
-      };
+      throw new AppError(
+        "Failed to submit mentor for approval",
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
     }
   }
 
   async getPendingApprovals(): Promise<MentorProfile[]> {
     try {
-      const mentors = await MentorModel.find({ approvalStatus: "pending" })
+      const mentors = await this.model
+        .find({ approvalStatus: "pending" })
         .lean()
         .exec();
       logger.info(`Fetched pending mentor approvals, count=${mentors.length}`);
       return mentors;
     } catch (error: any) {
       logger.error(`Error fetching pending approvals - ${error.message}`);
-      throw {
-        statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR,
-        message: error.message,
-      };
+      throw new AppError(
+        "Failed to fetch pending approvals",
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
     }
   }
 
@@ -225,19 +152,14 @@ export class MentorRepository implements IMentorRepository {
       if (status === "rejected") update.rejectionReason = rejectionReason || "";
       if (status === "approved") update.rejectionReason = undefined;
 
-      const updatedMentor = await MentorModel.findByIdAndUpdate(id, update, {
-        new: true,
-      })
+      const updatedMentor = await this.model
+        .findByIdAndUpdate(id, update, {
+          new: true,
+        })
         .lean()
         .exec();
       if (!updatedMentor) {
-        logger.warn(
-          `Mentor approval status update failed, ID not found: ${id}`
-        );
-        throw {
-          statusCode: HttpStatusCode.NOT_FOUND,
-          message: `Mentor with ID ${id} not found`,
-        };
+        throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
       }
 
       logger.info(`Mentor approval status updated: ${id}, status=${status}`);
@@ -246,10 +168,51 @@ export class MentorRepository implements IMentorRepository {
       logger.error(
         `Error updating approval status for mentor: ${id} - ${error.message}`
       );
-      throw {
-        statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR,
-        message: error.message,
-      };
+      throw new AppError(
+        "Failed to update approval status",
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
     }
   }
+
+// In your MentorRepository - fix the query
+async findBySubjectProficiency(subjectName: string, date?: string): Promise<MentorProfile[]> {
+  try {
+    console.log('🔍 Repository: Searching for mentors with subject:', subjectName);
+    
+    const query: any = {
+      approvalStatus: "approved",
+      isBlocked: false,
+      isActive: true,
+      "subjectProficiency.subject": { 
+        $regex: new RegExp(`^${subjectName}$`, 'i') // Exact match, case insensitive
+      }
+    };
+
+    console.log('🔍 Repository query:', JSON.stringify(query, null, 2));
+
+    // If date is provided, filter by availability
+    if (date) {
+      const targetDate = new Date(date);
+      const dayOfWeek = targetDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      
+      query["availability.dayOfWeek"] = dayOfWeek;
+      console.log('🔍 Adding day filter:', dayOfWeek);
+    }
+
+    const mentors = await this.model
+      .find(query)
+      .select('-password')
+      .exec();
+
+    console.log('🔍 Repository found:', mentors.length, 'mentors');
+    
+    return mentors;
+  } catch (error) {
+    console.error('❌ Repository error:', error);
+    logger.error(`MentorRepository: Error finding mentors by subject ${subjectName}`, error);
+    throw error;
+  }
+}
+  
 }

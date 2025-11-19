@@ -9,8 +9,8 @@ import { TYPES } from "@/types";
 
 import type { AuthController } from "../controllers/auth.controller";
 import type { OtpController } from "../controllers/otp.controller";
-import type { MentorModel } from "../models/mentor.model";
-import type { StudentModel } from "../models/student.model";
+import type { MentorModel } from "../models/mentor/mentor.model";
+import type { StudentModel } from "../models/student/student.model";
 
 const router = Router();
 

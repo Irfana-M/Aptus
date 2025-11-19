@@ -45,6 +45,12 @@ export interface Certification {
   issuingOrganization: string;
 }
 
+export interface Availability {
+  dayOfWeek: number; 
+  timeSlots: string[]; 
+  timezone: string;
+}
+
 export interface MentorProfile {
   _id: string;
   fullName: string;
@@ -59,6 +65,15 @@ export interface MentorProfile {
   subjectProficiency?: SubjectProficency[];
   certification?: Certification[];
   profilePicture?: string;
+
+  availability?: Availability[];
+  rating?: number;
+  totalRatings?: number;
+  expertise?: string[];
+  maxStudentsPerWeek?: number;
+  currentWeeklyBookings?: number;
+  isActive?: boolean;
+  
   profileImageUrl?: string | null;
   profileImageKey?: string;
   isVerified?: boolean;

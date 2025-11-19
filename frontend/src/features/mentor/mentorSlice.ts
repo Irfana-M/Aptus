@@ -37,8 +37,22 @@ export interface MentorProfile {
   profilePicture?: string;
   profileImageUrl?: string | null;
   profileImageKey?: string;
+  availability?: {
+    dayOfWeek: number;
+    timeSlots: string[];
+    timezone: string;
+  }[];
+  rating?: number;
+  totalRatings?: number;
+  expertise?: string[];
+  maxStudentsPerWeek?: number;
+  currentWeeklyBookings?: number;
+  isActive?: boolean;
+  isVerified?: boolean;
+  isProfileComplete?: boolean;
   approvalStatus: "pending" | "approved" | "rejected";
   rejectionReason?: string;
+  isBlocked?: boolean;
   createdAt: string;
 }
 

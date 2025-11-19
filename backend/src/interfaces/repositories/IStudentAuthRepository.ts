@@ -4,7 +4,11 @@ import type { StudentProfile } from "../models/student.interface";
 
 export interface IStudentAuthRepository extends IAuthRepository {
   comparePassword(user: AuthUser, password: string): Promise<boolean>;
+  updatePassword(email: string, hashedPassword: string): Promise<void>;
+  updateProfile(
+    id: string,
+    data: Partial<StudentProfile>
+  ): Promise<StudentProfile | null>;
   blockStudent(id: string): Promise<boolean>;
   listAllStudents(): Promise<StudentProfile[]>;
-  block(id: string): Promise<boolean>;
 }

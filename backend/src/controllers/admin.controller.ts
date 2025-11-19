@@ -15,61 +15,42 @@ export class AdminController {
     @inject(TYPES.IStudentService) private _studentService: IStudentService
   ) {}
 
-  addStudent = async (req: Request, res: Response): Promise<void> => {
+    addStudent = async (req: Request, res: Response): Promise<void> => {
     try {
       const { fullName, email, phoneNumber } = req.body;
 
-      logger.info(`Admin: Attempting to add student - ${email}`);
+      logger.info(`Admin: Adding new student - ${email}`);
 
-      
       if (!fullName || !email) {
-        logger.warn(`Admin: Add student validation failed - missing name or email for ${email}`);
-        res.status(HttpStatusCode.BAD_REQUEST).json({ 
-          success: false, 
-          message: 'Full name and email are required' 
+        res.status(HttpStatusCode.BAD_REQUEST).json({
+          success: false,
+          message: "Full name and email are required",
         });
         return;
       }
 
-      
-      const existingStudent = await this._studentService.findStudentByEmail(email);
-      if (existingStudent) {
-        logger.warn(`Admin: Add student failed - student already exists: ${email}`);
-        res.status(HttpStatusCode.CONFLICT).json({ 
-          success: false, 
-          message: 'Student with this email already exists' 
-        });
-        return;
-      }
-
-      
-      const student = await this._studentService.createStudent({
+      const result = await this._adminService.addStudent({
         fullName,
         email,
-        phoneNumber: phoneNumber || "",
-        role: 'student',
-        isVerified: true,
-        isProfileComplete: false,
-        approvalStatus: 'approved'
+        phoneNumber,
       });
 
       logger.info(`Admin: Student added successfully - ${email}`);
 
       res.status(HttpStatusCode.CREATED).json({
         success: true,
-        message: 'Student added successfully',
-        data: student
+        message: "Student added successfully",
+        data: result,
       });
-
-    } catch (error) {
+    } catch (error: any) {
       logger.error(`Admin: Add student error for ${req.body.email}:`, error);
-      res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ 
-        success: false, 
-        message: 'Internal server error' 
+      const statusCode = error.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+      res.status(statusCode).json({
+        success: false,
+        message: error.message,
       });
     }
   };
-
 
   refreshAccessToken = async (
     req: Request,
@@ -128,6 +109,7 @@ export class AdminController {
       );
     }
   };
+  
 
   login = async (req: Request, res: Response) => {
     try {
@@ -311,4 +293,467 @@ export class AdminController {
         .json({ message: error.message });
     }
   };
-}
+
+
+  blockMentor = async (req: Request, res: Response): Promise<void> => {
+    const mentorId = req.params.mentorId;
+    
+    if (!mentorId) {
+      logger.warn("Mentor ID is missing in request");
+      res.status(HttpStatusCode.BAD_REQUEST).json({
+        success: false,
+        message: "Mentor ID is required",
+      });
+      return;
+    }
+
+    try {
+      logger.info(`Blocking mentor: ${mentorId}`);
+      const result = await this._adminService.blockMentor(mentorId);
+      
+      logger.info(`Mentor blocked successfully: ${mentorId}`);
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: result,
+        message: "Mentor blocked successfully",
+      });
+    } catch (error: any) {
+      logger.error(`Error blocking mentor ${mentorId}: ${error.message}`);
+      const statusCode = error.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+      res.status(statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  };
+
+
+unblockMentor = async (req: Request, res: Response): Promise<void> => {
+    const mentorId = req.params.mentorId;
+    
+    if (!mentorId) {
+      logger.warn("Mentor ID is missing in request");
+      res.status(HttpStatusCode.BAD_REQUEST).json({
+        success: false,
+        message: "Mentor ID is required",
+      });
+      return;
+    }
+
+    try {
+      logger.info(`Unblocking mentor: ${mentorId}`);
+      const result = await this._adminService.unblockMentor(mentorId);
+      
+      logger.info(`Mentor unblocked successfully: ${mentorId}`);
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: result,
+        message: "Mentor unblocked successfully",
+      });
+    } catch (error: any) {
+      logger.error(`Error unblocking mentor ${mentorId}: ${error.message}`);
+      const statusCode = error.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+      res.status(statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  };
+
+
+  addMentor = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { fullName, email, phoneNumber, location, bio } = req.body;
+
+    logger.info(`Admin: Adding new mentor - ${email}`);
+
+    if (!fullName || !email) {
+      res.status(HttpStatusCode.BAD_REQUEST).json({
+        success: false,
+        message: "Full name and email are required",
+      });
+      return;
+    }
+
+    const result = await this._adminService.addMentor({
+      fullName,
+      email,
+      phoneNumber,
+      location,
+      bio,
+    });
+
+    logger.info(`Admin: Mentor added successfully - ${email}`);
+
+    res.status(HttpStatusCode.CREATED).json({
+      success: true,
+      message: "Mentor added successfully",
+      data: result,
+    });
+  } catch (error: any) {
+    logger.error(`Admin: Add mentor error for ${req.body.email}:`, error);
+    const statusCode = error.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+    res.status(statusCode).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+updateMentor = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const mentorId = req.params.mentorId;
+    const updateData = req.body;
+
+    logger.info(`Admin: Updating mentor - ${mentorId}`);
+
+    if (!mentorId) {
+      res.status(HttpStatusCode.BAD_REQUEST).json({
+        success: false,
+        message: "Mentor ID is required",
+      });
+      return;
+    }
+
+    const result = await this._adminService.updateMentor(mentorId, updateData);
+
+    logger.info(`Admin: Mentor updated successfully - ${mentorId}`);
+
+    res.status(HttpStatusCode.OK).json({
+      success: true,
+      message: "Mentor updated successfully",
+      data: result,
+    });
+  } catch (error: any) {
+    logger.error(`Admin: Update mentor error for ${req.params.mentorId}:`, error);
+    const statusCode = error.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+    res.status(statusCode).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+updateStudent = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const studentId = req.params.studentId;
+    const updateData = req.body;
+
+    logger.info(`Admin: Updating student - ${studentId}`);
+
+    if (!studentId) {
+      res.status(HttpStatusCode.BAD_REQUEST).json({
+        success: false,
+        message: "Student ID is required",
+      });
+      return;
+    }
+
+    const result = await this._adminService.updateStudent(studentId, updateData);
+
+    logger.info(`Admin: Student updated successfully - ${studentId}`);
+
+    res.status(HttpStatusCode.OK).json({
+      success: true,
+      message: "Student updated successfully",
+      data: result,
+    });
+  } catch (error: any) {
+    logger.error(`Admin: Update student error for ${req.params.studentId}:`, error);
+    const statusCode = error.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+    res.status(statusCode).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+   blockStudent = async (req: Request, res: Response): Promise<void> => {
+    const studentId = req.params.studentId;
+    
+    if (!studentId) {
+      logger.warn("Student ID is missing in request");
+      res.status(HttpStatusCode.BAD_REQUEST).json({
+        success: false,
+        message: "Student ID is required",
+      });
+      return;
+    }
+
+    try {
+      logger.info(`Blocking student: ${studentId}`);
+      const result = await this._adminService.blockStudent(studentId);
+      
+      logger.info(`Student blocked successfully: ${studentId}`);
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: result,
+        message: "Student blocked successfully",
+      });
+    } catch (error: any) {
+      logger.error(`Error blocking student ${studentId}: ${error.message}`);
+      const statusCode = error.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+      res.status(statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  };
+
+  unblockStudent = async (req: Request, res: Response): Promise<void> => {
+    const studentId = req.params.studentId;
+    
+    if (!studentId) {
+      logger.warn("Student ID is missing in request");
+      res.status(HttpStatusCode.BAD_REQUEST).json({
+        success: false,
+        message: "Student ID is required",
+      });
+      return;
+    }
+
+    try {
+      logger.info(`Unblocking student: ${studentId}`);
+      const result = await this._adminService.unblockStudent(studentId);
+      
+      logger.info(`Student unblocked successfully: ${studentId}`);
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: result,
+        message: "Student unblocked successfully",
+      });
+    } catch (error: any) {
+      logger.error(`Error unblocking student ${studentId}: ${error.message}`);
+      const statusCode = error.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+      res.status(statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  };
+
+
+   getStudentsWithTrialStats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+
+      logger.info(`AdminController: Fetching students with trial stats - Page: ${page}, Limit: ${limit}`);
+
+      const result = await this._adminService.getStudentsWithTrialStats(page, limit);
+
+      logger.info(`AdminController: Successfully fetched students with trial stats`);
+
+      res.status(HttpStatusCode.OK).json(result);
+    } catch (error) {
+      logger.error("AdminController: Error fetching students with trial stats", error);
+      next(error);
+    }
+  };
+
+
+  // In your AdminController - add detailed logging
+getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { studentId } = req.params;
+    const { status } = req.query;
+
+    console.log('🔍 [DEBUG] AdminController.getStudentTrialClasses - START');
+    console.log('🔍 [DEBUG] Request params:', { studentId, status });
+    console.log('🔍 [DEBUG] AdminService instance:', !!this._adminService);
+    console.log('🔍 [DEBUG] AdminService methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(this._adminService)));
+
+    logger.info(`AdminController: Fetching trial classes for student - ${studentId}`, { status });
+
+    if (!studentId) {
+      throw new AppError("Student ID is required", HttpStatusCode.BAD_REQUEST);
+    }
+
+    // Add try-catch around the service call
+    let trialClasses;
+    try {
+      console.log('🔍 [DEBUG] Calling _adminService.getStudentTrialClasses...');
+      trialClasses = await this._adminService.getStudentTrialClasses(studentId, status as string);
+      console.log('🔍 [DEBUG] Service call completed, result:', trialClasses);
+    } catch (serviceError) {
+      console.error('🔍 [DEBUG] Service error:', serviceError);
+      throw serviceError;
+    }
+
+    logger.info(`AdminController: Found ${trialClasses.length} trial classes for student ${studentId}`);
+
+    res.status(HttpStatusCode.OK).json({
+      success: true,
+      data: trialClasses,
+      count: trialClasses.length,
+      message: "Student trial classes fetched successfully",
+    });
+    
+    console.log('🔍 [DEBUG] AdminController.getStudentTrialClasses - END');
+  } catch (error) {
+    console.error('🔍 [DEBUG] Controller error:', error);
+    logger.error(`AdminController: Error fetching trial classes for student ${req.params.studentId}`, error);
+    next(error);
+  }
+};
+
+
+
+  getAllTrialClasses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { status, page = 1, limit = 10 } = req.query;
+
+      logger.info("AdminController: Fetching all trial classes", { status, page, limit });
+
+      const result = await this._adminService.getAllTrialClasses({
+        status: status as string,
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+      });
+
+      logger.info(`AdminController: Found ${result.trialClasses.length} trial classes`);
+
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: result.trialClasses,
+        pagination: result.pagination,
+        message: "Trial classes fetched successfully",
+      });
+    } catch (error) {
+      logger.error("AdminController: Error fetching all trial classes", error);
+      next(error);
+    }
+  };
+
+  getTrialClassDetails = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { trialClassId } = req.params;
+
+      logger.info(`AdminController: Fetching trial class details - ${trialClassId}`);
+
+      if (!trialClassId) {
+        throw new AppError("Trial class ID is required", HttpStatusCode.BAD_REQUEST);
+      }
+
+      const trialClass = await this._adminService.getTrialClassDetails(trialClassId);
+
+      logger.info(`AdminController: Found trial class details for ${trialClassId}`);
+
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: trialClass,
+        message: "Trial class details fetched successfully",
+      });
+    } catch (error) {
+      logger.error(`AdminController: Error fetching trial class details ${req.params.trialClassId}`, error);
+      next(error);
+    }
+  };
+
+  assignMentorToTrialClass = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { trialClassId } = req.params;
+      const { mentorId, scheduledDate, scheduledTime, meetLink } = req.body;
+
+      logger.info(`AdminController: Assigning mentor to trial class - ${trialClassId}`, {
+        mentorId,
+        scheduledDate,
+        scheduledTime,
+      });
+
+      if (!trialClassId || !mentorId || !scheduledDate || !scheduledTime) {
+        throw new AppError(
+          "Trial class ID, mentor ID, scheduled date, and scheduled time are required",
+          HttpStatusCode.BAD_REQUEST
+        );
+      }
+
+      const result = await this._adminService.assignMentorToTrialClass(
+        trialClassId,
+        mentorId,
+        scheduledDate,
+        scheduledTime,
+        meetLink
+      );
+
+      logger.info(`AdminController: Mentor assigned successfully to trial class ${trialClassId}`);
+
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: result,
+        message: "Mentor assigned successfully",
+      });
+    } catch (error) {
+      logger.error(`AdminController: Error assigning mentor to trial class ${req.params.trialClassId}`, error);
+      next(error);
+    }
+  };
+
+  updateTrialClassStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { trialClassId } = req.params;
+      const { status, reason } = req.body;
+
+      logger.info(`AdminController: Updating trial class status - ${trialClassId}`, { status, reason });
+
+      if (!trialClassId || !status) {
+        throw new AppError("Trial class ID and status are required", HttpStatusCode.BAD_REQUEST);
+      }
+
+      const validStatuses = ["requested", "assigned", "completed", "cancelled"];
+      if (!validStatuses.includes(status)) {
+        throw new AppError(
+          `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+          HttpStatusCode.BAD_REQUEST
+        );
+      }
+
+      const result = await this._adminService.updateTrialClassStatus(trialClassId, status, reason);
+
+      logger.info(`AdminController: Trial class status updated successfully for ${trialClassId}`);
+
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: result,
+        message: "Trial class status updated successfully",
+      });
+    } catch (error) {
+      logger.error(`AdminController: Error updating trial class status ${req.params.trialClassId}`, error);
+      next(error);
+    }
+  };
+
+
+getAvailableMentors = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { subjectId, preferredDate } = req.query;
+
+    logger.info(`AdminController: Fetching available mentors`, { subjectId, preferredDate });
+
+    if (!subjectId || typeof subjectId !== 'string') {
+      throw new AppError("Subject ID is required", HttpStatusCode.BAD_REQUEST);
+    }
+
+    const availableMentors = await this._adminService.getAvailableMentors(
+      subjectId, 
+      preferredDate as string
+    );
+
+    console.log('🔍 Controller returning mentors:', availableMentors.length);
+
+    res.status(HttpStatusCode.OK).json({
+      success: true,
+      data: availableMentors, 
+      count: availableMentors.length,
+      message: "Available mentors fetched successfully",
+    });
+  } catch (error) {
+    console.error('❌ Controller error:', error);
+    logger.error("AdminController: Error fetching available mentors", error);
+    next(error);
+  }
+};
+
+} 

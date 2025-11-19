@@ -2,12 +2,20 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import type { AppDispatch } from "../../app/store";
-import { fetchAllMentorsAdmin } from "../../features/admin/adminThunk";
+import { 
+  fetchAllMentorsAdmin, 
+  blockMentorAdmin, 
+  unblockMentorAdmin,
+  addMentorAdmin,
+  updateMentorAdmin
+} from "../../features/admin/adminThunk";
 import {
   selectAllMentors,
   selectAdminLoading,
 } from "../../features/admin/adminSelectors";
 import type { MentorProfile } from "../../features/mentor/mentorSlice";
+import { MentorModal } from "../../components/admin/MentorModal";
+import { ConfirmationModal } from "../../components/ui/ConfirmationModal";
 import { Sidebar } from "../../components/admin/Sidebar";
 import { Topbar } from "../../components/admin/Topbar";
 import { DataTable } from "../../components/ui/DataTable";
@@ -20,13 +28,15 @@ import { usePagination } from "../../hooks/usePagination";
 import {
   Plus,
   Edit2,
-  Trash2,
   Eye,
   Users,
   CheckCircle,
   XCircle,
   Clock,
+  Ban,
+  Check,
 } from "lucide-react";
+import { showToast } from "../../utils/toast";
 
 interface Column<T> {
   header: string;
@@ -40,7 +50,6 @@ export const MentorsManagement: React.FC = () => {
   const navigate = useNavigate();
   const mentors = useSelector(selectAllMentors);
   const loading = useSelector(selectAdminLoading);
-  //const error = useSelector(selectAdminError);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("Mentors");
@@ -49,15 +58,17 @@ export const MentorsManagement: React.FC = () => {
     status: "",
     subject: "",
   });
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [showMentorModal, setShowMentorModal] = useState(false);
+  const [selectedMentor, setSelectedMentor] = useState<{id: string, name: string, action: 'block' | 'unblock'} | null>(null);
+  const [selectedMentorForEdit, setSelectedMentorForEdit] = useState<MentorProfile | null>(null);
 
-  // Initialize pagination
   const pagination = usePagination({
     totalItems: mentors.length,
     initialPage: 1,
     initialItemsPerPage: 10,
   });
 
-  // Filter configurations
   const filterConfigs: FilterConfig[] = [
     {
       key: "status",
@@ -86,28 +97,24 @@ export const MentorsManagement: React.FC = () => {
     dispatch(fetchAllMentorsAdmin());
   }, [dispatch]);
 
-  // Filter and search mentors
   const filteredMentors = useMemo(() => {
     return mentors.filter((mentor) => {
-      // Search filter
       const matchesSearch =
         searchTerm === "" ||
         mentor.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         mentor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        mentor.subjectProficiency.some((subj) =>
+        (mentor.subjectProficiency && mentor.subjectProficiency.some((subj) =>
           subj.subject.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        ));
 
-      // Status filter
       const matchesStatus =
         filters.status === "" || mentor.approvalStatus === filters.status;
 
-      // Subject filter
       const matchesSubject =
         filters.subject === "" ||
-        mentor.subjectProficiency.some(
+        (mentor.subjectProficiency && mentor.subjectProficiency.some(
           (subj) => subj.subject === filters.subject
-        );
+        ));
 
       return matchesSearch && matchesStatus && matchesSubject;
     });
@@ -145,6 +152,84 @@ export const MentorsManagement: React.FC = () => {
     }
   };
 
+  // Block/Unblock handlers
+  const handleBlockClick = (mentorId: string, mentorName: string) => {
+    setSelectedMentor({ id: mentorId, name: mentorName, action: 'block' });
+    setShowBlockModal(true);
+  };
+
+  const handleUnblockClick = (mentorId: string, mentorName: string) => {
+    setSelectedMentor({ id: mentorId, name: mentorName, action: 'unblock' });
+    setShowBlockModal(true);
+  };
+
+  const handleConfirmAction = async () => {
+    if (!selectedMentor) return;
+
+    try {
+      const loadingToastId = showToast.loading(
+        `${selectedMentor.action === 'block' ? 'Blocking' : 'Unblocking'} ${selectedMentor.name}...`
+      );
+
+      if (selectedMentor.action === 'block') {
+        await dispatch(blockMentorAdmin(selectedMentor.id)).unwrap();
+        showToast.success(`${selectedMentor.name} has been blocked successfully`);
+      } else {
+        await dispatch(unblockMentorAdmin(selectedMentor.id)).unwrap();
+        showToast.success(`${selectedMentor.name} has been unblocked successfully`);
+      }
+
+      showToast.dismiss(loadingToastId);
+      setShowBlockModal(false);
+      setSelectedMentor(null);
+      
+    } catch (error: any) {
+      showToast.dismiss();
+      const action = selectedMentor.action === 'block' ? 'block' : 'unblock';
+      const errorMessage = error?.message || `Failed to ${action} ${selectedMentor.name}`;
+      showToast.error(errorMessage);
+      console.error(`Failed to ${action} mentor:`, error);
+    }
+  };
+
+  // Mentor add/edit handlers
+  const handleEditMentor = (mentor: MentorProfile) => {
+    setSelectedMentorForEdit(mentor);
+    setShowMentorModal(true);
+  };
+
+  const handleAddMentor = () => {
+    setSelectedMentorForEdit(null);
+    setShowMentorModal(true);
+  };
+
+  const handleCloseMentorModal = () => {
+    setShowMentorModal(false);
+    setSelectedMentorForEdit(null);
+  };
+
+  const handleSaveMentor = async (mentorData: any) => {
+    try {
+      if (selectedMentorForEdit) {
+        await dispatch(updateMentorAdmin({
+          mentorId: selectedMentorForEdit._id,
+          data: mentorData
+        })).unwrap();
+        showToast.success("Mentor updated successfully");
+      } else {
+        await dispatch(addMentorAdmin(mentorData)).unwrap();
+        showToast.success("Mentor added successfully");
+      }
+      
+      handleCloseMentorModal();
+    } catch (error: any) {
+      const action = selectedMentorForEdit ? "update" : "add";
+      const errorMessage = error?.message || `Failed to ${action} mentor`;
+      showToast.error(errorMessage);
+      console.error(`Failed to ${action} mentor:`, error);
+    }
+  };
+
   const columns: Column<MentorProfile>[] = [
     {
       header: "Mentor",
@@ -152,10 +237,7 @@ export const MentorsManagement: React.FC = () => {
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-amber-600 rounded-full flex items-center justify-center">
             <span className="text-white font-semibold text-sm">
-              {row.fullName
-                .split(" ")
-                .map((n) => n[0])
-                .join("")}
+              {row.fullName.split(" ").map((n) => n[0]).join("")}
             </span>
           </div>
           <div>
@@ -179,7 +261,7 @@ export const MentorsManagement: React.FC = () => {
       header: "Subjects",
       accessor: (row) => (
         <div className="flex flex-wrap gap-1 max-w-xs">
-          {row.subjectProficiency.slice(0, 2).map((subject, index) => (
+          {row.subjectProficiency?.slice(0, 2).map((subject, index) => (
             <span
               key={index}
               className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium"
@@ -187,7 +269,7 @@ export const MentorsManagement: React.FC = () => {
               {subject.subject}
             </span>
           ))}
-          {row.subjectProficiency.length > 2 && (
+          {row.subjectProficiency && row.subjectProficiency.length > 2 && (
             <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
               +{row.subjectProficiency.length - 2} more
             </span>
@@ -200,14 +282,14 @@ export const MentorsManagement: React.FC = () => {
       accessor: (row) => (
         <div className="flex items-center space-x-2">
           {getStatusIcon(row.approvalStatus)}
-          <span
-            className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-              row.approvalStatus
-            )}`}
-          >
-            {row.approvalStatus.charAt(0).toUpperCase() +
-              row.approvalStatus.slice(1)}
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(row.approvalStatus)}`}>
+            {row.approvalStatus.charAt(0).toUpperCase() + row.approvalStatus.slice(1)}
           </span>
+          {row.isBlocked && (
+            <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+              Blocked
+            </span>
+          )}
         </div>
       ),
       sortable: true,
@@ -228,28 +310,54 @@ export const MentorsManagement: React.FC = () => {
     {
       header: "Actions",
       accessor: (row) => (
-        <div className="flex space-x-2">
+        <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={() => navigate(`/admin/mentor/${row._id}`)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate(`/admin/mentor/${row._id}`);
+            }}
             className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors duration-200"
             title="View Profile"
           >
             <Eye size={16} />
           </button>
           <button
-            onClick={() => handleEditMentor(row)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleEditMentor(row);
+            }}
             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
             title="Edit Mentor"
           >
             <Edit2 size={16} />
           </button>
-          <button
-            onClick={() => handleDeleteMentor(row._id)}
-            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
-            title="Delete Mentor"
-          >
-            <Trash2 size={16} />
-          </button>
+          {row.isBlocked ? (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleUnblockClick(row._id, row.fullName);
+              }}
+              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-200"
+              title="Unblock Mentor"
+            >
+              <Check size={16} />
+            </button>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleBlockClick(row._id, row.fullName);
+              }}
+              className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors duration-200"
+              title="Block Mentor"
+            >
+              <Ban size={16} />
+            </button>
+          )}
         </div>
       ),
     },
@@ -262,20 +370,6 @@ export const MentorsManagement: React.FC = () => {
   const handleClearFilters = () => {
     setSearchTerm("");
     setFilters({ status: "", subject: "" });
-  };
-
-  const handleEditMentor = (mentor: MentorProfile) => {
-    console.log("Edit mentor:", mentor);
-  };
-
-  const handleDeleteMentor = (mentorId: string) => {
-    if (window.confirm("Are you sure you want to delete this mentor?")) {
-      console.log("Delete mentor:", mentorId);
-    }
-  };
-
-  const handleAddMentor = () => {
-    console.log("Add new mentor");
   };
 
   const handleSort = (
@@ -313,7 +407,6 @@ export const MentorsManagement: React.FC = () => {
         onClose={() => setSidebarOpen(false)}
       />
 
-      {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <Topbar
           onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -324,18 +417,13 @@ export const MentorsManagement: React.FC = () => {
           }}
         />
 
-        {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm font-medium">
-                    Total Mentors
-                  </p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
-                    {mentors.length}
-                  </p>
+                  <p className="text-gray-600 text-sm font-medium">Total Mentors</p>
+                  <p className="text-3xl font-bold text-gray-900 mt-2">{mentors.length}</p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-600 flex items-center justify-center">
                   <Users className="w-6 h-6 text-white" />
@@ -348,10 +436,7 @@ export const MentorsManagement: React.FC = () => {
                 <div>
                   <p className="text-gray-600 text-sm font-medium">Approved</p>
                   <p className="text-3xl font-bold text-gray-900 mt-2">
-                    {
-                      mentors.filter((m) => m.approvalStatus === "approved")
-                        .length
-                    }
+                    {mentors.filter((m) => m.approvalStatus === "approved").length}
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center">
@@ -365,10 +450,7 @@ export const MentorsManagement: React.FC = () => {
                 <div>
                   <p className="text-gray-600 text-sm font-medium">Pending</p>
                   <p className="text-3xl font-bold text-gray-900 mt-2">
-                    {
-                      mentors.filter((m) => m.approvalStatus === "pending")
-                        .length
-                    }
+                    {mentors.filter((m) => m.approvalStatus === "pending").length}
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-600 flex items-center justify-center">
@@ -380,16 +462,13 @@ export const MentorsManagement: React.FC = () => {
             <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm font-medium">Rejected</p>
+                  <p className="text-gray-600 text-sm font-medium">Blocked</p>
                   <p className="text-3xl font-bold text-gray-900 mt-2">
-                    {
-                      mentors.filter((m) => m.approvalStatus === "rejected")
-                        .length
-                    }
+                    {mentors.filter((m) => m.isBlocked).length}
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 flex items-center justify-center">
-                  <XCircle className="w-6 h-6 text-white" />
+                  <Ban className="w-6 h-6 text-white" />
                 </div>
               </div>
             </div>
@@ -406,18 +485,13 @@ export const MentorsManagement: React.FC = () => {
             className="mb-6"
           />
 
-          {/* Action Bar */}
           <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm mb-6">
             <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">
-                  All Mentors
-                </h2>
+                <h2 className="text-xl font-semibold text-gray-900">All Mentors</h2>
                 <p className="text-gray-500 text-sm mt-1">
-                  Showing {paginatedMentors.length} of {filteredMentors.length}{" "}
-                  mentors
-                  {filteredMentors.length !== mentors.length &&
-                    ` (filtered from ${mentors.length} total)`}
+                  Showing {paginatedMentors.length} of {filteredMentors.length} mentors
+                  {filteredMentors.length !== mentors.length && ` (filtered from ${mentors.length} total)`}
                 </p>
               </div>
 
@@ -431,7 +505,6 @@ export const MentorsManagement: React.FC = () => {
             </div>
           </div>
 
-          {/* Mentors Table */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
             <DataTable<MentorProfile>
               columns={columns}
@@ -448,7 +521,6 @@ export const MentorsManagement: React.FC = () => {
             />
           </div>
 
-          {/* Pagination */}
           {filteredMentors.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
               <Pagination
@@ -462,6 +534,38 @@ export const MentorsManagement: React.FC = () => {
                 className="px-6 py-4"
               />
             </div>
+          )}
+
+          {/* Confirmation Modal for Block/Unblock */}
+          {showBlockModal && selectedMentor && (
+            <ConfirmationModal
+              isOpen={showBlockModal}
+              onClose={() => {
+                setShowBlockModal(false);
+                setSelectedMentor(null);
+              }}
+              onConfirm={handleConfirmAction}
+              title={`Confirm ${selectedMentor.action === 'block' ? 'Block' : 'Unblock'}`}
+              message={`Are you sure you want to ${selectedMentor.action} ${selectedMentor.name}? ${
+                selectedMentor.action === 'block' 
+                  ? 'They will not be able to access the platform.' 
+                  : 'They will regain access to the platform.'
+              }`}
+              confirmText={selectedMentor.action === 'block' ? 'Block' : 'Unblock'}
+              variant="danger"
+              isLoading={loading}
+            />
+          )}
+
+          {/* Mentor Modal for Add/Edit */}
+          {showMentorModal && (
+            <MentorModal
+              mentor={selectedMentorForEdit}
+              onClose={handleCloseMentorModal}
+              onSave={handleSaveMentor}
+              isOpen={showMentorModal}
+              loading={loading}
+            />
           )}
         </div>
       </main>

@@ -1,26 +1,34 @@
 import { OtpModel } from "../models/otp.model";
 import type { IOtp } from "../interfaces/models/otp.interface";
+import { BaseRepository } from "./baseRepository";
 import { logger } from "../utils/logger";
+import { injectable } from "inversify";
 
-export class OtpRepository {
+@injectable()
+export class OtpRepository extends BaseRepository<IOtp> {
+  constructor() {
+    super(OtpModel);
+  }
+
   async saveOtp(
     email: string,
     otp: string,
     otpPurpose: "signup" | "forgotPassword",
     expiresAt: Date,
-    deliveryMethod: "email" | "phone",
+    deliveryMethod: "email",
     role: "student" | "mentor"
   ): Promise<IOtp> {
     try {
-      const newOtp = new OtpModel({
+      const otpData: Partial<IOtp> = {
         email,
         otp,
         otpPurpose,
         expiresAt,
         deliveryMethod,
         role,
-      });
-      const savedOtp = await newOtp.save();
+      };
+      
+      const savedOtp = await this.create(otpData);
       logger.info(
         `OTP saved for ${email}, purpose: ${otpPurpose}, role: ${role}`
       );
@@ -33,7 +41,7 @@ export class OtpRepository {
 
   async findOtp(email: string, otpPurpose: string): Promise<IOtp | null> {
     try {
-      const otp = await OtpModel.findOne({ email, otpPurpose }).lean().exec();
+      const otp = await this.findOne({ email, otpPurpose } as Partial<IOtp>);
       if (otp) {
         logger.info(`OTP found for ${email}, purpose: ${otpPurpose}`);
       } else {
@@ -48,7 +56,7 @@ export class OtpRepository {
 
   async deleteOtp(email: string, otpPurpose: string): Promise<void> {
     try {
-      const result = await OtpModel.deleteMany({ email, otpPurpose });
+      const result = await this.model.deleteMany({ email, otpPurpose });
       logger.info(
         `Deleted ${result.deletedCount} OTP(s) for ${email}, purpose: ${otpPurpose}`
       );
@@ -63,9 +71,7 @@ export class OtpRepository {
     otpPurpose: "signup" | "forgotPassword"
   ): Promise<IOtp | null> {
     try {
-      const foundOtp = await OtpModel.findOne({ otp, otpPurpose })
-        .lean()
-        .exec();
+      const foundOtp = await this.findOne({ otp, otpPurpose });
       if (foundOtp) {
         logger.info(
           `OTP matched for email: ${foundOtp.email}, purpose: ${otpPurpose}`

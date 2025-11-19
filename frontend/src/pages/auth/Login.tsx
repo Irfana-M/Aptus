@@ -60,7 +60,7 @@ export default function Login() {
     }
 
     if (userRole === "student") {
-      return paid ? "/student/dashboard" : "/book-free-trial";
+      return paid ? "/student/dashboard" : "/student/book-free-trial";
     }
 
     return "/";

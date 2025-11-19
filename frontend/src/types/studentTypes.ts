@@ -17,4 +17,16 @@ export interface StudentBaseResponseDto extends BaseUserResponseDto {
   isBlocked?: boolean;
   createdAt?: string | Date;
   updatedAt?: string | Date;
+  trialClasses?: TrialClassSummary[];
+  pendingTrialClasses?: number;
+  totalTrialClasses?: number;
+}
+
+export interface TrialClassSummary {
+  id: string;
+  status: 'requested' | 'assigned' | 'completed' | 'cancelled';
+  subject: string;
+  preferredDate: string;
+  preferredTime: string;
+  assignedMentor?: string;
 }

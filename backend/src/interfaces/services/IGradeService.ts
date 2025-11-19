@@ -1,0 +1,6 @@
+import type { GradeResponseDto } from "@/dto/student/grade.dto";
+
+export interface IGradeService {
+  getAllGrades(): Promise<GradeResponseDto[]>;
+  getGradesBySyllabus(syllabus: string): Promise<GradeResponseDto[]>;
+}

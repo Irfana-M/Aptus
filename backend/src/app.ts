@@ -9,6 +9,7 @@ import passport from "./config/passport.config";
 import mentorRouter from "./routes/mentor.routes";
 import path from "path";
 import s3Routes from "./routes/s3Routes";
+import studentRouter from "./routes/student.routes";
 dotenv.config();
 const app = express();
 
@@ -33,6 +34,7 @@ app.use(passport.initialize());
 app.use("/api/auth", router);
 app.use("/api/admin", adminRouter);
 app.use("/api/mentor", mentorRouter);
+app.use("/api/student", studentRouter);
 
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
