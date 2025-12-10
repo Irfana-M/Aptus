@@ -3,6 +3,7 @@ import type { AdminLoginResponse } from "../../types/dtoTypes";
 import type { StudentBaseResponseDto } from "../../types/studentTypes";
 import { logger } from "../../utils/logger";
 import type { MentorProfile } from "../mentor/mentorSlice";
+import type { Course } from "../../types/courseTypes";
 
 export interface AdminLoginDto {
   email: string;
@@ -35,6 +36,46 @@ export interface StudentsWithStatsResponse {
   };
 }
 
+// Pagination types for all admin management endpoints
+export interface PaginationMeta {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+export interface PaginatedResponse<T> {
+  success: boolean;
+  data: T[];
+  pagination: PaginationMeta;
+}
+
+export interface MentorPaginationParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: 'pending' | 'approved' | 'rejected' | '';
+  subject?: string;
+}
+
+export interface StudentPaginationParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: 'active' | 'blocked' | '';
+  verification?: 'verified' | 'pending' | '';
+}
+
+export interface CoursePaginationParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: 'available' | 'booked' | 'ongoing' | 'completed' | 'cancelled' | '';
+  gradeId?: string;
+}
+
 export const adminApi = {
   login: (data: AdminLoginDto) =>
     authApi.post<AdminLoginResponse>("/admin/login", data),
@@ -43,7 +84,22 @@ export const adminApi = {
 };
 
 export const adminMentorApi = {
-  fetchAllMentors: () => authApi.get("/admin/mentors"),
+  fetchAllMentors: (params?: MentorPaginationParams): Promise<any> => {
+    if (params && Object.keys(params).some(key => params[key as keyof MentorPaginationParams] !== undefined)) {
+      const queryParams = new URLSearchParams();
+      if (params.page) queryParams.append('page', params.page.toString());
+      if (params.limit) queryParams.append('limit', params.limit.toString());
+      if (params.search) queryParams.append('search', params.search);
+      if (params.status) queryParams.append('status', params.status);
+      if (params.subject) queryParams.append('subject', params.subject);
+      
+      const queryString = queryParams.toString();
+      logger.api(`/admin/mentors?${queryString}`, "GET");
+      return authApi.get<PaginatedResponse<MentorProfile>>(`/admin/mentors?${queryString}`);
+    }
+    // Fallback to original behavior for backward compatibility
+    return authApi.get("/admin/mentors");
+  },
   fetchMentorProfile: (mentorId: string) =>
     authApi.get(`/admin/mentors/${mentorId}`),
   approveMentor: (mentorId: string) =>
@@ -64,7 +120,20 @@ export const adminMentorApi = {
 };
 
 export const adminStudentApi = {
-  getAllStudents: (): Promise<any> => {
+  getAllStudents: (params?: StudentPaginationParams): Promise<any> => {
+    if (params && Object.keys(params).some(key => params[key as keyof StudentPaginationParams] !== undefined)) {
+      const queryParams = new URLSearchParams();
+      if (params.page) queryParams.append('page', params.page.toString());
+      if (params.limit) queryParams.append('limit', params.limit.toString());
+      if (params.search) queryParams.append('search', params.search);
+      if (params.status) queryParams.append('status', params.status);
+      if (params.verification) queryParams.append('verification', params.verification);
+      
+      const queryString = queryParams.toString();
+      logger.api(`/admin/students?${queryString}`, "GET");
+      return authApi.get<PaginatedResponse<StudentBaseResponseDto>>(`/admin/students?${queryString}`);
+    }
+    // Fallback to original behavior for backward compatibility
     logger.api("/admin/students", "GET");
     return authApi.get<StudentBaseResponseDto[]>("/admin/students");
   },
@@ -126,4 +195,63 @@ export const adminStudentApi = {
     return authApi.patch(`/admin/trial-classes/${trialClassId}/status`, data);
   },
   
+};
+
+
+
+export const adminCourseApi = {
+  
+  getGrades: () => authApi.get("/admin/grades?active=true"),
+
+  
+  getSubjectsByGrade: (gradeId: string) =>
+    authApi.get(`/admin/subjects?gradeId=${gradeId}&isActive=true`),
+
+ 
+  getAvailableMentorsForCourse: (params: {
+    gradeId: string;
+    subjectId: string;
+    dayOfWeek?: number;
+    timeSlot?: string;
+  }) => authApi.get("/admin/mentors/available-for-course", { params }),
+
+  
+  createOneToOneCourse: (data: {
+    gradeId: string;
+    subjectId: string;
+    mentorId: string;
+    dayOfWeek?: number;
+    timeSlot?: string;
+    startDate: string;
+    endDate: string;
+    fee: number;
+  }) => authApi.post("/admin/courses/one-to-one", data),
+
+  getAllOneToOneCourses: (params?: CoursePaginationParams): Promise<any> => {
+    if (params && Object.keys(params).some(key => params[key as keyof CoursePaginationParams] !== undefined)) {
+      const queryParams = new URLSearchParams();
+      if (params.page) queryParams.append('page', params.page.toString());
+      if (params.limit) queryParams.append('limit', params.limit.toString());
+      if (params.search) queryParams.append('search', params.search);
+      if (params.status) queryParams.append('status', params.status);
+      if (params.gradeId) queryParams.append('gradeId', params.gradeId);
+      
+      const queryString = queryParams.toString();
+      logger.api(`/admin/courses/getAllCourses?${queryString}`, "GET");
+      return authApi.get<PaginatedResponse<Course>>(`/admin/courses/getAllCourses?${queryString}`);
+    }
+    // Fallback to original behavior
+    return authApi.get("/admin/courses/getAllCourses");
+  },
+};
+
+export const adminRequestsApi = {
+  getAllRequests: () => authApi.get("/course-requests/all"),
+  updateRequestStatus: (requestId: string, status: string) => 
+    authApi.patch(`/course-requests/${requestId}/status`, { status }),
+};
+
+export const adminStudentProfileApi = {
+  getStudentProfile: (studentId: string) =>
+    authApi.get(`/admin/students/${studentId}/profile`),
 };

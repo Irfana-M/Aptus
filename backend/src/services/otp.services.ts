@@ -15,8 +15,8 @@ export class OtpService implements IOtpService {
   constructor(
     @inject(TYPES.IOtpRepository) private _otpRepository: IOtpRepository,
     @inject(TYPES.IEmailService) private _emailService: IEmailService,
-    @inject(TYPES.VerificationRepositoryMap) private _verificationRepositories: any, 
-    @inject(TYPES.AuthRepositoryMap) private _authRepositories: any 
+   @inject(TYPES.VerificationRepositoryMap) private _verificationRepositories: Map<string, IVerificationRepository>,
+    @inject(TYPES.AuthRepositoryMap) private _authRepositories: Map<string, IAuthRepository>
   ) {
     console.log('🔍 OTP Service Constructor Debug:');
     console.log('_verificationRepositories:', this._verificationRepositories);

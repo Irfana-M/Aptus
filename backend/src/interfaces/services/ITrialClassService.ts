@@ -26,4 +26,27 @@ export interface ITrialClassService {
       notes?: string;
     }
   ): Promise<TrialClassResponseDto>;
+
+  submitFeedback(
+    trialClassId: string,
+    studentId: string,
+    feedback: {
+      rating: number;
+      comment?: string;
+    }
+  ): Promise<TrialClassResponseDto>;
+
+  getMentorTrialClasses(mentorId: string): Promise<TrialClassResponseDto[]>;
+  //getTodayTrialClasses(mentorId: string): Promise<TrialClassResponseDto[]>;
+  getTrialClassStats(mentorId: string): Promise<{ total: number; completed: number; upcoming: number }>;
+  updateTrialClassStatus(trialClassId: string, status: string, reason?: string): Promise<TrialClassResponseDto>;
+  
+  submitMentorFeedback(
+    trialClassId: string,
+    mentorId: string,
+    feedback: {
+      rating: number;
+      comment?: string;
+    }
+  ): Promise<TrialClassResponseDto>;
 }

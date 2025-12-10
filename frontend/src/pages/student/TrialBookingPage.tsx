@@ -328,8 +328,8 @@ const TrialBookingPage: React.FC = () => {
 
     const { studentName, studentEmail } = extractStudentInfo(existingBooking, user);
     const matchingGrade = grades.find(grade => {
-      const gradeNumber = extractGradeNumber(grade.name);
-      return gradeNumber === existingBooking.subject.grade && 
+      // Use direct ID comparison now that we have gradeId
+      return grade.id === existingBooking.subject.gradeId && 
              grade.syllabus === existingBooking.subject.syllabus;
     });
 
@@ -483,44 +483,106 @@ const TrialBookingPage: React.FC = () => {
   };
 
   // Render Functions
-  const renderBookingInfo = () => (
-    <div className="text-center py-8">
-      <div className="bg-green-50 border border-green-200 rounded-lg p-6 max-w-md mx-auto">
-        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CalendarIcon className="w-6 h-6 text-green-600" />
+  const renderBookingInfo = () => {
+    const isJoinable = () => {
+      if (!existingBooking) return false;
+      
+      const scheduledDate = new Date(existingBooking.preferredDate);
+      const timeString = existingBooking.preferredTime;
+      
+      let hours, minutes;
+      if (timeString.includes('M')) { // AM/PM format
+        const [time, modifier] = timeString.split(' ');
+        [hours, minutes] = time.split(':').map(Number);
+        if (modifier === 'PM' && hours < 12) hours += 12;
+        if (modifier === 'AM' && hours === 12) hours = 0;
+      } else { // 24-hour format
+        [hours, minutes] = timeString.split(':').map(Number);
+      }
+      
+      scheduledDate.setHours(hours, minutes, 0, 0);
+      
+      const now = new Date();
+      const diffInMinutes = (scheduledDate.getTime() - now.getTime()) / (1000 * 60);
+      
+      // Allow joining 15 minutes before
+      return diffInMinutes <= 15 && diffInMinutes >= -60; // Allow joining up to 1 hour late
+    };
+
+    const canJoin = isJoinable();
+
+    return (
+      <div className="text-center py-8">
+        <div className="bg-green-50 border border-green-200 rounded-lg p-6 max-w-md mx-auto">
+          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CalendarIcon className="w-6 h-6 text-green-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-green-800 mb-2">
+            Trial Class Scheduled!
+          </h3>
+          <div className="text-left bg-blue-50 p-4 rounded-lg mb-6">
+            <p className="text-sm font-medium text-blue-900 mb-2">
+              📅 Your upcoming trial class:
+            </p>
+            <div className="space-y-2">
+              <p className="text-sm text-blue-800">
+                <span className="font-semibold">Date:</span> {new Date(existingBooking!.preferredDate).toLocaleDateString()}
+              </p>
+              <p className="text-sm text-blue-800">
+                <span className="font-semibold">Time:</span> {existingBooking!.preferredTime}
+              </p>
+              <p className="text-sm text-blue-800">
+                <span className="font-semibold">Subject:</span> {existingBooking!.subject.subjectName}
+              </p>
+              <p className="text-sm text-blue-800">
+                <span className="font-semibold">Status:</span> <span className="capitalize font-medium">{existingBooking!.status}</span>
+              </p>
+            </div>
+          </div>
+
+          {existingBooking!.meetLink && (
+            <div className="mb-6">
+              <a 
+                href={existingBooking!.meetLink} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className={`flex items-center justify-center gap-2 w-full py-3 px-4 rounded-lg font-semibold transition-all ${
+                  canJoin 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md hover:shadow-lg' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+                onClick={(e) => {
+                  if (!canJoin) {
+                    e.preventDefault();
+                    showToast.error('You can join the class 15 minutes before the scheduled time.');
+                  }
+                }}
+              >
+                <Video className="w-5 h-5" />
+                Join Class
+              </a>
+              {!canJoin && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Button will be enabled 15 minutes before class time
+                </p>
+              )}
+            </div>
+          )}
+
+          <p className="text-green-700 text-sm mb-4">
+            Your trial class is all set. You can edit the details if needed, 
+            or wait for the scheduled time to join the session.
+          </p>
+          <button
+            onClick={handleEditBooking}
+            className="text-green-600 font-medium hover:text-green-700 hover:underline transition"
+          >
+            Edit Booking Details
+          </button>
         </div>
-        <h3 className="text-lg font-semibold text-green-800 mb-2">
-          Trial Class Scheduled!
-        </h3>
-        <div className="text-left bg-blue-50 p-3 rounded-lg mb-4">
-          <p className="text-sm font-medium text-blue-900">
-            📅 Your upcoming trial class:
-          </p>
-          <p className="text-xs text-blue-700 mt-1">
-            {new Date(existingBooking!.preferredDate).toLocaleDateString()} at {existingBooking!.preferredTime} • {existingBooking!.subject.name}
-          </p>
-          <p className="text-xs text-blue-600 mt-1">
-            Status: <span className="font-medium capitalize">{existingBooking!.status}</span>
-            {existingBooking!.meetLink && (
-              <span className="ml-2">
-                • <a href={existingBooking!.meetLink} target="_blank" rel="noopener noreferrer" className="underline">Join Meeting</a>
-              </span>
-            )}
-          </p>
-        </div>
-        <p className="text-green-700 text-sm mb-4">
-          Your trial class is all set. You can edit the details if needed, 
-          or wait for the scheduled time to join the session.
-        </p>
-        <button
-          onClick={handleEditBooking}
-          className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition"
-        >
-          Edit Booking Details
-        </button>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderBookingForm = () => (
     <form onSubmit={handleSubmit} className="space-y-6">

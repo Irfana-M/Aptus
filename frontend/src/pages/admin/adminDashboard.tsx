@@ -116,10 +116,10 @@ export default function Dashboard() {
   }, [dispatch]);
 
   // Calculate additional stats (you can replace these with actual data from your API)
-  const pendingApprovals = 5; // This should come from your API
-  const activeCourses = 24;
-  const monthlyRevenue = 12458;
-  const completionRate = 78;
+  const pendingApprovals = 0; // This should come from your API
+  const activeCourses = 0;
+  const monthlyRevenue = 0;
+  const completionRate = 0;
 
   if (loading) {
     return (
@@ -193,7 +193,6 @@ export default function Dashboard() {
               value={totalStudents || 0}
               subtitle="Registered learners"
               icon={<Users size={24} />}
-              trend={{ value: 12, isPositive: true }}
               color="cyan"
             />
             <StatCard
@@ -201,7 +200,6 @@ export default function Dashboard() {
               value={totalMentors || 0}
               subtitle="Expert educators"
               icon={<Users size={24} />}
-              trend={{ value: 8, isPositive: true }}
               color="orange"
             />
             <StatCard
@@ -209,7 +207,6 @@ export default function Dashboard() {
               value={activeCourses}
               subtitle="Running currently"
               icon={<BookOpen size={24} />}
-              trend={{ value: 5, isPositive: true }}
               color="green"
             />
             <StatCard
@@ -217,7 +214,6 @@ export default function Dashboard() {
               value={`$${monthlyRevenue.toLocaleString()}`}
               subtitle="This month"
               icon={<DollarSign size={24} />}
-              trend={{ value: 18, isPositive: true }}
               color="purple"
             />
           </div>
@@ -238,13 +234,13 @@ export default function Dashboard() {
             />
             <QuickStatsCard
               title="Active Sessions"
-              value="142"
+              value="0"
               icon={<Users size={20} />}
               color="gray"
             />
             <QuickStatsCard
               title="Issues Reported"
-              value="3"
+              value="0"
               icon={<XCircle size={20} />}
               color="red"
             />

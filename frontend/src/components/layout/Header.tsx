@@ -1,5 +1,5 @@
 import * as React from "react";
-import Logo from "./Logo";
+import Logo from "./logo";
 import { NAV_ITEMS } from "../../config/nav";
 import { Button } from "../ui/Button";
 import { Menu, X, Bell, User, LogOut, Settings } from "lucide-react";

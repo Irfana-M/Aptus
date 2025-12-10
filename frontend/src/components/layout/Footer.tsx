@@ -1,4 +1,5 @@
 import { BookOpen } from "lucide-react";
+import aptusLogo from "../../assets/images/aptusLogo.jpeg";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -28,8 +29,12 @@ export default function Footer() {
           {/* Brand Section */}
           <div className="lg:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
-              <BookOpen className="w-8 h-8 text-[rgb(73,187,189)]" />
-              <span className="text-xl font-bold text-white">Mentora</span>
+              <img 
+                src={aptusLogo} 
+                alt="Aptus Logo" 
+                className="h-10 w-auto object-contain rounded-md" 
+              />
+              <span className="text-xl font-bold text-white">Aptus</span>
             </div>
             <p className="text-slate-400 mb-4 max-w-md">
               Connect with expert mentors to accelerate your learning journey.
@@ -95,7 +100,7 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center">
           <p className="text-slate-400 text-sm">
-            © {currentYear} Mentora. All rights reserved.
+            © {currentYear} Aptus. All rights reserved.
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <a

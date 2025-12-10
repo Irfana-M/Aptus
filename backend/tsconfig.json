@@ -1,5 +1,4 @@
 {
-  
   "compilerOptions": {
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
@@ -7,36 +6,45 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "baseUrl": "./src",
+    "ignoreDeprecations": "6.0",
     "paths": {
-      "@/*": ["*"],
-      "@services/*": ["interfaces/services/*"],
-      "@utils/*": ["utils/*"],
-      "@constants/*": ["constants/*"],
+      "@/*": [
+        "*"
+      ],
+      "@services/*": [
+        "interfaces/services/*"
+      ],
+      "@utils/*": [
+        "utils/*"
+      ],
+      "@constants/*": [
+        "constants/*"
+      ],
     },
-
     // Environment Settings
     "module": "ESNext",
     "target": "ES2020",
-
     //"types": [],
     "esModuleInterop": true,
     "allowImportingTsExtensions": false,
     "allowSyntheticDefaultImports": true,
-    "resolveJsonModule":true,
+    "resolveJsonModule": true,
     // For nodejs:
-    "lib": ["ES2020"],
-    "types": ["reflect-metadata", "node"],
+    "lib": [
+      "ES2020"
+    ],
+    "types": [
+      "reflect-metadata",
+      "node"
+    ],
     // and npm install -D @types/node
-
     // Other Outputs
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
-
     // Stricter Typechecking Options
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
-
     // Style Options
     // "noImplicitReturns": true,
     // "noImplicitOverride": true,
@@ -44,19 +52,21 @@
     // "noUnusedParameters": true,
     // "noFallthroughCasesInSwitch": true,
     // "noPropertyAccessFromIndexSignature": true,
-
     // Recommended Options
     "strict": true,
     "moduleResolution": "Node",
-    "ignoreDeprecations": "6.0",
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

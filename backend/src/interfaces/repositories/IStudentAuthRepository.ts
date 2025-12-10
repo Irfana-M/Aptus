@@ -9,6 +9,5 @@ export interface IStudentAuthRepository extends IAuthRepository {
     id: string,
     data: Partial<StudentProfile>
   ): Promise<StudentProfile | null>;
-  blockStudent(id: string): Promise<boolean>;
   listAllStudents(): Promise<StudentProfile[]>;
 }

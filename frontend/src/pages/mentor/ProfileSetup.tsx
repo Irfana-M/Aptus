@@ -38,7 +38,7 @@ interface ProfileState {
     institution: string;
     jobTitle: string;
     duration: string;
-  };
+  }[];
   subjectProficiency: {
     subject: string;
     level: "basic" | "intermediate" | "expert" | string;
@@ -47,6 +47,7 @@ interface ProfileState {
     name: string;
     issuingOrganization: string;
   };
+  availability: { dayOfWeek: number; timeSlots: string[] }[];
   profilePicture?: File | null;
 }
 
@@ -67,18 +68,33 @@ const initialState: ProfileState = {
     degree: "",
     graduationYear: "",
   },
-  experiences: {
-    institution: "",
-    jobTitle: "",
-    duration: "",
-  },
+  experiences: [],
   subjectProficiency: [],
   certification: {
     name: "",
     issuingOrganization: "",
   },
+  availability: [],
   profilePicture: null,
 };
+
+const TIME_SLOTS = [
+  "09:00 AM - 10:00 AM",
+  "10:00 AM - 11:00 AM",
+  "11:00 AM - 12:00 PM",
+  "12:00 PM - 01:00 PM",
+  "01:00 PM - 02:00 PM",
+  "02:00 PM - 03:00 PM",
+  "03:00 PM - 04:00 PM",
+  "04:00 PM - 05:00 PM",
+  "05:00 PM - 06:00 PM",
+  "06:00 PM - 07:00 PM",
+  "07:00 PM - 08:00 PM",
+];
+
+const DAYS_OF_WEEK = [
+  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+];
 
 const GRADUATION_YEARS = Array.from({ length: 30 }, (_, i) =>
   (new Date().getFullYear() - i).toString()
@@ -110,7 +126,7 @@ export default function MentorProfileSetup() {
   const { profile, loading } = useSelector((state: RootState) => state.mentor);
   const [profileData, setProfileData] = useState<ProfileState>(initialState);
   const [activeTab, setActiveTab] = useState<
-    "personal" | "academic" | "experience"
+    "personal" | "academic" | "experience" | "availability"
   >("personal");
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
     {}
@@ -120,6 +136,11 @@ export default function MentorProfileSetup() {
   const [currentSubject, setCurrentSubject] = useState({
     subject: "",
     level: "",
+  });
+  const [currentExperience, setCurrentExperience] = useState({
+    institution: "",
+    jobTitle: "",
+    duration: "",
   });
   const [isEditing, setIsEditing] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -143,9 +164,10 @@ export default function MentorProfileSetup() {
         academicQualifications:
           profile.academicQualifications?.[0] ||
           initialState.academicQualifications,
-        experiences: profile.experiences?.[0] || initialState.experiences,
+        experiences: profile.experiences || [],
         subjectProficiency: profile.subjectProficiency || [],
         certification: profile.certification?.[0] || initialState.certification,
+        availability: profile.availability || [],
         profilePicture: null,
       });
       setApprovalStatus(profile.approvalStatus || "not_submitted");
@@ -241,6 +263,62 @@ export default function MentorProfileSetup() {
     }));
   };
 
+  const toggleAvailability = (dayIndex: number, slot: string) => {
+    setProfileData((prev) => {
+      const existing = prev.availability.find(a => a.dayOfWeek === dayIndex);
+      let newAvailability = [...prev.availability];
+
+      if (existing) {
+        // Toggle slot
+        const hasSlot = existing.timeSlots.includes(slot);
+        const newSlots = hasSlot 
+          ? existing.timeSlots.filter(s => s !== slot)
+          : [...existing.timeSlots, slot];
+        
+        if (newSlots.length === 0) {
+           newAvailability = newAvailability.filter(a => a.dayOfWeek !== dayIndex);
+        } else {
+           newAvailability = newAvailability.map(a => 
+             a.dayOfWeek === dayIndex ? { ...a, timeSlots: newSlots } : a
+           );
+        }
+      } else {
+        // Add new day with slot
+        newAvailability.push({ dayOfWeek: dayIndex, timeSlots: [slot] });
+      }
+      return { ...prev, availability: newAvailability };
+    });
+  };
+
+  const addExperience = () => {
+    if (
+      currentExperience.institution &&
+      currentExperience.jobTitle &&
+      currentExperience.duration
+    ) {
+      setProfileData((prev) => ({
+        ...prev,
+        experiences: [...prev.experiences, currentExperience],
+      }));
+      setCurrentExperience({
+        institution: "",
+        jobTitle: "",
+        duration: "",
+      });
+    } else {
+      toast.error("Please fill all experience fields", {
+        position: "bottom-right",
+      });
+    }
+  };
+
+  const removeExperience = (index: number) => {
+    setProfileData((prev) => ({
+      ...prev,
+      experiences: prev.experiences.filter((_, i) => i !== index),
+    }));
+  };
+
   // Helper function to safely get nested values
   const getNestedValue = (obj: any, path: string): string => {
     const keys = path.split(".");
@@ -273,8 +351,8 @@ export default function MentorProfileSetup() {
         path: "academicQualifications.graduationYear",
         label: "Graduation Year",
       },
-      { path: "experiences.institution", label: "Institution" },
-      { path: "experiences.jobTitle", label: "Job Title" },
+      // { path: "experiences.institution", label: "Institution" },
+      // { path: "experiences.jobTitle", label: "Job Title" },
       { path: "certification.name", label: "Certification Name" },
     ];
 
@@ -298,6 +376,11 @@ export default function MentorProfileSetup() {
     if (profileData.subjectProficiency.length === 0) {
       errors["subjectProficiency"] =
         "At least one subject proficiency is required";
+    }
+
+    // Availability validation (optional but good to have)
+    if (profileData.availability.length === 0) {
+        errors["availability"] = "Please select at least one available time slot";
     }
 
     setValidationErrors(errors);
@@ -324,12 +407,7 @@ export default function MentorProfileSetup() {
     formData.append("academicQualifications", JSON.stringify([academicQual]));
 
     // Experiences
-    const experience = {
-      institution: profileData.experiences.institution,
-      jobTitle: profileData.experiences.jobTitle,
-      duration: profileData.experiences.duration,
-    };
-    formData.append("experiences", JSON.stringify([experience]));
+    formData.append("experiences", JSON.stringify(profileData.experiences));
 
     // Subject proficiency
     formData.append(
@@ -343,6 +421,9 @@ export default function MentorProfileSetup() {
       issuingOrganization: profileData.certification.issuingOrganization,
     };
     formData.append("certification", JSON.stringify([certification]));
+
+    // Availability
+    formData.append("availability", JSON.stringify(profileData.availability));
 
     formData.append("isProfileComplete", isComplete.toString());
 
@@ -415,6 +496,34 @@ export default function MentorProfileSetup() {
     }
   };
 
+  const handleUpdateProfile = async () => {
+    if (!validateForm()) {
+      toast.error("Please fill all required fields correctly", {
+        position: "bottom-right",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const formData = createFormData(true); // Treat update as complete
+      await dispatch(updateMentorProfile(formData)).unwrap();
+      
+      setIsEditing(false); // Return to view mode
+      
+      toast.success("Profile updated successfully!", {
+        position: "bottom-right",
+      });
+    } catch (error) {
+       console.error("Update error:", error);
+       toast.error("Failed to update profile. Please try again.", {
+         position: "bottom-right",
+       });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleEditProfile = () => {
     setIsEditing(true);
   };
@@ -434,9 +543,10 @@ export default function MentorProfileSetup() {
         academicQualifications:
           profile.academicQualifications?.[0] ||
           initialState.academicQualifications,
-        experiences: profile.experiences?.[0] || initialState.experiences,
+        experiences: profile.experiences || [],
         subjectProficiency: profile.subjectProficiency || [],
         certification: profile.certification?.[0] || initialState.certification,
+        availability: profile.availability || [],
         profilePicture: null,
       });
     }
@@ -656,14 +766,27 @@ export default function MentorProfileSetup() {
               size="lg"
               onClick={handleEditProfile}
               disabled={loading}
+              className="px-8"
             >
               <Edit className="w-4 h-4 mr-2" />
               Edit Profile
             </Button>
+            {isEditing && (
+               <Button
+                variant="primary"
+                size="lg"
+                onClick={handleUpdateProfile}
+                disabled={isSubmitting}
+                className="px-8"
+              >
+                {isSubmitting ? "Updating..." : "Update Profile"}
+              </Button>
+            )}
             <Button
-              variant="primary"
+              variant="primary" 
               size="lg"
               onClick={() => (window.location.href = "/mentor/dashboard")}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-8" 
             >
               <UserCheck className="w-4 h-4 mr-2" />
               Go to Dashboard
@@ -673,16 +796,37 @@ export default function MentorProfileSetup() {
 
       case "pending":
         return (
-          <div className="flex justify-end mt-8">
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={handleEditProfile}
-              disabled={loading}
-            >
-              <Edit className="w-4 h-4 mr-2" />
-              Edit Profile
-            </Button>
+          <div className="flex justify-end space-x-4 mt-8">
+            {isEditing ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={handleCancelEdit}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={handleUpdateProfile}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Updating..." : "Update Application"}
+                </Button>
+              </>
+            ) : (
+                <Button
+                variant="outline"
+                size="lg"
+                onClick={handleEditProfile}
+                disabled={loading}
+                >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit Profile
+                </Button>
+            )}
           </div>
         );
 
@@ -793,8 +937,8 @@ export default function MentorProfileSetup() {
         </div>
 
         {/* Tabs - Always show but conditionally enable */}
-        <div className="border-b flex">
-          {["personal", "academic", "experience"].map((tab) => (
+        <div className="border-b flex justify-start overflow-x-auto">
+          {["personal", "academic", "experience", "availability"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
@@ -808,7 +952,9 @@ export default function MentorProfileSetup() {
                 ? "Personal Details"
                 : tab === "academic"
                 ? "Academic Qualifications"
-                : "Experience"}
+                : tab === "experience"
+                ? "Experience"
+                : "Availability"}
             </button>
           ))}
         </div>
@@ -1000,37 +1146,71 @@ export default function MentorProfileSetup() {
 
           {activeTab === "experience" && (
             <>
-              {renderFormField("experiences", "institution", {
-                label: "Institution",
-                type: "text",
-                value: profileData.experiences.institution,
-                onChange: (v: string) =>
-                  updateField("experiences", "institution", v),
-                placeholder: "e.g., ABC High School or XYZ Tutoring Center",
-                required: true,
-                error: validationErrors["experiences.institution"],
-                disabled: !isEditing,
-              })}
-              {renderFormField("experiences", "jobTitle", {
-                label: "Job Title",
-                type: "text",
-                value: profileData.experiences.jobTitle,
-                onChange: (v: string) =>
-                  updateField("experiences", "jobTitle", v),
-                placeholder: "e.g., Math Teacher, Private Tutor",
-                required: true,
-                error: validationErrors["experiences.jobTitle"],
-                disabled: !isEditing,
-              })}
-              {renderFormField("experiences", "duration", {
-                label: "Duration",
-                type: "text",
-                value: profileData.experiences.duration,
-                onChange: (v: string) =>
-                  updateField("experiences", "duration", v),
-                placeholder: "e.g., 2 years, 2018-2020",
-                disabled: !isEditing,
-              })}
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                Work Experience
+              </h3>
+              
+              <div className="space-y-4 mb-6">
+                <FormField
+                  label="Institution"
+                  type="text"
+                  value={currentExperience.institution}
+                  onChange={(v: string) => setCurrentExperience(prev => ({ ...prev, institution: v }))}
+                  placeholder="e.g., ABC High School or XYZ Tutoring Center"
+                  disabled={!isEditing}
+                />
+                 <FormField
+                  label="Job Title"
+                  type="text"
+                  value={currentExperience.jobTitle}
+                  onChange={(v: string) => setCurrentExperience(prev => ({ ...prev, jobTitle: v }))}
+                  placeholder="e.g., Math Teacher, Private Tutor"
+                  disabled={!isEditing}
+                />
+                 <FormField
+                  label="Duration"
+                  type="text"
+                  value={currentExperience.duration}
+                  onChange={(v: string) => setCurrentExperience(prev => ({ ...prev, duration: v }))}
+                  placeholder="e.g., 2 years, 2018-2020"
+                  disabled={!isEditing}
+                />
+                
+                {isEditing && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addExperience}
+                    disabled={!currentExperience.institution || !currentExperience.jobTitle}
+                  >
+                    Add Experience
+                  </Button>
+                )}
+              </div>
+
+              {/* List of added experiences */}
+              {profileData.experiences.length > 0 && (
+                <div className="space-y-3 mb-6">
+                  {profileData.experiences.map((exp, index) => (
+                    <div key={index} className="bg-gray-50 p-4 rounded-lg flex justify-between items-start border border-gray-200">
+                      <div>
+                        <h4 className="font-medium text-gray-900">{exp.jobTitle}</h4>
+                        <p className="text-gray-600 text-sm">{exp.institution}</p>
+                        <p className="text-gray-500 text-xs mt-1">{exp.duration}</p>
+                      </div>
+                      {isEditing && (
+                        <button
+                          type="button"
+                          onClick={() => removeExperience(index)}
+                          className="text-red-600 hover:text-red-800 text-sm font-medium"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Subject Proficiency */}
               {renderSubjectProficiencyView()}
@@ -1061,6 +1241,55 @@ export default function MentorProfileSetup() {
                 disabled: !isEditing,
               })}
             </>
+          )}
+
+          {activeTab === "availability" && (
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Weekly Availability <span className="text-red-500">*</span>
+              </h3>
+              <p className="text-sm text-gray-500">
+                Select the time slots you are available to take classes for each day.
+              </p>
+              
+              {validationErrors["availability"] && (
+                <p className="text-red-500 text-sm">{validationErrors["availability"]}</p>
+              )}
+
+              <div className="space-y-6">
+                {DAYS_OF_WEEK.map((day, dayIndex) => {
+                   const dayAvailability = profileData.availability?.find(
+                     (a) => a.dayOfWeek === dayIndex
+                   );
+                   
+                   return (
+                    <div key={day} className="border rounded-lg p-4">
+                      <h4 className="font-medium text-gray-900 mb-3">{day}</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {TIME_SLOTS.map((slot) => {
+                          const isSelected = dayAvailability?.timeSlots.includes(slot);
+                          return (
+                            <button
+                              key={slot}
+                              type="button"
+                              disabled={!isEditing}
+                              onClick={() => toggleAvailability(dayIndex, slot)}
+                              className={`text-xs p-2 rounded border transition-colors ${
+                                isSelected
+                                  ? "bg-blue-600 text-white border-blue-600"
+                                  : "bg-white text-gray-700 border-gray-200 hover:border-blue-400"
+                              } ${!isEditing ? "opacity-75 cursor-not-allowed" : ""}`}
+                            >
+                              {slot}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                   );
+                })}
+              </div>
+            </div>
           )}
 
           {renderActionButtons()}

@@ -3,7 +3,7 @@ import { Schema, model, Document } from "mongoose";
 export interface ISubject extends Document {
   subjectName: string;  
   syllabus: "CBSE" | "STATE" | "ICSE";
-  grade: number;
+  grade: any; 
   isActive?: boolean;  
 }
 
@@ -20,10 +20,9 @@ const SubjectSchema = new Schema<ISubject>(
       required: true,
     },
     grade: {
-      type: Number,
+      type: Schema.Types.ObjectId,
+      ref: "Grade",
       required: true,
-      min: 1,
-      max: 12
     },
     isActive: {
       type: Boolean,

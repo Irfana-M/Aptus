@@ -104,10 +104,7 @@ export const selectFilteredStudents = createSelector(
   }
 );
 
-export const selectAvailableMentors = (state: RootState) => {
-  const availableMentors = state.admin.availableMentors;
-  return Array.isArray(availableMentors) ? availableMentors : [];
-};
+
 
 export const selectMentorAssignmentLoading = (state: RootState) => 
   state.admin.loading;
@@ -134,3 +131,105 @@ export const selectStudentTrialClasses = createSelector(
     );
   }
 );
+
+export const selectAvailableMentors = createSelector(
+  [(state: RootState) => state.admin.availableMentors],
+  (availableMentors) => {
+    return Array.isArray(availableMentors) ? availableMentors : [];
+  }
+);
+
+// adminSelectors.ts
+export const selectAvailableMentorsForCourse = (state: RootState) =>
+  state.admin.availableMentorsForCourse;
+
+export const selectCourseCreationLoading = (state: RootState) =>
+  state.admin.courseCreationLoading;
+
+export const selectCourseCreationError = (state: RootState) =>
+  state.admin.courseCreationError;
+
+export const selectCourseCreationSuccess = (state: RootState) =>
+  state.admin.courseCreationSuccess;
+
+// Update these selectors with proper type checking
+
+export const selectAllCourses = createSelector(
+  [(state: RootState) => state.admin.coursesList],
+  (coursesList) => {
+    // Handle undefined/null cases first
+    if (coursesList == null) {
+      return [];
+    }
+    
+    // If it's already an array, return it
+    if (Array.isArray(coursesList)) {
+      return coursesList;
+    }
+    
+    // Check if it's an object (not array) and try to access data property
+    if (typeof coursesList === 'object' && coursesList !== null) {
+      // Use type assertion to bypass TypeScript's never inference
+      const coursesListAsAny = coursesList as any;
+      
+      // Check if it has a data property that is an array
+      if (coursesListAsAny.data && Array.isArray(coursesListAsAny.data)) {
+        return coursesListAsAny.data;
+      }
+      
+      // If it's an object without a data property, try to convert values
+      const values = Object.values(coursesListAsAny);
+      if (values.length > 0) {
+        return Array.isArray(values[0]) ? values[0] : values;
+      }
+    }
+    
+    // Default to empty array
+    return [];
+  }
+);
+
+export const selectGrades = createSelector(
+  [(state: RootState) => state.admin.grades],
+  (grades) => {
+    // Handle undefined/null cases first
+    if (grades == null) {
+      return [];
+    }
+    
+    // If it's already an array, return it
+    if (Array.isArray(grades)) {
+      return grades;
+    }
+    
+    // Check if it's an object (not array) and try to access data property
+    if (typeof grades === 'object' && grades !== null) {
+      // Use type assertion to bypass TypeScript's never inference
+      const gradesAsAny = grades as any;
+      
+      // Check if it has a data property that is an array
+      if (gradesAsAny.data && Array.isArray(gradesAsAny.data)) {
+        return gradesAsAny.data;
+      }
+      
+      // If it's an object without a data property, try to convert values
+      const values = Object.values(gradesAsAny);
+      if (values.length > 0) {
+        return Array.isArray(values[0]) ? values[0] : values;
+      }
+    }
+    
+    // Default to empty array
+    return [];
+  }
+);
+export const selectGradesLoading = (state: RootState) => state.admin.gradesLoading;
+// adminSelectors.ts
+export const selectSubjectsByGrade = (gradeId: string) => 
+  createSelector(
+    [(state: RootState) => state.admin.subjects],
+    (subjects) => {
+      return subjects[gradeId] || [];
+    }
+  );
+export const selectSubjectsLoading = (state: RootState) => state.admin.subjectsLoading;

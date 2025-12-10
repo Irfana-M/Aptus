@@ -1,4 +1,5 @@
 import React from "react";
+import aptusLogo from "../../assets/images/aptusLogo.jpeg";
 import { BookOpen } from "lucide-react";
 
 interface AuthLayoutProps {
@@ -24,13 +25,12 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         <div className="relative z-10 flex flex-col items-center justify-center w-full h-full">
           <div className="absolute top-2 left-8">
             <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg">
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: "#49BBBD" }}
-              >
-                <BookOpen className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-gray-800">Mentora</span>
+              <img 
+                src={aptusLogo} 
+                alt="Aptus Logo" 
+                className="h-10 w-auto object-contain rounded-md" 
+              />
+              <span className="text-xl font-bold text-gray-800">Aptus</span>
             </div>
           </div>
           <img
@@ -47,13 +47,12 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           {/* Logo on mobile */}
           <div className="lg:hidden mb-8 flex justify-center">
             <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-md">
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: "#49BBBD" }}
-              >
-                <BookOpen className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-2xl font-bold text-gray-800">Mentora</span>
+              <img 
+                src={aptusLogo} 
+                alt="Aptus Logo" 
+                className="h-12 w-auto object-contain rounded-md" 
+              />
+              <span className="text-2xl font-bold text-gray-800">Aptus</span>
             </div>
           </div>
 
@@ -70,7 +69,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           </div>
 
           <div className="mt-8 text-center text-sm text-gray-500">
-            <p>© 2025 Mentora. All rights reserved.</p>
+            <p>© 2025 Aptus. All rights reserved.</p>
           </div>
         </div>
       </div>

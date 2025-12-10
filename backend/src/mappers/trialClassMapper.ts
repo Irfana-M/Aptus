@@ -17,22 +17,28 @@ export class TrialClassMapper {
           email: '',
           phoneNumber: '',
         };
-    // Handle subject population
-    const subjectData = (entity.subject as any)?._id 
-      ? { 
-          id: (entity.subject as any)._id.toString(),
-          subjectName: (entity.subject as any).subjectName || (entity.subject as any).name || 'Unknown Subject',
-          syllabus: (entity.subject as any).syllabus,
-          grade: (entity.subject as any).grade,
-        }
-      : { 
-          id: entity.subject.toString(),
-          subjectName: 'Unknown Subject', 
-          syllabus: '',
-          grade: 0,
-        };
+    
+   const subjectData = (entity.subject as any)?._id 
+  ? { 
+      id: (entity.subject as any)._id.toString(),
+      subjectName: (entity.subject as any).subjectName || (entity.subject as any).name || 'Unknown Subject',
+      syllabus: (entity.subject as any).syllabus || '',
 
-    // Handle mentor population
+      grade: (entity.subject as any).grade 
+        ? (entity.subject as any).grade.level || 
+          (entity.subject as any).grade.gradeLevel || 
+          (entity.subject as any).grade.value ||
+          parseInt((entity.subject as any).grade, 10)
+        : parseInt((entity.subject as any).gradeId || (entity.subject as any).grade, 10) || 0,
+    }
+  : { 
+      id: entity.subject.toString(),
+      subjectName: 'Unknown Subject', 
+      syllabus: '',
+      grade: 0, 
+    };
+
+   
     const mentorData = entity.mentor && (entity.mentor as any)?._id
       ? {
           id: (entity.mentor as any)._id.toString(),
@@ -41,7 +47,7 @@ export class TrialClassMapper {
         }
       : undefined;
 
-    // Handle student population - THIS IS WHAT'S MISSING
+    
    const feedbackData = entity.feedback
       ? {
           rating: entity.feedback.rating || 0,
@@ -59,7 +65,10 @@ export class TrialClassMapper {
       preferredTime: entity.preferredTime || '',
       scheduledDateTime: (entity as any).scheduledDateTime?.toISOString(), // Handle optional field
       mentor: mentorData,
-      meetLink: entity.meetLink,
+      meetLink: entity.meetLink || 
+        ((entity.status === 'assigned' || entity.status === 'completed') 
+          ? `${process.env.FRONTEND_URL || 'http://localhost:5173'}/trial-class/${entity._id}/call` 
+          : undefined),
       notes: entity.notes,
       feedback: feedbackData,
       createdAt: entity.createdAt?.toISOString() || new Date().toISOString(),

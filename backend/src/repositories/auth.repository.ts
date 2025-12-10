@@ -67,17 +67,46 @@ export class AuthRepository implements IAuthRepository<AuthUser> {
     }
   }
 
-  async block(id: string): Promise<boolean> {
-    try {
-      const result = (await this._mentorRepo.block(id)) || (await this._studentRepo.block(id));
-      logger.info(`User block attempt for ID: ${id} - Result: ${result}`);
-      return result;
-    } catch (error: any) {
-      logger.error(`Error blocking user: ${id} - ${error.message}`);
-      throw { statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR, message: error.message };
+ async block(id: string): Promise<AuthUser> {
+  try {
+   
+    const mentor = await this._mentorRepo.findById(id);
+    if (mentor) {
+      await this._mentorRepo.block(id);        
+      logger.info(`Mentor blocked: ${id}`);
+      return mentor as AuthUser;
     }
-  }
 
+    
+    const student = await this._studentRepo.findById(id);
+    if (student) {
+      await this._studentRepo.block(id);
+      logger.info(`Student blocked: ${id}`);
+      return student as AuthUser;
+    }
+
+    throw { statusCode: HttpStatusCode.NOT_FOUND, message: "User not found" };
+  } catch (error: any) {
+    logger.error(`Error blocking user ${id}: ${error.message}`);
+    throw { statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR, message: error.message };
+  }
+}
+
+  async unblock(id: string): Promise<AuthUser> {
+    const mentor = await this._mentorRepo.findById(id);
+    if (mentor) {
+      await this._mentorRepo.unblock(id);
+      return mentor as AuthUser;
+    }
+
+    const student = await this._studentRepo.findById(id);
+    if (student) {
+      await this._studentRepo.unblock(id);
+      return student as AuthUser;
+    }
+
+    throw { statusCode: HttpStatusCode.NOT_FOUND, message: "User not found" };
+  }
   
   async findById(id: string): Promise<AuthUser | null> {
     try {

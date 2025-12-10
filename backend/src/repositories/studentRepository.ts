@@ -1,4 +1,4 @@
-import type { IStudentRepository } from "@/interfaces/repositories/IStudentRepository";
+import type { IStudentRepository, StudentPaginatedResult } from "@/interfaces/repositories/IStudentRepository";
 import type {
   StudentAuthUser,
   AuthUser,
@@ -12,6 +12,8 @@ import { AppError } from "@/utils/AppError";
 import { HttpStatusCode } from "@/constants/httpStatus";
 import { logger } from "@/utils/logger";
 import { injectable } from "inversify";
+import type { StudentPaginationParams } from "@/dto/shared/paginationTypes";
+import { getSignedFileUrl } from "@/utils/s3Upload";
 
 @injectable()
 export class StudentRepository
@@ -52,8 +54,6 @@ export class StudentRepository
       logger.debug(`Finding student by ID: ${id}`);
       const student = await this.model
         .findById(id)
-        .where("role")
-        .equals("student")
         .lean()
         .exec();
 
@@ -289,4 +289,200 @@ async findAllWithTrialStats(page: number, limit: number) {
     );
   }
 }
+
+  async findAllStudentsPaginated(params: StudentPaginationParams): Promise<StudentPaginatedResult> {
+    try {
+      const page = params.page || 1;
+      const limit = params.limit || 10;
+      const skip = (page - 1) * limit;
+      const search = params.search?.trim() || '';
+      const status = params.status || '';
+      const verification = params.verification || '';
+
+      // Build match stage for aggregation
+      const matchStage: any = {};
+
+      // Search filter (fullName, email, phoneNumber)
+      if (search) {
+        matchStage.$or = [
+          { fullName: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { phoneNumber: { $regex: search, $options: 'i' } }
+        ];
+      }
+
+      // Status filter (active/blocked)
+      if (status === 'active') {
+        matchStage.isBlocked = { $ne: true };
+      } else if (status === 'blocked') {
+        matchStage.isBlocked = true;
+      }
+
+      // Verification filter
+      if (verification === 'verified') {
+        matchStage.isVerified = true;
+      } else if (verification === 'pending') {
+        matchStage.isVerified = { $ne: true };
+      }
+
+      logger.info(`findAllStudentsPaginated: Query=${JSON.stringify(matchStage)}, page=${page}, limit=${limit}`);
+
+      // Use aggregation to include trial class stats
+      const pipeline: any[] = [];
+      
+      // Add match stage only if there are filters
+      if (Object.keys(matchStage).length > 0) {
+        pipeline.push({ $match: matchStage });
+      }
+
+      pipeline.push(
+        {
+          $lookup: {
+            from: "trialclasses",
+            localField: "_id",
+            foreignField: "student",
+            as: "trialClasses"
+          }
+        },
+        {
+          $addFields: {
+            totalTrialClasses: { $size: "$trialClasses" },
+            pendingTrialClasses: {
+              $size: {
+                $filter: {
+                  input: "$trialClasses",
+                  as: "trial",
+                  cond: { 
+                    $in: ["$$trial.status", ["requested", "assigned"]] 
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          $project: {
+            password: 0,
+            trialClasses: 0
+          }
+        },
+        { $sort: { createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limit }
+      );
+
+      const students = await StudentModel.aggregate(pipeline);
+
+      // Add signed URLs for profile pictures
+      const studentsWithImages = await Promise.all(
+        students.map(async (student: any) => {
+          if (student.profileImage) {
+            try {
+              if (student.profileImage.startsWith('http')) {
+                  student.profileImageUrl = student.profileImage;
+              } else {
+                  // Assuming profileImage stores the Key
+                  student.profileImageUrl = await getSignedFileUrl(student.profileImage);
+              }
+            } catch (error) {
+              logger.error(`Error generating signed URL for student: ${student._id}`, error);
+              student.profileImageUrl = null;
+            }
+          }
+          return student;
+        })
+      );
+
+      // Count with same match conditions
+      const total = await StudentModel.countDocuments(matchStage);
+
+      logger.info(`findAllStudentsPaginated: Found ${studentsWithImages.length} students, total=${total}`);
+
+      return {
+        students: studentsWithImages,
+        total
+      };
+    } catch (error: any) {
+      logger.error(`Error in findAllStudentsPaginated: ${error.message}`);
+      throw new AppError(
+        'Failed to fetch paginated students',
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async findStudentProfileById(id: string): Promise<any> {
+    try {
+      logger.debug(`Finding complete student profile by ID: ${id}`);
+      
+      const student = await this.model
+        .findById(id)
+        .select("-password")
+        .populate({
+          path: 'gradeId',
+          select: 'name level'
+        })
+        .lean()
+        .exec();
+
+      if (!student) {
+        logger.debug(`Student not found with ID: ${id}`);
+        return null;
+      }
+
+      // Fetch trial classes separately
+      const { TrialClass } = await import("@/models/student/trialClass.model");
+      const trialClasses = await TrialClass
+        .find({ student: id })
+        .populate('subject', 'subjectName')
+        .populate('mentor', 'fullName email')
+        .sort({ createdAt: -1 })
+        .lean()
+        .exec();
+
+      // Fetch enrollments separately
+      const { Enrollment } = await import("@/models/enrollment.model");
+      const enrollments = await Enrollment
+        .find({ student: id })
+        .populate({
+          path: 'course',
+          populate: [
+            { path: 'subject', select: 'subjectName' },
+            { path: 'grade', select: 'name' },
+            { path: 'mentor', select: 'fullName email' }
+          ]
+        })
+        .sort({ createdAt: -1 })
+        .lean()
+        .exec();
+
+      logger.info(`Student profile found with ${trialClasses.length} trial classes and ${enrollments.length} enrollments`);
+      
+      let profileImageUrl = null;
+      if (student.profileImage) {
+          try {
+             if (student.profileImage.startsWith('http')) {
+                 profileImageUrl = student.profileImage;
+             } else {
+                 profileImageUrl = await getSignedFileUrl(student.profileImage);
+             }
+          } catch (error) {
+              logger.error(`Error generating signed URL for student: ${student._id}`, error);
+          }
+      }
+
+      return {
+        ...student,
+        profileImageUrl,
+        trialClasses,
+        enrollments
+      };
+    } catch (error) {
+      logger.error(`Error finding student profile by ID: ${id}`, error);
+      throw new AppError(
+        "Failed to find student profile",
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
 }

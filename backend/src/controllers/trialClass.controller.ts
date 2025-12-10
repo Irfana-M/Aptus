@@ -151,5 +151,51 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
   } catch (error) {
     this.handleError(res, error, "Failed to update trial class");
   }
-}
+  }
+
+  async submitFeedback(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { rating, comment } = req.body;
+      const studentId = req.user?.id;
+
+      if (!studentId) {
+        res.status(HttpStatusCode.UNAUTHORIZED).json({
+          success: false,
+          message: "Unauthorized: Student not logged in",
+        });
+        return;
+      }
+
+      if (!id) {
+        res.status(HttpStatusCode.BAD_REQUEST).json({
+          success: false,
+          message: "Trial class ID is required",
+        });
+        return;
+      }
+
+      if (rating === undefined || rating < 1 || rating > 5) {
+        res.status(HttpStatusCode.BAD_REQUEST).json({
+          success: false,
+          message: "Valid rating (1-5) is required",
+        });
+        return;
+      }
+
+      const trialClass = await this.trialService.submitFeedback(
+        id,
+        studentId,
+        { rating, comment }
+      );
+
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        message: "Feedback submitted successfully",
+        data: trialClass,
+      });
+    } catch (error) {
+      this.handleError(res, error, "Failed to submit feedback");
+    }
+  }
 }

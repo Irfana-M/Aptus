@@ -6,6 +6,7 @@ import {
   approveMentor,
   rejectMentor,
   updateMentorProfile,
+  fetchMentorTrialClasses,
 } from "./mentorThunk";
 
 export interface MentorProfile {
@@ -59,6 +60,7 @@ export interface MentorProfile {
 interface MentorState {
   profile: MentorProfile | null;
   pendingMentors: MentorProfile[];
+  trialClasses: any[];
   loading: boolean;
   error: string | null;
 }
@@ -66,6 +68,7 @@ interface MentorState {
 const initialState: MentorState = {
   profile: null,
   pendingMentors: [],
+  trialClasses: [],
   loading: false,
   error: null,
 };
@@ -149,6 +152,20 @@ export const mentorSlice = createSlice({
       .addCase(rejectMentor.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || "Failed to reject mentor";
+      });
+
+    builder
+      .addCase(fetchMentorTrialClasses.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchMentorTrialClasses.fulfilled, (state, action) => {
+        state.loading = false;
+        state.trialClasses = action.payload || [];
+      })
+      .addCase(fetchMentorTrialClasses.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || "Failed to fetch trial classes";
       });
   },
 });

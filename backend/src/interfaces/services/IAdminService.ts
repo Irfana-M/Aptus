@@ -4,6 +4,7 @@ import type { MentorResponseDto } from "@/dto/mentor/MentorResponseDTO";
 import type { StudentBaseResponseDto } from "@/dto/auth/UserResponseDTO";
 import type { MentorProfile } from "../models/mentor.interface";
 import type { TrialClassResponseDto } from "@/dto/student/trialClassDTO";
+import type { MentorPaginationParams, StudentPaginationParams, PaginatedResponse } from "@/dto/shared/paginationTypes";
 
 export interface IAdminService {
   unblockStudent(studentId: string): unknown;
@@ -12,6 +13,7 @@ export interface IAdminService {
   getDashboardData(): Promise<DashboardDataDto>;
 
   getAllMentors(): Promise<MentorResponseDto[]>;
+  getAllMentorsPaginated(params: MentorPaginationParams): Promise<PaginatedResponse<MentorResponseDto>>;
   fetchMentorProfile(mentorId: string): Promise<MentorResponseDto>;
   updateMentorApprovalStatus(
     mentorId: string,
@@ -21,6 +23,7 @@ export interface IAdminService {
   ): Promise<MentorResponseDto>;
 
   getAllStudents(): Promise<StudentBaseResponseDto[]>;
+  getAllStudentsPaginated(params: StudentPaginationParams): Promise<PaginatedResponse<StudentBaseResponseDto>>;
 
   getStudentsWithTrialStats(page: number, limit: number): Promise<any>;
 
@@ -62,8 +65,7 @@ export interface IAdminService {
     trialClassId: string,
     mentorId: string,
     scheduledDate: string,
-    scheduledTime: string,
-    meetLink?: string
+    scheduledTime: string
   ): Promise<TrialClassResponseDto>;
   updateTrialClassStatus(
     trialClassId: string,

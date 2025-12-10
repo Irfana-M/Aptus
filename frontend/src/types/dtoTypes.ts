@@ -25,6 +25,7 @@ export interface LoginResponse {
   accessToken: string;
   isProfileComplete?: boolean;
   isPaid?: boolean;
+  isTrialCompleted?: boolean;
 }
 
 export interface AdminLoginResponse {

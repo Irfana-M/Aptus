@@ -28,7 +28,7 @@ const subjectProficiencySchema = new Schema({
 
 const availabilitySchema = new Schema({
   dayOfWeek: { type: Number, required: true }, 
-  timeSlots: [{ type: String, required: true }], 
+  timeSlots: [{ type: String }], 
   timezone: { type: String, default: "UTC" },
 });
 
@@ -57,8 +57,8 @@ const mentorSchema = new Schema<MentorProfile>(
     isProfileComplete: { type: Boolean, default: false },
     approvalStatus: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
-      default: "pending",
+      enum: ["not_submitted", "pending", "approved", "rejected"],
+      default: "not_submitted",
     },
     authProvider: {
       type: String,

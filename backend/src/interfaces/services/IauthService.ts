@@ -20,6 +20,7 @@ export interface IAuthService {
     refreshToken: string;
     isProfileComplete?: boolean;
     isPaid?: boolean | undefined;
+    isTrialCompleted?: boolean;
     approvalStatus?: "pending" | "approved" | "rejected";
   }>;
 

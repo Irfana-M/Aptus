@@ -80,13 +80,37 @@ router.get(
 
         console.log(`Google auth successful for ${role}: ${userEmail}`);
 
+        let isTrialCompletedString = String(googleUser.isTrialCompleted ?? false);
+
+        // Self-healing: If flag is false but user might have completed a trial
+        if (role === 'student' && isTrialCompletedString === 'false') {
+          try {
+            const { TrialClass } = await import("../models/student/trialClass.model");
+            const { StudentModel } = await import("../models/student/student.model");
+            
+            const completedTrial = await TrialClass.findOne({
+              student: googleUser._id,
+              status: 'completed'
+            });
+
+            if (completedTrial) {
+              console.log(`🩹 Self-healing: Found completed trial for ${userEmail}, updating flag.`);
+              await StudentModel.findByIdAndUpdate(googleUser._id, { isTrialCompleted: true });
+              isTrialCompletedString = 'true';
+            }
+          } catch (healingError) {
+            console.error("Self-healing check failed:", healingError);
+          }
+        }
+
         const redirectParams = new URLSearchParams({
           token: token,
           email: userEmail,
           role: role,
-          isProfileComplete: 'false',
-          approvalStatus: role === 'mentor' ? 'pending' : 'approved',
-          isPaid: 'false',
+          isProfileComplete: String(googleUser.isProfileCompleted ?? (googleUser.isProfileComplete ?? false)),
+          isTrialCompleted: isTrialCompletedString,
+          approvalStatus: googleUser.approvalStatus || (role === 'mentor' ? 'pending' : 'approved'),
+          isPaid: String(googleUser.isPaid ?? false),
         });
 
         console.log('🔗 Redirect URL:', `${env.frontend.googleCallbackUrl}?${redirectParams}`);
@@ -106,6 +130,10 @@ router.post("/signup/verify-otp", (req, res) => otpController.verifySignupOtp(re
 router.post("/signup/resend-otp", (req, res) => otpController.resendOtp(req, res));
 router.post("/login", (req, res) => authController.login(req, res));
 router.post("/forgot-password/send-otp", (req, res) => authController.sendForgotPasswordOtp(req, res));
+import { requireAuth } from "@/middleware/authMiddleware";
+
 router.post("/refresh", (req, res, next) => authController.refreshAccessToken(req, res, next));
+router.get("/me", requireAuth, (req, res, next) => authController.getMe(req, res));
+router.post("/logout", (req, res) => authController.logout(req, res));
 
 export default router;

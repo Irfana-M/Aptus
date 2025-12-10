@@ -1,0 +1,243 @@
+import { injectable, inject } from "inversify";
+import { Server, Socket } from 'socket.io';
+import { logger } from "@/utils/logger";
+import { TYPES } from "@/types";
+import type { IVideoCallService } from "@/interfaces/services/IVideoCallService";
+import type { ISocketService } from "@/interfaces/services/ISocketService";
+import type { UserRoleService } from "./userRole.service";
+import type { 
+  JoinCallRequestDto, 
+  WebRTCOfferDto, 
+  WebRTCAnswerDto, 
+  WebRTCIceCandidateDto, 
+  CallEndedDto 
+} from "../dto/webrtcDTO";
+import fs from "fs";
+import jwt from 'jsonwebtoken';
+import type { IUserRoleService } from "@/interfaces/services/IUserRoleSrvice";
+
+interface JwtPayload {
+  id: string;
+  email: string;
+  role: 'mentor' | 'student';
+  iat?: number;
+  exp?: number;
+}
+
+@injectable()
+export class SocketService implements ISocketService {
+  private io!: Server;
+  private static httpServer: any = null;
+
+  constructor(
+    @inject(TYPES.IVideoCallService) private videoCallService: IVideoCallService,
+    @inject(TYPES.IUserRoleService) private userRoleService: IUserRoleService
+  ) {}
+
+  public static attach(server: any): void {
+    SocketService.httpServer = server;
+  }
+
+  public initialize(): void {
+    if (!SocketService.httpServer) {
+      throw new Error("Call SocketService.attach(server) in server.ts first!");
+    }
+
+    this.io = new Server(SocketService.httpServer, {
+      cors: {
+        origin: process.env.CLIENT_URL || "http://localhost:5173",
+        methods: ["GET", "POST"],
+        allowedHeaders: ["Authorization", "Content-Type"],
+        credentials: true
+      },
+      transports: ['polling', 'websocket'],
+      allowEIO3: true
+    });
+
+    // ========== SOCKET AUTH MIDDLEWARE ==========
+    this.io.use(async (socket, next) => {
+      
+       try { fs.appendFileSync('debug_socket.log', `[SOCKET AUTH] Middleware triggered for socket ${socket.id}\n`); } catch (e) {} console.log('🔐 [SOCKET AUTH] Middleware triggered');
+      
+      // Get token from auth or headers
+      const token = socket.handshake.auth?.token || 
+                   socket.handshake.headers?.authorization?.split(' ')?.[1];
+      
+      console.log('[SOCKET AUTH] Token present:', !!token);
+      
+      if (!token) {
+        console.error('[SOCKET AUTH] No token provided');
+        return next(new Error('No token provided'));
+      }
+
+      try {
+        // Verify and decode token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
+        
+        console.log('[SOCKET AUTH] Token decoded:', {
+          id: decoded.id,
+          email: decoded.email,
+          role: decoded.role
+        });
+        
+        if (!['student', 'mentor'].includes(decoded.role)) {
+          console.error('[SOCKET AUTH] Invalid role:', decoded.role);
+          return next(new Error('Invalid role'));
+        }
+        
+        // Verify user exists in database with correct role
+        const verification = await this.userRoleService.verifyUserRole(
+          decoded.id, 
+          decoded.role
+        );
+        
+        if (!verification.success) {
+          console.error('[SOCKET AUTH] User verification failed:', verification.error);
+          return next(new Error(verification.error || 'User verification failed'));
+        }
+        
+        // Attach verified user to socket
+        (socket as any).user = {
+          id: decoded.id,
+          email: decoded.email,
+          role: decoded.role
+        };
+        
+        console.log('[SOCKET AUTH] User attached to socket:', (socket as any).user);
+        next();
+      } catch (error) {
+        console.error('[SOCKET AUTH] Token verification failed:', error);
+        return next(new Error('Invalid token'));
+      }
+    });
+
+    // ========== SOCKET EVENT HANDLERS ==========
+    this.io.on('connection', (socket: Socket) => {
+      const user = (socket as any).user;
+      logger.info(`New client connected: ${socket.id}, user: ${user?.email} (${user?.role})`);
+
+      socket.on('join-call', async (data: JoinCallRequestDto) => {
+        try {
+          const socketUser = (socket as any).user;
+          
+          console.log('📞 [JOIN-CALL] Event received:', {
+            socketId: socket.id,
+            socketUser: socketUser,
+            requestData: data
+          });
+
+          // Verify socket user exists
+          if (!socketUser) {
+            console.error('[JOIN-CALL] No user attached to socket');
+            return socket.emit('join-error', { error: 'Authentication required' });
+          }
+
+          // Verify request matches socket user
+          if (socketUser.id !== data.userId) {
+            console.error(`[JOIN-CALL] User ID mismatch! Socket: ${socketUser.id}, Request: ${data.userId}`);
+            return socket.emit('join-error', { error: 'User ID mismatch' });
+          }
+
+          if (socketUser.role !== data.userType) {
+            console.error(`[JOIN-CALL] Role mismatch! Socket: ${socketUser.role}, Request: ${data.userType}`);
+            return socket.emit('join-error', { error: 'Role mismatch' });
+          }
+
+          const roomName = `trial-class-${data.trialClassId}`;
+          await socket.join(roomName);
+
+          console.log(`[JOIN-CALL] User ${socketUser.email} joined room: ${roomName}`);
+
+          // Call video service to join call
+          const result = await this.videoCallService.joinCall({
+            ...data,
+            socketId: socket.id
+          });
+
+          if (!result.success) {
+            socket.emit('join-error', { error: result.error });
+            return;
+          }
+
+          // Notify everyone in the room (including sender)
+          this.io.to(roomName).emit('user-joined', {
+            userId: data.userId,
+            userType: data.userType,
+            socketId: socket.id,
+            trialClassId: data.trialClassId,
+            userEmail: socketUser.email
+          });
+
+          socket.emit('join-success', { 
+            room: roomName,
+            socketId: socket.id 
+          });
+          
+          logger.info(`${data.userType} (${socketUser.email}) joined room ${roomName}`);
+        } catch (error) {
+          console.error('[JOIN-CALL] Error:', error);
+          socket.emit('join-error', { error: 'Internal server error' });
+        }
+      });
+
+      // ===== WEBRTC SIGNALING =====
+      socket.on('webrtc-offer', (data: WebRTCOfferDto) => {
+        console.log('📨 [OFFER] Forwarding offer to:', data.toSocketId);
+        socket.to(data.toSocketId).emit('webrtc-offer', { 
+          ...data, 
+          fromSocketId: socket.id 
+        });
+      });
+
+      socket.on('webrtc-answer', (data: WebRTCAnswerDto) => {
+        console.log('📨 [ANSWER] Forwarding answer to:', data.toSocketId);
+        socket.to(data.toSocketId).emit('webrtc-answer', { 
+          ...data, 
+          fromSocketId: socket.id 
+        });
+      });
+
+      socket.on('webrtc-ice-candidate', (data: WebRTCIceCandidateDto) => {
+        console.log('🧊 [ICE] Forwarding candidate to:', data.toSocketId);
+        socket.to(data.toSocketId).emit('webrtc-ice-candidate', { 
+          ...data, 
+          fromSocketId: socket.id 
+        });
+      });
+
+      socket.on('webrtc-is-speaking', (data: { isSpeaking: boolean, trialClassId: string, toSocketId: string }) => {
+         socket.to(data.toSocketId).emit('webrtc-is-speaking', {
+            isSpeaking: data.isSpeaking,
+            fromSocketId: socket.id
+         });
+      });
+
+      socket.on('media-state-change', (data: { type: 'audio' | 'video', enabled: boolean, trialClassId: string, toSocketId: string }) => {
+        console.log(`🎥 [MEDIA-STATE] ${data.type} is now ${data.enabled ? 'enabled' : 'disabled'} for ${socket.id}`);
+        socket.to(data.toSocketId).emit('media-state-change', {
+          ...data,
+          fromSocketId: socket.id
+        });
+      });
+
+      socket.on('end-call', async (data: CallEndedDto) => {
+        console.log('📞 [END-CALL] Ending call:', data);
+        await this.videoCallService.endCall(data);
+        this.io.to(`trial-class-${data.trialClassId}`).emit('call-ended', data);
+      });
+
+      socket.on('disconnect', () => {
+        console.log(`🔌 [DISCONNECT] Socket ${socket.id} disconnected`);
+        logger.info(`Client disconnected: ${socket.id}`);
+      });
+    });
+  }
+
+  public getIO(): Server { return this.io; }
+  public emitToRoom(room: string, event: string, data: any) {
+    this.io.to(room).emit(event, data);
+  }
+  public emitToUser(socketId: string, event: string, data: any) {
+    this.io.to(socketId).emit(event, data);
+  }
+}

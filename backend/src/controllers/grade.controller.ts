@@ -16,7 +16,7 @@ export class GradeController {
   async getAllGrades(req: Request, res: Response): Promise<void> {
     try {
       const grades = await this.gradeService.getAllGrades();
-      
+
       res.status(HttpStatusCode.OK).json({
         success: true,
         message: "Grades fetched successfully",
@@ -30,8 +30,8 @@ export class GradeController {
   async getGradesBySyllabus(req: Request, res: Response): Promise<void> {
     try {
       const { syllabus } = req.query;
-      
-      if (!syllabus || typeof syllabus !== 'string') {
+
+      if (!syllabus || typeof syllabus !== "string") {
         res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
           message: "Syllabus query parameter is required",
@@ -40,7 +40,7 @@ export class GradeController {
       }
 
       const grades = await this.gradeService.getGradesBySyllabus(syllabus);
-      
+
       res.status(HttpStatusCode.OK).json({
         success: true,
         message: "Grades fetched successfully",
@@ -51,9 +51,13 @@ export class GradeController {
     }
   }
 
-  private handleError(res: Response, error: unknown, defaultMessage: string): void {
+  private handleError(
+    res: Response,
+    error: unknown,
+    defaultMessage: string
+  ): void {
     logger.error(defaultMessage, error);
-    
+
     if (error instanceof AppError) {
       res.status(error.statusCode).json({
         success: false,

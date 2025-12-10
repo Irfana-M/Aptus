@@ -19,6 +19,36 @@ import { injectable } from "inversify";
 export class MentorAuthRepository
   implements IAuthRepository<MentorAuthUser>, IMentorAuthRepository, IVerificationRepository<MentorAuthUser>
 {
+  private mapToMentorAuthUser(mentor: any): MentorAuthUser {
+    const academicQualifications = mentor.academicQualifications
+      ? mentor.academicQualifications.map((q: any) => ({
+          institutionName: q.institutionName,
+          degree: q.degree,
+          graduationYear: q.graduationYear,
+        }))
+      : undefined;
+
+    const subjectProficiency = mentor.subjectProficiency
+      ? mentor.subjectProficiency.map((s: any) => ({
+          subject: s.subject,
+          level: s.level,
+        }))
+      : undefined;
+
+    return {
+      _id: mentor._id.toString(),
+      fullName: mentor.fullName,
+      email: mentor.email,
+      password: mentor.password || "",
+      phoneNumber: mentor.phoneNumber,
+      role: "mentor",
+      isVerified: mentor.isVerified ?? false,
+      approvalStatus: mentor.approvalStatus || "pending",
+      academicQualifications,
+      subjectProficiency,
+    };
+  }
+
   async findByEmail(email: string): Promise<MentorAuthUser | null> {
     try {
       const mentor = await MentorModel.findOne({ email }).lean();
@@ -27,38 +57,10 @@ export class MentorAuthRepository
         return null;
       }
       logger.info(`Mentor found by email: ${email}`);
-
-       const academicQualifications = mentor.academicQualifications 
-        ? mentor.academicQualifications.map(q => ({
-            institutionName: q.institutionName,
-            degree: q.degree,
-            graduationYear: q.graduationYear
-          }))
-        : undefined;
-
-      const subjectProficiency = mentor.subjectProficiency
-        ? mentor.subjectProficiency.map(s => ({
-            subject: s.subject,
-            level: s.level
-          }))
-        : undefined;
-
-const result: MentorAuthUser = {
-        _id: mentor._id.toString(),
-        fullName: mentor.fullName,
-        email: mentor.email,
-        password: mentor.password || '',
-        phoneNumber: mentor.phoneNumber,
-        role: "mentor",
-        isVerified: mentor.isVerified ?? false,
-        approvalStatus: mentor.approvalStatus || "pending",
-        academicQualifications,
-        subjectProficiency,
-      };
-
-      return result;
+      return this.mapToMentorAuthUser(mentor);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       logger.error(
         `Error finding mentor by email: ${email} - ${errorMessage}`
       );
@@ -98,37 +100,10 @@ const result: MentorAuthUser = {
         return null;
       }
       logger.info(`Mentor found by ID: ${id}`);
-
-      const academicQualifications = mentor.academicQualifications 
-        ? mentor.academicQualifications.map(q => ({
-            institutionName: q.institutionName,
-            degree: q.degree,
-            graduationYear: q.graduationYear
-          }))
-        : undefined;
-
-      const subjectProficiency = mentor.subjectProficiency
-        ? mentor.subjectProficiency.map(s => ({
-            subject: s.subject,
-            level: s.level
-          }))
-        : undefined;
-
-      return {
-        _id: mentor._id.toString(),
-        fullName: mentor.fullName,
-        email: mentor.email,
-        password: mentor.password || '',
-        phoneNumber: mentor.phoneNumber,
-        role: "mentor",
-        isVerified: mentor.isVerified ?? false,
-        approvalStatus: mentor.approvalStatus || "pending",
-        academicQualifications,
-        subjectProficiency,
-      };
-
+      return this.mapToMentorAuthUser(mentor);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       logger.error(`Error finding mentor by ID: ${id} - ${errorMessage}`);
       throw new AppError(
         "Failed to find mentor by ID",
@@ -256,16 +231,23 @@ const result: MentorAuthUser = {
     }
   }
 
-  async block(id: string): Promise<boolean> {
+  async block(id: string): Promise<MentorAuthUser> {
     try {
-      const result = await MentorModel.findByIdAndUpdate(id, {
-        isBlocked: true,
-      });
-      if (result) logger.info(`Mentor blocked: ${id}`);
-      else logger.warn(`Mentor block failed, ID not found: ${id}`);
-      return result !== null;
+      const mentor = await MentorModel.findByIdAndUpdate(
+        id,
+        { isBlocked: true },
+        { new: true }
+      ).lean();
+
+      if (!mentor) {
+        logger.warn(`Mentor block failed, ID not found: ${id}`);
+        throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
+      }
+      logger.info(`Mentor blocked: ${id}`);
+      return this.mapToMentorAuthUser(mentor);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       logger.error(`Error blocking mentor: ${id} - ${errorMessage}`);
       throw new AppError(
         "Failed to block mentor",
@@ -274,8 +256,34 @@ const result: MentorAuthUser = {
     }
   }
 
+  async unblock(id: string): Promise<MentorAuthUser> {
+    try {
+      const mentor = await MentorModel.findByIdAndUpdate(
+        id,
+        { isBlocked: false },
+        { new: true }
+      ).lean();
+
+      if (!mentor) {
+        logger.warn(`Mentor unblock failed, ID not found: ${id}`);
+        throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
+      }
+      logger.info(`Mentor unblocked: ${id}`);
+      return this.mapToMentorAuthUser(mentor);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      logger.error(`Error unblocking mentor: ${id} - ${errorMessage}`);
+      throw new AppError(
+        "Failed to unblock mentor",
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   async blockMentor(id: string): Promise<boolean> {
-    return this.block(id);
+    await this.block(id);
+    return true;
   }
 
   async listAllMentor(): Promise<MentorProfile[]> {

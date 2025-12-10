@@ -1,4 +1,4 @@
-import { BookOpen } from "lucide-react";
+import aptusLogo from "../../assets/images/aptusLogo.jpeg";
 
 type LogoProps = {
   className?: string;
@@ -6,21 +6,19 @@ type LogoProps = {
 };
 
 export default function Logo({ className, withText = true }: LogoProps) {
+  const newLocal = "h-10 w-auto object-contain";
   return (
     <div
-      className={`flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg ${
-        className || ""
-      }`}
+      className={`flex items-center gap-2 ${className || ""}`}
     >
-      <div
-        className="w-8 h-8 rounded-lg flex items-center justify-center"
-        style={{ backgroundColor: "#49BBBD" }}
-      >
-        <BookOpen className="w-5 h-5 text-white" strokeWidth={2.5} />
-      </div>
+      <img 
+        src={aptusLogo} 
+        alt="Aptus Logo" 
+        className={newLocal} 
+      />
 
       {withText && (
-        <span className="text-xl font-bold text-gray-800">Mentora</span>
+        <span className="text-xl font-bold text-gray-800">Aptus</span>
       )}
     </div>
   );

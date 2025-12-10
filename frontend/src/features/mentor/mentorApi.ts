@@ -14,8 +14,8 @@ export const mentorApi = {
   },
 
   getMentorProfile: async () => {
-    const response = await authApi.get("/mentor/me/profile-update");
-    return response.data;
+    const response = await authApi.get("/mentor/me/profile");
+    return response.data.data;
   },
 
   getPendingMentors: async () => {
@@ -33,5 +33,10 @@ export const mentorApi = {
       reason,
     });
     return response.data;
+  },
+
+  getMentorTrialClasses: async () => {
+    const response = await authApi.get("/mentor/me/trial-classes");
+    return response.data.data;
   },
 };

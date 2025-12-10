@@ -33,7 +33,9 @@ export class StudentMapper {
       dateOfBirth: data.dateOfBirth,
       contactInfo: data.contactInfo,
       academicDetails: data.academicDetails,
-      profileImage: data.profileImage,
+      profileImage: data.profileImage, // This might be the key now
+      profileImageKey: data.profileImageKey,
+      profileImageUrl: data.profileImageUrl, // The signed URL
       goal: data.goal,
       isVerified: data.isVerified,
       isBlocked: data.isBlocked,
@@ -46,28 +48,60 @@ export class StudentMapper {
   }
 
   static toProfileUpdate(
-    data: Partial<StudentProfile>
+    data: Partial<StudentProfile> & Record<string, any>
   ): Partial<StudentProfile> {
-    return {
-      fullName: data.fullName ?? "",
-      phoneNumber: data.phoneNumber ?? "",
-      age: data.age ?? 0,
-      gender: data.gender ?? "",
-      dateOfBirth: data.dateOfBirth ?? new Date(),
-      contactInfo: data.contactInfo ?? {
-        parentInfo: { name: "", email: "", phoneNumber: "" },
-        address: "",
-        country: "",
-        postalCode: "",
-      },
-      academicDetails: data.academicDetails ?? {
-        institutionName: "",
-        grade: "",
-        syllabus: "",
-      },
-      goal: data.goal ?? "",
-      profileImage: data.profileImage ?? "",
-    };
+    const updateData: Partial<StudentProfile> = {};
+
+    if (data.fullName !== undefined) updateData.fullName = data.fullName;
+    if (data.phoneNumber !== undefined) updateData.phoneNumber = data.phoneNumber;
+    if (data.age !== undefined) updateData.age = data.age;
+    if (data.gender !== undefined) updateData.gender = data.gender;
+    if (data.dateOfBirth !== undefined) updateData.dateOfBirth = data.dateOfBirth;
+    
+    // Map flat input fields to nested schema structure
+    // 1. Contact Info & Parent Info
+    if (data.address || data.country || data.postalCode || 
+        data.parentName || data.parentEmail || data.parentPhone) {
+      
+      const parentInfo = {
+         name: data.parentName || data.contactInfo?.parentInfo?.name,
+         email: data.parentEmail || data.contactInfo?.parentInfo?.email,
+         phoneNumber: data.parentPhone || data.contactInfo?.parentInfo?.phoneNumber
+      };
+
+      updateData.contactInfo = {
+        address: data.address || data.contactInfo?.address || '',
+        country: data.country || data.contactInfo?.country || '',
+        postalCode: data.postalCode || data.contactInfo?.postalCode || '',
+        parentInfo: parentInfo
+      } as any;
+    } else if (data.contactInfo) {
+      updateData.contactInfo = data.contactInfo;
+    }
+
+    // 2. Academic Details
+    // Map 'grade' from frontend to 'gradeId' in backend interface
+    if (data.institution || data.institutionName || data.grade || data.gradeId || data.syllabus) {
+      updateData.academicDetails = {
+        institutionName: data.institution || data.institutionName || data.academicDetails?.institutionName || '',
+        gradeId: (data.grade || data.gradeId || data.academicDetails?.gradeId) as any, // Cast because it might be string pending conversion
+        syllabus: data.syllabus || data.academicDetails?.syllabus || ''
+      };
+    } else if (data.academicDetails) {
+      updateData.academicDetails = data.academicDetails;
+    }
+
+    // 3. Learning Goal
+    if (data.learningGoal) {
+        updateData.goal = data.learningGoal;
+    }
+    if (data.goal !== undefined) updateData.goal = data.goal;
+    
+    // Handle profile image key
+    if (data.profileImage !== undefined) updateData.profileImage = data.profileImage;
+    if (data.profileImageKey !== undefined) updateData.profileImageKey = data.profileImageKey;
+
+    return updateData;
   }
 
   
@@ -165,3 +199,4 @@ export class StudentMapper {
     );
   }
 }
+

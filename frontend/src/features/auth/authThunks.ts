@@ -8,6 +8,7 @@ import type {
 } from "../../types/dtoTypes";
 import type { User } from "../../types/authTypes";
 import { logout } from "./authSlice";
+import { getApiErrorMessage } from "../../utils/errorUtils";
 
 export const registerUser = createAsyncThunk<User, RegisterUserDto>(
   "auth/register",
@@ -15,9 +16,9 @@ export const registerUser = createAsyncThunk<User, RegisterUserDto>(
     try {
       const res = await authApi.register(data);
       return res.data;
-    } catch (err: any) {
+    } catch (err: unknown) {
       return rejectWithValue(
-        err.response?.data?.message || "Registration failed"
+        getApiErrorMessage(err, "Registration failed")
       );
     }
   }
@@ -28,9 +29,9 @@ export const verifyOtp = createAsyncThunk<void, VerifyOtpDto>(
   async (data, { rejectWithValue }) => {
     try {
       await authApi.verifyOtp(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return rejectWithValue(
-        err.response?.data?.message || "OTP verification failed"
+        getApiErrorMessage(err, "OTP verification failed")
       );
     }
   }
@@ -41,9 +42,9 @@ export const resendOtp = createAsyncThunk<void, string>(
   async (email, { rejectWithValue }) => {
     try {
       await authApi.resendOtp(email);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return rejectWithValue(
-        err.response?.data?.message || "Resend OTP failed"
+        getApiErrorMessage(err, "Resend OTP failed")
       );
     }
   }
@@ -57,9 +58,9 @@ export const refreshAccessToken = createAsyncThunk<
   try {
     const res = await authApi.refreshToken();
     return res.data;
-  } catch (err: any) {
+  } catch (err: unknown) {
     return rejectWithValue(
-      err.response?.data?.message || "Token refresh failed"
+      getApiErrorMessage(err, "Token refresh failed")
     );
   }
 });
@@ -76,19 +77,21 @@ export const loginUser = createAsyncThunk<
   ): Promise<LoginResponse | ReturnType<typeof rejectWithValue>> => {
     try {
       const res = await authApi.login(data);
-      const { user, accessToken, isProfileComplete, isPaid } = res.data;
+      const { user, accessToken, isProfileComplete, isPaid, isTrialCompleted } = res.data;
       return {
         user: {
           ...user,
           isProfileComplete,
           isPaid,
+          isTrialCompleted,
         },
         accessToken,
         isProfileComplete,
         isPaid,
+        isTrialCompleted,
       };
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || "Login failed");
+    } catch (err: unknown) {
+      return rejectWithValue(getApiErrorMessage(err, "Login failed"));
     }
   }
 );
@@ -98,11 +101,12 @@ export const logoutUser = createAsyncThunk(
   async (_, { dispatch }) => {
     try {
       await authApi.logout?.();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Backend logout failed", err);
     } finally {
       dispatch(logout());
 
+      localStorage.removeItem("accessToken");
       localStorage.removeItem("token");
       localStorage.removeItem("signupEmail");
     }

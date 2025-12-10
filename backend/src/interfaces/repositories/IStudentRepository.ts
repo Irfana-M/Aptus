@@ -2,6 +2,12 @@ import type { IBaseRepository } from "./IBaseRepository";
 import type { AuthUser, StudentAuthUser } from "../auth/auth.interface";
 import type { StudentProfile } from "../models/student.interface";
 import type { StudentBaseResponseDto } from "@/dto/auth/UserResponseDTO";
+import type { StudentPaginationParams } from "@/dto/shared/paginationTypes";
+
+export interface StudentPaginatedResult {
+  students: any[];
+  total: number;
+}
 
 export interface IStudentRepository extends IBaseRepository<StudentAuthUser> {
   findByEmail(email: string): Promise<StudentAuthUser| null>;
@@ -15,8 +21,10 @@ export interface IStudentRepository extends IBaseRepository<StudentAuthUser> {
   markUserVerified(email: string): Promise<void>;
   createUser(data: AuthUser): Promise<AuthUser>;
   findAllStudents(): Promise<StudentBaseResponseDto[]>;
+  findAllStudentsPaginated(params: StudentPaginationParams): Promise<StudentPaginatedResult>;
   findAllWithTrialStats(page: number, limit: number): Promise<{
     students: any[];
     totalStudents: number;
   }>;
+  findStudentProfileById(id: string): Promise<any>;
 }

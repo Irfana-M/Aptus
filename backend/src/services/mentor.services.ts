@@ -2,22 +2,28 @@ import { injectable, inject } from 'inversify';
 import type {
   IMentorRepository,
 } from "../interfaces/repositories/IMentorRepository";
+import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository";
 import type { IMentorAuthRepository } from '@/interfaces/repositories/IMentorAuthRepository';
 import type { AuthUser } from "../interfaces/auth/auth.interface";
 import type { IEmailService } from "../interfaces/services/IEmailService";
 import type { MentorProfile } from "../interfaces/models/mentor.interface";
 import type { IMentorService } from "../interfaces/services/IMentorService";
 import { logger } from "../utils/logger";
+import { getErrorMessage } from "../utils/errorUtils";
 import { uploadFileToS3 } from "../utils/s3Upload";
 import { TYPES } from '../types';
 import type { RegisterUserDto } from '@/dto/auth/RegisteruserDTO';
+import type { MentorResponseDto } from '@/dto/mentor/MentorResponseDTO';
+import { MentorMapper } from '@/mappers/MentorMapper';
+import { TrialClassMapper } from '@/mappers/trialClassMapper';
 
 @injectable()
 export class MentorService implements IMentorService {
   constructor(
     @inject(TYPES.IMentorAuthRepository) private _mentorAuthRepo: IMentorAuthRepository,
     @inject(TYPES.IMentorRepository) private _mentorRepo: IMentorRepository,
-    @inject(TYPES.EmailService) private _emailService: IEmailService
+    @inject(TYPES.ITrialClassRepository) private _trialClassRepo: ITrialClassRepository,
+    @inject(TYPES.IEmailService) private _emailService: IEmailService
   ) {}
 
 
@@ -37,10 +43,9 @@ export class MentorService implements IMentorService {
       logger.info(`Mentor registered successfully: ${mentor.email}`);
 
       return mentor;
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error(
-        `Error in registerMentor for email ${data.email}: ${error.message}`,
-        { error: error.stack }
+        `Error in registerMentor for email ${data.email}: ${getErrorMessage(error)}`
       );
       throw error;
     }
@@ -143,12 +148,12 @@ export class MentorService implements IMentorService {
             data.profilePicture
           );
           logger.debug(`Processed profile picture for mentor: ${mentorId}`);
-        } catch (uploadError: any) {
+        } catch (uploadError: unknown) {
           logger.error(
-            `Error uploading profile picture for mentor ${mentorId}: ${uploadError.message}`
+            `Error uploading profile picture for mentor ${mentorId}: ${getErrorMessage(uploadError)}`
           );
           throw new Error(
-            `Failed to upload profile picture: ${uploadError.message}`
+            `Failed to upload profile picture: ${getErrorMessage(uploadError)}`
           );
         }
       }
@@ -166,12 +171,11 @@ export class MentorService implements IMentorService {
 
       logger.info(`Mentor profile updated successfully: ${mentorId}`);
       return updatedMentor;
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error(
-        `Error in updateMentorProfile for mentor ${mentorId}: ${error.message}`,
-        { error: error.stack }
+        `Error in updateMentorProfile for mentor ${mentorId}: ${getErrorMessage(error)}`
       );
-      throw new Error(`Failed to update mentor profile: ${error.message}`);
+      throw new Error(`Failed to update mentor profile: ${getErrorMessage(error)}`);
     }
   }
 
@@ -222,18 +226,17 @@ export class MentorService implements IMentorService {
         logger.info(
           `Approval email sent successfully to: ${updatedMentor.email}`
         );
-      } catch (emailError: any) {
+      } catch (emailError: unknown) {
         logger.warn(
-          `Failed to send approval email to ${updatedMentor.email}: ${emailError.message}`
+          `Failed to send approval email to ${updatedMentor.email}: ${getErrorMessage(emailError)}`
         );
       }
 
       logger.info(`Mentor approved successfully: ${mentorId}`);
       return { message: "Mentor approved and notification sent" };
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error(
-        `Error in approveMentor for mentor ${mentorId}: ${error.message}`,
-        { error: error.stack }
+        `Error in approveMentor for mentor ${mentorId}: ${getErrorMessage(error)}`
       );
       throw error;
     }
@@ -274,18 +277,17 @@ export class MentorService implements IMentorService {
         logger.info(
           `Rejection email sent successfully to: ${updatedMentor.email}`
         );
-      } catch (emailError: any) {
+      } catch (emailError: unknown) {
         logger.warn(
-          `Failed to send rejection email to ${updatedMentor.email}: ${emailError.message}`
+          `Failed to send rejection email to ${updatedMentor.email}: ${getErrorMessage(emailError)}`
         );
       }
 
       logger.info(`Mentor rejected successfully: ${mentorId}`);
       return { message: "Mentor rejected and notification sent" };
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error(
-        `Error in rejectMentor for mentor ${mentorId}: ${error.message}`,
-        { error: error.stack }
+        `Error in rejectMentor for mentor ${mentorId}: ${getErrorMessage(error)}`
       );
       throw error;
     }
@@ -318,9 +320,38 @@ export class MentorService implements IMentorService {
 
       logger.info(`Profile picture uploaded successfully to S3: ${imageUrl}`);
       return imageUrl;
-    } catch (error: any) {
-      logger.error(`Error uploading profile picture: ${error.message}`);
-      throw new Error(`Failed to upload profile picture: ${error.message}`);
+    } catch (error: unknown) {
+      logger.error(`Error uploading profile picture: ${getErrorMessage(error)}`);
+      throw new Error(`Failed to upload profile picture: ${getErrorMessage(error)}`);
+    }
+  }
+
+  async getMentorTrialClasses(mentorId: string): Promise<any[]> {
+    try {
+      logger.info(`Fetching trial classes for mentor: ${mentorId}`);
+      const trialClasses = await this._trialClassRepo.findByMentorId(mentorId);
+      return trialClasses.map(token => TrialClassMapper.toResponseDto(token));
+    } catch (error: unknown) {
+      logger.error(`Error in getMentorTrialClasses for mentor ${mentorId}: ${getErrorMessage(error)}`);
+      throw error;
+    }
+  }
+
+   async getById(id: string): Promise<MentorResponseDto | null> {
+    const mentor = await this._mentorRepo.findById(id);
+    if (!mentor) return null;
+    return MentorMapper.toResponseDto(mentor);
+  }
+
+  async getMentorProfile(mentorId: string): Promise<MentorProfile | null> {
+    try {
+      logger.info(`Fetching mentor profile via service: ${mentorId}`);
+      const mentor = await this._mentorRepo.getProfileWithImage(mentorId);
+      return mentor;
+    } catch (error: unknown) {
+
+      logger.error(`Error in getMentorProfile service: ${getErrorMessage(error)}`);
+      throw error;
     }
   }
 }

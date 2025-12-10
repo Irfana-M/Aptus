@@ -28,6 +28,7 @@ import { TrialClass, type ITrialClassDocument } from "@/models/student/trialClas
 import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
 import type { TrialClassResponseDto } from "@/dto/student/trialClassDTO";
 import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository";
+import type { MentorPaginationParams, StudentPaginationParams, PaginatedResponse } from "@/dto/shared/paginationTypes";
 
 
 @injectable()
@@ -123,6 +124,41 @@ export class AdminService implements IAdminService {
     }
   }
 
+  async getAllMentorsPaginated(params: MentorPaginationParams): Promise<PaginatedResponse<MentorResponseDto>> {
+    try {
+      const page = params.page || 1;
+      const limit = params.limit || 10;
+
+      logger.info(`Fetching paginated mentors - page: ${page}, limit: ${limit}, search: ${params.search}, status: ${params.status}`);
+
+      const result = await this._mentorRepo.findAllMentorsPaginated(params);
+
+      const mentorDtos = MentorMapper.toResponseDtoList(result.mentors);
+      const totalPages = Math.ceil(result.total / limit);
+
+      logger.info(`Retrieved ${mentorDtos.length} mentors (page ${page}/${totalPages}, total: ${result.total})`);
+
+      return {
+        success: true,
+        data: mentorDtos,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems: result.total,
+          itemsPerPage: limit,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
+    } catch (error) {
+      logger.error("Error fetching paginated mentors:", error);
+      throw new AppError(
+        "Failed to fetch mentors",
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   async getAllStudents(): Promise<StudentBaseResponseDto[]> {
     try {
       const students = await this._studentRepo.findAllStudents();
@@ -130,6 +166,57 @@ export class AdminService implements IAdminService {
       return students;
     } catch (error) {
       logger.error("Error fetching all students:", error);
+      throw new AppError(
+        "Failed to fetch students",
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async getAllStudentsPaginated(params: StudentPaginationParams): Promise<PaginatedResponse<StudentBaseResponseDto>> {
+    try {
+      const page = params.page || 1;
+      const limit = params.limit || 10;
+
+      logger.info(`Fetching paginated students - page: ${page}, limit: ${limit}, search: ${params.search}, status: ${params.status}`);
+
+      const result = await this._studentRepo.findAllStudentsPaginated(params);
+
+      const totalPages = Math.ceil(result.total / limit);
+
+      // Transform to StudentBaseResponseDto using mapper
+      const studentDtos = result.students.map(student => ({
+        id: student._id?.toString() || student.id,
+        fullName: student.fullName,
+        email: student.email,
+        phoneNumber: student.phoneNumber || '',
+        role: 'student' as const,
+        isVerified: student.isVerified || false,
+        isProfileComplete: student.isProfileComplete || false,
+        isPaid: student.isPaid || false,
+        isBlocked: student.isBlocked || false,
+        totalTrialClasses: student.totalTrialClasses || 0,
+        pendingTrialClasses: student.pendingTrialClasses || 0,
+        createdAt: student.createdAt,
+        updatedAt: student.updatedAt,
+      }));
+
+      logger.info(`Retrieved ${studentDtos.length} students (page ${page}/${totalPages}, total: ${result.total})`);
+
+      return {
+        success: true,
+        data: studentDtos,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems: result.total,
+          itemsPerPage: limit,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
+    } catch (error) {
+      logger.error("Error fetching paginated students:", error);
       throw new AppError(
         "Failed to fetch students",
         HttpStatusCode.INTERNAL_SERVER_ERROR
@@ -267,7 +354,7 @@ export class AdminService implements IAdminService {
 
       await this._emailService.sendMail(mentor.email, subject, html);
       logger.info(`Approval email sent successfully to: ${mentor.email}`);
-    } catch (emailError: any) {
+    } catch (emailError: unknown) {
       logger.warn(
         `Failed to send approval email to ${mentor.email}:`,
         emailError
@@ -619,7 +706,7 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
     mentorId: string,
     scheduledDate: string,
     scheduledTime: string,
-    meetLink?: string
+
   ) {
     try {
       logger.info(`AdminService: Assigning mentor to trial class - ${trialClassId}`, {
@@ -635,10 +722,15 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
         throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
       }
 
+
+      // Auto-generate meet link for the trial class
+      const baseUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      const meetLink = `${baseUrl}/trial-class/${trialClassId}/call`;
+
       const updates: Partial<ITrialClassDocument> = {
         preferredDate: new Date(scheduledDate),
         preferredTime: scheduledTime,
-        ...(meetLink && { meetLink }),
+        meetLink,
       };
 
       const updatedTrialClass = await this._trialClassRepo.assignMentor(
@@ -653,7 +745,7 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
 
       const trialClassDto = TrialClassMapper.toResponseDto(updatedTrialClass);
 
-      logger.info(`AdminService: Successfully assigned mentor to trial class ${trialClassId}`);
+      logger.info(`AdminService: Successfully assigned mentor to trial class ${trialClassId} with meet link: ${meetLink}`);
       
       return trialClassDto;
     } catch (error) {

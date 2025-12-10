@@ -12,6 +12,7 @@ import type { SendOtpDto } from "../dto/auth/OtpDTO";
 import type { ForgotPasswordDto } from "../dto/auth/ForgotPasswordDTO";
 import { generateAccessToken, verifyRefreshToken } from "@/utils/jwt.util";
 import { AppError } from "@/utils/AppError";
+import { config } from "../config/app.config";
 
 @injectable()
 export class AuthController {
@@ -19,7 +20,6 @@ export class AuthController {
     @inject(TYPES.IAuthService) private _authService: IAuthService,
     @inject(TYPES.IOtpService) private _otpService: IOtpService
   ) {}
-
 
   registerUser = async (req: Request, res: Response) => {
     try {
@@ -39,7 +39,8 @@ export class AuthController {
         message: result.message,
       });
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       logger.error(`User registration failed: ${errorMessage}`);
       return res.status(HttpStatusCode.BAD_REQUEST).json({
         success: false,
@@ -54,12 +55,11 @@ export class AuthController {
 
       const result = await this._authService.loginUser(loginData);
 
-      res.cookie("refreshToken", result.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+      res.cookie(
+        "refreshToken",
+        result.refreshToken,
+        config.cookie.refreshToken
+      );
 
       console.log(result);
 
@@ -69,13 +69,21 @@ export class AuthController {
 
       return res.status(HttpStatusCode.OK).json({
         success: true,
-        user: result.user,
+        user: {
+          ...result.user,
+          role: loginData.role,
+          isProfileComplete: result.isProfileComplete,
+          isPaid: result.isPaid,
+          isTrialCompleted: result.isTrialCompleted,
+        },
         accessToken: result.accessToken,
         isProfileComplete: result.isProfileComplete,
         isPaid: result.isPaid,
+        isTrialCompleted: result.isTrialCompleted,
       });
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       logger.error(`User login failed: ${req.body.email} - ${errorMessage}`);
       return res.status(HttpStatusCode.BAD_REQUEST).json({
         success: false,
@@ -152,7 +160,8 @@ export class AuthController {
         message: "OTP sent successfully",
       });
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       logger.error(
         `Forgot password OTP failed: ${req.body.email} - ${errorMessage}`
       );
@@ -163,4 +172,40 @@ export class AuthController {
     }
   };
 
+  logout = async (req: Request, res: Response) => {
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    return res
+      .status(HttpStatusCode.OK)
+      .json({ success: true, message: "Logged out successfully" });
+  };
+
+  getMe = async (req: Request, res: Response) => {
+    try {
+      // req.user is populated by the auth middleware
+      const user = (req as any).user;
+
+      if (!user) {
+        return res.status(HttpStatusCode.UNAUTHORIZED).json({
+          success: false,
+          message: "Not authenticated",
+        });
+      }
+
+      return res.status(HttpStatusCode.OK).json({
+        success: true,
+        user: user,
+      });
+    } catch (error) {
+      console.error("Error in getMe:", error);
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Failed to fetch user details",
+      });
+    }
+  };
 }

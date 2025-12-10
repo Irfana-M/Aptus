@@ -42,6 +42,14 @@ studentRouter.patch(
   trialClassController.updateTrialClass.bind(trialClassController)
 );
 
+// Submit feedback for trial class
+studentRouter.post(
+  "/trial-classes/:id/feedback",
+  requireAuth,
+  requireRole("student"),
+  trialClassController.submitFeedback.bind(trialClassController)
+);
+
 
 studentRouter.get(
   "/grades",
@@ -67,6 +75,50 @@ studentRouter.get(
 studentRouter.get(
   "/subjects/filter",
   subjectController.getSubjectsByGradeAndSyllabus.bind(subjectController)
+);
+
+// ... (existing imports)
+import { CourseRequestController } from "@/controllers/courseRequest.controller";
+
+// ... (existing controller instantiations)
+const courseRequestController = container.get<CourseRequestController>(TYPES.CourseRequestController);
+
+studentRouter.post(
+  "/course-request",
+  requireAuth,
+  requireRole("student"),
+  courseRequestController.createRequest.bind(courseRequestController)
+);
+
+import { CourseController } from "@/controllers/course.controller";
+const courseController = container.get<CourseController>(TYPES.CourseController);
+
+studentRouter.get(
+  "/available-courses",
+  requireAuth,
+  requireRole("student"),
+  courseController.getAvailableCourses.bind(courseController)
+);
+
+// ... (existing exports)
+
+import { validateBody } from "../middleware/validate.middleware";
+import { updateStudentProfileSchema } from "../validators/student.validator";
+import { StudentController } from "@/controllers/student.controller";
+import upload from "../middleware/upload.middleware";
+
+const studentController = container.get<StudentController>(TYPES.StudentController);
+
+studentRouter.put(
+  "/profile",
+  requireAuth,
+  requireRole("student"),
+  upload.fields([
+    { name: "profilePicture", maxCount: 1 },
+    { name: "idProof", maxCount: 1 }
+  ]),
+  // validateBody(updateStudentProfileSchema), // Skip validation for FormData with files
+  studentController.updateProfile.bind(studentController)
 );
 
 export default studentRouter;

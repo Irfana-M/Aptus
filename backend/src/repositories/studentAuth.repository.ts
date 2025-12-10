@@ -106,13 +106,35 @@ export class StudentAuthRepository
     }
   }
 
-  async block(id: string): Promise<boolean> {
+  async block(id: string): Promise<StudentAuthUser> {
     try {
-      await super.block(id);
-      return true;
+      logger.debug(`Blocking student: ${id}`);
+      const blockedStudent = await super.block(id);
+      logger.info(`Student blocked successfully: ${id}`);
+      return StudentMapper.toStudentAuthUser(blockedStudent);
     } catch (error) {
       logger.error(`Error blocking student: ${id}`, error);
-      return false;
+      if (error instanceof AppError) throw error;
+      throw new AppError(
+        "Failed to block student",
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async unblock(id: string): Promise<StudentAuthUser> {
+    try {
+      logger.debug(`Unblocking student: ${id}`);
+      const unblockedStudent = await super.unblock(id);
+      logger.info(`Student unblocked successfully: ${id}`);
+      return StudentMapper.toStudentAuthUser(unblockedStudent);
+    } catch (error) {
+      logger.error(`Error unblocking student: ${id}`, error);
+      if (error instanceof AppError) throw error;
+      throw new AppError(
+        "Failed to unblock student",
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
     }
   }
 
@@ -180,10 +202,6 @@ export class StudentAuthRepository
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
-  }
-
-  async blockStudent(id: string): Promise<boolean> {
-    return this.block(id);
   }
 
   async listAllStudents(): Promise<StudentProfile[]> {

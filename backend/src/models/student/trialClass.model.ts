@@ -1,12 +1,13 @@
 import type { StudentAuthUser } from "@/interfaces/auth/auth.interface";
 import type { ISubject } from "@/interfaces/models/subject.interface";
 import type { MentorProfile } from "@/interfaces/models/user.interface";
-import { Schema, model, Document } from "mongoose";
+import { Schema, model, Document, Types } from "mongoose";
 
 export interface ITrialClassDocument extends Document {
+  _id: Types.ObjectId;
   student: Schema.Types.ObjectId |  StudentAuthUser;
   subject: Schema.Types.ObjectId | ISubject;
-  mentor?: Schema.Types.ObjectId | MentorProfile;
+  mentor?: Schema.Types.ObjectId | MentorProfile | any;
   status: "requested" | "assigned" | "completed" | "cancelled";
   preferredDate: Date;
   preferredTime: string;

@@ -1,5 +1,6 @@
 import { injectable } from "inversify";
 import { Subject, type ISubject } from "@/models/subject.model";
+import { Grade } from "@/models/grade.model";
 import { logger } from "@/utils/logger";
 import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository";
 
@@ -14,8 +15,21 @@ export class SubjectRepository implements ISubjectRepository {
 
   async findByGradeAndSyllabus(grade: number, syllabus: string): Promise<ISubject[]> {
     logger.info(`Fetching subjects for grade ${grade} and syllabus ${syllabus}`);
+    
+    // First find the grade document to get its ID
+    const gradeDoc = await Grade.findOne({
+      grade: grade,
+      syllabus: syllabus.toUpperCase() as "CBSE" | "STATE" | "ICSE",
+      isActive: true
+    }).exec();
+
+    if (!gradeDoc) {
+      logger.warn(`Grade not found for number: ${grade} and syllabus: ${syllabus}`);
+      return [];
+    }
+
     return await Subject.find({ 
-      grade,
+      grade: gradeDoc._id,
       syllabus: syllabus.toUpperCase() as "CBSE" | "STATE" | "ICSE",
       isActive: true 
     })
@@ -25,15 +39,13 @@ export class SubjectRepository implements ISubjectRepository {
 
   async findByGrade(gradeId: string): Promise<ISubject[]> {
     logger.info(`Fetching subjects for grade ID: ${gradeId}`);
-    // First get the grade to know the grade number and syllabus
-    const Grade = (await import("@/models/grade.model")).Grade;
-    const grade = await Grade.findById(gradeId);
-    
-    if (!grade) {
-      return [];
-    }
-
-    return await this.findByGradeAndSyllabus(grade.grade, grade.syllabus);
+    // Since we now store grade as ObjectId, we can query directly
+    return await Subject.find({ 
+      grade: gradeId,
+      isActive: true 
+    })
+    .sort({ subjectName: 1 })
+    .exec();
   }
 
   async findById(id: string): Promise<ISubject | null> {

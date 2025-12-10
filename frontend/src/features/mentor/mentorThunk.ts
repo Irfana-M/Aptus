@@ -47,3 +47,12 @@ export const rejectMentor = createAsyncThunk<
   const data = await mentorApi.rejectMentor(mentorId, reason);
   return data;
 });
+
+export const fetchMentorTrialClasses = createAsyncThunk<
+  any[],
+  void,
+  { state: RootState }
+>("mentor/fetchTrialClasses", async () => {
+  const data = await mentorApi.getMentorTrialClasses();
+  return data;
+});

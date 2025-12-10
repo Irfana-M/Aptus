@@ -23,7 +23,7 @@ export interface TrialClassSubject {
   id: string;
   subjectName: string;
   syllabus: string;
-  grade: number;
+  gradeId: string;
 }
 
 export interface TrialClassMentor {

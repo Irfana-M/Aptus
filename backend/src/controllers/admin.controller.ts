@@ -7,9 +7,11 @@ import { HttpStatusCode } from "../constants/httpStatus";
 import { generateAccessToken, verifyRefreshToken } from "@/utils/jwt.util";
 import { AppError } from "@/utils/AppError";
 import type { IStudentService } from "@/interfaces/services/IStudentService";
+import { config } from "../config/app.config";
 
 @injectable()
 export class AdminController {
+  courseService: any;
   constructor(
     @inject(TYPES.IAdminService) private _adminService: IAdminService,
     @inject(TYPES.IStudentService) private _studentService: IStudentService
@@ -119,13 +121,7 @@ export class AdminController {
 
       const { accessToken, refreshToken, admin } = result;
 
-      res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        path: "/",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+      res.cookie("refreshToken", refreshToken, config.cookie.refreshToken);
       logger.info(`Admin login successful: ${email}`);
       return res.status(HttpStatusCode.OK).json({
         success: true,
@@ -155,7 +151,39 @@ export class AdminController {
 
   getAllMentors = async (req: Request, res: Response) => {
     try {
-      logger.info("Admin: Fetching all mentors");
+      // Check if pagination params are provided
+      const page = req.query.page ? parseInt(req.query.page as string) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const search = req.query.search as string | undefined;
+      const status = req.query.status as 'pending' | 'approved' | 'rejected' | '' | undefined;
+      const subject = req.query.subject as string | undefined;
+
+      // If any pagination/search params provided, use paginated method
+      if (page !== undefined || limit !== undefined || search || status || subject) {
+        logger.info("Admin: Fetching mentors with pagination/filters", { page, limit, search, status, subject });
+        
+        const paginationParams: {
+          page: number;
+          limit: number;
+          search?: string;
+          status?: 'pending' | 'approved' | 'rejected' | '';
+          subject?: string;
+        } = {
+          page: page || 1,
+          limit: limit || 10,
+        };
+        
+        if (search) paginationParams.search = search;
+        if (status) paginationParams.status = status;
+        if (subject) paginationParams.subject = subject;
+
+        const result = await this._adminService.getAllMentorsPaginated(paginationParams);
+
+        return res.status(HttpStatusCode.OK).json(result);
+      }
+
+      // Fallback to original behavior for backward compatibility
+      logger.info("Admin: Fetching all mentors (legacy mode)");
       const mentors = await this._adminService.getAllMentors();
       logger.info(`Admin: Found ${mentors.length} mentors`);
       res.status(HttpStatusCode.OK).json({
@@ -174,7 +202,39 @@ export class AdminController {
 
   getAllStudents = async (req: Request, res: Response) => {
     try {
-      logger.info("Admin: Fetching all students");
+      // Check if pagination params are provided
+      const page = req.query.page ? parseInt(req.query.page as string) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const search = req.query.search as string | undefined;
+      const status = req.query.status as 'active' | 'blocked' | '' | undefined;
+      const verification = req.query.verification as 'verified' | 'pending' | '' | undefined;
+
+      // If any pagination/search params provided, use paginated method
+      if (page !== undefined || limit !== undefined || search || status || verification) {
+        logger.info("Admin: Fetching students with pagination/filters", { page, limit, search, status, verification });
+        
+        const paginationParams: {
+          page: number;
+          limit: number;
+          search?: string;
+          status?: 'active' | 'blocked' | '';
+          verification?: 'verified' | 'pending' | '';
+        } = {
+          page: page || 1,
+          limit: limit || 10,
+        };
+        
+        if (search) paginationParams.search = search;
+        if (status) paginationParams.status = status;
+        if (verification) paginationParams.verification = verification;
+
+        const result = await this._adminService.getAllStudentsPaginated(paginationParams);
+
+        return res.status(HttpStatusCode.OK).json(result);
+      }
+
+      // Fallback to original behavior for backward compatibility
+      logger.info("Admin: Fetching all students (legacy mode)");
       const students = await this._adminService.getAllStudents();
 
       console.log("Students found", students);
@@ -185,7 +245,7 @@ export class AdminController {
         count: students.length,
       });
     } catch (error: any) {
-      logger.error(`Error fetching all mentors: ${error.message}`);
+      logger.error(`Error fetching all students: ${error.message}`);
       res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: error.message,
@@ -655,7 +715,7 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
   assignMentorToTrialClass = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { trialClassId } = req.params;
-      const { mentorId, scheduledDate, scheduledTime, meetLink } = req.body;
+      const { mentorId, scheduledDate, scheduledTime } = req.body;
 
       logger.info(`AdminController: Assigning mentor to trial class - ${trialClassId}`, {
         mentorId,
@@ -674,8 +734,7 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
         trialClassId,
         mentorId,
         scheduledDate,
-        scheduledTime,
-        meetLink
+        scheduledTime
       );
 
       logger.info(`AdminController: Mentor assigned successfully to trial class ${trialClassId}`);
@@ -755,5 +814,6 @@ getAvailableMentors = async (req: Request, res: Response, next: NextFunction): P
     next(error);
   }
 };
+
 
 } 

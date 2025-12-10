@@ -134,7 +134,7 @@ export function DataTable<
         <tbody className="divide-y divide-gray-200">
           {data.map((row, rowIndex) => (
             <tr
-              key={row.id}
+              key={row.id || row._id || rowIndex}
               className={getRowClasses(row, rowIndex)}
               onClick={() => onRowClick?.(row)}
             >

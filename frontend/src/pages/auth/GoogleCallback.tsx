@@ -15,7 +15,8 @@ export default function GoogleCallback() {
     userRole: "student" | "mentor",
     profileComplete?: boolean,
     paid?: boolean,
-    approvalStatus?: string
+    approvalStatus?: string,
+    isTrialCompleted?: boolean
   ) => {
     console.log(`🔍 Redirect logic: role=${userRole}, profileComplete=${profileComplete}, approvalStatus=${approvalStatus}`);
     
@@ -40,7 +41,9 @@ export default function GoogleCallback() {
     }
 
     if (userRole === "student") {
-     
+      if (isTrialCompleted && !profileComplete) {
+        return "/student/profile-setup";
+      }
       return paid ? "/student/dashboard" : "/student/book-free-trial";
     }
 
@@ -61,6 +64,7 @@ export default function GoogleCallback() {
       const email = params.get("email");
       const role = params.get("role") as "student" | "mentor" | null;
       const isProfileComplete = params.get("isProfileComplete") === "true";
+      const isTrialCompleted = params.get("isTrialCompleted") === "true";
       const approvalStatus = params.get("approvalStatus");
       const isPaid = params.get("isPaid") === "true";
       const error = params.get("error");
@@ -70,6 +74,7 @@ export default function GoogleCallback() {
     console.log('  email:', email);
     console.log('  role:', role);
     console.log('  isProfileComplete:', isProfileComplete);
+    console.log('  isTrialCompleted:', isTrialCompleted);
     console.log('  approvalStatus:', approvalStatus);
     console.log('  isPaid:', isPaid);
     console.log('  error:', error);
@@ -89,6 +94,7 @@ export default function GoogleCallback() {
             isProfileComplete,
             approvalStatus: approvalStatus || "pending",
             isPaid: isPaid || false,
+            isTrialCompleted,
           };
 
           dispatch(
@@ -97,6 +103,10 @@ export default function GoogleCallback() {
               accessToken: token,
             })
           );
+
+          localStorage.setItem('accessToken', token);   // ← THIS IS CRITICAL
+
+console.log("Token saved to localStorage:", token.substring(0, 20) + '...');
 
           console.log("Google OAuth successful:", { user, token });
           console.log("Token stored in Redux:", store.getState().auth.accessToken);
@@ -107,7 +117,8 @@ export default function GoogleCallback() {
             role,
             isProfileComplete,
             isPaid,
-            approvalStatus || "pending"
+            approvalStatus || "pending",
+            isTrialCompleted
           );
 
           console.log(`🎯 Redirecting to: ${redirectPath}`);

@@ -11,9 +11,10 @@ const TYPES = {
   ITrialClassRepository: Symbol.for("ITrialClassRepository"),
   IGradeRepository: Symbol.for("IGradeRepository"),
   ISubjectRepository: Symbol.for("ISubjectRepository"),
-
+  IVideoCallRepository: Symbol.for("IVideoCallRepository"),
   VerificationRepositoryMap: Symbol.for("VerificationRepositoryMap"),
   AuthRepositoryMap: Symbol.for("AuthRepositoryMap"),
+  ICourseRepository: Symbol.for("ICourseRepository"),
   // Services
   IAuthService: Symbol.for("IAuthService"),
   IAdminService: Symbol.for("IAdminService"),
@@ -26,7 +27,10 @@ const TYPES = {
   ITrialClassService: Symbol.for("ITrialClassService"),
   IGradeService: Symbol.for("IGradeService"),
   ISubjectService: Symbol.for("ISubjectService"),
-
+  IVideoCallService: Symbol.for("IVideoCallService"),
+  ISocketService: Symbol.for("ISocketService"),
+  IUserRoleService: Symbol.for('IUserRoleService'),
+  ICourseAdminService: Symbol.for('ICourseAdminService'),
   // Controllers
   AuthController: Symbol.for("AuthController"),
   AdminController: Symbol.for("AdminController"),
@@ -35,7 +39,10 @@ const TYPES = {
   TrialClassController: Symbol.for("TrialClassController"),
   GradeController: Symbol.for("GradeController"),
   SubjectController: Symbol.for("SubjectController"),
-  
+  RoleController: Symbol.for("RoleController"),
+  VideoCallController: Symbol.for("VideoCallController"),
+  StudentController: Symbol.for("StudentController"),
+  CourseAdminController: Symbol.for("CourseAdminController"),
   // Middleware
   AuthMiddleware: Symbol.for("AuthMiddleware"),
   RoleMiddleware: Symbol.for("RoleMiddleware"),
@@ -43,6 +50,18 @@ const TYPES = {
   // Utils
   PassportConfig: Symbol.for("PassportConfig"),
   EmailService: Symbol.for("EmailService"),
+  // Course Request
+  CourseRequestRepository: Symbol.for("CourseRequestRepository"),
+  CourseRequestService: Symbol.for("CourseRequestService"),
+  CourseRequestController: Symbol.for("CourseRequestController"),
+  CourseController: Symbol.for("CourseController"),
+  ICourseService: Symbol.for("ICourseService"),
+  ICourseRequestService: Symbol.for("ICourseRequestService"),
+  IEnrollmentService: Symbol.for("IEnrollmentService"),
+  IEnrollmentRepository: Symbol.for("IEnrollmentRepository"),
+  EnrollmentController: Symbol.for("EnrollmentController"),
+  IMentorDashboardService: Symbol.for("IMentorDashboardService"),
+  MentorDashboardController: Symbol.for("MentorDashboardController"),
 };
 
 export { TYPES };

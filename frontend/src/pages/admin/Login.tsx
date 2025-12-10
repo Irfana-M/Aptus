@@ -83,6 +83,9 @@ export default function AdminLoginPage() {
       }
 
       console.log("✅ Login data validated, waiting for Redux update...");
+      localStorage.setItem("isAdmin", "true");
+      localStorage.setItem("accessToken", result.accessToken);
+      
       toast.success("Admin logged in successfully!");
       navigate("/admin/dashboard");
     } catch (err: any) {
@@ -97,13 +100,8 @@ export default function AdminLoginPage() {
     const admin = useSelector(selectAdmin);
 
     useEffect(() => {
-      console.log(
-        "🔐 Auth Debug - Token:",
-        accessToken?.substring(0, 20) + "..."
-      );
-      console.log("🔐 Auth Debug - Admin:", admin);
-      console.log("🔐 Auth Debug - Cookies:", document.cookie);
-    }, [accessToken, admin]);
+  console.log('Auth state changed →', { accessToken: !!accessToken, admin: !!admin });
+}, [accessToken, admin]);
 
     return null;
   };

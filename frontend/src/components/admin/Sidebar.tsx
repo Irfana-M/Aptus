@@ -1,4 +1,5 @@
 import React from "react";
+import aptusLogo from "../../assets/images/aptusLogo.jpeg";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import {
@@ -121,10 +122,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className="flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg cursor-pointer hover:bg-white transition-colors duration-200"
               onClick={() => handleNavigation("/admin", "Dashboard")}
             >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-cyan-600">
-                <BookOpen className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-gray-800">Mentora</span>
+              <img 
+                src={aptusLogo} 
+                alt="Aptus" 
+                className="h-8 w-auto object-contain rounded-md"
+              />
+              <span className="text-xl font-bold text-gray-800">Aptus</span>
             </div>
           </div>
 

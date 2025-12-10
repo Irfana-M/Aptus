@@ -40,4 +40,6 @@ export interface StudentAuthUser extends Omit<AuthUser, 'role'> {
   school?: string;
   parentName?: string;
   parentPhone?: string; 
+  isTrialCompleted?: boolean;
+  isProfileCompleted?: boolean;
 }

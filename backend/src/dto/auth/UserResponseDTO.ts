@@ -16,4 +16,5 @@ export interface MentorBaseResponseDto extends BaseUserResponseDto {
 
 export interface StudentBaseResponseDto extends BaseUserResponseDto {
   isPaid?: boolean;
+  isTrialCompleted?: boolean;
 }

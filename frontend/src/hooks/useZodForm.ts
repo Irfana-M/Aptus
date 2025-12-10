@@ -1,4 +1,3 @@
-// hooks/useZodForm.ts
 import { useState, useCallback } from 'react';
 import { z } from 'zod';
 
@@ -12,7 +11,7 @@ export const useZodForm = <T extends Record<string, any>>(
   
   const setFieldValue = useCallback(<K extends keyof T>(field: K, value: T[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
+    
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
     }

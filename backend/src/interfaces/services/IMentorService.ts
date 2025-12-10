@@ -1,5 +1,6 @@
 import type { RegisterUserDto } from "@/dto/auth/RegisteruserDTO";
 import type { MentorProfile } from "../models/mentor.interface";
+import type { MentorResponseDto } from "@/dto/mentor/MentorResponseDTO";
 
 export interface IMentorService {
   registerMentor(data: RegisterUserDto): Promise<any>;
@@ -18,4 +19,7 @@ export interface IMentorService {
     adminId: string,
     reason: string
   ): Promise<{ message: string }>;
+  getMentorTrialClasses(mentorId: string): Promise<any[]>;
+  getById(id: string): Promise<MentorResponseDto | null>;
+  getMentorProfile(mentorId: string): Promise<MentorProfile | null>;
 }

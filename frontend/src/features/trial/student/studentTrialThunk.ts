@@ -1,5 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { studentTrialApi } from "./studentTrialApi";
+import { getApiErrorMessage } from "../../../utils/errorUtils";
 
 import type {
   TrialClassRequest,
@@ -18,9 +19,9 @@ export const requestTrialClass = createAsyncThunk<
   async (data: TrialClassRequest, { rejectWithValue }) => {
     try {
       return await studentTrialApi.requestTrialClass(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to request trial class"
+        getApiErrorMessage(error, "Failed to request trial class")
       );
     }
   }
@@ -33,9 +34,9 @@ export const fetchStudentTrialClasses = createAsyncThunk<
 >("studentTrial/fetchStudentTrialClasses", async (_, { rejectWithValue }) => {
   try {
     return await studentTrialApi.getStudentTrialClasses();
-  } catch (error: any) {
+  } catch (error: unknown) {
     return rejectWithValue(
-      error.response?.data?.message || "Failed to fetch trial classes"
+      getApiErrorMessage(error, "Failed to fetch trial classes")
     );
   }
 });
@@ -49,9 +50,9 @@ export const fetchTrialClassById = createAsyncThunk<
   async (trialClassId: string, { rejectWithValue }) => {
     try {
       return await studentTrialApi.getTrialClassById(trialClassId);
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch trial class"
+        getApiErrorMessage(error, "Failed to fetch trial class")
       );
     }
   }
@@ -72,9 +73,9 @@ export const submitTrialFeedback = createAsyncThunk<
   ) => {
     try {
       return await studentTrialApi.submitFeedback(trialClassId, feedback);
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to submit feedback"
+        getApiErrorMessage(error, "Failed to submit feedback")
       );
     }
   }
@@ -89,9 +90,9 @@ export const cancelTrialClass = createAsyncThunk<
   async (trialClassId: string, { rejectWithValue }) => {
     try {
       return await studentTrialApi.cancelTrialClass(trialClassId);
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to cancel trial class"
+        getApiErrorMessage(error, "Failed to cancel trial class")
       );
     }
   }
@@ -106,9 +107,9 @@ export const fetchGradeByEducationType = createAsyncThunk<
   async (educationType: string, { rejectWithValue }) => {
     try {
       return await studentTrialApi.getGradesByEducationType(educationType);
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.message || "Failed to fetch grades"
+        getApiErrorMessage(error, "Failed to fetch grades")
       );
     }
   }
@@ -121,9 +122,9 @@ export const fetchGrades = createAsyncThunk<
 >("studentTrial/fetchGrades", async (_, { rejectWithValue }) => {
   try {
     return await studentTrialApi.getGrades();
-  } catch (error: any) {
+  } catch (error: unknown) {
     return rejectWithValue(
-      error.response?.data?.message || "Failed to fetch grades"
+      getApiErrorMessage(error, "Failed to fetch grades")
     );
   }
 });
@@ -137,9 +138,9 @@ export const fetchSubjectsByGrade = createAsyncThunk<
   async (gradeId: string, { rejectWithValue }) => {
     try {
       return await studentTrialApi.getSubjectsByGrade(gradeId);
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch subjects"
+        getApiErrorMessage(error, "Failed to fetch subjects")
       );
     }
   }
@@ -154,9 +155,9 @@ export const fetchSubjectsByGradeAndSyllabus = createAsyncThunk<
   async ({ grade, syllabus }, { rejectWithValue }) => {
     try {
       return await studentTrialApi.getSubjectsByGradeAndSyllabus(grade, syllabus);
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to fetch subjects'
+        getApiErrorMessage(error, 'Failed to fetch subjects')
       );
     }
   }
@@ -172,9 +173,9 @@ export const updateTrialClass = createAsyncThunk<
   async ({ trialClassId, updates }, { rejectWithValue }) => {
     try {
       return await studentTrialApi.updateTrialClass(trialClassId, updates);
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to update trial class"
+        getApiErrorMessage(error, "Failed to update trial class")
       );
     }
   }

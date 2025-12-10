@@ -1,3 +1,5 @@
+import type { Schema } from "mongoose";
+
 export interface StudentRegisterInput {
   fullName: string;
   email: string;
@@ -35,7 +37,7 @@ export interface contactInfo {
 
 export interface AcademicDetails {
   institutionName: string;
-  grade: string;
+  gradeId: Schema.Types.ObjectId;
   syllabus: string;
 }
 
@@ -51,12 +53,17 @@ export interface StudentProfile {
   contactInfo: contactInfo;
   academicDetails: AcademicDetails;
   profileImage: string;
+  profileImageKey?: string;
+  profileImageUrl?: string;
   goal?: string;
   isVerified?: boolean;
   isBlocked: boolean;
   createdAt?: Date;
   updatedAt?: Date;
   hasPaid?: boolean;
+  isTrialCompleted?: boolean;
+  isProfileCompleted?: boolean;
   authProvider?: "local" | "google";
   googleId?: string;
+  gradeId?: Schema.Types.ObjectId;
 }

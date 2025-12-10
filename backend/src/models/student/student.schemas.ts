@@ -1,7 +1,5 @@
-// src/models/student.schemas.ts
 import { z } from "zod";
 
-// Student Registration Schema (for student self-registration)
 export const studentRegisterSchema = z
   .object({
     fullName: z
@@ -37,7 +35,7 @@ export const studentRegisterSchema = z
     message: "Passwords do not match",
   });
 
-// Admin-specific schemas for creating students
+
 export const adminCreateStudentSchema = z.object({
   fullName: z
     .string()
@@ -61,7 +59,7 @@ export const adminCreateStudentSchema = z.object({
     .transform((val) => val?.trim() || ''),
 });
 
-// Admin-specific schemas for updating students
+
 export const adminUpdateStudentSchema = z.object({
   fullName: z
     .string()
@@ -87,7 +85,7 @@ export const adminUpdateStudentSchema = z.object({
     .transform((val) => val?.trim() || ''),
 });
 
-// Student profile update schema (for students updating their own profile)
+
 export const studentProfileUpdateSchema = z.object({
   fullName: z
     .string()
@@ -139,7 +137,7 @@ export const studentProfileUpdateSchema = z.object({
   goal: z.string().max(500, "Goal too long").optional(),
 });
 
-// ID validation schemas
+
 export const studentIdSchema = z.string()
   .min(1, "Student ID is required")
   .regex(/^[0-9a-fA-F]{24}$/, "Invalid student ID format");
@@ -148,24 +146,24 @@ export const mentorIdSchema = z.string()
   .min(1, "Mentor ID is required")
   .regex(/^[0-9a-fA-F]{24}$/, "Invalid mentor ID format");
 
-// Block action schema
+
 export const blockActionSchema = z.object({
   targetId: z.string().min(1, "ID is required"),
   reason: z.string().max(500, "Reason must not exceed 500 characters").optional(),
 });
 
-// Login schema
+
 export const studentLoginSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(1, "Password is required"),
 });
 
-// Password reset schema
+
 export const studentPasswordResetSchema = z.object({
   email: z.string().email("Invalid email address"),
 });
 
-// Export types for TypeScript
+
 export type StudentRegisterInput = z.infer<typeof studentRegisterSchema>;
 export type AdminCreateStudentInput = z.infer<typeof adminCreateStudentSchema>;
 export type AdminUpdateStudentInput = z.infer<typeof adminUpdateStudentSchema>;

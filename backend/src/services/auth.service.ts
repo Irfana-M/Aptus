@@ -127,6 +127,7 @@ export class AuthService implements IAuthService {
     refreshToken: string;
     isProfileComplete: boolean;
     isPaid?: boolean;
+    isTrialCompleted?: boolean;
   }> {
     try {
       const repo = role === "student" ? this._studentRepo : this._mentorRepo;
@@ -157,20 +158,48 @@ export class AuthService implements IAuthService {
 
       let isProfileComplete = false;
       let isPaid: boolean | undefined = undefined;
+      let isTrialCompleted: boolean | undefined = undefined;
 
       if (role === "mentor") {
         isProfileComplete = this._profileService.isMentorProfileComplete(
           user as MentorAuthUser
         );
       } else {
-        isPaid = Boolean((user as StudentAuthUser).isPaid);
-        isProfileComplete = true;
+        const studentUser = user as StudentAuthUser;
+        isPaid = Boolean(studentUser.isPaid);
+        isProfileComplete = Boolean(studentUser.isProfileCompleted);
+        isTrialCompleted = Boolean(studentUser.isTrialCompleted);
+
+        // Self-healing: If flag is false but user might have completed a trial
+        if (!isTrialCompleted) {
+          try {
+            const { TrialClass } = await import("@/models/student/trialClass.model");
+            const { StudentModel } = await import("@/models/student/student.model");
+            
+            const completedTrial = await TrialClass.findOne({
+              student: user._id,
+              status: 'completed'
+            });
+
+            if (completedTrial) {
+              logger.info(`🩹 Self-healing: Found completed trial for ${email}, updating flag.`);
+              await StudentModel.findByIdAndUpdate(user._id, { isTrialCompleted: true });
+              isTrialCompleted = true;
+            }
+          } catch (healingError) {
+            logger.error("Self-healing check failed:", healingError as Error);
+          }
+        }
       }
 
-      const userResponse: AuthUser = UserMapper.toLoginAuthUser(
+      const userResponse: any = UserMapper.toLoginAuthUser(
         user as MentorAuthUser | StudentAuthUser,
         isProfileComplete
       );
+      
+      if (role === 'mentor') {
+          userResponse.approvalStatus = (user as MentorAuthUser).approvalStatus;
+      }
 
       const result: {
         user: AuthUser;
@@ -178,12 +207,17 @@ export class AuthService implements IAuthService {
         refreshToken: string;
         isProfileComplete: boolean;
         isPaid?: boolean;
+        isTrialCompleted?: boolean;
       } = {
         user: userResponse,
         accessToken,
         refreshToken,
         isProfileComplete,
       };
+
+      if (isTrialCompleted !== undefined) {
+        result.isTrialCompleted = isTrialCompleted;
+      }
 
       if (isPaid !== undefined) {
         result.isPaid = isPaid;

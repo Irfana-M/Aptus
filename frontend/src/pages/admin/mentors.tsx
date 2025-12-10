@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import type { AppDispatch } from "../../app/store";
 import { 
-  fetchAllMentorsAdmin, 
+  fetchMentorsPaginated, 
   blockMentorAdmin, 
   unblockMentorAdmin,
   addMentorAdmin,
@@ -13,6 +13,7 @@ import {
   selectAllMentors,
   selectAdminLoading,
 } from "../../features/admin/adminSelectors";
+import type { RootState } from "../../app/store";
 import type { MentorProfile } from "../../features/mentor/mentorSlice";
 import { MentorModal } from "../../components/admin/MentorModal";
 import { ConfirmationModal } from "../../components/ui/ConfirmationModal";
@@ -24,7 +25,6 @@ import {
   SearchAndFilters,
   type FilterConfig,
 } from "../../components/ui/SearchAndFilters";
-import { usePagination } from "../../hooks/usePagination";
 import {
   Plus,
   Edit2,
@@ -50,24 +50,22 @@ export const MentorsManagement: React.FC = () => {
   const navigate = useNavigate();
   const mentors = useSelector(selectAllMentors);
   const loading = useSelector(selectAdminLoading);
+  const mentorsPagination = useSelector((state: RootState) => state.admin.mentorsPagination);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("Mentors");
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [filters, setFilters] = useState({
-    status: "",
+    status: "" as 'pending' | 'approved' | 'rejected' | '',
     subject: "",
   });
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [showMentorModal, setShowMentorModal] = useState(false);
   const [selectedMentor, setSelectedMentor] = useState<{id: string, name: string, action: 'block' | 'unblock'} | null>(null);
   const [selectedMentorForEdit, setSelectedMentorForEdit] = useState<MentorProfile | null>(null);
-
-  const pagination = usePagination({
-    totalItems: mentors.length,
-    initialPage: 1,
-    initialItemsPerPage: 10,
-  });
 
   const filterConfigs: FilterConfig[] = [
     {
@@ -93,38 +91,43 @@ export const MentorsManagement: React.FC = () => {
     },
   ];
 
+  // Debounce search term
   useEffect(() => {
-    dispatch(fetchAllMentorsAdmin());
-  }, [dispatch]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-  const filteredMentors = useMemo(() => {
-    return mentors.filter((mentor) => {
-      const matchesSearch =
-        searchTerm === "" ||
-        mentor.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        mentor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (mentor.subjectProficiency && mentor.subjectProficiency.some((subj) =>
-          subj.subject.toLowerCase().includes(searchTerm.toLowerCase())
-        ));
-
-      const matchesStatus =
-        filters.status === "" || mentor.approvalStatus === filters.status;
-
-      const matchesSubject =
-        filters.subject === "" ||
-        (mentor.subjectProficiency && mentor.subjectProficiency.some(
-          (subj) => subj.subject === filters.subject
-        ));
-
-      return matchesSearch && matchesStatus && matchesSubject;
-    });
-  }, [mentors, searchTerm, filters]);
+  // Fetch mentors when pagination/search/filters change
+  const fetchMentors = useCallback(() => {
+    dispatch(fetchMentorsPaginated({
+      page: currentPage,
+      limit: itemsPerPage,
+      search: debouncedSearch || undefined,
+      status: filters.status || undefined,
+      subject: filters.subject || undefined,
+    }));
+  }, [dispatch, currentPage, itemsPerPage, debouncedSearch, filters]);
 
   useEffect(() => {
-    pagination.goToPage(1);
-  }, [searchTerm, filters]);
+    fetchMentors();
+  }, [fetchMentors]);
 
-  const paginatedMentors = pagination.paginatedData(filteredMentors);
+  // Reset to page 1 when search/filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, filters]);
+
+  // Pagination handlers
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -490,8 +493,8 @@ export const MentorsManagement: React.FC = () => {
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">All Mentors</h2>
                 <p className="text-gray-500 text-sm mt-1">
-                  Showing {paginatedMentors.length} of {filteredMentors.length} mentors
-                  {filteredMentors.length !== mentors.length && ` (filtered from ${mentors.length} total)`}
+                  Showing {mentors.length} of {mentorsPagination.totalItems} mentors
+                  {(searchTerm || filters.status || filters.subject) && ` (filtered)`}
                 </p>
               </div>
 
@@ -508,7 +511,7 @@ export const MentorsManagement: React.FC = () => {
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
             <DataTable<MentorProfile>
               columns={columns}
-              data={paginatedMentors}
+              data={mentors}
               loading={loading}
               onSort={handleSort}
               onRowClick={(mentor) => navigate(`/admin/mentor/${mentor._id}`)}
@@ -521,15 +524,15 @@ export const MentorsManagement: React.FC = () => {
             />
           </div>
 
-          {filteredMentors.length > 0 && (
+          {mentorsPagination.totalItems > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
               <Pagination
-                currentPage={pagination.currentPage}
-                totalPages={pagination.totalPages}
-                totalItems={filteredMentors.length}
-                itemsPerPage={pagination.itemsPerPage}
-                onPageChange={pagination.goToPage}
-                onItemsPerPageChange={pagination.setItemsPerPage}
+                currentPage={currentPage}
+                totalPages={mentorsPagination.totalPages}
+                totalItems={mentorsPagination.totalItems}
+                itemsPerPage={itemsPerPage}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
                 variant="detailed"
                 className="px-6 py-4"
               />

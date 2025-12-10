@@ -1,4 +1,3 @@
-// baseRepository.ts
 import { AppError } from "@/utils/AppError";
 import { logger } from "@/utils/logger";
 import { HttpStatusCode } from "@/constants/httpStatus";

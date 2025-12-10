@@ -1,9 +1,8 @@
-// dto/subject.dto.ts
 export interface SubjectResponseDto {
   id: string;
   subjectName: string;
   syllabus: string;
-  grade: number;
+  grade: string;
 }
 
 export interface SubjectsListResponseDto {

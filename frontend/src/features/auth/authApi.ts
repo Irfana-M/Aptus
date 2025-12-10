@@ -14,6 +14,6 @@ export const authApi = {
   resendOtp: (email: string) =>
     api.post<{ message: string }>("/auth/signup/resend-otp", { email }),
   login: (data: LoginDto) => api.post<LoginResponse>("/auth/login", data),
-  logout: () => api.post<{ message: string }>("/logoutUser"),
-  refreshToken: () => api.get<{ accessToken: string }>("/refresh-token"),
+  logout: () => api.post<{ message: string }>("/auth/logout"),
+  refreshToken: () => api.post<{ accessToken: string }>("/auth/refresh", {}),
 };

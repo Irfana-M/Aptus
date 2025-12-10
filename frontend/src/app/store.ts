@@ -4,6 +4,9 @@ import adminReducer from "../features/admin/adminSlice";
 import dashboardReducer from "../features/admin/dashboardSlice";
 import mentorReducer from "../features/mentor/mentorSlice";
 import studentTrialReducer from "../features/trial/student/studentTrialSlice";
+import videoCallReducer from "../features/videoCall/videoCallSlice";
+import roleReducer from "../features/role/roleSlice";
+import studentReducer from "../features/student/studentSlice";
 
 export const store = configureStore({
   reducer: {
@@ -12,7 +15,19 @@ export const store = configureStore({
     dashboard: dashboardReducer,
     mentor: mentorReducer,
     studentTrial: studentTrialReducer,
+    videoCall: videoCallReducer,
+    role: roleReducer,
+    student: studentReducer,
   },
+
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        // Ignore MediaStream objects in videoCall state
+        ignoredActions: ['videoCall/setLocalStream', 'videoCall/setRemoteStream'],
+        ignoredPaths: ['videoCall.localStream', 'videoCall.remoteStream'],
+      },
+    }),
 
   devTools: import.meta.env.MODE !== "production",
 });

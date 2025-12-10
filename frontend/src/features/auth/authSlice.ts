@@ -18,6 +18,7 @@ const initialState: AuthState = {
   isAuthenticated: false,
   isProfileComplete: undefined,
   isPaid: undefined,
+  isTrialCompleted: undefined,
 };
 
 const authSlice = createSlice({
@@ -33,17 +34,19 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.isProfileComplete = undefined;
       state.isPaid = undefined;
+      state.isTrialCompleted = undefined;
     },
     clearError: (state) => {
       state.error = null;
     },
     setCredentials: (state, action) => {
-      const { user, accessToken, isProfileComplete, isPaid } = action.payload;
+      const { user, accessToken, isProfileComplete, isPaid, isTrialCompleted } = action.payload;
       state.user = user;
       state.accessToken = accessToken;
       state.isAuthenticated = true;
       state.isProfileComplete = isProfileComplete;
       state.isPaid = isPaid;
+      state.isTrialCompleted = isTrialCompleted;
       state.error = null;
     },
     updateProfileStatus: (state, action) => {
@@ -94,6 +97,7 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.isProfileComplete = action.payload.isProfileComplete;
         state.isPaid = action.payload.isPaid;
+        state.isTrialCompleted = action.payload.isTrialCompleted;
         state.error = null;
       })
       .addCase(loginUser.rejected, (state, action) => {
@@ -101,6 +105,7 @@ const authSlice = createSlice({
         state.error = action.payload as string;
         state.isProfileComplete = undefined;
         state.isPaid = undefined;
+        state.isTrialCompleted = undefined;
       })
       .addCase(refreshAccessToken.fulfilled, (state, action) => {
         state.accessToken = action.payload.accessToken;
@@ -122,7 +127,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, clearError, setCredentials } = authSlice.actions;
+export const { logout, clearError, setCredentials, updateProfileStatus, updatePaymentStatus } = authSlice.actions;
 export default authSlice.reducer;
 export const selectCurrentToken = (state: { auth: AuthState }) =>
   state.auth.accessToken;

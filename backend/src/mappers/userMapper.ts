@@ -32,6 +32,7 @@ export class UserMapper {
       isVerified: user.isVerified,
       isProfileComplete: user.isProfileComplete ?? true,
       isPaid: user.isPaid ?? false,
+      isTrialCompleted: user.isTrialCompleted ?? false,
     };
   }
 

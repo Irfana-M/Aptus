@@ -243,8 +243,8 @@ export const StudentsManagement: React.FC = () => {
     .unwrap()
     .then(trialClasses => {
       console.log('Fetched trial classes:', trialClasses);
-      // Navigate to trial classes page or show in modal
-      navigate(`/admin/student/${studentId}/trial-classes`);
+      // Navigate to trial classes page - using plural 'students' to match route
+      navigate(`/admin/students/${studentId}/trial-classes`);
     })
     .catch(error => {
       showToast.error(error);
@@ -358,18 +358,23 @@ export const StudentsManagement: React.FC = () => {
       header: "Actions",
       accessor: (row) => (
         <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
-    <button
-        onClick={() => handleViewTrialClasses(row.id)}
-        className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
-        title="View Trial Classes"
-      >
-        <Eye size={16} />
-      </button>
+          {/* Only show trial classes button if student has pending/assigned trial classes (not completed) */}
+          {row.pendingTrialClasses && row.pendingTrialClasses > 0 && (
+            <button
+              onClick={() => handleViewTrialClasses(row.id)}
+              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
+              title="View Trial Classes"
+            >
+              <Eye size={16} />
+            </button>
+          )}
+          
+          {/* View Profile button */}
           <button
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              navigate(`${row.id}/trial-classes`);
+              navigate(`/admin/students/${row.id}`);
             }}
             className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors duration-200"
             title="View Profile"

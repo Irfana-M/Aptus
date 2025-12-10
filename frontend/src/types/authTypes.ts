@@ -7,7 +7,9 @@ export interface User {
   accessToken?: string;
   isProfileComplete?: boolean;
   isPaid?: boolean;
-  approvalStatus?: "pending" | "approved" | "rejected";
+  isTrialCompleted?: boolean;
+  approvalStatus?: "pending" | "approved" | "rejected" | "pending-approval";
+  profilePicture?: string;
 }
 
 export interface AuthState {
@@ -19,4 +21,5 @@ export interface AuthState {
   isAuthenticated?: boolean;
   isProfileComplete?: boolean;
   isPaid?: boolean;
+  isTrialCompleted?: boolean;
 }

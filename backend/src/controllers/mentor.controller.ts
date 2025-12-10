@@ -56,6 +56,40 @@ export class MentorController {
     }
   };
 
+  getProfile = async (req: Request, res: Response) => {
+    try {
+      const mentorId = req.user?.id;
+      if (!mentorId) {
+        logger.error("getProfile: Missing mentorId in request");
+        return res.status(HttpStatusCode.BAD_REQUEST).json({
+          success: false,
+          message: "Invalid user authentication",
+        });
+      }
+
+      logger.info(`Fetching profile for mentor: ${mentorId}`);
+      const profile = await this._mentorService.getMentorProfile(mentorId);
+
+      if (!profile) {
+        return res.status(HttpStatusCode.NOT_FOUND).json({
+          success: false,
+          message: "Mentor profile not found",
+        });
+      }
+
+      return res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: profile,
+      });
+    } catch (err: any) {
+      logger.error(`Error in getProfile for mentor ${req.user?.id}: ${err.message}`);
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: err.message || "Failed to fetch profile",
+      });
+    }
+  };
+
   submitForApproval = async (req: Request, res: Response) => {
     try {
       const mentorId = req.user?.id;
@@ -144,6 +178,26 @@ export class MentorController {
       return res.status(HttpStatusCode.OK).json({ success: true, ...result });
     } catch (err: any) {
       logger.error(`reject error: ${err.message}`);
+      return res
+        .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
+        .json({ success: false, message: err.message });
+    }
+  };
+  getTrialClasses = async (req: Request, res: Response) => {
+    try {
+      const mentorId = req.user?.id;
+      if (!mentorId) {
+        logger.error("getTrialClasses: Missing mentorId");
+        return res
+          .status(HttpStatusCode.BAD_REQUEST)
+          .json({ success: false, message: "Invalid user" });
+      }
+
+      const trialClasses = await this._mentorService.getMentorTrialClasses(mentorId);
+      logger.info(`Fetched ${trialClasses.length} trial classes for mentor ${mentorId}`);
+      return res.status(HttpStatusCode.OK).json({ success: true, data: trialClasses });
+    } catch (err: any) {
+      logger.error(`Error in getTrialClasses: ${err.message}`);
       return res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
         .json({ success: false, message: err.message });
