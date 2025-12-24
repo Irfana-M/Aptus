@@ -41,4 +41,11 @@ export class EnrollmentRepository extends BaseRepository<IEnrollment> implements
   async create(data: Partial<IEnrollment>): Promise<IEnrollment> {
       return await Enrollment.create(data);
   }
+
+  async countActiveByStudent(studentId: string): Promise<number> {
+    return await Enrollment.countDocuments({
+      student: studentId,
+      status: 'active'
+    });
+  }
 }

@@ -1,33 +1,60 @@
 
 
 // src/utils/videoCallPrep.ts
-export const prepareForVideoCall = () => {
-  console.log('🧹 PREPARING FOR VIDEO CALL...');
+export const prepareForVideoCall = (expectedRole?: string) => {
+  console.log('🧹 PREPARING FOR VIDEO CALL...', expectedRole ? `(Expecting: ${expectedRole})` : '');
   
-  // Get token from localStorage
-  const token = localStorage.getItem('accessToken');
+  // Search for the best token
+  let token = null;
+  let sourceKey = '';
+
+  if (expectedRole) {
+      token = localStorage.getItem(`${expectedRole}_accessToken`);
+      sourceKey = `${expectedRole}_accessToken`;
+  }
+  
   if (!token) {
-    console.error('❌ No access token found');
+      const studentToken = localStorage.getItem('student_accessToken');
+      const mentorToken = localStorage.getItem('mentor_accessToken');
+      const genericToken = localStorage.getItem('accessToken');
+      
+      token = studentToken || mentorToken || genericToken;
+      sourceKey = studentToken ? 'student_accessToken' : (mentorToken ? 'mentor_accessToken' : 'accessToken');
+  }
+  
+  if (!token) {
+    console.error('❌ No access token found (checked generic and role-specific keys)');
     return false;
   }
   
   try {
     // Decode token to get actual user data
     const payload = JSON.parse(atob(token.split('.')[1]));
-    
+    const actualRole = payload.role;
+    const userId = payload.id || payload._id;
+
     console.log('👤 ACTUAL USER FROM TOKEN:', {
       email: payload.email,
-      role: payload.role,
-      id: payload.id || payload._id
+      role: actualRole,
+      id: userId,
+      foundVia: sourceKey
     });
+
+    // SELF-HEALING: If token was found under the wrong key or generic key, rectify it
+    const roleKey = `${actualRole}_accessToken`;
+    if (localStorage.getItem(roleKey) !== token) {
+        console.log(`🩹 Rectifying token key: Saving to ${roleKey}`);
+        localStorage.setItem(roleKey, token);
+    }
     
-    // Force-correct localStorage
-    localStorage.setItem('userRole', payload.role);
-    localStorage.setItem('userId', payload.id || payload._id);
+    // Always sync shared keys
+    localStorage.setItem('userRole', actualRole);
+    localStorage.setItem('userId', userId);
     
-    console.log('✅ LocalStorage corrected:', {
-      role: localStorage.getItem('userRole'),
-      userId: localStorage.getItem('userId')
+    console.log('✅ LocalStorage synchronized:', {
+      role: actualRole,
+      id: userId,
+      verifiedAt: new Date().toISOString()
     });
     
     return true;

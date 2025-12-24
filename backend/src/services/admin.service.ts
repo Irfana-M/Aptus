@@ -22,13 +22,14 @@ import { getSignedFileUrl } from "@/utils/s3Upload";
 import type { IEmailService } from "@/interfaces/services/IEmailService";
 import { StudentMapper } from "@/mappers/StudentMapper";
 import bcrypt from "bcryptjs";
-import type { StudentAuthUser } from "@/interfaces/auth/auth.interface";
+import type { StudentBaseResponseDto, SubscriptionDetails } from "@/dto/auth/UserResponseDTO";
 import { TrialClassMapper } from "@/mappers/trialClassMapper";
-import { TrialClass, type ITrialClassDocument } from "@/models/student/trialClass.model";
+import { type ITrialClassDocument } from "@/models/student/trialClass.model";
 import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
 import type { TrialClassResponseDto } from "@/dto/student/trialClassDTO";
 import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository";
 import type { MentorPaginationParams, StudentPaginationParams, PaginatedResponse } from "@/dto/shared/paginationTypes";
+
 
 
 @injectable()
@@ -185,21 +186,39 @@ export class AdminService implements IAdminService {
       const totalPages = Math.ceil(result.total / limit);
 
       // Transform to StudentBaseResponseDto using mapper
-      const studentDtos = result.students.map(student => ({
-        id: student._id?.toString() || student.id,
-        fullName: student.fullName,
-        email: student.email,
-        phoneNumber: student.phoneNumber || '',
+      const studentDtos: StudentBaseResponseDto[] = (result.students as unknown[]).map((student: unknown) => {
+        const s = student as {
+            _id?: { toString(): string };
+            id?: string;
+            fullName: string;
+            email: string;
+            phoneNumber?: string;
+            isVerified?: boolean;
+            isProfileComplete?: boolean;
+            subscription?: { status?: string; plan?: string; startDate?: Date; endDate?: Date };
+            isBlocked?: boolean;
+            totalTrialClasses?: number;
+            pendingTrialClasses?: number;
+            createdAt?: Date;
+            updatedAt?: Date;
+        };
+        return {
+        id: (s._id?.toString() || s.id || '').toString(),
+        fullName: s.fullName,
+        email: s.email,
+        phoneNumber: s.phoneNumber || '',
         role: 'student' as const,
-        isVerified: student.isVerified || false,
-        isProfileComplete: student.isProfileComplete || false,
-        isPaid: student.isPaid || false,
-        isBlocked: student.isBlocked || false,
-        totalTrialClasses: student.totalTrialClasses || 0,
-        pendingTrialClasses: student.pendingTrialClasses || 0,
-        createdAt: student.createdAt,
-        updatedAt: student.updatedAt,
-      }));
+        isVerified: s.isVerified || false,
+        isProfileComplete: s.isProfileComplete || false,
+        isPaid: s.subscription?.status === 'active',
+        subscription: s.subscription as SubscriptionDetails | undefined,
+        isBlocked: s.isBlocked || false,
+        totalTrialClasses: s.totalTrialClasses || 0,
+        pendingTrialClasses: s.pendingTrialClasses || 0,
+        createdAt: s.createdAt || new Date(),
+        updatedAt: s.updatedAt || new Date()
+      };
+    });
 
       logger.info(`Retrieved ${studentDtos.length} students (page ${page}/${totalPages}, total: ${result.total})`);
 
@@ -323,8 +342,8 @@ export class AdminService implements IAdminService {
     try {
       const subject =
         status === "approved"
-          ? "Mentora - Your Mentor Profile is Approved"
-          : "Mentora - Mentor Profile Review Update";
+          ? "Aptus - Your Mentor Profile is Approved"
+          : "Aptus - Mentor Profile Review Update";
 
       const html =
         status === "approved"
@@ -336,7 +355,7 @@ export class AdminService implements IAdminService {
             <p>You can now access all mentor features and start helping students on our platform.</p>
             <p>We're excited to have you as part of our mentoring community!</p>
             <br>
-            <p>Best regards,<br>The Mentora Team</p>
+            <p>Best regards,<br>The Aptus Team</p>
           </div>
         `
           : `
@@ -348,7 +367,7 @@ export class AdminService implements IAdminService {
             <p>Please review your profile information, make the necessary updates, and resubmit for approval.</p>
             <p>If you have any questions, please don't hesitate to contact our support team.</p>
             <br>
-            <p>Best regards,<br>The Mentora Team</p>
+            <p>Best regards,<br>The Aptus Team</p>
           </div>
         `;
 
@@ -472,7 +491,7 @@ async updateMentor(mentorId: string, data: Partial<MentorProfile>): Promise<Ment
     logger.info(`Updating mentor: ${mentorId}`, data);
 
     // Remove fields that shouldn't be updated directly
-    const { _id, password, email, createdAt, updatedAt, ...updateData } = data;
+    const { _id: _i, password: _p, email: _e, createdAt: _c, updatedAt: _u, ...updateData } = data;
 
     const updatedMentor = await this._mentorRepo.updateById(mentorId, updateData);
     
@@ -784,7 +803,7 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
     }
   }
 
-  async getAllTrialClasses(filters: { status?: string; page?: number; limit?: number }): Promise<any> {
+  async getAllTrialClasses(filters: { status?: string; page?: number; limit?: number }): Promise<{ trialClasses: TrialClassResponseDto[]; pagination: { currentPage: number; totalPages: number; totalTrialClasses: number; hasNextPage: boolean; hasPrevPage: boolean; }; }> {
   try {
     const { status, page = 1, limit = 10 } = filters;
 
@@ -866,48 +885,118 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
 }
 
 // In your AdminService - fix the findBySubjectProficiency method
-async getAvailableMentors(subjectId: string, preferredDate: string): Promise<MentorResponseDto[]> {
-  try {
-    logger.info(`AdminService: Fetching available mentors for subject ${subjectId} on ${preferredDate}`);
+  // AdminService.ts - Updated logic for matches/alternates
+  async getAvailableMentors(
+    subjectId: string, 
+    preferredDate?: string,
+    days?: string[],
+    timeSlot?: string
+  ): Promise<{ matches: MentorResponseDto[], alternates: MentorResponseDto[] }> {
+    try {
+      logger.info(`AdminService: Fetching available mentors for subject ${subjectId}`, { preferredDate, days, timeSlot });
 
-    // First, get the subject details
-    const subject = await this._subjectRepo.findById(subjectId);
-    if (!subject) {
-      throw new AppError("Subject not found", HttpStatusCode.NOT_FOUND);
+      let subjectName = subjectId;
+
+      // Check if subjectId is a valid ObjectId before trying to findById
+      const isValidId = /^[0-9a-fA-F]{24}$/.test(subjectId);
+
+      if (isValidId) {
+        const subject = await this._subjectRepo.findById(subjectId);
+        if (subject) {
+          subjectName = subject.subjectName;
+        } else {
+           // If ID is valid format but not found, maybe it's just a funny name? 
+           // Or strictly throw error? 
+           // For now, if lookup fails but ID was valid format, it's safer to throw or log.
+           // But let's assume if it fails, we fall back to using it as a name? 
+           // No, best to just log.
+           logger.warn(`Subject with ID ${subjectId} not found, assuming it is a name.`);
+        }
+      }
+
+      console.log('🔍 Looking for mentors with subject:', subjectName);
+
+      // Find mentors who have this subject in their subjectProficiency
+      // This returns all mentors who teach the subject, regardless of time
+      const allMentors = await this._mentorRepo.findBySubjectProficiency(
+        subjectName
+      );
+
+      console.log('🔍 Found total mentors for subject:', allMentors.length);
+
+      const matches: MentorResponseDto[] = [];
+      const alternates: MentorResponseDto[] = [];
+
+      // Helper to check time overlap
+      const checkAvailability = (mentor: MentorProfile): boolean => {
+        // If no constraints provided, everyone is a match
+        if ((!days || days.length === 0) && !timeSlot && !preferredDate) return true;
+
+        if (!mentor.availability || mentor.availability.length === 0) return false;
+
+        // Normalize requested days
+        const requestedDays = days ? days.map(d => d.toLowerCase()) : [];
+        if (preferredDate) {
+          const dayName = new Date(preferredDate).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+          if (!requestedDays.includes(dayName)) requestedDays.push(dayName);
+        }
+
+        // Check if mentor has availability on ALL requested days
+        // (Or at least ONE? Usually strict means ALL for a course schedule)
+        // Let's assume strict: Must be available on all requested days at the requested time.
+        
+        // 1. Check Day Availability
+        const mentorAvailableDays = mentor.availability.map(a => a.day.toLowerCase());
+        const daysMatch = requestedDays.every(day => mentorAvailableDays.includes(day));
+        
+        if (!daysMatch) return false;
+
+        if (timeSlot) {
+           // Parse requested time "19:30-20:30"
+           const parts = timeSlot.split('-').map(t => t.trim());
+           if (parts.length === 2) {
+             const reqStart = parts[0] || "";
+             const reqEnd = parts[1] || "";
+             
+             // For each requested day, check if they have a slot containing this time
+             for (const day of requestedDays) {
+                const daySlots = mentor.availability?.find(a => a.day.toLowerCase() === day)?.slots || [];
+                
+                const hasSlot = daySlots.some(slot => {
+                   return (slot.startTime <= reqStart) && (slot.endTime >= reqEnd);
+                });
+  
+                if (!hasSlot) return false; 
+             }
+           }
+        }
+        
+        return true;
+      };
+
+      for (const mentor of allMentors) {
+        const dto = MentorMapper.toResponseDto(mentor);
+        
+        if (checkAvailability(mentor)) {
+          matches.push(dto);
+        } else {
+          alternates.push(dto);
+        }
+      }
+
+      logger.info(`AdminService: Matches: ${matches.length}, Alternates: ${alternates.length}`);
+      
+      return { matches, alternates };
+    } catch (error) {
+      logger.error(`AdminService: Error fetching available mentors for subject ${subjectId}`, error);
+      if (error instanceof AppError) throw error;
+      throw new AppError(
+        "Failed to fetch available mentors",
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
     }
-
-    console.log('🔍 Looking for mentors with subject:', subject.subjectName);
-
-    // Find mentors who have this subject in their subjectProficiency
-    const availableMentors = await this._mentorRepo.findBySubjectProficiency(
-      subject.subjectName,
-      preferredDate
-    );
-
-    console.log('🔍 Found mentors:', availableMentors.length);
-    console.log('🔍 Mentors details:', availableMentors.map(m => ({
-      id: m._id,
-      name: m.fullName,
-      subjects: m.subjectProficiency,
-      isBlocked: m.isBlocked,
-      approvalStatus: m.approvalStatus
-    })));
-
-    // Map to response DTOs
-    const mentorDtos = availableMentors.map(mentor => 
-      MentorMapper.toResponseDto(mentor)
-    );
-
-    logger.info(`AdminService: Found ${mentorDtos.length} available mentors for subject ${subject.subjectName}`);
-    return mentorDtos;
-  } catch (error) {
-    logger.error(`AdminService: Error fetching available mentors for subject ${subjectId}`, error);
-    if (error instanceof AppError) throw error;
-    throw new AppError(
-      "Failed to fetch available mentors",
-      HttpStatusCode.INTERNAL_SERVER_ERROR
-    );
   }
-}
+
+
 
 }

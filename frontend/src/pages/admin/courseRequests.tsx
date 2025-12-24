@@ -1,13 +1,22 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../../app/store'; // Correct path to store
 import { fetchAllCourseRequestsAdmin, updateCourseRequestStatusAdmin } from '../../features/admin/adminThunk';
+import type { CourseRequest } from "../../types/studentTypes";
 import { Check, X, Clock, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const AdminCourseRequestsPage: React.FC = () => {
+interface AdminCourseRequestsPageProps {
+    onCreateCourse?: (request: CourseRequest) => void;
+}
+
+import FindMatchModal from './components/FindMatchModal';
+
+const AdminCourseRequestsPage: React.FC<AdminCourseRequestsPageProps> = ({ onCreateCourse }) => {
     const dispatch = useDispatch<AppDispatch>();
     const { courseRequests, courseRequestsLoading, courseRequestsError } = useSelector((state: RootState) => state.admin);
+    const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
+    const [selectedRequest, setSelectedRequest] = useState<CourseRequest | null>(null);
 
     useEffect(() => {
         dispatch(fetchAllCourseRequestsAdmin());
@@ -18,12 +27,24 @@ const AdminCourseRequestsPage: React.FC = () => {
             const resultAction = await dispatch(updateCourseRequestStatusAdmin({ requestId, status }));
             if (updateCourseRequestStatusAdmin.fulfilled.match(resultAction)) {
                 toast.success(`Request ${status} successfully`);
+                dispatch(fetchAllCourseRequestsAdmin()); // Refresh list
             } else {
                 toast.error(`Failed to ${status} request`);
             }
-        } catch (error) {
+        } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
              toast.error("An unexpected error occurred");
         }
+    };
+
+    const handleOpenMatchModal = (request: CourseRequest) => {
+        setSelectedRequest(request);
+        setIsMatchModalOpen(true);
+    };
+
+    const handleMatchConfirmed = () => {
+        // Refresh requests or update status to 'fulfilled' if backend doesn't do it automatically
+        dispatch(fetchAllCourseRequestsAdmin());
+        // Could also explicitly update status here if needed
     };
 
     const getStatusBadge = (status: string) => {
@@ -31,9 +52,12 @@ const AdminCourseRequestsPage: React.FC = () => {
             case 'pending':
                 return <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs flex items-center gap-1 w-fit"><Clock size={12} /> Pending</span>;
             case 'approved':
+            case 'reviewed': 
                 return <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs flex items-center gap-1 w-fit"><Check size={12} /> Approved</span>;
             case 'rejected':
                 return <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs flex items-center gap-1 w-fit"><X size={12} /> Rejected</span>;
+            case 'fulfilled':
+                return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs flex items-center gap-1 w-fit"><Check size={12} /> Course Created</span>;
             default:
                 return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs">{status}</span>;
         }
@@ -70,14 +94,14 @@ const AdminCourseRequestsPage: React.FC = () => {
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Schedule</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                                {courseRequests.map((request: any) => (
+                                {courseRequests.map((request: CourseRequest) => (
                                     <tr key={request._id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
@@ -92,8 +116,20 @@ const AdminCourseRequestsPage: React.FC = () => {
                                             <span className="text-xs text-gray-500">{request.grade} - {request.mentoringMode}</span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {request.preferredDay}, {request.preferredTimeRange?.startTime} - {request.preferredTimeRange?.endTime} <br/>
-                                            <span className="text-xs text-gray-400">{request.timezone}</span>
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-1.5 text-slate-700 font-medium">
+                                                    <Clock size={14} className="text-indigo-500" />
+                                                    {request.timeSlot || `${request.preferredTimeRange?.startTime} - ${request.preferredTimeRange?.endTime}`}
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                                                    <span className="font-semibold bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
+                                                        {request.preferredDays && request.preferredDays.length > 0 
+                                                            ? request.preferredDays.join(', ') 
+                                                            : request.preferredDay}
+                                                    </span>
+                                                </div>
+                                                <span className="text-[10px] text-slate-400 capitalize">{request.timezone}</span>
+                                            </div>
                                         </td>
                                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {new Date(request.createdAt).toLocaleDateString()}
@@ -120,13 +156,23 @@ const AdminCourseRequestsPage: React.FC = () => {
                                                     </button>
                                                 </div>
                                             )}
-                                             {request.status === 'approved' && (
-                                                <button 
-                                                    className="text-blue-600 hover:text-blue-900 text-xs bg-blue-50 px-3 py-1 rounded-full transition-colors"
-                                                    onClick={() => { /* Navigate to Create Course with pre-filled data */ }}
-                                                >
-                                                    Create Course
-                                                </button>
+                                             {(request.status === 'approved' || request.status === 'reviewed') && (
+                                                <div className='flex gap-2'>
+                                                     <button 
+                                                        className="text-teal-600 hover:text-teal-900 text-xs bg-teal-50 px-3 py-1 rounded-full transition-colors font-semibold"
+                                                        onClick={() => handleOpenMatchModal(request)}
+                                                    >
+                                                        Find Match
+                                                    </button>
+                                                    {onCreateCourse && (
+                                                        <button 
+                                                            className="text-blue-600 hover:text-blue-900 text-xs bg-blue-50 px-3 py-1 rounded-full transition-colors font-semibold"
+                                                            onClick={() => onCreateCourse(request)}
+                                                        >
+                                                            Manual Create
+                                                        </button>
+                                                    )}
+                                                </div>
                                              )}
                                         </td>
                                     </tr>
@@ -141,6 +187,13 @@ const AdminCourseRequestsPage: React.FC = () => {
                     </div>
                 </div>
             )}
+            
+            <FindMatchModal 
+                isOpen={isMatchModalOpen}
+                onClose={() => setIsMatchModalOpen(false)}
+                request={selectedRequest}
+                onMatchConfirmed={handleMatchConfirmed}
+            />
         </div>
     );
 };

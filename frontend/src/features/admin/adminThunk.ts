@@ -1,10 +1,12 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { adminApi, adminCourseApi, adminStudentApi, adminRequestsApi, type AddStudentRequestDto, type AddStudentResponseDto, type AdminLoginDto, type StudentsWithStatsResponse } from "./adminApi";
+import { adminAuthApi, adminCourseApi, adminStudentApi, adminRequestsApi, type AddStudentRequestDto, type AddStudentResponseDto, type AdminLoginDto, type StudentsWithStatsResponse, type PaginatedResponse } from "./adminApi";
 import type { AdminLoginResponse } from "../../types/dtoTypes";
 import { adminMentorApi } from "./adminApi";
 import type { RootState } from "../../app/store";
 import type { MentorProfile } from "../mentor/mentorSlice";
-import type { StudentBaseResponseDto } from "../../types/studentTypes";
+import type { StudentBaseResponseDto, CourseRequest } from "../../types/studentTypes";
+import type { StudentProfile } from "../../types/student.types";
+import type { TrialClass } from "../../types/trialTypes";
 import { logger } from "../../utils/logger";
 import { getApiErrorMessage, getErrorMessage } from "../../utils/errorUtils";
 import { z } from 'zod';
@@ -15,29 +17,25 @@ import {
 import { clearCourseCreationState } from "./adminSlice";
 import type { Course } from "../../types/courseTypes";
 
- interface RawStudentData {
-      _id?: string;
-      id?: string;
-      fullName: string;
-      email: string;
-      phoneNumber?: string;
-      isVerified?: boolean;
-      isProfileComplete?: boolean;
-      isPaid?: boolean;
-      isBlocked?: boolean;
-      totalTrialClasses?: number;
-      pendingTrialClasses?: number;
-      createdAt: string;
-      updatedAt: string;
-    }
+
 
     export interface AvailableMentorDto {
-  id: string;
+  _id: string;
+  id?: string;
   fullName: string;
   profilePicture?: string | null;
+  profileImageUrl?: string | null;
   rating: number;
   bio?: string;
-  level: "intermediate" | "expert";
+  level?: "intermediate" | "expert";
+  availability?: {
+    day: string;
+    slots: {
+      startTime: string;
+      endTime: string;
+      isBooked: boolean;
+    }[];
+  }[];
 }
 
 export const adminLoginThunk = createAsyncThunk<
@@ -46,7 +44,7 @@ export const adminLoginThunk = createAsyncThunk<
   { rejectValue: string }
 >("admin/login", async (payload, { rejectWithValue }) => {
   try {
-    const response = await adminApi.login(payload);
+    const response = await adminAuthApi.login(payload);
     console.log("🔐 Thunk: API Response received", {
       status: response.status,
       statusText: response.statusText,
@@ -55,19 +53,31 @@ export const adminLoginThunk = createAsyncThunk<
       hasAdmin: !!response.data.admin,
     });
 
+    if (response.data.accessToken) {
+        localStorage.setItem("admin_accessToken", response.data.accessToken);
+    }
+
     return response.data;
   } catch (error: unknown) {
     return rejectWithValue(getApiErrorMessage(error, "Login failed"));
   }
 });
 
-export const refreshAdminToken = createAsyncThunk(
+export const refreshAdminToken = createAsyncThunk<
+  AdminLoginResponse,
+  void,
+  { rejectValue: string }
+>(
   "admin/refreshToken",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await adminApi.refreshToken();
+      const response = await adminAuthApi.refreshToken();
+      if (response.data.accessToken) {
+          localStorage.setItem("admin_accessToken", response.data.accessToken);
+      }
       return response.data;
     } catch (error: unknown) {
+      localStorage.removeItem("admin_accessToken");
       return rejectWithValue(
         getApiErrorMessage(error, "Failed to refresh token")
       );
@@ -83,12 +93,19 @@ export const fetchAllMentorsAdmin = createAsyncThunk<
   try {
     const response = await adminMentorApi.fetchAllMentors();
 
-    if (Array.isArray(response.data)) {
-      return response.data;
-    } else if (response.data && Array.isArray(response.data.data)) {
-      return response.data.data;
-    } else if (response.data && Array.isArray(response.data.mentors)) {
-      return response.data.mentors;
+    const data = response.data as unknown;
+
+    if (Array.isArray(data)) {
+      return data as MentorProfile[];
+    } else if (data && typeof data === 'object') {
+      const obj = data as Record<string, unknown>;
+      if ('data' in obj && Array.isArray(obj.data)) {
+        return obj.data as MentorProfile[];
+      }
+      if ('mentors' in obj && Array.isArray(obj.mentors)) {
+        return obj.mentors as MentorProfile[];
+      }
+      return rejectWithValue("Unexpected response format from server");
     } else {
       return rejectWithValue("Unexpected response format from server");
     }
@@ -130,12 +147,15 @@ export const fetchMentorsPaginated = createAsyncThunk<
     
     const response = await adminMentorApi.fetchAllMentors(params);
     
+    const data = response.data;
+    
     // Handle paginated response structure
-    if (response.data?.success && response.data?.data && response.data?.pagination) {
-      logger.info(`✅ Successfully fetched ${response.data.data.length} mentors (page ${response.data.pagination.currentPage})`);
+    if (data && 'success' in data && 'data' in data && 'pagination' in data) {
+      const paginatedData = data as PaginatedResponse<MentorProfile>;
+      logger.info(`✅ Successfully fetched ${paginatedData.data.length} mentors (page ${paginatedData.pagination.currentPage})`);
       return {
-        mentors: response.data.data,
-        pagination: response.data.pagination,
+        mentors: paginatedData.data,
+        pagination: paginatedData.pagination,
       };
     }
     
@@ -303,7 +323,7 @@ export const updateMentorAdmin = createAsyncThunk<
 
 export const addMentorAdmin = createAsyncThunk<
   MentorProfile,
-  any,
+  Partial<MentorProfile>,
   { rejectValue: string }
 >("admin/addMentor", async (mentorData, { rejectWithValue, dispatch }) => {
   try {
@@ -328,28 +348,30 @@ export const fetchAllStudentsAdmin = createAsyncThunk<
     // Use the new endpoint with large limit to get all students
     const response = await adminStudentApi.getStudentsWithStats({ page: 1, limit: 1000 });
 
-    if (!response.data.success) {
-      logger.error("❌ API returned unsuccessful response:", response.data);
-      return rejectWithValue(response.data.message || "Failed to fetch students");
+    const data = response.data as unknown as { success: boolean; message?: string; data: { students: unknown[] } };
+    if (!data.success) {
+      logger.error("❌ API returned unsuccessful response:", data);
+      return rejectWithValue(data.message || "Failed to fetch students");
     }
 
-    const { students } = response.data.data;
+    const { students } = data.data;
 
-    const validatedStudents = students.map((student: RawStudentData) => {
+    const validatedStudents = (students as unknown[]).map((student: unknown) => {
+      const s = student as Record<string, unknown>;
       const transformedStudent: StudentBaseResponseDto = {
-        id: student._id?.toString() || student.id|| `unknown-${Date.now()}-${Math.random()}`,
-        fullName: student.fullName,
-        email: student.email,
-        phoneNumber: student.phoneNumber || "",
+        id: (s._id as string)?.toString() || (s.id as string) || `unknown-${Date.now()}-${Math.random()}`,
+        fullName: s.fullName as string,
+        email: s.email as string,
+        phoneNumber: (s.phoneNumber as string) || "",
         role: "student",
-        isVerified: student.isVerified || false,
-        isProfileComplete: student.isProfileComplete || false,
-        isPaid: student.isPaid || false,
-        isBlocked: student.isBlocked || false,
-        totalTrialClasses: student.totalTrialClasses || 0,
-        pendingTrialClasses: student.pendingTrialClasses || 0,
-        createdAt: student.createdAt,
-        updatedAt: student.updatedAt,
+        isVerified: (s.isVerified as boolean) || false,
+        isProfileComplete: (s.isProfileComplete as boolean) || false,
+        isPaid: (s.isPaid as boolean) || false,
+        isBlocked: (s.isBlocked as boolean) || false,
+        totalTrialClasses: (s.totalTrialClasses as number) || 0,
+        pendingTrialClasses: (s.pendingTrialClasses as number) || 0,
+        createdAt: s.createdAt as string,
+        updatedAt: s.updatedAt as string,
       };
 
       return transformedStudent;
@@ -398,12 +420,15 @@ export const fetchStudentsPaginated = createAsyncThunk<
     
     const response = await adminStudentApi.getAllStudents(params);
     
+    const data = response.data;
+    
     // Handle paginated response structure
-    if (response.data?.success && response.data?.data && response.data?.pagination) {
-      logger.info(`✅ Successfully fetched ${response.data.data.length} students (page ${response.data.pagination.currentPage})`);
+    if (data && 'success' in data && 'data' in data && 'pagination' in data) {
+      const paginatedData = data as PaginatedResponse<StudentBaseResponseDto>;
+      logger.info(`✅ Successfully fetched ${paginatedData.data.length} students (page ${paginatedData.pagination.currentPage})`);
       return {
-        students: response.data.data,
-        pagination: response.data.pagination,
+        students: paginatedData.data,
+        pagination: paginatedData.pagination,
       };
     }
     
@@ -510,8 +535,17 @@ export const fetchAvailableMentors = createAsyncThunk(
   async (params: { subjectId: string; preferredDate: string }, { rejectWithValue }) => {
     try {
       const response = await adminStudentApi.getAvailableMentors(params);
-      // Extract the data array from the response
-      return response.data.data || [];
+      // Response might be { matches, alternates } (new) or array (old fallback)
+      const data = response.data.data;
+      if (Array.isArray(data)) {
+        return data;
+      } else if (data && typeof data === 'object') {
+        // Flatten matches and alternates for the simple assignment modal
+        const matches = Array.isArray(data.matches) ? data.matches : [];
+        const alternates = Array.isArray(data.alternates) ? data.alternates : [];
+        return [...matches, ...alternates];
+      }
+      return [];
     } catch (error: unknown) {
       return rejectWithValue(getApiErrorMessage(error, 'Failed to fetch available mentors'));
     }
@@ -546,39 +580,43 @@ export const fetchStudentsWithStats = createAsyncThunk<
 
     const response = await adminStudentApi.getStudentsWithStats({ page, limit });
 
-    if (!response.data.success) {
-      logger.error("❌ API returned unsuccessful response:", response.data);
-      return rejectWithValue(response.data.message || "Failed to fetch students with stats");
+    const responseData = response.data as StudentsWithStatsResponse;
+    if (!responseData.success) {
+      logger.error("❌ API returned unsuccessful response:", responseData);
+      return rejectWithValue(responseData.message || "Failed to fetch students with stats");
     }
 
-    const { students, pagination } = response.data.data;
+    const { students, pagination } = responseData.data;
 
     // Transform and validate students data
-    const validatedStudents = students.map((student: RawStudentData) => {
+    const validatedStudents = (students as unknown as Record<string, unknown>[]).map((student) => {
       const transformedStudent: StudentBaseResponseDto = {
-        id: student._id?.toString() || student.id|| `unknown-${Date.now()}-${Math.random()}`,
-        fullName: student.fullName,
-        email: student.email,
-        phoneNumber: student.phoneNumber || "",
+        id: (student._id as string) || (student.id as string) || `unknown-${Date.now()}-${Math.random()}`,
+        fullName: student.fullName as string,
+        email: student.email as string,
+        phoneNumber: (student.phoneNumber as string) || "",
         role: "student",
-        isVerified: student.isVerified || false,
-        isProfileComplete: student.isProfileComplete || false,
-        isPaid: student.isPaid || false,
-        isBlocked: student.isBlocked || false,
-        totalTrialClasses: student.totalTrialClasses || 0,
-        pendingTrialClasses: student.pendingTrialClasses || 0,
-        createdAt: student.createdAt,
-        updatedAt: student.updatedAt,
+        isVerified: (student.isVerified as boolean) || false,
+        isProfileComplete: (student.isProfileComplete as boolean) || false,
+        isPaid: (student.isPaid as boolean) || false,
+        isBlocked: (student.isBlocked as boolean) || false,
+        totalTrialClasses: (student.totalTrialClasses as number) || 0,
+        pendingTrialClasses: (student.pendingTrialClasses as number) || 0,
+        createdAt: student.createdAt as string,
+        updatedAt: student.updatedAt as string,
       };
-
       return transformedStudent;
     });
 
-    logger.info(`✅ Successfully fetched ${validatedStudents.length} students with stats`);
-    
-    return {
-      students: validatedStudents,
-      pagination
+    return { 
+      students: validatedStudents, 
+      pagination: {
+        currentPage: pagination.currentPage,
+        totalPages: pagination.totalPages,
+        totalStudents: pagination.totalStudents,
+        hasNextPage: pagination.hasNextPage,
+        hasPrevPage: pagination.hasPrevPage
+      } 
     };
   } catch (error: unknown) {
     logger.error("❌ Error fetching students with stats:", {
@@ -591,7 +629,7 @@ export const fetchStudentsWithStats = createAsyncThunk<
 });
 
 export const fetchStudentTrialClasses = createAsyncThunk<
-  any[], // TrialClass array
+  TrialClass[], 
   { studentId: string; status?: string },
   { rejectValue: string }
 >("admin/fetchStudentTrialClasses", async ({ studentId, status }, { rejectWithValue }) => {
@@ -632,21 +670,23 @@ export const fetchStudentTrialClasses = createAsyncThunk<
 
 //     logger.info(`✅ Successfully fetched ${response.data.data?.length || 0} trial classes for student ${studentId}`);
 //     return response.data.data || [];
-//   } catch (error: any) {
+// //     // Verify student is unknown before casting if needed, but for now we'll just fix the any on catch
+//   } catch (error: unknown) {
 //     logger.error("❌ Error fetching student trial classes:", {
-//       error: error.message,
-//       status: error.response?.status,
-//       data: error.response?.data,
+//       // error: error.message,
+//       // status: error.response?.status,
+//       // data: error.response?.data,
 //     });
 //     return rejectWithValue(
-//       error.response?.data?.message || "Failed to fetch student trial classes"
+//       // error.response?.data?.message || "Failed to fetch student trial classes"
+//       getApiErrorMessage(error, "Failed to fetch trial classes")
 //     );
 //   }
 // });
 
 // Fetch trial class details
 export const fetchTrialClassDetails = createAsyncThunk<
-  any, // Replace 'any' with your TrialClassDetailsDto type
+  TrialClass, 
   string,
   { rejectValue: string }
 >("admin/fetchTrialClassDetails", async (trialClassId, { rejectWithValue }) => {
@@ -673,7 +713,7 @@ export const fetchTrialClassDetails = createAsyncThunk<
 
 // Update trial class status
 export const updateTrialClassStatus = createAsyncThunk<
-  any, // Replace 'any' with your TrialClassResponseDto type
+  TrialClass, 
   { trialClassId: string; status: string; reason?: string },
   { rejectValue: string }
 >("admin/updateTrialClassStatus", async ({ trialClassId, status, reason }, { rejectWithValue }) => {
@@ -698,16 +738,18 @@ export const updateTrialClassStatus = createAsyncThunk<
   }
 });
 
+
 export const fetchAvailableMentorsForCourse = createAsyncThunk<
-  AvailableMentorDto[],
-  { gradeId: string; subjectId: string; dayOfWeek?: number; timeSlot?: string },
+  { matches: AvailableMentorDto[], alternates: AvailableMentorDto[] },
+  { gradeId?: string; subject: string; days?: string[]; timeSlot?: string },
   { rejectValue: string }
 >(
   "admin/fetchAvailableMentorsForCourse",
   async (params, { rejectWithValue }) => {
     try {
       const response = await adminCourseApi.getAvailableMentorsForCourse(params);
-      return response.data.data || [];
+      // Response data is now { matches: [], alternates: [] }
+      return response.data.data || { matches: [], alternates: [] };
     } catch (error: unknown) {
       return rejectWithValue(
         getApiErrorMessage(error, "Failed to load available mentors")
@@ -717,13 +759,16 @@ export const fetchAvailableMentorsForCourse = createAsyncThunk<
 );
 
 export const createOneToOneCourse = createAsyncThunk<
-  any,
+  Course, // Course or success message
   {
     gradeId: string;
     subjectId: string;
     mentorId: string;
-    dayOfWeek?: number;
-    timeSlot?: string;
+    studentId: string;
+    schedule: {
+      days: string[];
+      timeSlot?: string;
+    };
     startDate: string;
     endDate: string;
     fee: number;
@@ -756,19 +801,18 @@ export const fetchAllCoursesAdmin = createAsyncThunk<
     console.log("📡 Courses API response:", response.data);
     
     // Handle different response structures
-    let courses: any[] = [];
+    let courses: Course[] = [];
     
-    if (response.data?.success && Array.isArray(response.data.data)) {
-      console.log("✅ Using response.data.data (array)");
-      courses = response.data.data;
-    } else if (Array.isArray(response.data)) {
+    const responseData = response.data;
+
+    if (Array.isArray(responseData)) {
       console.log("✅ Using response.data directly (array)");
-      courses = response.data;
-    } else if (response.data?.data && Array.isArray(response.data.data)) {
-      console.log("✅ Using response.data.data (alternative path)");
-      courses = response.data.data;
+      courses = responseData;
+    } else if (responseData && 'data' in responseData && Array.isArray(responseData.data)) {
+      console.log("✅ Using response.data.data (paginated structure)");
+      courses = responseData.data;
     } else {
-      console.error("❌ Invalid courses response structure:", response.data);
+      console.error("❌ Invalid courses response structure:", responseData);
       return rejectWithValue("Invalid response format for courses");
     }
     
@@ -813,25 +857,27 @@ export const fetchCoursesPaginated = createAsyncThunk<
     
     const response = await adminCourseApi.getAllOneToOneCourses(params);
     
+    const responseData = response.data;
+    
     // Handle paginated response structure
-    if (response.data?.success && response.data?.data && response.data?.pagination) {
-      logger.info(`✅ Successfully fetched ${response.data.data.length} courses (page ${response.data.pagination.currentPage})`);
+    if (responseData && !Array.isArray(responseData) && 'pagination' in responseData && 'data' in responseData) {
+      logger.info(`✅ Successfully fetched ${responseData.data.length} courses (page ${responseData.pagination.currentPage})`);
       return {
-        courses: response.data.data,
-        pagination: response.data.pagination,
+        courses: responseData.data,
+        pagination: responseData.pagination,
       };
     }
     
     // Fallback: If server returns old format (array), wrap it in paginated structure
-    if (Array.isArray(response.data?.data)) {
-      logger.info(`✅ Received legacy format, ${response.data.data.length} courses`);
+    if (Array.isArray(responseData)) {
+      logger.info(`✅ Received legacy format, ${responseData.length} courses`);
       return {
-        courses: response.data.data,
+        courses: responseData,
         pagination: {
           currentPage: 1,
           totalPages: 1,
-          totalItems: response.data.data.length,
-          itemsPerPage: response.data.data.length,
+          totalItems: responseData.length,
+          itemsPerPage: responseData.length,
           hasNextPage: false,
           hasPrevPage: false,
         },
@@ -860,7 +906,7 @@ export const fetchGradesAdmin = createAsyncThunk<
     console.log("📡 Grades API response:", response.data);
     
     // Handle different response structures
-    let grades: any[] = [];
+    let grades: { _id: string; name: string; syllabus?: string }[] = [];
     
     if (response.data?.success && Array.isArray(response.data.data)) {
       console.log("✅ Using response.data.data for grades (array)");
@@ -875,7 +921,7 @@ export const fetchGradesAdmin = createAsyncThunk<
     
     // Transform to the format expected by the frontend
     const transformedGrades = grades.map(grade => ({
-      _id: grade.id || grade._id,
+      _id: (grade as { id?: string; _id?: string }).id || grade._id,
       name: grade.name,
       syllabus: grade.syllabus || '',
     }));
@@ -926,7 +972,7 @@ export { clearCourseCreationState };
 
 
 export const fetchAllCourseRequestsAdmin = createAsyncThunk<
-  any[],
+  CourseRequest[],
   void,
   { rejectValue: string }
 >("admin/fetchAllCourseRequests", async (_, { rejectWithValue }) => {
@@ -939,7 +985,7 @@ export const fetchAllCourseRequestsAdmin = createAsyncThunk<
 });
 
 export const updateCourseRequestStatusAdmin = createAsyncThunk<
-  any,
+  CourseRequest,
   { requestId: string; status: string },
   { rejectValue: string }
 >("admin/updateCourseRequestStatus", async ({ requestId, status }, { rejectWithValue, dispatch }) => {
@@ -953,7 +999,7 @@ export const updateCourseRequestStatusAdmin = createAsyncThunk<
 });
 
 export const fetchStudentProfile = createAsyncThunk<
-  any,
+  StudentProfile,
   string,
   { rejectValue: string }
 >("admin/fetchStudentProfile", async (studentId, { rejectWithValue }) => {
@@ -967,7 +1013,7 @@ export const fetchStudentProfile = createAsyncThunk<
     }
 
     logger.info(`✅ Successfully fetched student profile for ${studentId}`);
-    return response.data.data;
+    return response.data.data as StudentProfile;
   } catch (error: unknown) {
     logger.error("❌ Error fetching student profile:", { error: getErrorMessage(error) });
     return rejectWithValue(getApiErrorMessage(error, "Failed to fetch student profile"));

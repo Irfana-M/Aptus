@@ -58,7 +58,7 @@ export class VideoCallRepository implements IVideoCallRepository {
         throw new AppError("Invalid trial class ID", HttpStatusCode.BAD_REQUEST);
       }
 
-      const updateData: any = { status, ...updates };
+      const updateData: Partial<IVideoCallDocument> = { callStatus: status, ...updates };
       
       if (status === 'active') {
         updateData.callStartedAt = new Date();

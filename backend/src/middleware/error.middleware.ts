@@ -1,14 +1,15 @@
-import type { Request, Response, NextFunction } from "express";
+import type { ErrorRequestHandler } from "express";
 import { AppError } from "../utils/AppError";
 import { logger } from "../utils/logger";
 import { HttpStatusCode } from "../constants/httpStatus";
 import { ZodError } from "zod";
 
-export const errorHandler = (
-  err: any,
-  req: Request,
-  res: Response,
-  _next: NextFunction
+export const errorHandler: ErrorRequestHandler = (
+  err: Error & { code?: number; name?: string; keyValue?: Record<string, unknown> },
+  req,
+  res,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  next
 ) => {
   let statusCode = HttpStatusCode.INTERNAL_SERVER_ERROR;
   let message = "Internal Server Error";
@@ -43,7 +44,7 @@ export const errorHandler = (
   } else if (err.code === 11000) {
     statusCode = HttpStatusCode.CONFLICT;
     message = "Duplicate entry found";
-    const field = Object.keys(err.keyValue)[0];
+    const field = Object.keys(err.keyValue || {})[0];
     message = `${field} already exists`;
   } else if (err.name === "CastError") {
     statusCode = HttpStatusCode.BAD_REQUEST;

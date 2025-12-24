@@ -20,6 +20,15 @@ import type {
   DashboardStats,
 } from "../interfaces/models/mentorDashboard.interface";
 
+interface AssignedStudent {
+  id: string;
+  fullName: string;
+  email: string;
+  profilePicture: string | null;
+  totalClasses: number;
+  lastClassDate: Date;
+}
+
 @injectable()
 export class MentorDashboardService implements IMentorDashboardService {
   constructor(
@@ -64,12 +73,12 @@ export class MentorDashboardService implements IMentorDashboardService {
     try {
       const trialClasses = await this.trialClassRepo.findByMentorId(mentorId);
 
-      const studentsMap = new Map<string, any>();
+      const studentsMap = new Map<string, AssignedStudent>();
 
       for (const tc of trialClasses) {
         if (!tc.student || typeof tc.student !== "object") continue;
 
-        const student = tc.student as any;
+        const student = tc.student as unknown as { _id: { toString: () => string }; fullName: string; email: string; profilePicture: string };
         const studentId = student._id.toString();
         const existing = studentsMap.get(studentId);
 
@@ -133,7 +142,7 @@ export class MentorDashboardService implements IMentorDashboardService {
     const studentIds = new Set<string>();
     all.forEach(c => {
       if (c.student && typeof c.student === "object") {
-        studentIds.add((c.student as any)._id.toString());
+        studentIds.add((c.student as { _id: { toString: () => string } })._id.toString());
       }
     });
 
@@ -154,8 +163,8 @@ export class MentorDashboardService implements IMentorDashboardService {
       .filter(c => c.status === "assigned")
       .sort((a, b) => a.preferredTime.localeCompare(b.preferredTime))
       .map(c => {
-        const student = typeof c.student === "object" ? (c.student as any) : null;
-        const subject = typeof c.subject === "object" ? (c.subject as any) : null;
+        const student = typeof c.student === "object" ? (c.student as unknown as { fullName: string; profilePicture: string }) : null;
+        const subject = typeof c.subject === "object" ? (c.subject as unknown as { subjectName: string; grade: string }) : null;
 
         return {
           id: c._id.toString(),
@@ -183,8 +192,8 @@ export class MentorDashboardService implements IMentorDashboardService {
       })
       .sort((a, b) => a.preferredDate.getTime() - b.preferredDate.getTime())
       .map(c => {
-        const student = typeof c.student === "object" ? (c.student as any) : null;
-        const subject = typeof c.subject === "object" ? (c.subject as any) : null;
+        const student = typeof c.student === "object" ? (c.student as unknown as { fullName: string }) : null;
+        const subject = typeof c.subject === "object" ? (c.subject as unknown as { subjectName: string; grade: string }) : null;
 
         return {
           id: c._id.toString(),
@@ -202,8 +211,8 @@ export class MentorDashboardService implements IMentorDashboardService {
       .filter(c => c.status === "completed")
       .sort((a, b) => (b.updatedAt?.getTime() || 0) - (a.updatedAt?.getTime() || 0))
       .map(c => {
-        const student = typeof c.student === "object" ? (c.student as any) : null;
-        const subject = typeof c.subject === "object" ? (c.subject as any) : null;
+        const student = typeof c.student === "object" ? (c.student as unknown as { fullName: string }) : null;
+        const subject = typeof c.subject === "object" ? (c.subject as unknown as { subjectName: string; grade: string }) : null;
 
         return {
           id: c._id.toString(),
@@ -218,7 +227,7 @@ export class MentorDashboardService implements IMentorDashboardService {
 
   private formatCalendarEvents(classes: ITrialClassDocument[]): CalendarEventDto[] {
     return classes.map(c => {
-      const student = typeof c.student === "object" ? (c.student as any) : null;
+      const student = typeof c.student === "object" ? (c.student as unknown as { fullName: string }) : null;
       const [h = "0", m = "0"] = c.preferredTime.split(":");
       const start = new Date(c.preferredDate);
       start.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);

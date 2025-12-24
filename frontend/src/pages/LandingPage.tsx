@@ -9,9 +9,18 @@ import { Users, Target, TrendingUp, Star, CheckCircle } from "lucide-react";
 export default function LandingPage() {
   const navigate = useNavigate();
 
+  // Navigation handlers for Header buttons
+  const handleLoginClick = () => {
+    navigate('/login');
+  };
+
+  const handleGetStartedClick = () => {
+    navigate('/register');
+  };
+
   return (
     <>
-      <Header />
+      <Header onLoginClick={handleLoginClick} onGetStartedClick={handleGetStartedClick} />
 
       {/* HERO */}
       <section className="relative overflow-hidden bg-gradient-to-br from-[#49BBBD]/80 via-[#49BBBD]/60 to-[#49BBBD]/40 text-white">
@@ -59,7 +68,7 @@ export default function LandingPage() {
       <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-            Why choose <span className="text-teal-600">Mentora?</span>
+            Why choose <span className="text-teal-600">Aptus?</span>
           </h2>
           <p className="text-gray-600 max-w-2xl mx-auto">
             We provide the best platform to connect mentors and mentees for

@@ -2,9 +2,14 @@ import { injectable } from "inversify";
 import { Grade, type IGrade } from "@/models/grade.model";
 import { logger } from "@/utils/logger";
 import type { IGradeRepository } from "@/interfaces/repositories/IGradeRepository";
+import { BaseRepository } from "./baseRepository";
 
 @injectable()
-export class GradeRepository implements IGradeRepository {
+export class GradeRepository extends BaseRepository<IGrade> implements IGradeRepository {
+    constructor() {
+        super(Grade);
+    }
+
     async findAllActive(): Promise<IGrade[]> {
         logger.info("Fetching all active grades");
         return await Grade.find({ isActive: true})
@@ -20,10 +25,5 @@ export class GradeRepository implements IGradeRepository {
     })
     .sort({ grade: 1 })
     .exec();
-  }
-
-  async findById(id: string): Promise<IGrade | null> {
-    logger.info(`Fetching grade by ID: ${id}`);
-    return await Grade.findById(id).exec();
   }
 }

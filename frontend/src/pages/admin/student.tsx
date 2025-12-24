@@ -14,6 +14,7 @@ import {
   selectAllStudents,
   selectAdminLoading,
 } from "../../features/admin/adminSelectors";
+import { Student } from "../../models/Student";
 import type { StudentBaseResponseDto } from "../../types/studentTypes";
 import { StudentModal } from "../../components/admin/StudentModal";
 import { ConfirmationModal } from "../../components/ui/ConfirmationModal";
@@ -58,6 +59,7 @@ export const StudentsManagement: React.FC = () => {
     status: "",
     verification: "",
     trialClasses: "",
+    plan: "",
   });
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [showStudentModal, setShowStudentModal] = useState(false);
@@ -96,6 +98,15 @@ export const StudentsManagement: React.FC = () => {
       { label: "No Trial Classes", value: "none" },
     ],
   },
+  {
+    key: "plan",
+    label: "Subscription Plan",
+    options: [
+      { label: "None", value: "none" },
+      { label: "Monthly", value: "monthly" },
+      { label: "Yearly", value: "yearly" },
+    ],
+  },
   ];
 
   useEffect(() => {
@@ -105,80 +116,69 @@ export const StudentsManagement: React.FC = () => {
 
 
   const filteredStudents = useMemo(() => {
-    return students.filter((student) => {
-      const matchesSearch =
-        searchTerm === "" ||
-        student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.id.toString().includes(searchTerm) ||
-        (student.phoneNumber && student.phoneNumber.includes(searchTerm));
+    return students
+      .map(data => new Student(data))
+      .filter((student) => {
+        const matchesSearch =
+          searchTerm === "" ||
+          student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          student.id.toString().includes(searchTerm) ||
+          (student.phone && student.phone.includes(searchTerm));
 
-      const matchesStatus =
-        filters.status === "" || 
-        (filters.status === 'active' && !student.isBlocked) ||
-        (filters.status === 'blocked' && student.isBlocked);
+        const matchesStatus =
+          filters.status === "" || 
+          (filters.status === 'active' && !student.isBlocked) ||
+          (filters.status === 'blocked' && student.isBlocked);
 
-      const matchesVerification =
-        filters.verification === "" ||
-        (filters.verification === 'verified' && student.isVerified) ||
-        (filters.verification === 'pending' && !student.isVerified);
+        const matchesVerification =
+          filters.verification === "" ||
+          (filters.verification === 'verified' && student.isVerified) ||
+          (filters.verification === 'pending' && !student.isVerified);
 
-         const matchesTrialClasses =
-      filters.trialClasses === "" ||
-      (filters.trialClasses === 'with_trial' && (student.totalTrialClasses || 0) > 0) ||
-      (filters.trialClasses === 'pending' && (student.pendingTrialClasses || 0) > 0) ||
-      (filters.trialClasses === 'none' && (student.totalTrialClasses || 0) === 0);
+        const matchesTrialClasses =
+          filters.trialClasses === "" ||
+          (filters.trialClasses === 'with_trial' && (student.trialSummary?.total || 0) > 0) ||
+          (filters.trialClasses === 'pending' && (student.trialSummary?.pending || 0) > 0) ||
+          (filters.trialClasses === 'none' && !student.trialSummary);
 
-      return matchesSearch && matchesStatus && matchesVerification&& matchesTrialClasses;
-    });
+        const matchesPlan =
+          filters.plan === "" ||
+          (filters.plan === 'none' && (!student.subscription || student.subscription.status === 'expired' || student.subscription.status === 'cancelled')) ||
+          (filters.plan === 'monthly' && student.subscription?.plan === 'monthly' && student.subscription.status === 'active') ||
+          (filters.plan === 'yearly' && student.subscription?.plan === 'yearly' && student.subscription.status === 'active');
+
+        return matchesSearch && matchesStatus && matchesVerification && matchesTrialClasses && matchesPlan;
+      });
   }, [students, searchTerm, filters]);
 
   useEffect(() => {
     pagination.goToPage(1);
-  }, [searchTerm, filters]);
+  }, [searchTerm, filters, pagination]);
 
   const paginatedStudents = pagination.paginatedData(filteredStudents);
 
-  // Calculate stats
+  // Calculate stats using models
   const stats = useMemo(() => {
     const total = students.length;
-    const verified = students.filter((student) => student.isVerified).length;
-    const paid = students.filter((student) => student.isPaid).length;
-    const blocked = students.filter((student) => student.isBlocked).length;
-    const profileComplete = students.filter((student) => student.isProfileComplete).length;
-    const totalTrialClasses = students.reduce((sum, student) => sum + (student.totalTrialClasses || 0), 0);
-    const pendingTrialClasses = students.reduce((sum, student) => sum + (student.pendingTrialClasses || 0), 0);
-    const studentsWithTrialClasses = students.filter(student => (student.totalTrialClasses || 0) > 0).length;
+    const studentModels = students.map(s => new Student(s));
+    
+    const verified = studentModels.filter((s) => s.isVerified).length;
+    const paid = studentModels.filter((s) => s.isPaid).length;
+    const blocked = studentModels.filter((s) => s.isBlocked).length;
+    const totalTrialClasses = studentModels.reduce((sum, s) => sum + (s.trialSummary?.total || 0), 0);
+    const studentsWithTrialClasses = studentModels.filter(s => !!s.trialSummary).length;
 
     return {
       total,
       verified,
       paid,
       blocked,
-      profileComplete,
       totalTrialClasses,
-    pendingTrialClasses,
-    studentsWithTrialClasses,
+      studentsWithTrialClasses,
     };
   }, [students]);
 
-  const getStatusIcon = (isVerified: boolean, isBlocked?: boolean) => {
-    if (isBlocked) return <Ban className="w-4 h-4 text-red-500" />;
-    if (isVerified) return <CheckCircle className="w-4 h-4 text-green-500" />;
-    return <Clock className="w-4 h-4 text-yellow-500" />;
-  };
-
-  const getStatusColor = (isVerified: boolean, isBlocked?: boolean) => {
-    if (isBlocked) return "bg-red-100 text-red-800";
-    if (isVerified) return "bg-green-100 text-green-800";
-    return "bg-yellow-100 text-yellow-800";
-  };
-
-  const getStatusText = (isVerified: boolean, isBlocked?: boolean) => {
-    if (isBlocked) return "Blocked";
-    if (isVerified) return "Verified";
-    return "Pending";
-  };
 
   
   const handleBlockClick = (studentId: string, studentName: string) => {
@@ -213,10 +213,11 @@ export const StudentsManagement: React.FC = () => {
       setShowBlockModal(false);
       setSelectedStudent(null);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       showToast.dismiss();
+      const err = error as { message?: string };
       const action = selectedStudent.action === 'block' ? 'block' : 'unblock';
-      const errorMessage = error?.message || `Failed to ${action} ${selectedStudent.name}`;
+      const errorMessage = err.message || `Failed to ${action} ${selectedStudent.name}`;
       showToast.error(errorMessage);
       console.error(`Failed to ${action} student:`, error);
     }
@@ -251,7 +252,7 @@ export const StudentsManagement: React.FC = () => {
     });
 };
 
-  const handleSaveStudent = async (studentData: any) => {
+  const handleSaveStudent = async (studentData: Partial<StudentBaseResponseDto>) => {
     try {
       if (selectedStudentForEdit) {
         await dispatch(updateStudentAdmin({
@@ -261,7 +262,7 @@ export const StudentsManagement: React.FC = () => {
         showToast.success("Student updated successfully");
         dispatch(fetchAllStudentsAdmin());
       } else {
-        await dispatch(addStudentAdmin(studentData)).unwrap();
+        await dispatch(addStudentAdmin(studentData as AdminCreateStudentInput)).unwrap();
         showToast.success("Student added successfully");
         dispatch(fetchAllStudentsAdmin());
       }
@@ -269,35 +270,35 @@ export const StudentsManagement: React.FC = () => {
       handleCloseStudentModal();
 
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { message?: string };
       const action = selectedStudentForEdit ? "update" : "add";
-      const errorMessage = error?.message || `Failed to ${action} student`;
+      const errorMessage = err.message || `Failed to ${action} student`;
       showToast.error(errorMessage);
       console.error(`Failed to ${action} student:`, error);
     }
   };
 
-  const columns: Column<StudentBaseResponseDto>[] = [
+  const columns: Column<Student>[] = [
     {
       header: "Student",
-      accessor: (row) => (
+      accessor: (student) => (
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full flex items-center justify-center">
             <span className="text-white font-semibold text-sm">
-              {row.fullName?.split(" ").map((n) => n[0]).join("") || "U"}
+              {student.initials}
             </span>
           </div>
           <div>
-            <p className="font-medium text-gray-900">{row.fullName}</p>
-            <p className="text-sm text-gray-500">{row.email}</p>
-            {(row.totalTrialClasses && row.totalTrialClasses > 0) && (
+            <p className="font-medium text-gray-900">{student.name}</p>
+            <p className="text-sm text-gray-500">{student.email}</p>
+            {student.trialSummary && (
             <div className="flex items-center space-x-2 mt-1">
               <div className={`w-2 h-2 rounded-full ${
-                (row.pendingTrialClasses && row.pendingTrialClasses > 0) ? 'bg-yellow-400' : 'bg-green-400'
+                student.trialSummary.hasPending ? 'bg-yellow-400' : 'bg-green-400'
               }`} />
               <span className="text-xs text-gray-600">
-                {row.totalTrialClasses} trial {row.totalTrialClasses === 1 ? 'class' : 'classes'}
-                {(row.pendingTrialClasses && row.pendingTrialClasses > 0) && ` (${row.pendingTrialClasses} pending)`}
+                {student.trialSummary.text}
               </span>
             </div>
           )}
@@ -308,33 +309,32 @@ export const StudentsManagement: React.FC = () => {
     },
     {
       header: "Contact",
-      accessor: (row) => (
+      accessor: (student) => (
         <div className="text-sm">
-          <p className="text-gray-900">{row.phoneNumber || "N/A"}</p>
-          <p className="text-gray-500">ID: {row.id}</p>
+          <p className="text-gray-900">{student.phone}</p>
+          <p className="text-gray-500">ID: {student.id}</p>
         </div>
       ),
     },
     {
       header: "Status",
-      accessor: (row) => (
+      accessor: (student) => (
         <div className="flex flex-col gap-2">
           <div className="flex items-center space-x-2">
-            {getStatusIcon(row.isVerified, row.isBlocked)}
-            <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(row.isVerified, row.isBlocked)}`}>
-              {getStatusText(row.isVerified, row.isBlocked)}
+            <span className={`px-3 py-1 rounded-full text-xs font-medium ${student.statusColor}`}>
+              {student.statusText}
             </span>
           </div>
-          {row.isPaid && (
+          {student.isPaid && (
             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
               <CreditCard className="w-3 h-3 mr-1" />
               Paid
             </span>
           )}
-           {(row.pendingTrialClasses && row.pendingTrialClasses > 0) && (
+           {(student.trialSummary?.pending || 0) > 0 && (
           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
             <Clock className="w-3 h-3 mr-1" />
-            {row.pendingTrialClasses} Pending Trial
+            {student.trialSummary?.pending} Pending Trial
           </span>
         )}
         </div>
@@ -342,26 +342,38 @@ export const StudentsManagement: React.FC = () => {
       sortable: true,
     },
     {
+      header: "Subscription",
+      accessor: (student) => (
+        <div className="flex flex-col gap-1">
+          <span className={`font-medium ${student.isSubscriptionActive ? 'text-gray-900' : 'text-gray-400'}`}>
+            {student.subscriptionPlan}
+          </span>
+          {student.isSubscriptionActive && (
+            <span className="text-xs text-gray-500">
+              Expires: {student.subscriptionExpiryDate}
+            </span>
+          )}
+        </div>
+      ),
+      sortable: true,
+    },
+    {
       header: "Joined Date",
-      accessor: (row) => (
+      accessor: (student) => (
         <span className="text-gray-600 text-sm">
-          {new Date(row.createdAt || "").toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          })}
+          {student.joinedDate}
         </span>
       ),
       sortable: true,
     },
     {
       header: "Actions",
-      accessor: (row) => (
+      accessor: (student) => (
         <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
           {/* Only show trial classes button if student has pending/assigned trial classes (not completed) */}
-          {row.pendingTrialClasses && row.pendingTrialClasses > 0 && (
+          {(student.trialSummary?.pending || 0) > 0 && (
             <button
-              onClick={() => handleViewTrialClasses(row.id)}
+              onClick={() => handleViewTrialClasses(student.id)}
               className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
               title="View Trial Classes"
             >
@@ -369,12 +381,11 @@ export const StudentsManagement: React.FC = () => {
             </button>
           )}
           
-          {/* View Profile button */}
           <button
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              navigate(`/admin/students/${row.id}`);
+              navigate(`/admin/students/${student.id}`);
             }}
             className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors duration-200"
             title="View Profile"
@@ -385,19 +396,19 @@ export const StudentsManagement: React.FC = () => {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              handleEditStudent(row);
+              handleEditStudent(student.data);
             }}
             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
             title="Edit Student"
           >
             <Edit2 size={16} />
           </button>
-          {row.isBlocked ? (
+          {student.isBlocked ? (
             <button
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                handleUnblockClick(row.id, row.fullName);
+                handleUnblockClick(student.id, student.name);
               }}
               className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-200"
               title="Unblock Student"
@@ -409,7 +420,7 @@ export const StudentsManagement: React.FC = () => {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                handleBlockClick(row.id, row.fullName);
+                handleBlockClick(student.id, student.name);
               }}
               className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors duration-200"
               title="Block Student"
@@ -428,11 +439,11 @@ export const StudentsManagement: React.FC = () => {
 
   const handleClearFilters = () => {
     setSearchTerm("");
-    setFilters({ status: "", verification: "", trialClasses: "" });
+    setFilters({ status: "", verification: "", trialClasses: "", plan: "" });
   };
 
   const handleSort = (
-    column: keyof StudentBaseResponseDto,
+    column: keyof Student,
     direction: "asc" | "desc"
   ) => {
     console.log(`Sort by ${String(column)} ${direction}`);
@@ -560,7 +571,7 @@ export const StudentsManagement: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
-            <DataTable<StudentBaseResponseDto>
+            <DataTable<Student>
               columns={columns}
               data={paginatedStudents}
               loading={loading}

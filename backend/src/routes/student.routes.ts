@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { STUDENT_ROUTES } from "../constants/routes";
 import { container } from "@/inversify.config";
 import { TYPES } from "@/types";
 import { TrialClassController } from "@/controllers/trialClass.controller";
@@ -16,27 +17,27 @@ const subjectController = container.get<SubjectController>(TYPES.SubjectControll
 
 
 studentRouter.post(
-  "/trial-classes/request",
+  STUDENT_ROUTES.TRIAL_CLASSES_REQUEST,
   requireAuth,
   requireRole("student"),
   trialClassController.createTrialRequest.bind(trialClassController)
 );
 
 studentRouter.get(
-  "/trial-classes",
+  STUDENT_ROUTES.TRIAL_CLASSES,
   requireAuth,
   requireRole("student"),
   trialClassController.getStudentTrialClasses.bind(trialClassController)
 );
 
 studentRouter.get(
-  "/trial-classes/:id",
+  STUDENT_ROUTES.TRIAL_CLASS_BY_ID,
   requireAuth,
-  requireRole("student"),
+  requireRole(["student", "mentor"]),
   trialClassController.getTrialClassById.bind(trialClassController)
 );
 studentRouter.patch(
-  "/trial-classes/:id",
+  STUDENT_ROUTES.TRIAL_CLASS_BY_ID,
   requireAuth,
   requireRole("student"),
   trialClassController.updateTrialClass.bind(trialClassController)
@@ -44,7 +45,7 @@ studentRouter.patch(
 
 // Submit feedback for trial class
 studentRouter.post(
-  "/trial-classes/:id/feedback",
+  STUDENT_ROUTES.TRIAL_CLASS_FEEDBACK,
   requireAuth,
   requireRole("student"),
   trialClassController.submitFeedback.bind(trialClassController)
@@ -52,28 +53,28 @@ studentRouter.post(
 
 
 studentRouter.get(
-  "/grades",
+  STUDENT_ROUTES.GRADES,
   gradeController.getAllGrades.bind(gradeController)
 );
 
 studentRouter.get(
-  "/grades/syllabus",
+  STUDENT_ROUTES.GRADES_SYLLABUS,
   gradeController.getGradesBySyllabus.bind(gradeController)
 );
 
 
 studentRouter.get(
-  "/subjects",
+  STUDENT_ROUTES.SUBJECTS,
   subjectController.getAllSubjects.bind(subjectController)
 );
 
 studentRouter.get(
-  "/subjects/grade",
+  STUDENT_ROUTES.SUBJECTS_GRADE,
   subjectController.getSubjectsByGrade.bind(subjectController)
 );
 
 studentRouter.get(
-  "/subjects/filter",
+  STUDENT_ROUTES.SUBJECTS_FILTER,
   subjectController.getSubjectsByGradeAndSyllabus.bind(subjectController)
 );
 
@@ -84,7 +85,7 @@ import { CourseRequestController } from "@/controllers/courseRequest.controller"
 const courseRequestController = container.get<CourseRequestController>(TYPES.CourseRequestController);
 
 studentRouter.post(
-  "/course-request",
+  STUDENT_ROUTES.COURSE_REQUEST,
   requireAuth,
   requireRole("student"),
   courseRequestController.createRequest.bind(courseRequestController)
@@ -94,23 +95,39 @@ import { CourseController } from "@/controllers/course.controller";
 const courseController = container.get<CourseController>(TYPES.CourseController);
 
 studentRouter.get(
-  "/available-courses",
+  STUDENT_ROUTES.AVAILABLE_COURSES,
   requireAuth,
   requireRole("student"),
   courseController.getAvailableCourses.bind(courseController)
 );
 
+// Get student's enrolled courses
+studentRouter.get(
+  STUDENT_ROUTES.MY_COURSES,
+  requireAuth,
+  requireRole("student"),
+  courseController.getStudentCourses.bind(courseController)
+);
+
 // ... (existing exports)
 
-import { validateBody } from "../middleware/validate.middleware";
-import { updateStudentProfileSchema } from "../validators/student.validator";
+
 import { StudentController } from "@/controllers/student.controller";
 import upload from "../middleware/upload.middleware";
 
 const studentController = container.get<StudentController>(TYPES.StudentController);
 
+// GET own profile (for authenticated student)
+studentRouter.get(
+  STUDENT_ROUTES.PROFILE,
+  requireAuth,
+  requireRole("student"),
+  studentController.getMyProfile.bind(studentController)
+);
+
+// UPDATE own profile
 studentRouter.put(
-  "/profile",
+  STUDENT_ROUTES.PROFILE,
   requireAuth,
   requireRole("student"),
   upload.fields([
@@ -119,6 +136,21 @@ studentRouter.put(
   ]),
   // validateBody(updateStudentProfileSchema), // Skip validation for FormData with files
   studentController.updateProfile.bind(studentController)
+);
+
+// Wallet routes
+studentRouter.get(
+  "/wallet",
+  requireAuth,
+  requireRole("student"),
+  studentController.getWallet.bind(studentController)
+);
+
+studentRouter.get(
+  "/wallet/transactions",
+  requireAuth,
+  requireRole("student"),
+  studentController.getTransactions.bind(studentController)
 );
 
 export default studentRouter;

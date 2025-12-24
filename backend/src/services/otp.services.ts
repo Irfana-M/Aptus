@@ -9,6 +9,7 @@ import { logger } from "../utils/logger";
 import { HttpStatusCode } from "../constants/httpStatus";
 import type { IEmailService } from "../interfaces/services/IEmailService";
 import { TYPES } from '../types';
+import { AppError } from '../utils/AppError';
 
 @injectable()
 export class OtpService implements IOtpService {
@@ -66,10 +67,10 @@ export class OtpService implements IOtpService {
         let html: string;
 
         if (otpPurpose === "signup") {
-          subject = "Verify your Mentora account";
+          subject = "Verify your Aptus account";
           html = `<p>Your verification OTP is <b>${otp}</b>. It expires in 10 minutes.</p>`;
         } else {
-          subject = "Mentora Password Reset OTP";
+          subject = "Aptus Password Reset OTP";
           html = `<p>Your password reset OTP is <b>${otp}</b>. It expires in 10 minutes.</p>`;
         }
 
@@ -78,10 +79,10 @@ export class OtpService implements IOtpService {
       }
 
       return savedOtp;
-    } catch (error: any) {
-      logger.error(`Failed to generate OTP for ${email}: ${error.message}`);
-      (error as any).statusCode = HttpStatusCode.INTERNAL_SERVER_ERROR;
-      throw error;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error(`Failed to generate OTP for ${email}: ${message}`);
+      throw new AppError(message, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 

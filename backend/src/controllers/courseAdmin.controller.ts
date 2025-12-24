@@ -3,12 +3,9 @@ import { injectable, inject } from "inversify";
 import type { ICourseAdminService } from "../interfaces/services/ICourseAdminService"
 import {TYPES} from "@/types";
 import { HttpStatusCode } from "@/constants/httpStatus";
-import type { ISubjectService } from "@/interfaces/services/ISubjectService";
-import type { IGradeService } from "@/interfaces/services/IGradeService";
 import { logger } from "@/utils/logger";
 import type { SubjectResponseDto } from "@/dto/student/subject.dto";
 import { AppError } from "@/utils/AppError";
-import type { GradeResponseDto } from "@/dto/student/grade.dto";
 
 @injectable()
 export class CourseAdminController {
@@ -20,9 +17,29 @@ export class CourseAdminController {
 
   getAvailableMentors = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const mentors = await this.courseService.getAvailableMentorsForCourse(
-          req.query as any
-        );
+        const { gradeId, subjectId, dayOfWeek, timeSlot, days } = req.query;
+        
+        const params: { 
+          gradeId: string; 
+          subjectId: string; 
+          dayOfWeek?: number; 
+          timeSlot?: string; 
+          days?: string[]; 
+        } = {
+          gradeId: (Array.isArray(gradeId) ? (gradeId[0] as string) : (gradeId as string)),
+          subjectId: (Array.isArray(subjectId) ? (subjectId[0] as string) : (subjectId as string)),
+          timeSlot: timeSlot as string,
+        };
+        
+        if (dayOfWeek) {
+           params.dayOfWeek = Array.isArray(dayOfWeek) ? parseInt(dayOfWeek[0] as string, 10) : parseInt(dayOfWeek as string, 10);
+        }
+        
+        if (days) {
+           params.days = Array.isArray(days) ? (days as string[]) : [days as string];
+        }
+
+        const mentors = await this.courseService.getAvailableMentorsForCourse(params);
         res.json({ success: true, data: mentors });
       } catch (err) {
         next(err);
@@ -87,10 +104,11 @@ getAllOneToOneCourses = async (req: Request, res: Response, next: NextFunction):
       message: "Courses fetched successfully",
       count: courses.length,
     });
-  } catch (error: any) {
-    console.error("ERROR in getAllOneToOneCourses:", error);
-    console.error("Error stack:", error.stack);
-    next(error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("ERROR in getAllOneToOneCourses:", err);
+    console.error("Error stack:", err.stack);
+    next(err);
   }
 };
 getAllGrades = async (req: Request, res: Response, next: NextFunction): Promise<void> => {

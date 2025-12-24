@@ -1,12 +1,12 @@
 {
   "compilerOptions": {
+    "ignoreDeprecations": "6.0",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     // File Layout
     "rootDir": "./src",
     "outDir": "./dist",
     "baseUrl": "./src",
-    "ignoreDeprecations": "6.0",
     "paths": {
       "@/*": [
         "*"
@@ -68,5 +68,6 @@
   "exclude": [
     "node_modules",
     "dist"
-  ]
+  ],
+  "ignoreDeprecations": "6.0"
 }

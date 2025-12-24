@@ -6,10 +6,20 @@ export interface User {
   isVerified: boolean;
   accessToken?: string;
   isProfileComplete?: boolean;
-  isPaid?: boolean;
+  hasPaid?: boolean;
   isTrialCompleted?: boolean;
   approvalStatus?: "pending" | "approved" | "rejected" | "pending-approval";
   profilePicture?: string;
+  referralCode?: string;
+  subscription?: {
+    status: 'active' | 'expired' | 'cancelled';
+    endDate: Date | string;
+    plan: 'monthly' | 'yearly';
+    subjectCount?: number;
+  };
+  profileImageUrl?: string;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
 }
 
 export interface AuthState {
@@ -20,6 +30,6 @@ export interface AuthState {
   isVerified: boolean;
   isAuthenticated?: boolean;
   isProfileComplete?: boolean;
-  isPaid?: boolean;
+  hasPaid?: boolean;
   isTrialCompleted?: boolean;
 }

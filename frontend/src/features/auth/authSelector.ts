@@ -7,7 +7,7 @@ export const selectCurrentUser = (state: RootState) => state.auth.user;
 export const selectIsVerified = (state: RootState) => state.auth.isVerified;
 export const selectIsProfileComplete = (state: RootState) =>
   state.auth.isProfileComplete;
-export const selectIsPaid = (state: RootState) => state.auth.isPaid;
+export const selectHasPaid = (state: RootState) => state.auth.hasPaid;
 
 export const selectUserRole = createSelector(
   [selectCurrentUser],
@@ -15,8 +15,8 @@ export const selectUserRole = createSelector(
 );
 
 export const selectRedirectPath = createSelector(
-  [selectCurrentUser, selectIsProfileComplete, selectIsPaid],
-  (user, isProfileComplete, isPaid) => {
+  [selectCurrentUser, selectIsProfileComplete, selectHasPaid],
+  (user, isProfileComplete, hasPaidState) => {
     if (!user) return "/login";
 
     if (user.role === "mentor") {
@@ -24,7 +24,15 @@ export const selectRedirectPath = createSelector(
     }
 
     if (user.role === "student") {
-      return isPaid ? "/student/dashboard" : "/book-free-trial";
+      const studentUser = user as { isTrialCompleted?: boolean; isProfileComplete?: boolean; hasPaid?: boolean };
+      const isTrialCompleted = studentUser.isTrialCompleted;
+      const isStudentProfileComplete = studentUser.isProfileComplete;
+      const hasPaid = studentUser.hasPaid || hasPaidState;
+      
+      if (hasPaid) return "/student/dashboard";
+      if (!isTrialCompleted) return "/student/book-free-trial";
+      if (!isStudentProfileComplete) return "/student/profile-setup";
+      return "/student/dashboard";
     }
 
     return "/";

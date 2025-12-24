@@ -10,18 +10,18 @@ export class CourseRequestRepository extends BaseRepository<CourseRequestDocumen
     super(CourseRequestModel);
   }
 
-  async findAll(): Promise<any[]> {
+  async findAll(): Promise<CourseRequestDocument[]> {
     return await CourseRequestModel.find()
       .populate('student', 'name email fullName') 
       .sort({ createdAt: -1 });
   }
 
-  async findByStudent(studentId: string): Promise<any[]> {
+  async findByStudent(studentId: string): Promise<CourseRequestDocument[]> {
     return await CourseRequestModel.find({ student: studentId })
       .sort({ createdAt: -1 });
   }
 
-  async updateStatus(id: string, status: string): Promise<any | null> {
+  async updateStatus(id: string, status: string): Promise<CourseRequestDocument | null> {
     return await CourseRequestModel.findByIdAndUpdate(
       id,
       { status },

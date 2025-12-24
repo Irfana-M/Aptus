@@ -5,6 +5,7 @@ import Topbar from '../../components/mentor/Topbar';
 import { Table, type TableColumn } from '../../components/mentor/Table';
 import { fetchMentorTrialClasses, fetchMentorProfile } from "../../features/mentor/mentorThunk";
 import type { AppDispatch, RootState } from "../../app/store";
+import type { TrialClass } from '../../types/studentTypes'; // Assuming TrialClass is defined here
 
 // Helper for date formatting
 const formatDate = (dateString: string) => {
@@ -39,15 +40,15 @@ const CompletedTrialClasses: React.FC = () => {
   // Filter for completed classes
   const completedClasses = (trialClasses || []).filter(cls => cls.status === 'completed');
 
-  const columns: TableColumn<any>[] = [
-    { header: 'Student Name', accessor: (item) => <span className="font-medium">{item.student.fullName}</span> },
+  const columns: TableColumn<TrialClass>[] = [
+    { header: 'Student Name', accessor: (item) => <span className="font-medium">{item.student?.fullName || 'Unknown'}</span> },
     { header: 'Subject', accessor: (item) => item.subject.subjectName },
-    { header: 'Grade', accessor: (item) => item.subject.grade },
+    { header: 'Grade', accessor: (item) => String(item.subject.grade || '') },
     { header: 'Date', accessor: (item) => formatDate(item.preferredDate) },
     { header: 'Time', accessor: (item) => item.preferredTime },
     { 
         header: 'Status', 
-        accessor: (item) => (
+        accessor: () => (
             <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
                 Completed
             </span>

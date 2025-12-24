@@ -15,6 +15,8 @@ import {
 } from "../../features/admin/adminSelectors";
 import type { AppDispatch, RootState } from "../../app/store";
 import { showToast } from "../../utils/toast";
+import type { Course } from "../../types/courseTypes";
+import type { Grade } from "../../features/admin/adminSelectors";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const TIME_SLOTS = [
@@ -32,39 +34,58 @@ const TIME_SLOTS = [
 ];
 
 interface CourseModalProps {
-  course?: any | null;
+  course?: Course | null; 
+  initialValues?: {
+    gradeId?: string;
+    subjectId?: string;
+    dayOfWeek?: number | string;
+    timeSlot?: string;
+    mentorId?: string;
+    studentId?: string;
+    startDate?: string;
+    endDate?: string;
+    fee?: string | number;
+  } | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave?: (courseData: any) => Promise<void>;
+  onSave?: (courseData: {
+    gradeId: string;
+    subjectId: string;
+    mentorId: string;
+    studentId: string;
+    schedule: {
+      days: string[];
+      timeSlot?: string;
+    };
+    startDate: string;
+    endDate: string;
+    fee: number;
+  }) => Promise<void>;
   loading?: boolean;
 }
 
-interface Grade {
-  _id: string;
-  name: string;
-  syllabus?: string;
-}
+// Grade interface removed as it is now imported from adminSelectors
 
-export const CourseModal: React.FC<CourseModalProps> = ({ course, isOpen, onClose, onSave }) => {
+export const CourseModal: React.FC<CourseModalProps> = ({ course, initialValues, isOpen, onClose, onSave }) => {
   const dispatch = useDispatch<AppDispatch>();
 
   // 1. DECLARE FORM STATE FIRST
   const [form, setForm] = useState({
-    gradeId: course?.grade?._id || "",
-    subjectId: course?.subject?._id || "",
-    dayOfWeek: course?.dayOfWeek?.toString() || "",
-    timeSlot: course?.timeSlot || "",
-    mentorId: course?.mentor?._id || "",
-    startDate: course?.startDate ? new Date(course.startDate).toISOString().split('T')[0] : "",
-    endDate: course?.endDate ? new Date(course.endDate).toISOString().split('T')[0] : "",
-    fee: course?.fee?.toString() || "",
+    gradeId: "",
+    subjectId: "",
+    dayOfWeek: "",
+    timeSlot: "",
+    mentorId: "",
+    studentId: "",
+    startDate: "",
+    endDate: "",
+    fee: "",
   });
 
-  // 2. THEN USE SELECTORS
+  // ... (selectors omitted for brevity, no changes needed there) ...
   const rawGrades = useSelector(selectGrades);
-  const grades = (Array.isArray(rawGrades) ? rawGrades : []) as Grade[];
+  const grades = useMemo(() => (Array.isArray(rawGrades) ? rawGrades : []) as Grade[], [rawGrades]);
   
-  // Use the correct selector syntax - get subjects by gradeId
   const subjectsMap = useSelector((state: RootState) => state.admin.subjects);
   const subjects = useMemo(() => {
     if (!form.gradeId) return [];
@@ -123,13 +144,40 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, isOpen, onClos
           dayOfWeek: course?.dayOfWeek?.toString() || "",
           timeSlot: course?.timeSlot || "",
           mentorId: course?.mentor?._id || "",
+          studentId: course?.student?._id || "",
           startDate: course?.startDate ? new Date(course.startDate).toISOString().split('T')[0] : "",
           endDate: course?.endDate ? new Date(course.endDate).toISOString().split('T')[0] : "",
           fee: course?.fee?.toString() || "",
         });
+      } else if (initialValues) {
+         setForm({
+          gradeId: initialValues?.gradeId || "",
+          subjectId: initialValues?.subjectId || "",
+          dayOfWeek: initialValues?.dayOfWeek?.toString() || "",
+          timeSlot: initialValues?.timeSlot || "",
+          mentorId: initialValues?.mentorId || "",
+          studentId: initialValues?.studentId || "",
+          startDate: initialValues?.startDate || "",
+          endDate: initialValues?.endDate || "",
+          fee: initialValues?.fee?.toString() || "",
+        });
+      } else {
+        // Reset to empty
+        setForm({
+            gradeId: "",
+            subjectId: "",
+            dayOfWeek: "",
+            timeSlot: "",
+            mentorId: "",
+            studentId: "",
+            startDate: "",
+            endDate: "",
+            fee: "",
+        });
+        setSelectedSyllabus("");
       }
     }
-  }, [isOpen, course]);
+  }, [isOpen, course, initialValues]);
 
   // Fetch subjects when grade changes
   useEffect(() => {
@@ -141,15 +189,16 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, isOpen, onClos
   // Fetch available mentors when SUBJECT is selected (ignore time/day for fetching)
   useEffect(() => {
     if (form.subjectId && form.gradeId) {
+      const selectedSubject = subjects.find(s => s._id === form.subjectId);
       dispatch(
         fetchAvailableMentorsForCourse({
           gradeId: form.gradeId,
-          subjectId: form.subjectId,
+          subject: selectedSubject?.name || "",
           // Removed time/day filters to show all proficient mentors
         })
       );
     }
-  }, [form.gradeId, form.subjectId, dispatch]);
+  }, [form.gradeId, form.subjectId, dispatch, subjects]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,8 +207,11 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, isOpen, onClos
         gradeId: form.gradeId,
         subjectId: form.subjectId,
         mentorId: form.mentorId,
-        dayOfWeek: form.dayOfWeek ? Number(form.dayOfWeek) : undefined,
-        timeSlot: form.timeSlot || undefined,
+        studentId: form.studentId || "placeholder-student-id", // Ensure student is selected, handling placeholders if creating generically
+        schedule: {
+            days: form.dayOfWeek ? [DAYS[Number(form.dayOfWeek)]] : [],
+            timeSlot: form.timeSlot || undefined,
+        },
         startDate: form.startDate,
         endDate: form.endDate,
         fee: Number(form.fee),
@@ -173,8 +225,9 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, isOpen, onClos
       }
       
       onClose();
-    } catch (error: any) {
-      showToast.error(error?.message || "Failed to create course");
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      showToast.error(err?.message || "Failed to create course");
     }
   };
 
@@ -269,10 +322,10 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, isOpen, onClos
             {/* Available Mentors (Moved up) */}
             {form.subjectId && (
               <div className="border-t pt-6 pb-6">
-                <h3 className="font-semibold mb-4">Available Mentors ({mentors.length})</h3>
+                <h3 className="font-semibold mb-4">Available Mentors ({(mentors.matches?.length || 0) + (mentors.alternates?.length || 0)})</h3>
                 <div className="grid gap-3 max-h-60 overflow-y-auto p-2">
-                  {Array.isArray(mentors) && mentors.length > 0 ? (
-                    mentors.map(m => (
+                  {Array.isArray(mentors.matches) && mentors.matches.length > 0 ? (
+                    mentors.matches.map(m => (
                       <label
                         key={m.id}
                         className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
@@ -297,7 +350,38 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, isOpen, onClos
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{m.fullName}</p>
                           <p className="text-sm text-gray-600">
-                            {m.level} • ★ {m.rating?.toFixed(1) || 'N/A'}
+                             ★ {m.rating?.toFixed(1) || 'N/A'}
+                          </p>
+                        </div>
+                      </label>
+                    ))
+                  ) : Array.isArray(mentors.alternates) && mentors.alternates.length > 0 ? (
+                    mentors.alternates.map(m => (
+                      <label
+                        key={m.id}
+                        className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
+                          form.mentorId === m.id ? "border-blue-500 bg-blue-50" : "border-gray-200"
+                        }`}
+                      >
+                         <input
+                          type="radio"
+                          name="mentor"
+                          value={m.id}
+                          checked={form.mentorId === m.id}
+                          onChange={e => setForm({ ...form, mentorId: e.target.value })}
+                          className="w-4 h-4 text-blue-600"
+                          disabled={creating}
+                          required
+                        />
+                        <img 
+                          src={m.profilePicture || "/avatar.png"} 
+                          alt={m.fullName}
+                          className="w-12 h-12 rounded-full object-cover border-2 border-gray-200" 
+                        />
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">{m.fullName}</p>
+                          <p className="text-sm text-gray-600">
+                             ★ {m.rating?.toFixed(1) || 'N/A'} (Alternate)
                           </p>
                         </div>
                       </label>

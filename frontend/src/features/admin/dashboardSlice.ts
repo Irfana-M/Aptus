@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import type { RootState } from "../../app/store";
-import authApi from "../../api/authApi";
+import adminApi from "../../api/adminApi";
 
 export interface Stat {
   id: string;
@@ -11,8 +11,8 @@ export interface Stat {
 export interface DashboardState {
   totalStudents: number;
   totalMentors: number;
-  recentStudents: any[];
-  recentMentors: any[];
+  recentStudents: Stat[];
+  recentMentors: Stat[];
   loading: boolean;
   error: string | null;
 }
@@ -30,12 +30,16 @@ export const fetchDashboardData = createAsyncThunk(
   "dashboard/fetchDashboardData",
   async (_, thunkAPI) => {
     try {
-      const response = await authApi.get("/admin/dashboard");
+      const response = await adminApi.get("/admin/dashboard");
       return response.data;
-    } catch (error: any) {
-      return thunkAPI.rejectWithValue(
-        error.response?.data?.message || error.message
-      );
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
+        return thunkAPI.rejectWithValue(
+          axiosError.response?.data?.message || axiosError.message
+        );
+      }
+      return thunkAPI.rejectWithValue('An unexpected error occurred');
     }
   }
 );

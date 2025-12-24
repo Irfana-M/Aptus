@@ -16,6 +16,7 @@ import type { RegisterUserDto } from '@/dto/auth/RegisteruserDTO';
 import type { MentorResponseDto } from '@/dto/mentor/MentorResponseDTO';
 import { MentorMapper } from '@/mappers/MentorMapper';
 import { TrialClassMapper } from '@/mappers/trialClassMapper';
+import type { TrialClassResponseDto } from "@/dto/student/trialClassDTO";
 
 @injectable()
 export class MentorService implements IMentorService {
@@ -53,6 +54,7 @@ export class MentorService implements IMentorService {
 
   async updateMentorProfile(
     mentorId: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data: any
   ): Promise<MentorProfile> {
     try {
@@ -142,6 +144,21 @@ export class MentorService implements IMentorService {
         }
       }
 
+      if (data.availability) {
+        try {
+          updateData.availability =
+            typeof data.availability === "string"
+              ? JSON.parse(data.availability)
+              : data.availability;
+          logger.debug(`Processed availability for mentor: ${mentorId}`);
+        } catch (parseError) {
+          logger.error(
+            `Error parsing availability for mentor ${mentorId}: ${parseError}`
+          );
+          throw new Error("Invalid availability format");
+        }
+      }
+
       if (data.profilePicture) {
         try {
           updateData.profilePicture = await this.handleProfilePictureUpload(
@@ -181,7 +198,7 @@ export class MentorService implements IMentorService {
 
   async submitProfileForApproval(
     mentorId: string,
-    requestingUserId: string
+    _requestingUserId: string
   ): Promise<{ message: string }> {
     const mentor = await this._mentorRepo.findById(mentorId);
     if (!mentor) throw new Error("Mentor not found");
@@ -216,12 +233,12 @@ export class MentorService implements IMentorService {
       try {
         await this._emailService.sendMail(
           updatedMentor.email,
-          "Mentora - Your Mentor Profile is Approved",
+          "Aptus - Your Mentor Profile is Approved",
           `<p>Hi ${updatedMentor.fullName},</p>
           <p>Congratulations — your mentor profile has been approved by our admin team.</p>
           <p>You can now access all mentor features and start helping students.</p>
           <br>
-          <p>Best regards,<br>The Mentora Team</p>`
+          <p>Best regards,<br>The Aptus Team</p>`
         );
         logger.info(
           `Approval email sent successfully to: ${updatedMentor.email}`
@@ -265,14 +282,14 @@ export class MentorService implements IMentorService {
       try {
         await this._emailService.sendMail(
           updatedMentor.email,
-          "Mentora - Mentor Profile Review Update",
+          "Aptus - Mentor Profile Review Update",
           `<p>Hi ${updatedMentor.fullName},</p>
           <p>Thank you for submitting your mentor profile for review.</p>
           <p>After careful consideration, we are unable to approve your profile at this time.</p>
           <p><strong>Reason:</strong> ${reason}</p>
           <p>Please review your profile, make the necessary updates, and resubmit for approval.</p>
           <br>
-          <p>Best regards,<br>The Mentora Team</p>`
+          <p>Best regards,<br>The Aptus Team</p>`
         );
         logger.info(
           `Rejection email sent successfully to: ${updatedMentor.email}`
@@ -293,6 +310,7 @@ export class MentorService implements IMentorService {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async handleProfilePictureUpload(file: any): Promise<string> {
     try {
       logger.debug("Handling profile picture upload:", {
@@ -326,7 +344,7 @@ export class MentorService implements IMentorService {
     }
   }
 
-  async getMentorTrialClasses(mentorId: string): Promise<any[]> {
+  async getMentorTrialClasses(mentorId: string): Promise<TrialClassResponseDto[]> {
     try {
       logger.info(`Fetching trial classes for mentor: ${mentorId}`);
       const trialClasses = await this._trialClassRepo.findByMentorId(mentorId);

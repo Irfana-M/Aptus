@@ -31,6 +31,7 @@ const TYPES = {
   ISocketService: Symbol.for("ISocketService"),
   IUserRoleService: Symbol.for('IUserRoleService'),
   ICourseAdminService: Symbol.for('ICourseAdminService'),
+  IAvailabilityService: Symbol.for('IAvailabilityService'),
   // Controllers
   AuthController: Symbol.for("AuthController"),
   AdminController: Symbol.for("AdminController"),
@@ -41,8 +42,11 @@ const TYPES = {
   SubjectController: Symbol.for("SubjectController"),
   RoleController: Symbol.for("RoleController"),
   VideoCallController: Symbol.for("VideoCallController"),
+  MentorTrialClassController: Symbol.for("MentorTrialClassController"),
   StudentController: Symbol.for("StudentController"),
   CourseAdminController: Symbol.for("CourseAdminController"),
+  PaymentController: Symbol.for("PaymentController"),
+  AvailabilityController: Symbol.for("AvailabilityController"),
   // Middleware
   AuthMiddleware: Symbol.for("AuthMiddleware"),
   RoleMiddleware: Symbol.for("RoleMiddleware"),
@@ -57,11 +61,13 @@ const TYPES = {
   CourseController: Symbol.for("CourseController"),
   ICourseService: Symbol.for("ICourseService"),
   ICourseRequestService: Symbol.for("ICourseRequestService"),
+  IPaymentService: Symbol.for("IPaymentService"),
   IEnrollmentService: Symbol.for("IEnrollmentService"),
   IEnrollmentRepository: Symbol.for("IEnrollmentRepository"),
   EnrollmentController: Symbol.for("EnrollmentController"),
   IMentorDashboardService: Symbol.for("IMentorDashboardService"),
   MentorDashboardController: Symbol.for("MentorDashboardController"),
+  IWalletService: Symbol.for("IWalletService"),
 };
 
 export { TYPES };

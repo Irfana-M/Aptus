@@ -1,10 +1,11 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
 import type { StudentProfile } from "../../interfaces/models/student.interface";
 
 const parentInfoSchema = new Schema({
   name: String,
   email: String,
   phoneNumber: String,
+  relationship: String,
 });
 
 const contactInfoSchema = new Schema({
@@ -33,7 +34,24 @@ const studentSchema = new Schema<StudentProfile>(
     academicDetails: academicDetailsSchema,
     gradeId: { type: Schema.Types.ObjectId, ref: 'Grade' },
     profileImage: { type: String },
+    profileImageKey: { type: String },
     goal: { type: String },
+    subscription: {
+      plan: { type: String, enum: ['monthly', 'yearly'] },
+      startDate: { type: Date },
+      endDate: { type: Date },
+      renewalDate: { type: Date },
+      expiryDate: { type: Date },
+      status: { type: String, enum: ['active', 'expired', 'cancelled'], default: 'expired' },
+      sessionId: { type: String },
+      paymentIntentId: { type: String },
+      subjectCount: { type: Number, default: 1 },
+      availability: [{
+        day: String,
+        startTime: String,
+        endTime: String
+      }]
+    },
     isVerified: { type: Boolean, required: true, default: false },
     isBlocked: { type: Boolean, default: false },
     hasPaid: { type: Boolean, default: false },
@@ -45,9 +63,13 @@ const studentSchema = new Schema<StudentProfile>(
       default: "local",
     },
     googleId: { type: String },
+    referralCode: { type: String, unique: true, sparse: true },
+    referredBy: { type: String },
   },
   { timestamps: true }
 );
+
+export type StudentDocument = StudentProfile & Document;
 
 export const StudentModel = mongoose.model<StudentProfile>(
   "Student",

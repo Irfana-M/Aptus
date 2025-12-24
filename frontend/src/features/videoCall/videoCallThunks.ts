@@ -17,7 +17,7 @@ interface EndCallPayload {
  * Initialize a video call
  */
 export const initializeVideoCall = createAsyncThunk<
-  any,
+  { roomId: string; token: string; [key: string]: unknown },
   JoinCallPayload,
   { state: RootState }
 >(
@@ -36,7 +36,7 @@ export const initializeVideoCall = createAsyncThunk<
  * Fetch call status
  */
 export const fetchCallStatus = createAsyncThunk<
-  any,
+  { status: 'active' | 'ended' | 'scheduled'; [key: string]: unknown },
   string,
   { state: RootState }
 >(
@@ -51,7 +51,7 @@ export const fetchCallStatus = createAsyncThunk<
  * End a video call
  */
 export const endVideoCall = createAsyncThunk<
-  any,
+  { success: boolean; [key: string]: unknown },
   EndCallPayload,
   { state: RootState }
 >(

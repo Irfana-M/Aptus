@@ -27,7 +27,7 @@ export const uploadFileToS3 = async (
     .toString("hex")}${fileExtension}`;
 
   const uploadParams = {
-    Bucket: process.env.AWS_S3_BUCKET!,
+    Bucket: process.env.AWS_S3_BUCKET || process.env.S3_BUCKET_NAME!,
     Key: randomName,
     Body: file.buffer,
     ContentType: file.mimetype,
@@ -43,7 +43,7 @@ export const getSignedFileUrl = async (key: string): Promise<string> => {
     console.log("🔍 getSignedFileUrl - Generating URL for key:", key);
 
     const command = new GetObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET!,
+      Bucket: process.env.AWS_S3_BUCKET || process.env.S3_BUCKET_NAME!,
       Key: key,
     });
 

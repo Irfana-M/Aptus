@@ -2,21 +2,23 @@ import { MentorModel } from "../models/mentor/mentor.model";
 import type { IMentorRepository, MentorPaginatedResult } from "../interfaces/repositories/IMentorRepository";
 import type { MentorProfile } from "../interfaces/models/mentor.interface";
 import { BaseRepository } from "./baseRepository";
+import { Model, type Document, type PipelineStage } from "mongoose";
+import type { FilterQuery } from "mongoose";
 import { logger } from "../utils/logger";
 import { HttpStatusCode } from "../constants/httpStatus";
 import { getSignedFileUrl } from "../utils/s3Upload";
 import { injectable } from "inversify";
-import { AppError } from "@/utils/AppError";
-import { Subject } from "@/models/subject.model";
-import type { MentorPaginationParams } from "@/dto/shared/paginationTypes";
+import { AppError } from "../utils/AppError";
+import { Subject } from "../models/subject.model";
+import type { MentorPaginationParams } from "../dto/shared/paginationTypes";
 
 @injectable()
 export class MentorRepository
-  extends BaseRepository<MentorProfile>
+  extends BaseRepository<MentorProfile & Document>
   implements IMentorRepository
 {
   constructor() {
-    super(MentorModel);
+    super(MentorModel as unknown as Model<MentorProfile & Document>);
   }
 
   async findByEmail(email: string): Promise<MentorProfile | null> {
@@ -35,8 +37,8 @@ export class MentorRepository
 
       logger.info(`Mentor found with email: ${email}`);
       return mentor as MentorProfile;
-    } catch (error: any) {
-      logger.error(`Error finding mentor by email - ${error.message}`);
+    } catch (error: unknown) {
+      logger.error(`Error finding mentor by email - ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw new AppError(
         "Failed to find mentor by email",
         HttpStatusCode.INTERNAL_SERVER_ERROR
@@ -67,8 +69,9 @@ export class MentorRepository
       }
 
       return mentorObj;
-    } catch (error: any) {
-      logger.error(`Error in getProfileWithImage: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error(`Error in getProfileWithImage: ${errorMessage}`);
       throw error;
     }
   }
@@ -105,8 +108,9 @@ export class MentorRepository
         `Fetched all mentors with images, count=${mentorsWithImages.length}`
       );
       return mentorsWithImages;
-    } catch (error: any) {
-      logger.error(`Error fetching all mentors - ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      logger.error(`Error fetching all mentors - ${errorMessage}`);
       throw new AppError(
         "Failed to fetch mentors",
         HttpStatusCode.INTERNAL_SERVER_ERROR
@@ -136,9 +140,10 @@ export class MentorRepository
       }
       logger.info(`Mentor submitted for approval: ${id}`);
       return updatedMentor;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error(
-        `Error submitting mentor for approval: ${id} - ${error.message}`
+        `Error submitting mentor for approval: ${id} - ${errorMessage}`
       );
       throw new AppError(
         "Failed to submit mentor for approval",
@@ -155,8 +160,9 @@ export class MentorRepository
         .exec();
       logger.info(`Fetched pending mentor approvals, count=${mentors.length}`);
       return mentors;
-    } catch (error: any) {
-      logger.error(`Error fetching pending approvals - ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error(`Error fetching pending approvals - ${errorMessage}`);
       throw new AppError(
         "Failed to fetch pending approvals",
         HttpStatusCode.INTERNAL_SERVER_ERROR
@@ -170,7 +176,7 @@ export class MentorRepository
     rejectionReason?: string
   ): Promise<MentorProfile | null> {
     try {
-      const update: any = { approvalStatus: status };
+      const update: Record<string, unknown> = { approvalStatus: status };
       if (status === "rejected") update.rejectionReason = rejectionReason || "";
       if (status === "approved") update.rejectionReason = undefined;
 
@@ -186,9 +192,10 @@ export class MentorRepository
 
       logger.info(`Mentor approval status updated: ${id}, status=${status}`);
       return updatedMentor;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error(
-        `Error updating approval status for mentor: ${id} - ${error.message}`
+        `Error updating approval status for mentor: ${id} - ${errorMessage}`
       );
       throw new AppError(
         "Failed to update approval status",
@@ -198,100 +205,84 @@ export class MentorRepository
   }
 
 // In your MentorRepository - fix the query
-async findBySubjectProficiency(subjectName: string, date?: string): Promise<MentorProfile[]> {
-  try {
-    console.log('🔍 Repository: Searching for mentors with subject:', subjectName);
-    
-    const query: any = {
-      approvalStatus: "approved",
-      isBlocked: false,
-      isVerified: true,
-      "subjectProficiency.subject": {
-        $regex: subjectName.trim(),
-        $options: 'i' // case-insensitive
-      }
-    };
+  async findBySubjectProficiency(subjectName: string): Promise<MentorProfile[]> {
+    try {
+      logger.debug(`Repository: Searching for mentors with subject: ${subjectName}`);
+      
+      const query: FilterQuery<MentorProfile> = {
+        approvalStatus: "approved",
+        isBlocked: { $ne: true },
+        subjectProficiency: {
+          $elemMatch: {
+            subject: {
+              $regex: subjectName.trim(),
+              $options: 'i' // case-insensitive
+            }
+          }
+        }
+      };
 
-    console.log('🔍 Repository query:', JSON.stringify(query, null, 2));
+      const mentors = await this.model
+        .find(query)
+        .select('-password')
+        .lean()
+        .exec();
 
-    const mentors = await this.model
-      .find(query)
-      .select('-password')
-      .lean()
-      .exec();
-
-    console.log('🔍 Repository found:', mentors.length, 'mentors');
-    console.log('Found mentor IDs:', mentors.map((m: { _id: any; fullName: any; }) => ({ id: m._id, name: m.fullName })));
-    
-    return mentors;
-  } catch (error) {
-    console.error('❌ Repository error:', error);
-    logger.error(`MentorRepository: Error finding mentors by subject ${subjectName}`, error);
-    throw error;
+      logger.info(`Repository found: ${mentors.length} mentors`);
+      
+      return mentors;
+    } catch (error) {
+      logger.error(`MentorRepository: Error finding mentors by subject ${subjectName}`, error);
+      throw error;
+    }
   }
-}
 
-async findAvailableMentors(params: {
+
+  async findAvailableMentors(params: {
     gradeId: string;
     subjectId: string;
-    dayOfWeek?: number;
+    days?: string[];
     timeSlot?: string;
   }) {
 
-   const { gradeId, subjectId, dayOfWeek, timeSlot } = params;    
-   const subject = await Subject.findById(subjectId);
-   if(!subject) throw new AppError("Subject not found", HttpStatusCode.NOT_FOUND);
+    const { subjectId, days, timeSlot } = params;
+    
+    let subjectName = "";
 
-   const subjectName = subject.subjectName;
+    // Check if subjectId is a valid ObjectId
+    const isValidId = /^[0-9a-fA-F]{24}$/.test(subjectId);
 
-   const matchStage: any = {
-    isActive: { $ne: false },
-    isVerified: true,
-    approvalStatus: "approved",
-    isBlocked: false,
-    subjectProficiency: {
-      $elemMatch: {
-        subject: { $regex: new RegExp(`^${subjectName}$`, "i") },
-        level: { $in: ["intermediate", "expert"] }
-      }
-    }
-   };
-
-   logger.info(`🔍 findAvailableMentors query for '${subjectName}': ${JSON.stringify(matchStage)}`);
-
-   if (dayOfWeek !== undefined && timeSlot) {
-      matchStage["availability"] = {
-        $elemMatch: { 
-          dayOfWeek,
-          timeSlots: timeSlot,
-        },
-      };
+    if (isValidId) {
+      const subject = await Subject.findById(subjectId);
+      if (!subject) throw new AppError("Subject not found", HttpStatusCode.NOT_FOUND);
+      subjectName = subject.subjectName;
+    } else {
+      // Assume it is the name
+      subjectName = subjectId;
     }
 
-    const result = await MentorModel.aggregate([
+    // 1. Base Match: Active, Verified, Approved, Subject Match
+    const matchStage: FilterQuery<MentorProfile> = {
+     isActive: { $ne: false },
+     isVerified: true,
+     approvalStatus: "approved",
+     isBlocked: false,
+     subjectProficiency: {
+       $elemMatch: {
+         subject: { $regex: new RegExp(`^${subjectName}$`, "i") },
+         level: { $in: ["intermediate", "expert"] }
+       }
+     }
+    };
+
+    logger.info(`🔍 findAvailableMentors query for '${subjectName}'`);
+
+    // 2. Lookup conflicting courses (if time provided)
+    // We do NOT filter by time availability in the initial match anymore
+    // We fetch ALL mentors for the subject, then check their specific availability in the result.
+    
+    const pipeline: PipelineStage[] = [
       { $match: matchStage },
-      {
-        $lookup: {
-          from: "courses",
-          let: { mentorId: "$_id" },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ["$mentor", "$$mentorId"] },
-                    { $eq: ["$status", "booked"] },
-                    { $eq: ["$dayOfWeek", dayOfWeek] },
-                    { $eq: ["$timeSlot", timeSlot] },
-                  ],
-                },
-              },
-            },
-          ],
-          as: "conflictingBookings",
-        },
-      },
-      { $match: { conflictingBookings: { $size: 0 } } }, // no conflict
       {
         $project: {
           fullName: 1,
@@ -301,11 +292,64 @@ async findAvailableMentors(params: {
           availability: 1,
           subjectProficiency: 1,
         },
-      },
-    ]);
+      }
+    ];
+
+    if (days && days.length > 0 && timeSlot) {
+        // We still want to know if they represent a "Perfect Match"
+        // But we return everyone. The Service will filter based on the availability and conflicts.
+        // Actually, to make it efficient, we can check conflicts here but keep them in the result?
+        // Let's just return the availability and let the Service or Controller classify them.
+        
+        // However, we MUST check for "Conflicting Bookings" to know if they are available at the requested time.
+        // We can add a field "hasConflict" if they are booked at that time.
+        pipeline.push({
+            $lookup: {
+                from: "courses",
+                let: { mentorId: "$_id" },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $eq: ["$mentor", "$$mentorId"] },
+                                    { $eq: ["$status", "booked"] },
+                                    { $eq: ["$schedule.timeSlot", timeSlot] },
+                                    { $gt: [ { $size: { $setIntersection: ["$schedule.days", days] } }, 0 ] }
+                                ]
+                            }
+                        }
+                    }
+                ],
+                as: "conflictingBookings"
+            }
+        });
+    }
+
+    const mentors = await MentorModel.aggregate(pipeline);
     
-    logger.info(`🔍 findAvailableMentors found ${result.length} matches`);
-    return result;
+    // Sign URLs for profile pictures
+    const mentorsWithImages = await Promise.all(mentors.map(async (mentor) => {
+        const mentorObj = { ...mentor };
+        if (mentor.profilePicture) {
+            try {
+                if (mentor.profilePicture.startsWith('http')) {
+                    mentorObj.profileImageUrl = mentor.profilePicture;
+                } else {
+                    mentorObj.profileImageUrl = await getSignedFileUrl(mentor.profilePicture);
+                }
+            } catch (error) {
+                logger.error(`Error signing URL for findAvailableMentors result ${mentor._id}:`, error);
+                mentorObj.profileImageUrl = null;
+            }
+        } else {
+            mentorObj.profileImageUrl = null;
+        }
+        return mentorObj;
+    }));
+
+    logger.info(`🔍 findAvailableMentors found ${mentorsWithImages.length} subject potential matches`);
+    return mentorsWithImages;
   }
 
   async findAllMentorsPaginated(params: MentorPaginationParams): Promise<MentorPaginatedResult> {
@@ -318,7 +362,7 @@ async findAvailableMentors(params: {
       const subject = params.subject || '';
 
       // Build the query filter
-      const query: any = {};
+      const query: FilterQuery<MentorProfile> = {};
 
       // Search filter (fullName or email)
       if (search) {
@@ -355,7 +399,7 @@ async findAvailableMentors(params: {
 
 
       const mentorsWithImages = await Promise.all(
-        mentors.map(async (mentor: MentorProfile) => {
+        mentors.map(async (mentor :MentorProfile) => {
           const mentorObj = { ...mentor } as MentorProfile;
 
           if (mentor.profilePicture) {
@@ -384,8 +428,9 @@ async findAvailableMentors(params: {
         mentors: mentorsWithImages,
         total
       };
-    } catch (error: any) {
-      logger.error(`Error in findAllMentorsPaginated: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error(`Error in findAllMentorsPaginated: ${errorMessage}`);
       throw new AppError(
         'Failed to fetch paginated mentors',
         HttpStatusCode.INTERNAL_SERVER_ERROR

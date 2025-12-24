@@ -1,4 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
+import { store, type RootState } from "../../app/store";
 import { authApi } from "./authApi";
 import type {
   RegisterUserDto,
@@ -51,14 +52,48 @@ export const resendOtp = createAsyncThunk<void, string>(
 );
 
 export const refreshAccessToken = createAsyncThunk<
-  { accessToken: string },
+  LoginResponse,
   void,
   { rejectValue: string }
->("auth/refreshToken", async (_, { rejectWithValue }) => {
+> ("auth/refreshToken", async (_, { rejectWithValue, getState }) => {
+  const state = getState() as RootState;
+  if (state.auth.loading) {
+      return rejectWithValue("Refresh already in progress");
+  }
   try {
     const res = await authApi.refreshToken();
-    return res.data;
+    const { user, accessToken, isProfileComplete, isPaid, isTrialCompleted } = res.data;
+    
+    if (accessToken && user.role) {
+        localStorage.setItem(`${user.role}_accessToken`, accessToken);
+        localStorage.setItem("userRole", user.role);
+    }
+    return {
+        user: {
+            ...user,
+            isProfileComplete,
+            hasPaid: isPaid,
+            isTrialCompleted,
+        },
+        accessToken,
+        isProfileComplete,
+        isPaid,
+        hasPaid: isPaid,
+        isTrialCompleted,
+    };
   } catch (err: unknown) {
+    // Determine role to clear specifically
+    const state = store.getState() as RootState;
+    const role = state.auth.user?.role;
+    
+    if (role) {
+      localStorage.removeItem(`${role}_accessToken`);
+    } else {
+      // Fallback: try to find which one failed if multiple exist (discovery)
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("userRole");
+    }
+    
     return rejectWithValue(
       getApiErrorMessage(err, "Token refresh failed")
     );
@@ -78,16 +113,23 @@ export const loginUser = createAsyncThunk<
     try {
       const res = await authApi.login(data);
       const { user, accessToken, isProfileComplete, isPaid, isTrialCompleted } = res.data;
+      
+      if (accessToken && user.role) {
+          localStorage.setItem(`${user.role}_accessToken`, accessToken);
+          localStorage.setItem("userRole", user.role);
+          localStorage.setItem("userId", user._id);
+      }
+      
       return {
         user: {
           ...user,
           isProfileComplete,
-          isPaid,
+          hasPaid: isPaid,
           isTrialCompleted,
         },
         accessToken,
         isProfileComplete,
-        isPaid,
+        hasPaid: isPaid,
         isTrialCompleted,
       };
     } catch (err: unknown) {
@@ -104,11 +146,28 @@ export const logoutUser = createAsyncThunk(
     } catch (err: unknown) {
       console.error("Backend logout failed", err);
     } finally {
-      dispatch(logout());
 
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("token");
-      localStorage.removeItem("signupEmail");
+      
+      const state = store.getState() as RootState;
+      const role = state.auth.user?.role;
+      
+      dispatch(logout());
+      
+      if (role) {
+          localStorage.removeItem(`${role}_accessToken`);
+      }
+      
+      // Clear shared user state but NOT admin state
+      const sharedKeys = [
+        "accessToken",
+        "userRole",
+        "userId",
+        "isTrialCompleted",
+        "isProfileComplete",
+        "hasPaid"
+      ];
+      sharedKeys.forEach(key => localStorage.removeItem(key));
+      sessionStorage.clear();
     }
   }
 );

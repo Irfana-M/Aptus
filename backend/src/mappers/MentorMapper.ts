@@ -14,13 +14,9 @@ import type {
 } from "../dto/mentor/MentorResponseDTO";
 export class MentorMapper {
   static toResponseDto(mentor: MentorProfile): MentorResponseDto {
-    let mentorData: MentorProfile;
-
-    if (mentor && typeof (mentor as any).toObject === "function") {
-      mentorData = (mentor as any).toObject();
-    } else {
-      mentorData = mentor;
-    }
+    const mentorData = (mentor && 'toObject' in mentor && typeof mentor.toObject === 'function') 
+      ? (mentor as { toObject: () => MentorProfile }).toObject() 
+      : mentor as MentorProfile;
     console.log("🔍 Mapper - Processing mentor:", {
       id: mentorData._id,
       profileImageUrl: mentorData.profileImageUrl,

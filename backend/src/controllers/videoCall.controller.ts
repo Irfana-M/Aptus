@@ -33,10 +33,11 @@ export class VideoCallController {
         data: { meetLink: result.meetLink, callStatus: 'active' }, 
         message: 'Video call started successfully' 
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error starting call', error);
       const status = error instanceof AppError ? error.statusCode : HttpStatusCode.INTERNAL_SERVER_ERROR;
-      res.status(status).json({ success: false, message: error.message || 'Internal server error' });
+      const message = error instanceof Error ? error.message : 'Internal server error';
+      res.status(status).json({ success: false, message });
     }
   };
 
@@ -50,10 +51,11 @@ export class VideoCallController {
 
       const status = await this.videoCallService.getCallStatus(trialClassId);
       res.status(HttpStatusCode.OK).json({ success: true, data: status });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error getting call status', error);
       const status = error instanceof AppError ? error.statusCode : HttpStatusCode.INTERNAL_SERVER_ERROR;
-      res.status(status).json({ success: false, message: error.message || 'Internal server error' });
+      const message = error instanceof Error ? error.message : 'Internal server error';
+      res.status(status).json({ success: false, message });
     }
   };
 
@@ -66,10 +68,11 @@ export class VideoCallController {
 
       const result = await this.videoCallService.endCall({ trialClassId, endedBy: userId, reason });
       res.status(HttpStatusCode.OK).json({ success: result.success, message: 'Call ended successfully' });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error ending call', error);
       const status = error instanceof AppError ? error.statusCode : HttpStatusCode.INTERNAL_SERVER_ERROR;
-      res.status(status).json({ success: false, message: error.message || 'Internal server error' });
+      const message = error instanceof Error ? error.message : 'Internal server error';
+      res.status(status).json({ success: false, message });
     }
   };
 }

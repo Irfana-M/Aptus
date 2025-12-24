@@ -14,7 +14,7 @@ type FormField = "fullName" | "email" | "phoneNumber" | "location" | "bio";
 interface MentorModalProps {
   mentor?: MentorProfile | null;
   onClose: () => void;
-  onSave: (data: any) => void;
+  onSave: (data: unknown) => void;
   isOpen: boolean;
   loading?: boolean;
 }

@@ -30,11 +30,12 @@ export class OtpController {
       res
         .status(200)
         .json({ success: true, message: "OTP verified successfully" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error verifying OTP:", error);
+      const message = error instanceof Error ? error.message : "Internal server error";
       res
         .status(500)
-        .json({ success: false, message: "Internal server error" });
+        .json({ success: false, message });
     }
   };
 
@@ -47,8 +48,9 @@ export class OtpController {
       res
         .status(200)
         .json({ success: true, message: "OTP resent successfully" });
-    } catch (error: any) {
-      res.status(400).json({ success: false, message: error.message });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(400).json({ success: false, message });
     }
   };
 }

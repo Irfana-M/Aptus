@@ -24,6 +24,7 @@ export interface TrialClassSubject {
   subjectName: string;
   syllabus: string;
   gradeId: string;
+  grade?: string | number;
 }
 
 export interface TrialClassMentor {
@@ -41,7 +42,7 @@ export interface TrialClassFeedback {
 
 export interface TrialClass {
   id: string;
-  student: TrialClassStudent;
+  student?: TrialClassStudent;
   subject: TrialClassSubject;
   preferredDate: string;
   preferredTime: string;
@@ -52,8 +53,8 @@ export interface TrialClass {
   notes?: string;
   scheduledDateTime?: string;
   feedback?: TrialClassFeedback;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 

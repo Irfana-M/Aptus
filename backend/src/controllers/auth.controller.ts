@@ -9,7 +9,6 @@ import { logger } from "../utils/logger";
 import type { RegisterUserDto } from "../dto/auth/RegisteruserDTO";
 import type { LoginUserDto } from "../dto/auth/LoginUserDTO";
 import type { SendOtpDto } from "../dto/auth/OtpDTO";
-import type { ForgotPasswordDto } from "../dto/auth/ForgotPasswordDTO";
 import { generateAccessToken, verifyRefreshToken } from "@/utils/jwt.util";
 import { AppError } from "@/utils/AppError";
 import { config } from "../config/app.config";
@@ -120,16 +119,47 @@ export class AuthController {
         email: payload.email,
       });
 
+      const userData = await this._authService.getUserById(payload.id, payload.role);
+
       logger.info(
         `Access token refreshed for user ${payload.id} (${payload.role})`
       );
 
+      const userResponse: Record<string, unknown> = {
+        ...userData.user,
+        role: payload.role,
+        isProfileComplete: userData.isProfileComplete,
+        isPaid: userData.isPaid,
+        isTrialCompleted: userData.isTrialCompleted,
+      };
+
+      if (payload.role === 'student') {
+        // Explicitly pass subscription
+        userResponse.subscription = (userData.user as { subscription?: unknown }).subscription;
+      }
+
       return res.status(HttpStatusCode.OK).json({
         success: true,
         accessToken: newAccessToken,
+        user: userResponse,
+        isProfileComplete: userData.isProfileComplete,
+        isPaid: userData.isPaid,
+        isTrialCompleted: userData.isTrialCompleted,
         message: "Access token refreshed successfully",
       });
     } catch (error) {
+      // Clear cookie immediately on any refresh failure to prevent infinite loops
+      res.clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      });
+
+      // If user not found, strictly return 401 so frontend knows to logout
+      if (error instanceof AppError && error.message === "User not found") {
+         return next(new AppError("User account no longer exists", HttpStatusCode.UNAUTHORIZED));
+      }
+
       next(
         error instanceof AppError
           ? error
@@ -187,7 +217,7 @@ export class AuthController {
   getMe = async (req: Request, res: Response) => {
     try {
       // req.user is populated by the auth middleware
-      const user = (req as any).user;
+      const user = req.user;
 
       if (!user) {
         return res.status(HttpStatusCode.UNAUTHORIZED).json({
@@ -200,11 +230,13 @@ export class AuthController {
         success: true,
         user: user,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error in getMe:", error);
+      const err = error as Error;
       return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: "Failed to fetch user details",
+        error: err.message
       });
     }
   };

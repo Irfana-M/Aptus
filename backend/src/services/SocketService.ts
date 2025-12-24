@@ -1,10 +1,10 @@
 import { injectable, inject } from "inversify";
 import { Server, Socket } from 'socket.io';
+import type { Server as HttpServer } from 'http';
 import { logger } from "@/utils/logger";
 import { TYPES } from "@/types";
 import type { IVideoCallService } from "@/interfaces/services/IVideoCallService";
 import type { ISocketService } from "@/interfaces/services/ISocketService";
-import type { UserRoleService } from "./userRole.service";
 import type { 
   JoinCallRequestDto, 
   WebRTCOfferDto, 
@@ -24,17 +24,21 @@ interface JwtPayload {
   exp?: number;
 }
 
+interface SocketWithUser extends Socket {
+  user?: JwtPayload;
+}
+
 @injectable()
 export class SocketService implements ISocketService {
   private io!: Server;
-  private static httpServer: any = null;
+  private static httpServer: HttpServer | null = null;
 
   constructor(
     @inject(TYPES.IVideoCallService) private videoCallService: IVideoCallService,
     @inject(TYPES.IUserRoleService) private userRoleService: IUserRoleService
   ) {}
 
-  public static attach(server: any): void {
+  public static attach(server: HttpServer): void {
     SocketService.httpServer = server;
   }
 
@@ -57,7 +61,7 @@ export class SocketService implements ISocketService {
     // ========== SOCKET AUTH MIDDLEWARE ==========
     this.io.use(async (socket, next) => {
       
-       try { fs.appendFileSync('debug_socket.log', `[SOCKET AUTH] Middleware triggered for socket ${socket.id}\n`); } catch (e) {} console.log('🔐 [SOCKET AUTH] Middleware triggered');
+       try { fs.appendFileSync('debug_socket.log', `[SOCKET AUTH] Middleware triggered for socket ${socket.id}\n`); } catch { /* ignore */ } console.log('🔐 [SOCKET AUTH] Middleware triggered');
       
       // Get token from auth or headers
       const token = socket.handshake.auth?.token || 
@@ -97,15 +101,15 @@ export class SocketService implements ISocketService {
         }
         
         // Attach verified user to socket
-        (socket as any).user = {
+        (socket as SocketWithUser).user = {
           id: decoded.id,
           email: decoded.email,
           role: decoded.role
         };
         
-        console.log('[SOCKET AUTH] User attached to socket:', (socket as any).user);
+        console.log('[SOCKET AUTH] User attached to socket:', (socket as SocketWithUser).user);
         next();
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('[SOCKET AUTH] Token verification failed:', error);
         return next(new Error('Invalid token'));
       }
@@ -113,12 +117,12 @@ export class SocketService implements ISocketService {
 
     // ========== SOCKET EVENT HANDLERS ==========
     this.io.on('connection', (socket: Socket) => {
-      const user = (socket as any).user;
+      const user = (socket as SocketWithUser).user;
       logger.info(`New client connected: ${socket.id}, user: ${user?.email} (${user?.role})`);
 
       socket.on('join-call', async (data: JoinCallRequestDto) => {
         try {
-          const socketUser = (socket as any).user;
+          const socketUser = (socket as SocketWithUser).user;
           
           console.log('📞 [JOIN-CALL] Event received:', {
             socketId: socket.id,
@@ -146,7 +150,8 @@ export class SocketService implements ISocketService {
           const roomName = `trial-class-${data.trialClassId}`;
           await socket.join(roomName);
 
-          console.log(`[JOIN-CALL] User ${socketUser.email} joined room: ${roomName}`);
+          const clientsInRoom = Array.from(this.io.sockets.adapter.rooms.get(roomName) || []);
+          console.log(`[JOIN-CALL] User ${socketUser.email} joined room: ${roomName}. Current clients:`, clientsInRoom);
 
           // Call video service to join call
           const result = await this.videoCallService.joinCall({
@@ -160,6 +165,7 @@ export class SocketService implements ISocketService {
           }
 
           // Notify everyone in the room (including sender)
+          console.log(`[JOIN-CALL] Broadcasting user-joined to room: ${roomName}`);
           this.io.to(roomName).emit('user-joined', {
             userId: data.userId,
             userType: data.userType,
@@ -234,10 +240,10 @@ export class SocketService implements ISocketService {
   }
 
   public getIO(): Server { return this.io; }
-  public emitToRoom(room: string, event: string, data: any) {
+  public emitToRoom(room: string, event: string, data: unknown) {
     this.io.to(room).emit(event, data);
   }
-  public emitToUser(socketId: string, event: string, data: any) {
+  public emitToUser(socketId: string, event: string, data: unknown) {
     this.io.to(socketId).emit(event, data);
   }
 }

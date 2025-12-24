@@ -1,4 +1,3 @@
-import type { ITrialClassDocument } from "@/models/student/trialClass.model";
 
 export interface DashboardStats {
   totalClasses: number;

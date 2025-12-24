@@ -6,7 +6,7 @@ import { logger } from "@/utils/logger";
 import { AppError } from "@/utils/AppError";
 import { HttpStatusCode } from "@/constants/httpStatus";
 import type { IGradeService } from "@/interfaces/services/IGradeService";
-
+import type { IGrade } from "@/models/grade.model";
 
 @injectable()
 export class GradeService implements IGradeService {
@@ -52,9 +52,21 @@ export class GradeService implements IGradeService {
     }
   }
 
-  private toResponseDto(grade: any): GradeResponseDto {
+  async findByName(name: string): Promise<string | null> {
+    try {
+        const grade = await this.gradeRepo.findOne({ name: name });
+        // Also support "Grade 10" if name is stored as "10" or vice versa?
+        // Assuming strict match for now.
+        return grade ? (grade._id as string).toString() : null;
+    } catch (error) {
+        logger.error(`Error finding grade by name: ${name}`, error);
+        return null;
+    }
+  }
+
+  private toResponseDto(grade: IGrade): GradeResponseDto {
     return {
-      id: grade._id.toString(),
+      id: grade.id,
       name: grade.name,
       syllabus: grade.syllabus,
       grade: grade.grade,

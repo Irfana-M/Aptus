@@ -19,7 +19,7 @@ export class EnrollmentController {
     try {
       // Inversify auth middleware usually populates req.user
       // But let's keep the check if middleware isn't trusted implicitly
-      const user = (req as any).user;
+      const user = req.user;
       if (!user) {
         throw new AppError("User not authenticated", HttpStatusCode.UNAUTHORIZED);
       }
@@ -31,7 +31,7 @@ export class EnrollmentController {
       }
 
       const enrollment = await this.enrollmentService.enrollInCourse(
-        user.id || user._id, 
+        user.id, 
         courseId
       );
 
@@ -51,13 +51,13 @@ export class EnrollmentController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       if (!user) {
         throw new AppError("User not authenticated", HttpStatusCode.UNAUTHORIZED);
       }
 
       const enrollments = await this.enrollmentService.getStudentEnrollments(
-        user.id || user._id
+        user.id,
       );
 
       res.status(HttpStatusCode.OK).json({

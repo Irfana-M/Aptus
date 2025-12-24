@@ -110,7 +110,7 @@ export default function Dashboard() {
       .then((data) => {
         console.log("✅ Dashboard data:", data);
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.error("❌ Failed to fetch dashboard data:", err);
       });
   }, [dispatch]);

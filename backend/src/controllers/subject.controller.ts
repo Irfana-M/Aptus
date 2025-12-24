@@ -29,7 +29,7 @@ export class SubjectController {
 
   async getSubjectsByGrade(req: Request, res: Response): Promise<void> {
     try {
-      const { grade } = req.query;
+      const { grade, syllabus } = req.query;
       
       if (!grade || typeof grade !== 'string') {
         res.status(HttpStatusCode.BAD_REQUEST).json({
@@ -39,7 +39,7 @@ export class SubjectController {
         return;
       }
 
-      const subjects = await this.subjectService.getSubjectsByGrade(grade);
+      const subjects = await this.subjectService.getSubjectsByGrade(grade, syllabus as string);
       
       res.status(HttpStatusCode.OK).json({
         success: true,

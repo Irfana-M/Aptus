@@ -9,6 +9,8 @@ interface TrialClassCardProps {
   onFeedback?: (trialClass: TrialClassResponse) => void;
 }
 
+import { isClassOverdue } from '../../utils/timeUtils';
+
 export const TrialClassCard: React.FC<TrialClassCardProps> = ({
   trialClass,
   onViewDetails,
@@ -16,7 +18,10 @@ export const TrialClassCard: React.FC<TrialClassCardProps> = ({
   onJoin,
   onFeedback
 }) => {
+  const isOverdue = trialClass.status === 'assigned' && isClassOverdue(trialClass.preferredDate, trialClass.preferredTime);
+
   const getStatusColor = (status: string) => {
+    if (isOverdue) return 'bg-orange-100 text-orange-800 animate-pulse';
     switch (status) {
       case 'requested': return 'bg-yellow-100 text-yellow-800';
       case 'assigned': return 'bg-blue-100 text-blue-800';
@@ -25,6 +30,8 @@ export const TrialClassCard: React.FC<TrialClassCardProps> = ({
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const statusText = isOverdue ? "Class Overdue / Joining Pending" : trialClass.status.charAt(0).toUpperCase() + trialClass.status.slice(1);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -40,14 +47,14 @@ export const TrialClassCard: React.FC<TrialClassCardProps> = ({
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">
-            {trialClass.subject.name}
+            {trialClass.subject.subjectName}
           </h3>
           <p className="text-sm text-gray-600">
-            Grade {trialClass.subject.grade} • {trialClass.subject.syllabus}
+            Grade {trialClass.subject.gradeId} • {trialClass.subject.syllabus}
           </p>
         </div>
         <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(trialClass.status)}`}>
-          {trialClass.status.charAt(0).toUpperCase() + trialClass.status.slice(1)}
+          {statusText}
         </span>
       </div>
       
@@ -87,9 +94,9 @@ export const TrialClassCard: React.FC<TrialClassCardProps> = ({
         {trialClass.status === 'assigned' && trialClass.meetLink && onJoin && (
           <button
             onClick={() => onJoin(trialClass)}
-            className="px-3 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors"
+            className={`px-3 py-2 text-white rounded text-sm transition-colors ${isOverdue ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-500 hover:bg-green-600'}`}
           >
-            Join Class
+            {isOverdue ? 'Overdue - Join' : 'Join Class'}
           </button>
         )}
         

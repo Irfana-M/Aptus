@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Schema } from "mongoose";
 import type { IAdmin } from "../../interfaces/models/admin.interface";
 
 const adminSchema = new Schema<IAdmin>(

@@ -1,12 +1,14 @@
 
 export interface ICourseRequest {
   student: string; 
+  mentor?: string;
   subject: string;
-  mentoringMode: 'one-to-one';
-  preferredDay: string;
-  timeRange: string;
+  grade: string;
+  mentoringMode: 'one-to-one' | 'one-to-many';
+  preferredDays: string[];
+  timeSlot: string;
   timezone?: string;
-  status: 'pending' | 'reviewed' | 'fulfilled';
+  status: 'pending' | 'reviewed' | 'fulfilled' | 'approved' | 'rejected';
   createdAt: Date;
   updatedAt: Date;
 }

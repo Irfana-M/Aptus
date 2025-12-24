@@ -1,12 +1,27 @@
 import type {  StudentBaseResponseDto } from "@/dto/auth/UserResponseDTO";
 import type { MentorResponseDto } from "@/dto/mentor/MentorResponseDTO";
 
+export interface VerificationResponse {
+  success: boolean;
+  user?: MentorResponseDto | StudentBaseResponseDto;
+  error?: string;
+}
+
+export interface UserExistenceResponse {
+  exists: boolean;
+  role?: 'mentor' | 'student' | null | undefined;
+  email?: string | undefined;
+}
+
+export interface UserEmailResponse {
+  success: boolean;
+  email?: string;
+  role?: string;
+  error?: string;
+}
+
 export interface IUserRoleService {
-  verifyUserRole(userId: string, role: 'mentor' | 'student'): Promise<{
-    success: boolean;
-    user?: MentorResponseDto | StudentBaseResponseDto;
-    error?: string;
-  }>;
+  verifyUserRole(userId: string, role: 'mentor' | 'student' | 'admin'): Promise<VerificationResponse>;
   
   getUserByIdAndRole(userId: string, role: 'mentor' | 'student'): Promise<MentorResponseDto | StudentBaseResponseDto | null>;
   
@@ -16,17 +31,12 @@ export interface IUserRoleService {
     role: 'mentor' | 'student'
   ): Promise<{
     authorized: boolean;
-    trialClass?: any;
+    trialClass?: unknown;
     error?: string;
   }>;
   
-  userExists(userId: string): Promise<{
-    exists: boolean;
-    role?: 'mentor' | 'student' | null | undefined;
-    email?: string | undefined;
-  }>;
+  userExists(userId: string): Promise<UserExistenceResponse>;
   
-  // Optional methods if needed
-  getUserFromToken?(token: string): Promise<any>;
-  getUserEmail?(userId: string): Promise<any>;
+  getUserFromToken(token: string): Promise<VerificationResponse>;
+  getUserEmail(userId: string): Promise<UserEmailResponse>;
 }

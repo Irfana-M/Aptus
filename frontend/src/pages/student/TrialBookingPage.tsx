@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
@@ -40,7 +40,9 @@ import type {
   Grade,
   TrialClassRequest,
   TrialClassResponse,
+  TrialClassStudent,
 } from "../../types/trialTypes";
+import type { User as AuthUser } from "../../types/authTypes";
 import { showToast } from '../../utils/toast';
 
 // Constants
@@ -119,12 +121,7 @@ interface FormErrors {
   date?: string;
 }
 
-interface StudentInfo {
-  _id?: string;
-  fullName?: string;
-  name?: string;
-  email?: string;
-}
+// StudentInfo interface removed as it was unused and replaced by TrialClassStudent
 
 // Helper Functions
 const extractGradeNumber = (gradeName: string): number | null => {
@@ -132,13 +129,13 @@ const extractGradeNumber = (gradeName: string): number | null => {
   return match ? parseInt(match[0]) : null;
 };
 
-const extractStudentInfo = (booking: TrialClassResponse, currentUser: any): { studentName: string; studentEmail: string } => {
+const extractStudentInfo = (booking: TrialClassResponse, currentUser: AuthUser | null): { studentName: string; studentEmail: string } => {
   let studentName = '';
   let studentEmail = '';
 
   if (booking.student && typeof booking.student === 'object') {
-    const student = booking.student as StudentInfo;
-    studentName = student.fullName || student.name || currentUser?.fullName || '';
+    const student = booking.student as TrialClassStudent;
+    studentName = student.fullName || currentUser?.fullName || '';
     studentEmail = student.email || currentUser?.email || '';
   } else {
     studentName = currentUser?.fullName || '';
@@ -199,11 +196,41 @@ const TrialBookingPage: React.FC = () => {
   // Derived State
   const isSubmitting = bookingStatus === "loading";
 
+  // Core Functions
+  const checkExistingBookings = useCallback(async () => {
+    try {
+      const trialClasses = await dispatch(fetchStudentTrialClasses()).unwrap();
+      const upcomingBooking = trialClasses.find(
+        (tc: TrialClassResponse) => tc.status === 'requested' || tc.status === 'assigned'
+      );
+      
+      setHasExistingBooking(!!upcomingBooking);
+      setExistingBooking(upcomingBooking || null);
+    } catch (error) {
+      console.error('Error checking existing bookings:', error);
+    }
+  }, [dispatch]);
+
+  const resetForm = useCallback(() => {
+    setFormData({
+      studentName: user?.fullName || '',
+      email: user?.email || '',
+      grade: '',
+      syllabus: '',
+      subject: '',
+      time: '',
+      notes: ''
+    });
+    setSelectedDate(null);
+    setErrors({});
+    setAvailableSyllabi([]);
+  }, [user]);
+
   // Initialization
   useEffect(() => {
     dispatch(fetchGrades());
     checkExistingBookings();
-  }, [dispatch]);
+  }, [dispatch, checkExistingBookings]);
 
   // Form Data Effects
   useEffect(() => {
@@ -264,7 +291,7 @@ const TrialBookingPage: React.FC = () => {
         dispatch(clearError());
       }, 100);
     }
-  }, [bookingStatus, trialError, isEditing, dispatch]);
+  }, [bookingStatus, trialError, isEditing, dispatch, resetForm, checkExistingBookings]);
 
   // Cleanup
   useEffect(() => {
@@ -275,35 +302,7 @@ const TrialBookingPage: React.FC = () => {
     };
   }, [dispatch]);
 
-  // Core Functions
-  const checkExistingBookings = async () => {
-    try {
-      const trialClasses = await dispatch(fetchStudentTrialClasses()).unwrap();
-      const upcomingBooking = trialClasses.find(
-        tc => tc.status === 'requested' || tc.status === 'assigned'
-      );
-      
-      setHasExistingBooking(!!upcomingBooking);
-      setExistingBooking(upcomingBooking || null);
-    } catch (error) {
-      console.error('Error checking existing bookings:', error);
-    }
-  };
 
-  const resetForm = () => {
-    setFormData({
-      studentName: user?.fullName || '',
-      email: user?.email || '',
-      grade: '',
-      syllabus: '',
-      subject: '',
-      time: '',
-      notes: ''
-    });
-    setSelectedDate(null);
-    setErrors({});
-    setAvailableSyllabi([]);
-  };
 
   const getUniqueGrades = (): Grade[] => {
     const uniqueGrades: Grade[] = [];
@@ -468,7 +467,7 @@ const TrialBookingPage: React.FC = () => {
       } else {
         await dispatch(requestTrialClass(bookingData)).unwrap();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       showToast.dismiss(loadingToast);
       console.error('Booking error:', error);
     }

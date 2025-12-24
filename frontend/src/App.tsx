@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useAppDispatch } from "./app/hooks";
 import { Toaster } from "react-hot-toast";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
@@ -26,15 +26,27 @@ import StudentTrialClassesPage from "./pages/admin/StudentTrialClassPage";
 import CreateOneToOneCourse from "./pages/admin/courseManagement";
 import MentorDashboard from "./pages/mentor/MentorDashboard";
 import VideoCallRoom from "./pages/VideoCallRoom";
+import MentorAvailabilityPage from "./pages/mentor/Availability";
+import Finance from "./pages/admin/Finance";
 import TrialClassFeedback from "./pages/student/TrialFeedback";
-import StudentProfileSetup from "./pages/student/studentProfileSetup";
+import StudentProfile from "./pages/student/StudentProfile";
+import StudentDashboard from "./pages/student/dashboard";
 import BookTuitionSessions from "./pages/student/BookTuitionSessions";
 import SubscriptionPlans from "./pages/student/SubscriptionPlans";
+import PaymentPage from "./pages/student/PaymentPage";
+import WalletPage from "./pages/student/WalletPage";
+import PaymentHistory from "./pages/student/PaymentHistory";
+import MyCourses from "./pages/student/MyCourses";
+
+
+import { VideoCallProvider } from "./context/VideoCallContext";
+import FloatingCallOverlay from "./components/video/FloatingCallOverlay";
 
 
 const App: React.FC = () => {
   return (
     <Router>
+      <VideoCallProvider>
       <Toaster
         position="top-right"
         toastOptions={{
@@ -60,24 +72,41 @@ const App: React.FC = () => {
         }}
       />
       <AppContent />
+      <FloatingCallOverlay />
+      </VideoCallProvider>
     </Router>
   );
 };
 
 const AppContent: React.FC = () => {
-    const dispatch = useDispatch();
+    const dispatch = useAppDispatch();
     
     useEffect(() => {
-        const isAdmin = localStorage.getItem("isAdmin") === "true";
-        const token = localStorage.getItem("accessToken");
+        const path = window.location.pathname;
+        //const userRole = localStorage.getItem("userRole");
+        const studentToken = localStorage.getItem("student_accessToken");
+        const mentorToken = localStorage.getItem("mentor_accessToken");
+        const adminToken = localStorage.getItem("admin_accessToken") || localStorage.getItem("adminAccessToken");
+        const genericToken = localStorage.getItem("accessToken");
         
-        // If we think we are an admin but have no Admin state, try to refresh/hydrate
-        if (isAdmin && token) {
-             // We can trigger a refresh token call which will fetch the profile
-             // This assumes the refresh cookie is still valid.
-             import("./features/admin/adminThunk").then(({ refreshAdminToken }) => {
-                 dispatch(refreshAdminToken() as any);
-             });
+        // Prioritize refresh based on current path to avoid race conditions
+        const isAdminPath = path.startsWith('/admin');
+        const isStudentPath = path.startsWith('/student');
+        const isMentorPath = path.startsWith('/mentor');
+        
+        // 1. Refresh Admin if on admin path or generic refresh needed and we are admin
+        if (adminToken && (isAdminPath || (!isStudentPath && !isMentorPath))) {
+            import("./features/admin/adminThunk").then(({ refreshAdminToken }) => {
+                dispatch(refreshAdminToken());
+            });
+        }
+        
+        // 2. Refresh User if on user path or generic refresh needed
+        // Fallback to genericToken if role-specific tokens are missing
+        if ((studentToken || mentorToken || (genericToken && !isAdminPath)) && (!isAdminPath)) {
+            import("./features/auth/authThunks").then(({ refreshAccessToken }) => {
+                dispatch(refreshAccessToken());
+            });
         }
     }, [dispatch]);
 
@@ -215,16 +244,71 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/student/profile-setup"
+          path="/student/payment"
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <StudentProfileSetup />
+              <PaymentPage />
             </ProtectedRoute>
           }
         />
 
         <Route
-          path="/mentor/profile-setup"
+          path="/student/wallet"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+              <WalletPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/student/profile"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+              <StudentProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/profile-setup"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+              <StudentProfile />
+            </ProtectedRoute>
+          }
+        />
+
+
+
+        <Route
+          path="/student/my-courses"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+              <MyCourses />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/student/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+              <StudentDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/student/payments"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+              <PaymentHistory />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/mentor/profile"
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
               <MentorProfileSetup />
@@ -240,12 +324,29 @@ const AppContent: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/mentor/availability"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+              <MentorAvailabilityPage />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/admin/courses"
           element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
               <CreateOneToOneCourse />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/finance"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+              <Finance />
             </ProtectedRoute>
           }
         />

@@ -1,11 +1,31 @@
 import type { Schema } from "mongoose";
 
+export interface Availability {
+  day: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface SubscriptionDetails {
+  plan: 'monthly' | 'yearly';
+  startDate: Date;
+  endDate: Date;
+  renewalDate?: Date;
+  expiryDate?: Date;
+  status: 'active' | 'expired' | 'cancelled';
+  sessionId?: string;
+  paymentIntentId?: string;
+  subjectCount?: number;
+  availability?: Availability[];
+}
+
 export interface StudentRegisterInput {
   fullName: string;
   email: string;
   phoneNumber: string;
   password: string;
   confirmPassword: string;
+  referralCode?: string;
 }
 
 export interface StudentDBInput {
@@ -26,6 +46,7 @@ export interface ParentInfo {
   name: string;
   email: string;
   phoneNumber: string;
+  relationship: string;
 }
 
 export interface contactInfo {
@@ -37,7 +58,7 @@ export interface contactInfo {
 
 export interface AcademicDetails {
   institutionName: string;
-  gradeId: Schema.Types.ObjectId;
+  grade: string;
   syllabus: string;
 }
 
@@ -47,23 +68,26 @@ export interface StudentProfile {
   email: string;
   phoneNumber: string;
   password?: string;
-  age: number;
-  gender: string;
-  dateOfBirth: Date;
-  contactInfo: contactInfo;
-  academicDetails: AcademicDetails;
-  profileImage: string;
-  profileImageKey?: string;
-  profileImageUrl?: string;
-  goal?: string;
+  age?: number | undefined;
+  gender?: string | undefined;
+  dateOfBirth?: Date | undefined;
+  contactInfo?: contactInfo | undefined;
+  academicDetails?: AcademicDetails | undefined;
+  profileImage?: string | undefined;
+  profileImageKey?: string | undefined;
+  profileImageUrl?: string | undefined;
+  goal?: string | undefined;
   isVerified?: boolean;
   isBlocked: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
-  hasPaid?: boolean;
+  createdAt?: Date | undefined;
+  updatedAt?: Date | undefined;
+  hasPaid?: boolean; // Deprecated, use subscription instead
+  subscription?: SubscriptionDetails | undefined;
   isTrialCompleted?: boolean;
   isProfileCompleted?: boolean;
-  authProvider?: "local" | "google";
-  googleId?: string;
-  gradeId?: Schema.Types.ObjectId;
+  authProvider?: "local" | "google" | undefined;
+  googleId?: string | undefined;
+  gradeId?: Schema.Types.ObjectId | undefined;
+  referralCode?: string | undefined;
+  referredBy?: string | undefined;
 }

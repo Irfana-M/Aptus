@@ -16,14 +16,27 @@ export const useAuth = () => {
 
   const adminLogout = (redirectPath: string = "/admin/login") => {
     dispatch(logoutAdmin());
-    localStorage.removeItem("adminToken");
-    sessionStorage.clear();
+    localStorage.removeItem("admin_accessToken");
+    localStorage.removeItem("adminAccessToken");
+    sessionStorage.removeItem("active_role"); 
     navigate(redirectPath, { replace: true });
   };
 
   const userLogout = (redirectPath: string = "/login") => {
     dispatch(logout());
-    localStorage.removeItem("userToken");
+    const userRole = localStorage.getItem("userRole");
+    if (userRole) {
+      localStorage.removeItem(`${userRole}_accessToken`);
+    }
+    const sharedKeys = [
+        "accessToken",
+        "userRole",
+        "userId",
+        "isTrialCompleted",
+        "isProfileComplete",
+        "hasPaid"
+    ];
+    sharedKeys.forEach(key => localStorage.removeItem(key));
     sessionStorage.clear();
     navigate(redirectPath, { replace: true });
   };

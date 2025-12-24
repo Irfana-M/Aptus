@@ -41,10 +41,13 @@ export default function GoogleCallback() {
     }
 
     if (userRole === "student") {
-      if (isTrialCompleted && !profileComplete) {
-        return "/student/profile-setup";
+      if (paid) {
+        return "/student/dashboard";
       }
-      return paid ? "/student/dashboard" : "/student/book-free-trial";
+      if (isTrialCompleted && !profileComplete) {
+        return "/student/profile";
+      }
+      return "/student/book-free-trial";
     }
 
     return "/";
@@ -67,6 +70,7 @@ export default function GoogleCallback() {
       const isTrialCompleted = params.get("isTrialCompleted") === "true";
       const approvalStatus = params.get("approvalStatus");
       const isPaid = params.get("isPaid") === "true";
+      const id = params.get("id");
       const error = params.get("error");
 
       console.log('🔍 PARSED PARAMETERS:');
@@ -77,6 +81,7 @@ export default function GoogleCallback() {
     console.log('  isTrialCompleted:', isTrialCompleted);
     console.log('  approvalStatus:', approvalStatus);
     console.log('  isPaid:', isPaid);
+    console.log('  id:', id);
     console.log('  error:', error);
 
       if (error) {
@@ -95,6 +100,7 @@ export default function GoogleCallback() {
             approvalStatus: approvalStatus || "pending",
             isPaid: isPaid || false,
             isTrialCompleted,
+            _id: id || "",
           };
 
           dispatch(
@@ -104,9 +110,15 @@ export default function GoogleCallback() {
             })
           );
 
-          localStorage.setItem('accessToken', token);   // ← THIS IS CRITICAL
+          localStorage.setItem(`${role}_accessToken`, token);   // ← THIS IS CRITICAL
+          localStorage.setItem("userRole", role);
+          localStorage.setItem("userId", id || ""); 
+          
+          localStorage.setItem("hasPaid", String(!!isPaid));
+          localStorage.setItem("isTrialCompleted", String(!!isTrialCompleted));
+          localStorage.setItem("isProfileComplete", String(!!isProfileComplete));
 
-console.log("Token saved to localStorage:", token.substring(0, 20) + '...');
+          console.log("Tokens and user info saved to localStorage");
 
           console.log("Google OAuth successful:", { user, token });
           console.log("Token stored in Redux:", store.getState().auth.accessToken);

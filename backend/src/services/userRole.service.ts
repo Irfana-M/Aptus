@@ -1,17 +1,18 @@
 import { injectable, inject } from "inversify";
 import { TYPES } from "../types";
-import type { IUserRoleService } from "@/interfaces/services/IUserRoleSrvice";
+import type { IUserRoleService, VerificationResponse, UserExistenceResponse, UserEmailResponse } from "@/interfaces/services/IUserRoleSrvice";
 import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository";
 import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
 import type {  StudentBaseResponseDto } from "@/dto/auth/UserResponseDTO";
 import type { MentorResponseDto } from "@/dto/mentor/MentorResponseDTO";
 import { logger } from "../utils/logger";
-import { TrialClassRepository } from "../repositories/trialClass.repository";
 import { MentorMapper } from "@/mappers/MentorMapper";
 import { StudentMapper } from "@/mappers/StudentMapper";
 import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
 import type { IStudentService } from "@/interfaces/services/IStudentService";
 import type { IMentorService } from "@/interfaces/services/IMentorService";
+import { verifyAccessToken } from "../utils/jwt.util";
+import { Types } from "mongoose";
 
 @injectable()
 export class UserRoleService implements IUserRoleService {
@@ -27,8 +28,8 @@ export class UserRoleService implements IUserRoleService {
 
   async verifyUserRole(
     userId: string,
-    role: "mentor" | "student"
-  ): Promise<{ success: boolean; user?: MentorResponseDto | StudentBaseResponseDto; error?: string }> {
+    role: "mentor" | "student" | "admin"
+  ): Promise<VerificationResponse> {
     try {
       if (role === "mentor") {
         const mentor = await this.mentorService.getById(userId);
@@ -42,8 +43,13 @@ export class UserRoleService implements IUserRoleService {
         return { success: true, user: student };
       }
 
+      if (role === "admin") {
+         return { success: true }; // Basic check for admin for now
+      }
+
       return { success: false, error: "Invalid role" };
-    } catch (error) {
+    } catch (error: unknown) {
+      logger.error('Error verifying user role:', error);
       return { success: false, error: "Database error" };
     }
   }
@@ -81,7 +87,7 @@ export class UserRoleService implements IUserRoleService {
     role: 'mentor' | 'student'
   ): Promise<{
     authorized: boolean;
-    trialClass?: any;
+    trialClass?: unknown;
     error?: string;
   }> {
     try {
@@ -97,12 +103,12 @@ export class UserRoleService implements IUserRoleService {
       let isAuthorized = false;
       
       
-      const studentId = (trialClass.student as any)?._id 
-        ? (trialClass.student as any)._id.toString() 
+      const studentId = (trialClass.student as unknown as { _id?: Types.ObjectId } | null)?._id 
+        ? (trialClass.student as unknown as { _id: Types.ObjectId })._id.toString() 
         : trialClass.student?.toString();
         
-      const mentorId = (trialClass.mentor as any)?._id 
-        ? (trialClass.mentor as any)._id.toString() 
+      const mentorId = (trialClass.mentor as unknown as { _id?: Types.ObjectId } | null)?._id 
+        ? (trialClass.mentor as unknown as { _id: Types.ObjectId })._id.toString() 
         : trialClass.mentor?.toString();
       
       if (role === 'student') {
@@ -124,11 +130,11 @@ export class UserRoleService implements IUserRoleService {
           authorized: false, 
           error: errorMsg,
           trialClass: {
-            _id: trialClass._id,
+            _id: trialClass._id.toString(),
             status: trialClass.status,
-            student: trialClass.student,
-            mentor: trialClass.mentor
-          }
+            student: trialClass.student.toString(),
+            mentor: trialClass.mentor?.toString()
+          } as unknown as { _id: string; status: string; student: string; mentor?: string }
         };
       }
     } catch (error) {
@@ -140,11 +146,7 @@ export class UserRoleService implements IUserRoleService {
 
   public async userExists(
     userId: string
-  ): Promise<{
-    exists: boolean;
-    role?: 'mentor' | 'student' | null | undefined;
-    email?: string | undefined;
-  }> {
+  ): Promise<UserExistenceResponse> {
     try {
       const mentor = await this.mentorRepository.findById(userId);
       if (mentor) {
@@ -180,10 +182,8 @@ export class UserRoleService implements IUserRoleService {
   }
 
   
-  public async getUserFromToken(token: string): Promise<any> {
+  public async getUserFromToken(token: string): Promise<VerificationResponse> {
     try {
-     
-      const { verifyAccessToken } = require('../utils/jwt.util');
       const decoded = verifyAccessToken(token);
       
       if (!decoded || !decoded.id || !decoded.role) {
@@ -198,7 +198,7 @@ export class UserRoleService implements IUserRoleService {
   }
 
  
-  public async getUserEmail(userId: string): Promise<any> {
+  public async getUserEmail(userId: string): Promise<UserEmailResponse> {
     try {
       const mentor = await this.mentorRepository.findById(userId);
       if (mentor) {

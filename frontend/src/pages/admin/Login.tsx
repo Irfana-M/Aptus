@@ -57,7 +57,6 @@ export default function AdminLoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoginAttempted(true);
 
     console.log("🔄 Starting login process...", { email });
 
@@ -78,20 +77,22 @@ export default function AdminLoginPage() {
           responseKeys: Object.keys(result),
         });
         toast.error("Login response incomplete");
-        setLoginAttempted(false);
         return;
       }
 
-      console.log("✅ Login data validated, waiting for Redux update...");
-      localStorage.setItem("isAdmin", "true");
-      localStorage.setItem("accessToken", result.accessToken);
+      console.log("✅ Login data validated, saving token and navigating...");
+      localStorage.setItem("admin_accessToken", result.accessToken);
+      
+      // Set loginAttempted only AFTER successful login
+      setLoginAttempted(true);
       
       toast.success("Admin logged in successfully!");
       navigate("/admin/dashboard");
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Login failed!";
       console.error("❌ Login thunk failed:", err);
-      setLoginAttempted(false);
-      toast.error(err.message || "Login failed!");
+      // Keep loginAttempted false on failure - this prevents the useEffect from navigating
+      toast.error(errorMessage);
     }
   };
 

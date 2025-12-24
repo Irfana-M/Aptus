@@ -1,4 +1,4 @@
-import { Schema, model, Types } from "mongoose";
+import { Schema, model } from "mongoose";
 import type { IVideoCallDocument } from "@/interfaces/models/videoCall.interface";
 
 const VideoCallParticipantSchema = new Schema({
@@ -40,7 +40,6 @@ const VideoCallSchema = new Schema<IVideoCallDocument>(
 );
 
 
-VideoCallSchema.index({ trialClassId: 1 });
 VideoCallSchema.index({ callStatus: 1 });
 VideoCallSchema.index({ 'participants.userId': 1 });
 

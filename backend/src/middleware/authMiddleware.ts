@@ -65,21 +65,25 @@ export const requireAuth = (
 
     req.user = { id: decoded.id, role: decoded.role };
     next();
-  } catch (error: any) {
-    console.error('❌ Auth Error:', error.name, error.message);
-    
-    if (error.name === 'TokenExpiredError') {
-      return next(new AppError(
-        "Token has expired",
-        HttpStatusCode.UNAUTHORIZED
-      ));
-    }
-    
-    if (error.name === 'JsonWebTokenError') {
-      return next(new AppError(
-        "Invalid token",
-        HttpStatusCode.UNAUTHORIZED
-      ));
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('❌ Auth Error:', error.name, error.message);
+      
+      if (error.name === 'TokenExpiredError') {
+        return next(new AppError(
+          "Token has expired",
+          HttpStatusCode.UNAUTHORIZED
+        ));
+      }
+      
+      if (error.name === 'JsonWebTokenError') {
+        return next(new AppError(
+          "Invalid token",
+          HttpStatusCode.UNAUTHORIZED
+        ));
+      }
+    } else {
+      console.error('❌ Auth Error: Unknown error', error);
     }
     
     return next(new AppError(

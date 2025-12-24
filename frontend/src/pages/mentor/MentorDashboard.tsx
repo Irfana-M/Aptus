@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Users, Calendar, FileText, ChevronLeft, ChevronRight, MessageSquare, Video, Clock } from 'lucide-react';
-import Sidebar from '../../components/mentor/Sidebar';
-import Topbar from '../../components/mentor/Topbar';
+import { useNavigate } from 'react-router-dom';
+import { Users, Calendar, FileText, ChevronLeft, ChevronRight, MessageSquare, Video, Clock, Home, User, BookOpen, ClipboardList, Bell } from 'lucide-react';
+import { DashboardLayout } from '../../components/layout/DashboardLayout';
+import type { NavItem } from '../../components/layout/DashboardSidebar';
 import { Table, type TableColumn } from '../../components/mentor/Table';
-import { fetchMentorTrialClasses, fetchMentorProfile } from "../../features/mentor/mentorThunk";
+import { fetchMentorTrialClasses, fetchMentorProfile, updateTrialClassStatus } from "../../features/mentor/mentorThunk";
+import { logoutUser } from "../../features/auth/authThunks";
 import type { AppDispatch, RootState } from "../../app/store";
+import { isClassOverdue } from '../../utils/timeUtils';
+import { toast } from 'react-hot-toast';
 
 interface Student {
   id: string;
   name: string;
   time: string;
   color: string;
-  meetLink: string;
+  meetLink?: string;
   status: string;
 }
 
@@ -32,11 +36,25 @@ interface Activity {
   time: string;
 }
 
+// Helper function definitions
+const renderAssignmentStatus = (item: Assignment) => {
+    const statusColor = item.status === 'Completed' 
+      ? 'bg-green-100 text-green-700' 
+      : 'bg-orange-100 text-orange-700';
+    return (
+      <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColor}`}>
+        {item.status}
+      </span>
+    );
+};
+
 // Main Dashboard Component
 const MentorDashboard: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
   const { trialClasses, loading, profile } = useSelector((state: RootState) => state.mentor);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user } = useSelector((state: RootState) => state.auth);
+  
   const [currentDate] = useState(new Date());
   const [showNotificationDetails, setShowNotificationDetails] = useState(false);
 
@@ -48,20 +66,53 @@ const MentorDashboard: React.FC = () => {
   }, [dispatch, profile]);
 
   useEffect(() => {
+    console.log("DEBUG MentorDashboard: All Trial Classes:", trialClasses);
+    if (trialClasses && trialClasses.length > 0) {
+        trialClasses.forEach((cls, idx) => {
+            console.log(`Class ${idx}: ID=${cls.id}, Status=${cls.status}, Student=${cls.student?.fullName}`);
+        });
+    }
+  }, [trialClasses]);
+
+  useEffect(() => {
     if (profile) {
         console.log("DEBUG MentorDashboard: profile:", profile);
-        console.log("DEBUG MentorDashboard: profileImageUrl:", profile.profileImageUrl);
-        console.log("DEBUG MentorDashboard: profilePicture:", profile.profilePicture);
     }
   }, [profile]);
+
+  const handleLogout = async () => {
+    await dispatch(logoutUser());
+    navigate('/login');
+  };
+
+  const mentorNavItems: NavItem[] = [
+    { icon: <Home size={20} />, label: 'Dashboard', path: '/mentor/dashboard' },
+    { icon: <User size={20} />, label: 'Profile', path: '/mentor/profile' },
+    { icon: <Users size={20} />, label: 'Students/Batches', path: '/mentor/students' },
+    { icon: <Calendar size={20} />, label: 'Attendance', path: '/mentor/attendance' },
+    { icon: <BookOpen size={20} />, label: 'Classroom', path: '/mentor/classroom' },
+    { icon: <FileText size={20} />, label: 'Study Materials', path: '/mentor/materials' },
+    { icon: <ClipboardList size={20} />, label: 'Assignments', path: '/mentor/assignments' },
+    { icon: <ClipboardList size={20} />, label: 'Completed Classes', path: '/mentor/completed-trial-classes' },
+    { icon: <Bell size={20} />, label: 'Notifications', path: '/mentor/notifications' },
+    { icon: <Clock size={20} />, label: 'Availability', path: '/mentor/availability' },
+    { icon: <MessageSquare size={20} />, label: 'Chats', path: '/mentor/chats' },
+  ];
+
+  const dashboardUser = {
+      name: profile?.fullName || user?.fullName || "Mentor",
+      email: user?.email || "",
+      avatar: profile?.profileImageUrl || (user?.profilePicture?.startsWith('http') ? user.profilePicture : undefined),
+      role: "mentor"
+  };
 
   // Filter for assigned classes only
   const assignedClasses = (trialClasses || []).filter(cls => cls.status === 'assigned');
 
   // Map trial classes to Student format for display
   const students: Student[] = assignedClasses.map(cls => ({
-    id: cls._id,
-    name: cls.student.fullName,
+    id: cls.id || cls._id || '',
+    name: cls.student?.fullName || "Student",
     time: cls.preferredTime,
     color: 'bg-green-100', // You can make this dynamic if needed
     meetLink: cls.meetLink,
@@ -76,50 +127,37 @@ const MentorDashboard: React.FC = () => {
     { header: 'Date', accessor: 'date' },
     { 
       header: 'Status', 
-      accessor: (item) => (
-        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-          item.status === 'Completed' 
-            ? 'bg-green-100 text-green-700' 
-            : 'bg-orange-100 text-orange-700'
-        }`}>
-          {item.status}
-        </span>
-      )
+      accessor: renderAssignmentStatus
     },
   ];
 
   const activities: Activity[] = [];
 
-  const handleStartClass = (meetLink: string) => {
-    if (meetLink) {
-        window.open(meetLink, '_blank');
+  const handleStartClass = (id: string) => {
+    if (id) {
+         navigate(`/trial-class/${id}/call`);
     }
   };
 
-  // Get basic user info from auth state as backup
-  const { user } = useSelector((state: RootState) => state.auth);
-
-  const mentorName = profile?.fullName || user?.fullName || "Mentor";
-  const mentorRole = profile?.subjectProficiency?.[0]?.subject 
-    ? `${profile.subjectProficiency[0].subject} Mentor` 
-    : "Mentor";
-  
-  // Use profile picture from profile, then user (if URL), then fallback
-  const profileImage = profile?.profileImageUrl || (user?.profilePicture?.startsWith('http') ? user.profilePicture : undefined) || `https://api.dicebear.com/7.x/avataaars/svg?seed=${mentorName}`;
+  const handleMarkAsComplete = async (trialId: string) => {
+    try {
+        await dispatch(updateTrialClassStatus({ id: trialId, status: 'completed' })).unwrap();
+        toast.success("Trial class marked as completed!");
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to update status";
+        toast.error(message);
+    }
+  };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Topbar 
-            onMenuClick={() => setSidebarOpen(true)} 
-            mentorName={mentorName} 
-            mentorRole={mentorRole}
-            profileImage={profileImage}
-        />
-        
-        <div className="flex-1 overflow-y-auto p-6">
+    <DashboardLayout
+      navItems={mentorNavItems}
+      user={dashboardUser}
+      title="Mentor Dashboard"
+      onLogout={handleLogout}
+      appTitle="Aptus"
+    >
+      <div className="flex-1 overflow-y-auto p-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
@@ -147,10 +185,10 @@ const MentorDashboard: React.FC = () => {
                     </div>
 
                     {assignedClasses.map((cls) => (
-                      <div key={cls._id} className="bg-white/60 rounded-lg p-4 mb-3 last:mb-0 backdrop-blur-sm border border-indigo-100">
+                      <div key={cls.id || cls._id} className="bg-white/60 rounded-lg p-4 mb-3 last:mb-0 backdrop-blur-sm border border-indigo-100">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div>
-                            <p className="font-semibold text-indigo-900">{cls.subject.subjectName} with {cls.student.fullName}</p>
+                            <p className="font-semibold text-indigo-900">{cls.subject?.subjectName} with {cls.student?.fullName || 'Student'}</p>
                             <div className="flex items-center gap-4 text-sm text-indigo-700 mt-1">
                               <span className="flex items-center gap-1">
                                 <Calendar className="w-4 h-4" />
@@ -170,12 +208,23 @@ const MentorDashboard: React.FC = () => {
                             >
                               {showNotificationDetails ? 'Hide Details' : 'View Details'}
                             </button>
+                            
+                            {/* Mark Complete Button for Overdue */}
+                            {isClassOverdue(cls.preferredDate, cls.preferredTime) && (
+                                <button 
+                                    onClick={() => handleMarkAsComplete(cls.id || cls._id || '')}
+                                    className="px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium hover:bg-green-100 border border-green-200 transition-colors"
+                                >
+                                    Mark Complete
+                                </button>
+                            )}
+
                             <button 
-                              onClick={() => handleStartClass(cls.meetLink)}
-                              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 shadow-sm flex items-center gap-2 transition-colors"
+                              onClick={() => handleStartClass(cls.id || cls._id || '')}
+                              className={`px-4 py-2 text-white rounded-lg text-sm font-medium shadow-sm flex items-center gap-2 transition-colors ${isClassOverdue(cls.preferredDate, cls.preferredTime) ? 'bg-orange-500 hover:bg-orange-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                             >
                               <Video className="w-4 h-4" />
-                              Join Class
+                              {isClassOverdue(cls.preferredDate, cls.preferredTime) ? 'Overdue - Join' : 'Join Class'}
                             </button>
                           </div>
                         </div>
@@ -185,13 +234,13 @@ const MentorDashboard: React.FC = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                               <div>
                                 <p className="text-gray-500 mb-1">Student Details</p>
-                                <p className="font-medium text-gray-900">{cls.student.fullName}</p>
-                                <p className="text-gray-600">{cls.student.email}</p>
+                                <p className="font-medium text-gray-900">{cls.student?.fullName || 'N/A'}</p>
+                                <p className="text-gray-600">{cls.student?.email || 'N/A'}</p>
                               </div>
                               <div>
                                 <p className="text-gray-500 mb-1">Class Details</p>
-                                <p className="font-medium text-gray-900">{cls.subject.subjectName} - {cls.subject.syllabus}</p>
-                                <p className="text-gray-600">Grade {cls.subject.grade}</p>
+                                <p className="font-medium text-gray-900">{cls.subject?.subjectName} - {cls.subject?.syllabus || 'N/A'}</p>
+                                <p className="text-gray-600">Grade {cls.subject?.grade || 'N/A'}</p>
                               </div>
                               {cls.notes && (
                                 <div className="md:col-span-2">
@@ -263,7 +312,9 @@ const MentorDashboard: React.FC = () => {
                     // Filter for today's classes
                     (() => {
                       const todaysClasses = assignedClasses.filter(cls => {
-                        const classDate = new Date(cls.preferredDate || cls.scheduledDateTime);
+                        const classDateStr = cls.preferredDate || cls.scheduledDateTime;
+                        if (!classDateStr) return false;
+                        const classDate = new Date(classDateStr);
                         const today = new Date();
                         return (
                           classDate.getDate() === today.getDate() &&
@@ -275,7 +326,7 @@ const MentorDashboard: React.FC = () => {
                       return todaysClasses.length > 0 ? (
                         <div className="space-y-6 flex-1 overflow-y-auto pr-2 custom-scrollbar">
                             {todaysClasses.map((cls) => (
-                              <div key={cls._id} className="relative pl-6">
+                              <div key={cls.id || cls._id} className="relative pl-6">
                                 {/* Purple indicator line */}
                                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 rounded-full"></div>
                                 
@@ -287,18 +338,18 @@ const MentorDashboard: React.FC = () => {
                                   
                                   {/* Student Name */}
                                   <h4 className="text-lg font-bold text-gray-900">
-                                    Student: {cls.student.fullName}
+                                    Student: {cls.student?.fullName || 'N/A'}
                                   </h4>
                                   
                                   {/* Subject */}
                                   <p className="text-slate-500 text-sm font-medium">
-                                    Subject: {cls.subject.subjectName}
+                                    Subject: {cls.subject?.subjectName || 'N/A'}
                                   </p>
                                   
                                   {/* Join Button */}
                                   <div className="pt-2">
                                     <button 
-                                      onClick={() => handleStartClass(cls.meetLink || `${window.location.origin}/trial-class/${cls._id}/call`)}
+                                      onClick={() => handleStartClass(cls.id || cls._id || '')}
                                       className="px-6 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-900 text-sm font-semibold rounded-lg transition-colors duration-200"
                                     >
                                       Join Now
@@ -366,7 +417,7 @@ const MentorDashboard: React.FC = () => {
                 <div className="space-y-4">
                   {/* Dynamic schedule based on assignments/classes */}
                   {students.slice(0, 3).map((student, idx) => (
-                      <div key={idx}>
+                      <div key={student.id || idx}>
                         <h4 className="font-semibold text-sm mb-3">{idx === 0 ? "Today" : "Upcoming"}</h4>
                         <div className="space-y-3">
                         <div className="flex gap-3">
@@ -416,8 +467,7 @@ const MentorDashboard: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    </DashboardLayout>
   );
 };
 

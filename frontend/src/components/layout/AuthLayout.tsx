@@ -1,6 +1,5 @@
 import React from "react";
 import aptusLogo from "../../assets/images/aptusLogo.jpeg";
-import { BookOpen } from "lucide-react";
 
 interface AuthLayoutProps {
   children: React.ReactNode;

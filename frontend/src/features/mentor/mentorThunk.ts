@@ -2,6 +2,7 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import { mentorApi } from "./mentorApi";
 import type { MentorProfile } from "./mentorSlice";
 import type { RootState } from "../../app/store";
+import type { TrialClass } from "../../types/studentTypes";
 
 export const updateMentorProfile = createAsyncThunk<
   MentorProfile,
@@ -49,10 +50,20 @@ export const rejectMentor = createAsyncThunk<
 });
 
 export const fetchMentorTrialClasses = createAsyncThunk<
-  any[],
+  TrialClass[],
   void,
   { state: RootState }
 >("mentor/fetchTrialClasses", async () => {
   const data = await mentorApi.getMentorTrialClasses();
+  return data;
+});
+
+export const updateTrialClassStatus = createAsyncThunk<
+  TrialClass,
+  { id: string; status: string },
+  { state: RootState }
+>("mentor/updateTrialClassStatus", async ({ id, status }, { dispatch }) => {
+  const data = await mentorApi.updateTrialClassStatus(id, status);
+  dispatch(fetchMentorTrialClasses()); // Refresh list
   return data;
 });

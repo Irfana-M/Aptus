@@ -3,7 +3,7 @@ import { Schema, model, Document } from "mongoose";
 export interface ISubject extends Document {
   subjectName: string;  
   syllabus: "CBSE" | "STATE" | "ICSE";
-  grade: any; 
+  grade: Schema.Types.ObjectId; 
   isActive?: boolean;  
 }
 

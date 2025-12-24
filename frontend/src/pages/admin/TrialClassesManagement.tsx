@@ -3,8 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import type { AppDispatch } from "../../app/store";
 import { 
-  fetchAllTrialClassesAdmin,
-  assignMentorToTrialClass
+  fetchAllTrialClassesAdmin
 } from "../../features/admin/adminThunk";
 import {
   selectAllTrialClasses,
@@ -28,7 +27,6 @@ import {
   Video,
   Eye,
 } from "lucide-react";
-import { showToast } from "../../utils/toast";
 import { MentorAssignmentModal } from "../../components/admin/MentorAssignmentModal";
 import type { TrialClassResponse } from "../../types/trialTypes";
 interface Column<T> {
@@ -90,8 +88,8 @@ export const TrialClassesManagement: React.FC = () => {
     return trialClasses.filter((trial) => {
       const matchesSearch =
         searchTerm === "" ||
-        trial.student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        trial.student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        trial.student?.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        trial.student?.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         trial.subject.subjectName.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesStatus =
@@ -107,7 +105,7 @@ export const TrialClassesManagement: React.FC = () => {
 
   useEffect(() => {
     pagination.goToPage(1);
-  }, [searchTerm, filters]);
+  }, [searchTerm, filters, pagination]);
 
   const paginatedTrialClasses = pagination.paginatedData(filteredTrialClasses);
 
@@ -161,34 +159,7 @@ export const TrialClassesManagement: React.FC = () => {
     setShowAssignmentModal(true);
   };
 
-  const handleMentorAssignment = async (mentorId: string, scheduledDate: string, scheduledTime: string) => {
-    if (!selectedTrialClass) return;
 
-    try {
-      const loadingToastId = showToast.loading("Assigning mentor...");
-
-      await dispatch(assignMentorToTrialClass({
-        trialClassId: selectedTrialClass.id,
-        mentorId,
-        scheduledDate,
-        scheduledTime
-      })).unwrap();
-
-      showToast.success("Mentor assigned successfully!");
-      showToast.dismiss(loadingToastId);
-      setShowAssignmentModal(false);
-      setSelectedTrialClass(null);
-      
-      // Refresh the trial classes list
-      dispatch(fetchAllTrialClassesAdmin());
-      
-    } catch (error: any) {
-      showToast.dismiss();
-      const errorMessage = error?.message || "Failed to assign mentor";
-      showToast.error(errorMessage);
-      console.error("Failed to assign mentor:", error);
-    }
-  };
 
   const columns: Column<TrialClassResponse>[] = [
     {
@@ -197,12 +168,12 @@ export const TrialClassesManagement: React.FC = () => {
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full flex items-center justify-center">
             <span className="text-white font-semibold text-sm">
-              {row.student.fullName?.split(" ").map((n) => n[0]).join("") || "U"}
+              {row.student?.fullName?.split(" ").map((n) => n[0]).join("") || "U"}
             </span>
           </div>
           <div>
-            <p className="font-medium text-gray-900">{row.student.fullName}</p>
-            <p className="text-sm text-gray-500">{row.student.email}</p>
+            <p className="font-medium text-gray-900">{row.student?.fullName || 'N/A'}</p>
+            <p className="text-sm text-gray-500">{row.student?.email || 'N/A'}</p>
           </div>
         </div>
       ),
@@ -213,7 +184,7 @@ export const TrialClassesManagement: React.FC = () => {
       accessor: (row) => (
         <div className="text-sm">
           <p className="font-medium text-gray-900">{row.subject.subjectName}</p>
-          <p className="text-gray-500">{row.subject.syllabus} - Grade {row.subject.grade}</p>
+          <p className="text-gray-500">{row.subject.syllabus} - Grade {row.subject.gradeId || row.subject.grade}</p>
         </div>
       ),
     },
@@ -468,9 +439,7 @@ export const TrialClassesManagement: React.FC = () => {
                 setShowAssignmentModal(false);
                 setSelectedTrialClass(null);
               }}
-              onAssign={handleMentorAssignment}
               trialClass={selectedTrialClass}
-              loading={loading}
             />
           )}
         </div>

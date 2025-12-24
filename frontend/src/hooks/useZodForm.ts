@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
-import { z } from 'zod';
+import { z, ZodType } from 'zod';
 
-export const useZodForm = <T extends Record<string, any>>(
-  schema: z.ZodSchema<any>,
+export const useZodForm = <T extends Record<string, unknown>>(
+  schema: ZodType<T>,
   initialValues: T
 ) => {
   const [formData, setFormData] = useState<T>(initialValues);
@@ -26,7 +26,7 @@ export const useZodForm = <T extends Record<string, any>>(
       schema.parse(formData);
       setErrors({});
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof z.ZodError) {
         const newErrors: Partial<Record<keyof T, string>> = {};
         error.issues.forEach(err => {

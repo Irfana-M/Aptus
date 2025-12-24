@@ -1,4 +1,5 @@
 // src/services/trialClass.service.ts
+import type { ITrialClassDocument } from "@/models/student/trialClass.model";
 
 import { inject, injectable } from "inversify";
 import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
@@ -18,14 +19,20 @@ export class TrialClassService implements ITrialClassService {
     private trialRepo: ITrialClassRepository
   ) {}
 
-  // PERFECT helper — accepts ALL possible types from your model
   private getStringId(
-    field: any // Accept anything — we'll handle it safely
+    field: unknown
   ): string {
     if (!field) return "";
     if (field instanceof Types.ObjectId) return field.toString();
     if (typeof field === "string") return field;
-    if (field._id) return field._id.toString();
+    
+    // Handle objects with _id property (like populated docs)
+    if (field && typeof field === 'object' && '_id' in field) {
+      const fieldWithId = field as { _id: unknown };
+      if (fieldWithId._id) {
+        return fieldWithId._id.toString();
+      }
+    }
     return "";
   }
 
@@ -66,13 +73,17 @@ export class TrialClassService implements ITrialClassService {
     }
   }
 
-  async getTrialClassById(id: string, studentId: string): Promise<TrialClassResponseDto> {
+  async getTrialClassById(id: string, userId: string): Promise<TrialClassResponseDto> {
     try {
       const trial = await this.trialRepo.findById(id);
       if (!trial) throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
 
       const trialStudentId = this.getStringId(trial.student);
-      if (trialStudentId !== studentId) throw new AppError("Access denied", HttpStatusCode.FORBIDDEN);
+      const trialMentorId = this.getStringId(trial.mentor);
+      
+      if (trialStudentId !== userId && trialMentorId !== userId) {
+        throw new AppError("Access denied", HttpStatusCode.FORBIDDEN);
+      }
 
       return TrialClassMapper.toResponseDto(trial);
     } catch (err) {
@@ -84,10 +95,10 @@ export class TrialClassService implements ITrialClassService {
   async assignMentor(trialClassId: string, mentorId: string, meetLink: string): Promise<TrialClassResponseDto> {
     try {
       const updated = await this.trialRepo.update(trialClassId, {
-      mentor: new Types.ObjectId(mentorId) as Types.ObjectId, // ← THIS FIXES IT
-      meetLink,
-      status: "assigned",
-      });
+        mentor: new Types.ObjectId(mentorId) as unknown as Types.ObjectId,
+        meetLink,
+        status: "assigned",
+      } as unknown as Partial<ITrialClassDocument>);
 
       if (!updated) throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
       return TrialClassMapper.toResponseDto(updated);
@@ -120,13 +131,13 @@ export class TrialClassService implements ITrialClassService {
 
       if (updates.subject) await this.validateSubjectExists(updates.subject);
 
-      const updateData: Partial<any> = {};
+      const updateData: Record<string, unknown> = {};
       if (updates.subject) updateData.subject = new Types.ObjectId(updates.subject);
       if (updates.preferredDate) updateData.preferredDate = new Date(updates.preferredDate);
       if (updates.preferredTime) updateData.preferredTime = updates.preferredTime;
       if (updates.notes !== undefined) updateData.notes = updates.notes;
 
-      const updatedTrial = await this.trialRepo.update(trialClassId, updateData);
+      const updatedTrial = await this.trialRepo.update(trialClassId, updateData as unknown as Partial<ITrialClassDocument>);
       if (!updatedTrial) throw new AppError("Failed to update trial class", HttpStatusCode.INTERNAL_SERVER_ERROR);
 
       return TrialClassMapper.toResponseDto(updatedTrial);
@@ -175,6 +186,18 @@ export class TrialClassService implements ITrialClassService {
     }
   }
 
+  async getTodayTrialClasses(mentorId: string): Promise<TrialClassResponseDto[]> {
+    try {
+      const trials = await this.trialRepo.findByMentorId(mentorId);
+      const today = new Date().toDateString();
+      const todayTrials = trials.filter(t => new Date(t.preferredDate).toDateString() === today);
+      return todayTrials.map(TrialClassMapper.toResponseDto);
+    } catch (err) {
+      logger.error("Error fetching today's trial classes", err);
+      throw new AppError("Unable to fetch today's trial classes", HttpStatusCode.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   async getTrialClassStats(mentorId: string): Promise<{ total: number; completed: number; upcoming: number }> {
     try {
       const trials = await this.trialRepo.findByMentorId(mentorId);
@@ -197,10 +220,10 @@ export class TrialClassService implements ITrialClassService {
     reason?: string
   ): Promise<TrialClassResponseDto> {
     try {
-      const updateData: any = { status };
+      const updateData: Record<string, unknown> = { status };
       if (reason && status === "cancelled") updateData.cancellationReason = reason;
 
-      const updated = await this.trialRepo.update(trialClassId, updateData);
+      const updated = await this.trialRepo.update(trialClassId, updateData as unknown as Partial<ITrialClassDocument>);
       if (!updated) throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
 
       return TrialClassMapper.toResponseDto(updated);
@@ -213,7 +236,7 @@ export class TrialClassService implements ITrialClassService {
   async submitMentorFeedback(
     trialClassId: string,
     mentorId: string,
-    feedback: { rating: number; comment?: string }
+    _feedback: { rating: number; comment?: string }
   ): Promise<TrialClassResponseDto> {
     try {
       const trial = await this.trialRepo.findById(trialClassId);
@@ -224,7 +247,7 @@ export class TrialClassService implements ITrialClassService {
         throw new AppError("Access denied", HttpStatusCode.FORBIDDEN);
       }
 
-      const updatedTrial = await this.trialRepo.update(trialClassId, { status: "completed" });
+      const updatedTrial = await this.trialRepo.update(trialClassId, { status: "completed" } as unknown as Partial<ITrialClassDocument>);
       if (!updatedTrial) throw new AppError("Failed to submit feedback", HttpStatusCode.INTERNAL_SERVER_ERROR);
 
       return TrialClassMapper.toResponseDto(updatedTrial);

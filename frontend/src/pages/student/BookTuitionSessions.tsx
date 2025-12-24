@@ -17,12 +17,11 @@ const BookTuitionSessions = () => {
   
   const [search, setSearch] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
-  const [selectedGrade, setSelectedGrade] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [enrolling, setEnrolling] = useState<string | null>(null);
 
-  const studentGrade = profile?.gradeId;
-  const studentSyllabus = profile?.syllabus;
+  const studentGrade = profile?.gradeId || profile?.academicDetails?.gradeId;
+  const studentSyllabus = profile?.academicDetails?.syllabus;
 
   useEffect(() => {
     dispatch(fetchAvailableCourses({ 
@@ -53,7 +52,7 @@ const BookTuitionSessions = () => {
   const handleSearch = () => {
     dispatch(fetchAvailableCourses({ 
         subject: selectedSubject, 
-        gradeId: selectedGrade || studentGrade, // Prefer selected, fallback to student's
+        gradeId: studentGrade, // Prefer selected, fallback to student's
         syllabus: studentSyllabus             // Keep syllabus strict or add filter if needed
     }));
   };
@@ -126,7 +125,14 @@ const BookTuitionSessions = () => {
              </div>
         ) : courses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {courses.map((course: any) => (
+            {courses.map((course: {
+              _id: string;
+              title?: string;
+              subject?: { subjectName: string };
+              dayOfWeek?: number;
+              timeSlot?: string;
+              mentor?: { name?: string; fullName?: string; profilePicture?: string };
+            }) => (
               <div key={course._id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition duration-200 overflow-hidden border border-gray-100">
                 <div className="p-6">
                   <div className="flex justify-between items-start mb-4">

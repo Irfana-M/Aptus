@@ -198,4 +198,37 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
       this.handleError(res, error, "Failed to submit feedback");
     }
   }
+
+  async completeTrialClass(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const mentorId = req.user?.id;
+
+      if (!mentorId) {
+        res.status(HttpStatusCode.UNAUTHORIZED).json({
+          success: false,
+          message: "Unauthorized: Mentor not logged in",
+        });
+        return;
+      }
+
+      if (!id) {
+        res.status(HttpStatusCode.BAD_REQUEST).json({
+          success: false,
+          message: "Trial class ID is required",
+        });
+        return;
+      }
+
+      const trialClass = await this.trialService.updateTrialClassStatus(id, "completed");
+
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        message: "Trial class marked as completed",
+        data: trialClass,
+      });
+    } catch (error) {
+      this.handleError(res, error, "Failed to complete trial class");
+    }
+  }
 }

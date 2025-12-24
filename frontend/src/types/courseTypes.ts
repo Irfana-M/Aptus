@@ -3,6 +3,7 @@ export interface Course {
   grade: { _id: string; name: string; syllabus: string };
   subject: { _id: string; subjectName: string };
   mentor: { _id: string; fullName: string; profilePicture?: string };
+  student?: { _id: string; fullName: string; email?: string };
   dayOfWeek: number;
   timeSlot: string;
   startDate: string;

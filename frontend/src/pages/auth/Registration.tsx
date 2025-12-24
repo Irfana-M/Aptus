@@ -21,6 +21,7 @@ type FormValues = {
   password: string;
   confirmPassword: string;
   phoneNumber: string;
+  referralCode?: string;
 };
 
 export default function Register() {
@@ -34,10 +35,20 @@ export default function Register() {
 
   useEffect(() => {
     dispatch(clearError());
-  }, [dispatch]);
+    
+    // Check if already authenticated
+    const userRole = localStorage.getItem("userRole");
+    const token = userRole ? localStorage.getItem(`${userRole}_accessToken`) : localStorage.getItem("accessToken");
+    
+    if (token && userRole) {
+        // Redirect to dashboard/profile setup based on role
+        const path = userRole === "mentor" ? "/mentor/dashboard" : "/student/dashboard";
+        navigate(path, { replace: true });
+    }
+  }, [dispatch, navigate]);
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<FormValues>();
-  const password = watch("password");
+
 
   const onSubmit = async (data: FormValues) => {
     const fullData = { ...data, role };
@@ -63,8 +74,8 @@ export default function Register() {
   return (
     <AuthLayout
   imageSrc={registerImage}
-  title="Welcome to Mentora!"
-  subtitle="Create a new account to join Mentora."
+  title="Welcome to Aptus!"
+  subtitle="Create a new account to join Aptus."
 >
   {/* Role toggle */}
   <div className="flex mx-auto mb-6 rounded-full border border-teal-500 overflow-hidden w-fit">
@@ -103,6 +114,10 @@ export default function Register() {
 
     <Input type="tel" placeholder="Mobile Number" {...register("phoneNumber", { required: "Mobile number required" })} />
     {errors.phoneNumber && <p className="text-red-500 text-sm mt-1">{errors.phoneNumber.message}</p>}
+    
+    {role === 'student' && (
+      <Input type="text" placeholder="Referral Code (Optional)" {...register("referralCode")} />
+    )}
 
     <Button type="submit" className="w-full" disabled={loading}>
       {loading ? "Registering..." : "Register"}

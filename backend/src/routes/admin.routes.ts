@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { ADMIN_ROUTES } from "../constants/routes";
 import { AdminController } from "../controllers/admin.controller";
 import { requireAuth } from "../middleware/authMiddleware";
 import { requireRole } from "../middleware/role.middleware";
@@ -14,81 +15,85 @@ const courseAdminController = container.get<CourseAdminController>(
   TYPES.CourseAdminController
 );
 const studentController = container.get<StudentController>(TYPES.StudentController);
+import { CourseRequestController } from "@/controllers/courseRequest.controller";
+const courseRequestController = container.get<CourseRequestController>(TYPES.CourseRequestController);
+import { PaymentController } from "@/controllers/payment.controller";
+const paymentController = container.get<PaymentController>(TYPES.PaymentController);
 
-adminRouter.post("/login", adminController.login);
+adminRouter.post(ADMIN_ROUTES.LOGIN, adminController.login);
 adminRouter.get(
-  "/dashboard",
+  ADMIN_ROUTES.DASHBOARD,
   requireAuth,
   requireRole("admin"),
   adminController.getDashboardData
 );
 
 adminRouter.get(
-  "/mentors",
+  ADMIN_ROUTES.MENTORS,
   requireAuth,
   requireRole("admin"),
   adminController.getAllMentors
 );
-// Specific mentor routes must come before /:mentorId
+
 adminRouter.get(
-  "/mentors/available-for-course",
+  ADMIN_ROUTES.MENTORS_AVAILABLE_FOR_COURSE,
   requireAuth,
   requireRole("admin"),
   courseAdminController.getAvailableMentors
 );
 
 adminRouter.get(
-  "/mentors/:mentorId",
+  ADMIN_ROUTES.MENTOR_PROFILE,
   requireAuth,
   requireRole("admin"),
   adminController.getMentorProfile
 );
 adminRouter.patch(
-  "/mentors/:mentorId/approve",
+  ADMIN_ROUTES.MENTOR_APPROVE,
   requireAuth,
   requireRole("admin"),
   adminController.approveMentor
 );
 adminRouter.patch(
-  "/mentors/:mentorId/reject",
+  ADMIN_ROUTES.MENTOR_REJECT,
   requireAuth,
   requireRole("admin"),
   adminController.rejectMentor
 );
 adminRouter.get(
-  "/students",
+  ADMIN_ROUTES.STUDENTS,
   requireAuth,
   requireRole("admin"),
   adminController.getAllStudents
 );
 adminRouter.get(
-  "/students-with-stats",
+  ADMIN_ROUTES.STUDENTS_WITH_STATS,
   requireAuth,
   requireRole("admin"),
   adminController.getStudentsWithTrialStats
 );
 
-adminRouter.post("/refresh", adminController.refreshAccessToken);
+adminRouter.post(ADMIN_ROUTES.REFRESH, adminController.refreshAccessToken);
 adminRouter.post(
-  "/students",
+  ADMIN_ROUTES.STUDENTS,
   requireAuth,
   requireRole("admin"),
   adminController.addStudent
 );
 adminRouter.post(
-  "/mentors",
+  ADMIN_ROUTES.MENTORS,
   requireAuth,
   requireRole("admin"),
   adminController.addMentor
 );
 adminRouter.patch(
-  "/mentors/:mentorId/block",
+  ADMIN_ROUTES.MENTOR_BLOCK,
   requireAuth,
   requireRole("admin"),
   adminController.blockMentor
 );
 adminRouter.patch(
-  "/mentors/:mentorId/unBlock",
+  ADMIN_ROUTES.MENTOR_UNBLOCK,
   requireAuth,
   requireRole("admin"),
   adminController.unblockMentor
@@ -97,20 +102,20 @@ import { validateBody } from "../middleware/validate.middleware";
 import { updateMentorProfileSchema } from "../validators/mentor.validator";
 import { updateStudentProfileSchema } from "../validators/student.validator";
 
-// ... existing code ...
+
 
 adminRouter.put(
-  "/mentors/:mentorId",
+  ADMIN_ROUTES.MENTOR_UPDATE,
   requireAuth,
   requireRole("admin"),
   validateBody(updateMentorProfileSchema),
   adminController.updateMentor
 );
 
-// ... existing code ...
+
 
 adminRouter.put(
-  "/students/:studentId",
+  ADMIN_ROUTES.STUDENT_UPDATE,
   requireAuth,
   requireRole("admin"),
   validateBody(updateStudentProfileSchema),
@@ -118,35 +123,35 @@ adminRouter.put(
 );
 
 adminRouter.get(
-  "/trial-classes",
+  ADMIN_ROUTES.TRIAL_CLASSES,
   requireAuth,
   requireRole("admin"),
   adminController.getAllTrialClasses
 );
 
 adminRouter.get(
-  "/trial-classes/:trialClassId",
+  ADMIN_ROUTES.TRIAL_CLASS_DETAILS,
   requireAuth,
   requireRole("admin"),
   adminController.getTrialClassDetails
 );
 
 adminRouter.patch(
-  "/trial-classes/:trialClassId/assign-mentor",
+  ADMIN_ROUTES.TRIAL_CLASS_ASSIGN_MENTOR,
   requireAuth,
   requireRole("admin"),
   adminController.assignMentorToTrialClass
 );
 
 adminRouter.patch(
-  "/trial-classes/:trialClassId/status",
+  ADMIN_ROUTES.TRIAL_CLASS_STATUS,
   requireAuth,
   requireRole("admin"),
   adminController.updateTrialClassStatus
 );
 
 adminRouter.get(
-  "/students/:studentId/trial-classes",
+  ADMIN_ROUTES.STUDENT_TRIAL_CLASSES,
   requireAuth,
   requireRole("admin"),
   adminController.getStudentTrialClasses
@@ -154,48 +159,71 @@ adminRouter.get(
 
 // Get complete student profile (must come after specific routes)
 adminRouter.get(
-  "/students/:studentId/profile",
+  ADMIN_ROUTES.STUDENT_PROFILE,
   requireAuth,
   requireRole("admin"),
   (req, res, next) => studentController.getStudentProfile(req, res, next)
 );
 
 adminRouter.get(
-  "/available-mentors",
+  ADMIN_ROUTES.AVAILABLE_MENTORS,
   requireAuth,
   requireRole("admin"),
   adminController.getAvailableMentors
 );
 
 adminRouter.get(
-  "/mentors/available-for-course",
+  ADMIN_ROUTES.MENTORS_AVAILABLE_FOR_COURSE,
   requireAuth,
   requireRole("admin"),
   courseAdminController.getAvailableMentors
 );
 adminRouter.post(
-  "/courses/one-to-one",
+  ADMIN_ROUTES.COURSES_ONE_TO_ONE,
   requireAuth,
   requireRole("admin"),
   courseAdminController.createOneToOneCourse
 );
 adminRouter.get(
-  "/courses/getAllCourses",
+  ADMIN_ROUTES.ALL_COURSES,
   requireAuth,
   requireRole("admin"),
   courseAdminController.getAllOneToOneCourses
 );
 adminRouter.get(
-  "/grades",
+  ADMIN_ROUTES.GRADES,
   requireAuth,
   requireRole("admin"),
   courseAdminController.getAllGrades
 );
 adminRouter.get(
-  `/subjects`,
+  ADMIN_ROUTES.SUBJECTS,
   requireAuth,
   requireRole("admin"),
   courseAdminController.getSubjectsByGrade
 );
+
+adminRouter.get(
+  ADMIN_ROUTES.COURSE_REQUESTS,
+  requireAuth,
+  requireRole("admin"),
+  courseRequestController.getAllRequests
+);
+
+adminRouter.patch(
+  ADMIN_ROUTES.COURSE_REQUEST_STATUS,
+  requireAuth,
+  requireRole("admin"),
+  courseRequestController.updateStatus
+);
+
+adminRouter.get(
+  "/finance/transactions",
+  requireAuth,
+  requireRole("admin"),
+  paymentController.getAllPayments
+);
+
+
 
 export default adminRouter;

@@ -1,5 +1,6 @@
 import type { CreateOneToOneCourseDto, ICourseRepository, CoursePaginatedResult } from "@/interfaces/repositories/ICourseRepository";
-import { Course } from "@/models/course.model";
+import { Course, type ICourse } from "@/models/course.model";
+import { type FilterQuery, type PipelineStage, type UpdateQuery } from "mongoose";
 import { injectable } from "inversify";
 import type { CoursePaginationParams } from "@/dto/shared/paginationTypes";
 import { logger } from "@/utils/logger";
@@ -11,7 +12,7 @@ export class CourseRepository implements ICourseRepository {
     dayOfWeek?: number;
     timeSlot?: string;
   }) {
-    const query: any = {
+    const query: FilterQuery<ICourse> = {
       mentor: params.mentorId,
       status: { $in: ["booked", "ongoing"] },
       isActive: true,
@@ -57,7 +58,7 @@ export class CourseRepository implements ICourseRepository {
     const gradeId = params.gradeId || '';
 
     // Build query object
-    const query: any = { isActive: true };
+    const query: FilterQuery<ICourse> = { isActive: true };
 
     // Status filter
     if (status) {
@@ -72,7 +73,7 @@ export class CourseRepository implements ICourseRepository {
     logger.info(`findAllCoursesPaginated: Query=${JSON.stringify(query)}, search=${search}, page=${page}, limit=${limit}`);
 
     // Build aggregation pipeline
-    const pipeline: any[] = [
+    const pipeline: PipelineStage[] = [
       { $match: query },
       {
         $lookup: {
@@ -121,8 +122,13 @@ export class CourseRepository implements ICourseRepository {
       $project: {
         _id: 1,
         status: 1,
-        dayOfWeek: 1,
-        timeSlot: 1,
+        dayOfWeek: "$schedule.days", // Map from schedule
+        // If it's an array, maybe just take the first one or pass array? Frontend expects 'dayOfWeek' often as number or string. 
+        // But backend model uses string[]. 
+        // Let's pass 'schedule' as is and let frontend handle, OR map to old fields.
+        // The table columns might expect 'dayOfWeek' and 'timeSlot'.
+        timeSlot: "$schedule.timeSlot",
+        schedule: 1, // Include full schedule
         startDate: 1,
         endDate: 1,
         fee: 1,
@@ -158,14 +164,14 @@ export class CourseRepository implements ICourseRepository {
     const courses = await Course.aggregate(pipeline);
 
     // Count total (need to run a separate count query with same filters)
-    let countQuery: any = { isActive: true };
+    const countQuery: FilterQuery<ICourse> = { isActive: true };
     if (status) countQuery.status = status;
     if (gradeId) countQuery.grade = gradeId;
     
     let total: number;
     if (search) {
       // For search, we need to use aggregation to count
-      const countPipeline: any[] = [
+      const countPipeline: PipelineStage[] = [
         { $match: countQuery },
         {
           $lookup: {
@@ -219,8 +225,8 @@ export class CourseRepository implements ICourseRepository {
     };
   }
 
-  async findAvailableCourses(filters: any): Promise<any[]> {
-    const query: any = {
+  async findAvailableCourses(filters: Record<string, unknown>): Promise<ICourse[]> {
+    const query: FilterQuery<ICourse> = {
       status: "available",
       isActive: true,
     };
@@ -242,7 +248,7 @@ export class CourseRepository implements ICourseRepository {
       .lean();
   }
 
-  async findById(id: string): Promise<any | null> {
+  async findById(id: string): Promise<ICourse | null> {
     return await Course.findById(id)
       .populate("grade")
       .populate("subject")
@@ -251,10 +257,19 @@ export class CourseRepository implements ICourseRepository {
   }
 
   async updateCourseStatus(id: string, status: string, studentId?: string | null): Promise<void> {
-    const update: any = { status };
+    const update: UpdateQuery<ICourse> = { status };
     if (studentId !== undefined) {
       update.student = studentId;
     }
     await Course.findByIdAndUpdate(id, update);
+  }
+
+  async findByStudent(studentId: string): Promise<ICourse[]> {
+    return await Course.find({ student: studentId, isActive: true })
+      .populate("grade", "name grade syllabus")
+      .populate("subject", "name subjectName")
+      .populate("mentor", "fullName profilePicture email")
+      .sort({ createdAt: -1 })
+      .lean();
   }
 }

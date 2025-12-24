@@ -4,14 +4,9 @@ import type { AppDispatch } from '../../app/store';
 import { fetchAvailableMentors, assignMentorToTrialClass } from '../../features/admin/adminThunk';
 import { selectAvailableMentors, selectMentorAssignmentLoading } from '../../features/admin/adminSelectors';
 import { User, Calendar, Clock } from 'lucide-react';
+import { showToast } from '../../utils/toast';
 
-interface TrialClass {
-  id: string;
-  student: { fullName: string; email: string };
-  subject: { id: string; subjectName: string; syllabus: string; grade: number };
-  preferredDate: string;
-  preferredTime: string;
-}
+import type { TrialClassResponse as TrialClass } from '../../types/trialTypes';
 
 interface MentorAssignmentModalProps {
   isOpen: boolean;
@@ -47,7 +42,7 @@ export const MentorAssignmentModal: React.FC<MentorAssignmentModalProps> = ({
 
   const handleAssign = async () => {
     if (!selectedMentorId || !scheduledDate || !scheduledTime) {
-      alert('Please select mentor, date, and time');
+      showToast.error('Please select mentor, date, and time');
       return;
     }
 
@@ -59,10 +54,10 @@ export const MentorAssignmentModal: React.FC<MentorAssignmentModalProps> = ({
     }));
 
     if (assignMentorToTrialClass.fulfilled.match(result)) {
-      alert('Mentor assigned successfully!');
+      showToast.success('Mentor assigned successfully!');
       onClose();
     } else {
-      alert('Failed to assign mentor: ' + (result.payload || 'Unknown error'));
+      showToast.error('Failed to assign mentor: ' + (result.payload || 'Unknown error'));
     }
   };
 
@@ -74,7 +69,7 @@ export const MentorAssignmentModal: React.FC<MentorAssignmentModalProps> = ({
         <div className="p-6 border-b">
           <h2 className="text-2xl font-bold">Assign Mentor</h2>
           <p className="text-gray-600 mt-1">
-            {trialClass.student.fullName} • {trialClass.subject.subjectName} (Grade {trialClass.subject.grade})
+            {trialClass.student?.fullName || 'N/A'} • {trialClass.subject.subjectName} (Grade {trialClass.subject.gradeId || trialClass.subject.grade})
           </p>
         </div>
 

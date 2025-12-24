@@ -44,14 +44,15 @@ export class MentorController {
         message: "Profile updated successfully",
         data: updatedProfile,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as Error;
       logger.error(
-        `Error in updateProfile for mentor ${req.user?.id}: ${err.message}`,
-        { error: err.stack }
+        `Error in updateProfile for mentor ${req.user?.id}: ${error.message}`,
+        { error: error.stack }
       );
       return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: err.message || "Failed to update profile",
+        message: error.message || "Failed to update profile",
       });
     }
   };
@@ -81,11 +82,12 @@ export class MentorController {
         success: true,
         data: profile,
       });
-    } catch (err: any) {
-      logger.error(`Error in getProfile for mentor ${req.user?.id}: ${err.message}`);
+    } catch (err: unknown) {
+      const error = err as Error;
+      logger.error(`Error in getProfile for mentor ${req.user?.id}: ${error.message}`);
       return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: err.message || "Failed to fetch profile",
+        message: error.message || "Failed to fetch profile",
       });
     }
   };
@@ -107,11 +109,12 @@ export class MentorController {
       );
       logger.info(`Mentor ${mentorId} submitted profile for approval`);
       return res.status(HttpStatusCode.OK).json({ success: true, ...result });
-    } catch (err: any) {
-      logger.error(`Error in submitForApproval: ${err.message}`);
+    } catch (err: unknown) {
+      const error = err as Error;
+      logger.error(`Error in submitForApproval: ${error.message}`);
       return res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: err.message });
+        .json({ success: false, message: error.message });
     }
   };
 
@@ -122,11 +125,12 @@ export class MentorController {
       return res
         .status(HttpStatusCode.OK)
         .json({ success: true, data: pending });
-    } catch (err: any) {
-      logger.error(`Error in getPending: ${err.message}`);
+    } catch (err: unknown) {
+      const error = err as Error;
+      logger.error(`Error in getPending: ${error.message}`);
       return res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: err.message });
+        .json({ success: false, message: error.message });
     }
   };
 
@@ -145,11 +149,12 @@ export class MentorController {
       const result = await this._mentorService.approveMentor(mentorId, adminId);
       logger.info(`Mentor approved: ${mentorId} by admin: ${adminId}`);
       return res.status(HttpStatusCode.OK).json({ success: true, ...result });
-    } catch (err: any) {
-      logger.error(`approve error: ${err.message}`);
+    } catch (err: unknown) {
+      const error = err as Error;
+      logger.error(`approve error: ${error.message}`);
       return res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: err.message });
+        .json({ success: false, message: error.message });
     }
   };
 
@@ -176,11 +181,12 @@ export class MentorController {
         `Mentor rejected: ${mentorId} by admin: ${adminId}, reason: ${reason}`
       );
       return res.status(HttpStatusCode.OK).json({ success: true, ...result });
-    } catch (err: any) {
-      logger.error(`reject error: ${err.message}`);
+    } catch (err: unknown) {
+      const error = err as Error;
+      logger.error(`reject error: ${error.message}`);
       return res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: err.message });
+        .json({ success: false, message: error.message });
     }
   };
   getTrialClasses = async (req: Request, res: Response) => {
@@ -196,11 +202,12 @@ export class MentorController {
       const trialClasses = await this._mentorService.getMentorTrialClasses(mentorId);
       logger.info(`Fetched ${trialClasses.length} trial classes for mentor ${mentorId}`);
       return res.status(HttpStatusCode.OK).json({ success: true, data: trialClasses });
-    } catch (err: any) {
-      logger.error(`Error in getTrialClasses: ${err.message}`);
+    } catch (err: unknown) {
+      const error = err as Error;
+      logger.error(`Error in getTrialClasses: ${error.message}`);
       return res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: err.message });
+        .json({ success: false, message: error.message });
     }
   };
 }

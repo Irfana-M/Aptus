@@ -23,7 +23,7 @@ export class NodemailerService implements IEmailService {
         pass: process.env.EMAIL_PASS,
       },
     });
-    this._transporter.verify((error: any, success: any) => {
+    this._transporter.verify((error: Error | null, _success: unknown) => {
       if (error) {
         console.error("❌ Email transporter verification failed:", error);
       } else {
@@ -37,14 +37,14 @@ export class NodemailerService implements IEmailService {
       console.log("🔍 Attempting to send email:", { to, subject });
 
       const result = await this._transporter.sendMail({
-        from: `"Mentora App" <${process.env.EMAIL_USER}>`,
+        from: `"Aptus App" <${process.env.EMAIL_USER}>`,
         to,
         subject,
         html,
       });
 
       console.log("✅ Email sent successfully:", result.messageId);
-    } catch (error: any) {
+    } catch (error) {
       console.error("❌ Email send failed:", error);
       throw error;
     }

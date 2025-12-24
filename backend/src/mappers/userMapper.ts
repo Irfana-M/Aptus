@@ -31,9 +31,10 @@ export class UserMapper {
       role: user.role,
       isVerified: user.isVerified,
       isProfileComplete: user.isProfileComplete ?? true,
-      isPaid: user.isPaid ?? false,
+      isPaid: (user as unknown as { isPaid?: boolean }).isPaid ?? false,
+      hasPaid: (user as unknown as { isPaid?: boolean }).isPaid ?? false,
       isTrialCompleted: user.isTrialCompleted ?? false,
-    };
+    } as StudentBaseResponseDto;
   }
 
   static toAuthUser(user: AuthUser): AuthUser {
@@ -69,6 +70,17 @@ export class UserMapper {
       isVerified: user.isVerified,
       isProfileComplete: isProfileComplete,
       approvalStatus: user.approvalStatus ?? "pending",
+      // Include student-specific fields if they exist
+      ...((user.role === 'student') ? {
+        isPaid: (user as StudentAuthUser).isPaid ?? false,
+        hasPaid: (user as StudentAuthUser).isPaid ?? false,
+        isTrialCompleted: (user as StudentAuthUser).isTrialCompleted ?? false,
+        profileImageUrl: (user as StudentAuthUser).profileImageUrl,
+        profileImage: (user as StudentAuthUser).profileImage,
+      } : {
+        profileImageUrl: (user as MentorAuthUser).profileImageUrl,
+        profilePicture: (user as MentorAuthUser).profilePicture,
+      })
     };
   }
 }

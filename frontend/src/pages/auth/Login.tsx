@@ -260,7 +260,7 @@
 
 // src/pages/auth/Login.tsx
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -291,6 +291,37 @@ export default function Login() {
   const [role, setRole] = useState<"student" | "mentor">("student");
   const [showPassword, setShowPassword] = useState(false);
 
+  useEffect(() => {
+    // Check if already authenticated
+    const userRole = localStorage.getItem("userRole");
+    // Only auto-redirect if the stored role is Student or Mentor. 
+    // If Admin is logged in, we stay on this page to allow Student login (multi-session).
+    if (userRole === 'admin') return;
+
+    const token = userRole ? localStorage.getItem(`${userRole}_accessToken`) : localStorage.getItem("accessToken");
+    
+    if (token && userRole) {
+        if (userRole === "mentor") {
+            navigate("/mentor/dashboard", { replace: true });
+        } else if (userRole === "student") {
+             // Logic: multi-stage student flow
+             const hasPaid = localStorage.getItem("hasPaid") === "true";
+             const isTrialCompleted = localStorage.getItem("isTrialCompleted") === "true";
+             const isProfileComplete = localStorage.getItem("isProfileComplete") === "true";
+             
+             if (hasPaid) {
+                 navigate("/student/dashboard", { replace: true });
+             } else if (!isTrialCompleted) {
+                 navigate("/student/book-free-trial", { replace: true });
+             } else if (!isProfileComplete) {
+                 navigate("/student/profile-setup", { replace: true });
+             } else {
+                 navigate("/student/dashboard", { replace: true });
+             }
+        }
+    }
+  }, [navigate]);
+
   const {
     register,
     handleSubmit,
@@ -301,7 +332,9 @@ export default function Login() {
     userRole: "student" | "mentor",
     profileComplete?: boolean,
     approvalStatus?: string,
-    isTrialCompleted?: boolean
+    isTrialCompleted?: boolean,
+    hasPaid?: boolean,
+    subscription?: unknown
   ) => {
     if (userRole === "mentor") {
       switch (approvalStatus) {
@@ -312,14 +345,20 @@ export default function Login() {
         case "approved":
           return profileComplete ? "/mentor/dashboard" : "/mentor/profile-setup";
         default:
-          return "/mentor/pending-approval";
+          return "/mentor/profile-setup";
       }
     }
 
     if (userRole === "student") {
+      const sub = subscription as { status?: string; endDate?: string } | null;
+      if (sub && (sub.status === 'expired' || (sub.endDate && new Date(sub.endDate) < new Date()))) {
+          return "/student/subscription-plans";
+      }
+        
+      if (hasPaid) return "/student/dashboard";
       if (!isTrialCompleted) return "/student/book-free-trial";
       if (!profileComplete) return "/student/profile-setup";
-      return "/student/time-slots";
+      return "/student/dashboard";
     }
 
     return "/";
@@ -330,35 +369,41 @@ export default function Login() {
       const resultAction = await dispatch(loginUser({ ...data, role }));
 
       if (loginUser.fulfilled.match(resultAction)) {
-        const { user, accessToken } = resultAction.payload;
+        const { user, accessToken, isProfileComplete, hasPaid, isTrialCompleted } = resultAction.payload;
 
-        // Save to localStorage
-        localStorage.setItem("accessToken", accessToken);
+        // ... existing storage logic ...
+        localStorage.setItem(`${user.role}_accessToken`, accessToken);
         localStorage.setItem("userRole", user.role);
         localStorage.setItem("userId", user._id);
+        
+        localStorage.setItem("hasPaid", String(!!hasPaid));
+        localStorage.setItem("isTrialCompleted", String(!!isTrialCompleted));
+        localStorage.setItem("isProfileComplete", String(!!isProfileComplete));
 
-        // Show appropriate toast
-        if (user.role === "student" && !user.isProfileComplete) {
-          toast.error("Your profile setup is not complete. Please complete your profile to continue.");
+        const redirectPath = getRedirectPath(
+            user.role,
+            isProfileComplete,
+            user.approvalStatus,        
+            isTrialCompleted,
+            hasPaid,
+            user.subscription
+          );
+        console.log("Generated Redirect Path:", redirectPath);
+
+        if (redirectPath === "/student/subscription-plans") {
+             toast.error("Your monthly subscription has expired. Please renew to continue.");
+        } else if (user.role === "student" && !user.isTrialCompleted) {
+             toast.success("Login successful! Please book your free trial class.");
         } else {
-          toast.success("Login successful!");
+             toast.success("Login successful!");
         }
 
-        // FIXED: navigate only takes 2 arguments
-        navigate(
-          getRedirectPath(
-            user.role,
-            user.isProfileComplete,
-            user.approvalStatus,        // ← now exists
-            user.isTrialCompleted
-          ),
-          { replace: true }
-        );
+        navigate(redirectPath, { replace: true });
       } else {
         const errorMessage = resultAction.payload as string;
         toast.error(errorMessage || "Login failed");
       }
-    } catch (err) {
+    } catch {
       toast.error("Login failed!");
     }
   };

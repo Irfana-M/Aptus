@@ -38,6 +38,7 @@ import { GradeController } from "@/controllers/grade.controller";
 import { SubjectController } from "@/controllers/subject.controller";
 import { RoleController } from "./controllers/role.controller";
 import { VideoCallController } from "./controllers/videoCall.controller";
+import { MentorTrialClassController } from "./controllers/mentorTrialClass.controller";
 import { CourseAdminController } from "./controllers/courseAdmin.controller";
 import { CourseRepository } from "./repositories/course.repository";
 import { CourseAdminService } from "./services/courseAdminService";
@@ -62,14 +63,14 @@ container.bind(TYPES.ICourseRepository).to(CourseRepository);
 
 // === MAPS — FIXED FOR NEW INVERSIFY ===
 container.bind(TYPES.VerificationRepositoryMap).toDynamicValue(() => {
-  const map = new Map<string, any>();
+  const map = new Map<string, unknown>();
   map.set('student', container.get(TYPES.IStudentAuthRepository));
   map.set('mentor', container.get(TYPES.IMentorAuthRepository));
   return map;
 }).inSingletonScope();
 
 container.bind(TYPES.AuthRepositoryMap).toDynamicValue(() => {
-  const map = new Map<string, any>();
+  const map = new Map<string, unknown>();
   map.set('student', container.get(TYPES.IStudentAuthRepository));
   map.set('mentor', container.get(TYPES.IMentorAuthRepository));
   return map;
@@ -104,6 +105,7 @@ import { StudentController } from "./controllers/student.controller";
 
 container.bind(TYPES.RoleController).to(RoleController);
 container.bind(TYPES.VideoCallController).to(VideoCallController).inSingletonScope();
+container.bind(TYPES.MentorTrialClassController).to(MentorTrialClassController);
 container.bind(TYPES.StudentController).to(StudentController);
 container.bind(TYPES.CourseAdminController).to(CourseAdminController);
 
@@ -119,7 +121,7 @@ container
 container
   .bind<CourseRequestService>(TYPES.ICourseRequestService)
   .to(CourseRequestService);
-container
+
 import { CourseController } from "@/controllers/course.controller";
 
 container
@@ -129,6 +131,13 @@ container
 container
   .bind<CourseController>(TYPES.CourseController)
   .to(CourseController);
+
+// Payment Bindings
+import { PaymentService } from "./services/payment.service";
+import { PaymentController } from "./controllers/payment.controller";
+
+container.bind(TYPES.IPaymentService).to(PaymentService);
+container.bind(TYPES.PaymentController).to(PaymentController);
 
 // Enrollment Bindings
 import { EnrollmentRepository } from "./repositories/enrollment.repository";
@@ -145,5 +154,16 @@ import { MentorDashboardController } from "./controllers/mentorDashboard.control
 
 container.bind(TYPES.IMentorDashboardService).to(MentorDashboardService);
 container.bind(TYPES.MentorDashboardController).to(MentorDashboardController);
+
+// Wallet Service Bindings
+import { WalletService } from "./services/wallet.service";
+// Availability Bindings
+import { AvailabilityService } from "./services/availability.service";
+import { AvailabilityController } from "./controllers/availability.controller";
+
+container.bind(TYPES.IAvailabilityService).to(AvailabilityService);
+container.bind(TYPES.AvailabilityController).to(AvailabilityController);
+
+container.bind(TYPES.IWalletService).to(WalletService);
 
 export { container };

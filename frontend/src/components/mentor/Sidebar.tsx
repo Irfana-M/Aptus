@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import aptusLogo from '../../assets/images/aptusLogo.jpeg';
-import { Home, User, Users, Calendar, BookOpen, FileText, ClipboardList, Bell, MessageSquare, LogOut, X } from 'lucide-react';
+import { Home, User, Users, Calendar, BookOpen, FileText, ClipboardList, Bell, MessageSquare, LogOut, X, Clock } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { logoutUser } from '../../features/auth/authThunks';
@@ -24,7 +24,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   const menuItems = [
     { icon: Home, label: 'Dashboard', path: '/mentor/dashboard' },
-    { icon: User, label: 'Profile', path: '/mentor/profile' },
+    { icon: User, label: 'Profile', path: '/mentor/profile-setup' },
     { icon: Users, label: 'Students/Batches', path: '/mentor/students' },
     { icon: Calendar, label: 'Attendance', path: '/mentor/attendance' },
     { icon: BookOpen, label: 'Classroom', path: '/mentor/classroom' },
@@ -32,6 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { icon: ClipboardList, label: 'Assignments', path: '/mentor/assignments' },
     { icon: ClipboardList, label: 'Completed Classes', path: '/mentor/completed-trial-classes' },
     { icon: Bell, label: 'Notifications', path: '/mentor/notifications' },
+    { icon: Clock, label: 'Availability', path: '/mentor/availability' },
     { icon: MessageSquare, label: 'Chats', path: '/mentor/chats' },
   ];
 

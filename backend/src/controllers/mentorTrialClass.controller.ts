@@ -15,10 +15,11 @@ export class MentorTrialClassController {
       const mentorId = req.user!.id;
       const trialClasses = await this.trialClassService.getMentorTrialClasses(mentorId);
       res.status(HttpStatusCode.OK).json({ success: true, data: trialClasses, message: "Trial classes retrieved successfully" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error("Error getting mentor trial classes", error);
       const status = error instanceof AppError ? error.statusCode : HttpStatusCode.INTERNAL_SERVER_ERROR;
-      res.status(status).json({ success: false, message: error.message || "Internal server error" });
+      const message = error instanceof Error ? error.message : "Internal server error";
+      res.status(status).json({ success: false, message });
     }
   };
 
@@ -27,10 +28,11 @@ export class MentorTrialClassController {
       const mentorId = req.user!.id;
       const todayTrialClasses = await this.trialClassService.getTodayTrialClasses(mentorId);
       res.status(HttpStatusCode.OK).json({ success: true, data: todayTrialClasses, message: "Today's trial classes retrieved successfully" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error("Error getting today's trial classes", error);
       const status = error instanceof AppError ? error.statusCode : HttpStatusCode.INTERNAL_SERVER_ERROR;
-      res.status(status).json({ success: false, message: error.message || "Internal server error" });
+      const message = error instanceof Error ? error.message : "Internal server error";
+      res.status(status).json({ success: false, message });
     }
   };
 
@@ -39,10 +41,11 @@ export class MentorTrialClassController {
       const mentorId = req.user!.id;
       const stats = await this.trialClassService.getTrialClassStats(mentorId);
       res.status(HttpStatusCode.OK).json({ success: true, data: stats, message: "Trial class statistics retrieved successfully" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error("Error getting trial class stats", error);
       const status = error instanceof AppError ? error.statusCode : HttpStatusCode.INTERNAL_SERVER_ERROR;
-      res.status(status).json({ success: false, message: error.message || "Internal server error" });
+      const message = error instanceof Error ? error.message : "Internal server error";
+      res.status(status).json({ success: false, message });
     }
   };
 
@@ -55,10 +58,11 @@ export class MentorTrialClassController {
 
       const updatedTrialClass = await this.trialClassService.updateTrialClassStatus(id, status, reason);
       res.status(HttpStatusCode.OK).json({ success: true, data: updatedTrialClass, message: "Trial class status updated successfully" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error("Error updating trial class status", error);
       const status = error instanceof AppError ? error.statusCode : HttpStatusCode.INTERNAL_SERVER_ERROR;
-      res.status(status).json({ success: false, message: error.message || "Internal server error" });
+      const message = error instanceof Error ? error.message : "Internal server error";
+      res.status(status).json({ success: false, message });
     }
   };
 
@@ -75,10 +79,11 @@ export class MentorTrialClassController {
       const feedback = { rating, comment };
       const updatedTrialClass = await this.trialClassService.submitMentorFeedback(id, mentorId, feedback);
       res.status(HttpStatusCode.OK).json({ success: true, data: updatedTrialClass, message: "Feedback submitted successfully" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error("Error submitting feedback", error);
       const status = error instanceof AppError ? error.statusCode : HttpStatusCode.INTERNAL_SERVER_ERROR;
-      res.status(status).json({ success: false, message: error.message || "Internal server error" });
+      const message = error instanceof Error ? error.message : "Internal server error";
+      res.status(status).json({ success: false, message });
     }
   };
 }

@@ -1,5 +1,5 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import authApi from "../../api/authApi"; 
+import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
+import userApi from "../../api/userApi"; 
 import { getApiErrorMessage } from "../../utils/errorUtils";
 
 
@@ -21,7 +21,6 @@ export interface VerifyRoleResponse {
     expiresAt: string;
   };
   verifiedAt?: string;
-  [key: string]: any; // Allow additional properties
 }
 
 export interface RoleOnlyResponse {
@@ -34,25 +33,27 @@ export interface RoleOnlyResponse {
 
 export const roleApi = {
   
-  verifyRoleWithToken: () => {
-    return authApi.get<VerifyRoleResponse>('/role/verify');
+  verifyRoleWithToken: (expectedRole?: string) => {
+    return userApi.get<VerifyRoleResponse>('/role/verify', {
+      headers: expectedRole ? { 'x-expected-role': expectedRole } : {}
+    });
   },
 
   getRoleOnly: () => {
-    return authApi.get<RoleOnlyResponse>('/role-only');
+    return userApi.get<RoleOnlyResponse>('/role-only');
   },
 
   
   getUserRoleById: (userId: string) => {
-    return authApi.get<RoleOnlyResponse>(`/role/${userId}`);
+    return userApi.get<RoleOnlyResponse>(`/role/${userId}`);
   },
 };
 
 export const verifyUserRole = createAsyncThunk(
   'role/verifyUserRole',
-  async (_, { rejectWithValue }) => {
+  async (expectedRole: string | undefined, { rejectWithValue }) => {
     try {
-      const response = await roleApi.verifyRoleWithToken();
+      const response = await roleApi.verifyRoleWithToken(expectedRole);
       return response.data;
     } catch (error: unknown) {
       return rejectWithValue(getApiErrorMessage(error, 'Failed to verify role'));
@@ -92,7 +93,7 @@ interface RoleState {
   role: 'mentor' | 'student' | null;
   userId: string | null;
   email: string | null;
-  user: any | null;
+  user: VerifyRoleResponse['user'] | null;
   verifiedAt: string | null;
 }
 
@@ -118,16 +119,16 @@ const roleSlice = createSlice({
       state.verifiedAt = null;
       state.error = null;
     },
-    setRole: (state, action) => {
-      state.role = action.payload.role;
-      state.userId = action.payload.userId;
-      state.email = action.payload.email;
-      state.user = action.payload.user;
+    setRole: (state, action: PayloadAction<VerifyRoleResponse>) => {
+      state.role = action.payload.role || null;
+      state.userId = action.payload.userId || null;
+      state.email = action.payload.email || null;
+      state.user = action.payload.user || null;
     },
-    setLoading: (state, action) => {
+    setLoading: (state, action: PayloadAction<boolean>) => {
       state.loading = action.payload;
     },
-    setError: (state, action) => {
+    setError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload;
     },
   },

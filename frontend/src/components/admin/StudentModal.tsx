@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { AlertCircle, CheckCircle } from "lucide-react";
 import { useZodForm } from "../../hooks/useZodForm";
 import { adminCreateStudentSchema, adminUpdateStudentSchema } from "../../lib/schemas";
@@ -35,11 +35,11 @@ export const StudentModal: React.FC<StudentModalProps> = ({
   const schema = student ? adminUpdateStudentSchema : adminCreateStudentSchema;
   
   // Properly typed initial values
-  const initialValues: StudentFormData = {
+  const initialValues: StudentFormData = useMemo(() => ({
     fullName: student?.fullName || "",
     email: student?.email || "",
     phoneNumber: student?.phoneNumber || "",
-  };
+  }), [student]);
 
   const {
     formData,
@@ -57,7 +57,7 @@ export const StudentModal: React.FC<StudentModalProps> = ({
     if (isOpen) {
       resetForm(initialValues);
     }
-  }, [isOpen, student]);
+  }, [isOpen, initialValues, resetForm]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

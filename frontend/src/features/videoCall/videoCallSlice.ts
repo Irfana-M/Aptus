@@ -41,9 +41,11 @@ const videoCallSlice = createSlice({
     setLocalStream: (state, action: PayloadAction<MediaStream | null>) => {
       // Note: MediaStream is not serializable, but we'll handle it carefully
       // In practice, we won't persist this to Redux DevTools
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       state.localStream = action.payload as any;
     },
     setRemoteStream: (state, action: PayloadAction<MediaStream | null>) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       state.remoteStream = action.payload as any;
     },
     toggleMute: (state) => {

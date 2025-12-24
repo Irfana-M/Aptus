@@ -7,7 +7,7 @@ export interface ITrialClassDocument extends Document {
   _id: Types.ObjectId;
   student: Schema.Types.ObjectId |  StudentAuthUser;
   subject: Schema.Types.ObjectId | ISubject;
-  mentor?: Schema.Types.ObjectId | MentorProfile | any;
+  mentor?: Schema.Types.ObjectId | MentorProfile;
   status: "requested" | "assigned" | "completed" | "cancelled";
   preferredDate: Date;
   preferredTime: string;

@@ -6,4 +6,6 @@ export interface RegisterUserDto {
   phoneNumber: string;
   role: "mentor" | "student";
   isVerified?: boolean;
+  referralCode?: string;
+  referredBy?: string;
 }

@@ -1,18 +1,24 @@
-// VideoCallRoom.tsx - corrected version
 import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Loader } from 'lucide-react';
-import { useWebRTC } from '../hooks/useWebRTC';
-import socketService from '../services/socketService'; // Add this import
+import { useVideoCall } from '../context/VideoCallContext';
 import type { RootState } from '../app/store';
 import type { User } from '../types/authTypes';
 import { selectCurrentUser } from '../features/auth/authSelector';
 import { prepareForVideoCall } from '../utils/videoCallPrep';
 import { setError } from '../features/videoCall/videoCallSlice';
-import { getErrorMessage } from '../utils/errorUtils';
 import type { AppDispatch } from '../app/store';
 import { verifyUserRole } from '../features/role/roleSlice';
+import { VideoOff, AlertCircle } from 'lucide-react';
+
+// Classroom Components
+import { ClassroomLayout } from '../features/classroom/components/ClassroomLayout';
+import { ClassroomSidebar } from '../features/classroom/components/ClassroomSidebar';
+import { ClassroomHeader } from '../features/classroom/components/ClassroomHeader';
+import { ClassroomRightPanel } from '../features/classroom/components/ClassroomRightPanel';
+import { ClassroomVideoGrid } from '../features/classroom/components/ClassroomVideoGrid';
+import { studentTrialApi } from '../features/trial/student/studentTrialApi';
+import type { TrialClassResponse } from '../types/trialTypes';
 
 export default function VideoCallRoom() {
   const { trialClassId } = useParams<{ trialClassId: string }>();
@@ -20,72 +26,24 @@ export default function VideoCallRoom() {
   const dispatch = useDispatch<AppDispatch>();
 
   const [isPreparing, setIsPreparing] = useState(true);
+  const [initError, setInitError] = useState<string | null>(null);
   const [joinAttempted, setJoinAttempted] = useState(false);
-  const [debugInfo, setDebugInfo] = useState(''); // Add debug state
-  const [connectionStatus, setConnectionStatus] = useState('Initializing...');
+  const [trialDetails, setTrialDetails] = useState<TrialClassResponse | null>(null);
+  const [callDuration, setCallDuration] = useState(0);
 
   // redux / auth
   const authUser = useSelector(selectCurrentUser);
   const adminUser = useSelector((state: RootState) => state.admin.admin);
   const roleFromStore = useSelector((state: RootState) => state.role.role);
+  const userIdFromStore = useSelector((state: RootState) => state.role.userId);
   const roleLoading = useSelector((state: RootState) => state.role.loading);
 
-  const localVideoRef = useRef<HTMLVideoElement | null>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const hasJoinedRef = useRef(false);
 
-  const [socketConnected, setSocketConnected] = useState(false);
-  const [isRemotePaused, setIsRemotePaused] = useState(false);
-
-  // Debug connection function
-  const testConnection = async () => {
-    console.log('🧪 Testing WebSocket connection...');
-    setDebugInfo(prev => prev + '\n🧪 Testing WebSocket connection...');
-    
-    // Test socket connection
-    try {
-      const socket = socketService.connect();
-      setSocketConnected(socket.connected);
-      
-      socket.on('connect', () => {
-        console.log('✅ Socket connected:', socket.id);
-        setDebugInfo(prev => prev + '\n✅ Socket connected: ' + socket.id);
-        setSocketConnected(true);
-      });
-      
-      socket.on('disconnect', () => {
-        setSocketConnected(false);
-      });
-      
-      socket.on('connect_error', (error: Error) => {
-        console.error('❌ Connection error:', error.message);
-        setDebugInfo(prev => prev + '\n❌ Connection error: ' + error.message);
-        setSocketConnected(false);
-      });
-      // ... rest of testConnection
-
-      
-      // Test media permissions
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: true, 
-          audio: true 
-        });
-        console.log('✅ Media permissions granted');
-        setDebugInfo(prev => prev + '\n✅ Media permissions granted');
-        stream.getTracks().forEach(track => track.stop());
-      } catch (err: unknown) {
-        console.error('❌ Media permission error:', err);
-        setDebugInfo(prev => prev + '\n❌ Media permission error: ' + getErrorMessage(err));
-      }
-    } catch (err: unknown) {
-      console.error('❌ Socket connection error:', err);
-      setDebugInfo(prev => prev + '\n❌ Socket connection error: ' + getErrorMessage(err));
-    }
-  };
-
   // derive (best-effort) userId & userType (fallbacks from localStorage or token)
-  const currentUser = useMemo((): { userId: string; userType: 'mentor' | 'student' } | null => {
+  const currentUser = useMemo((): { userId: string; userType: 'mentor' | 'student'; name: string } | null => {
     let user: User | null = null;
     let role: 'mentor' | 'student' | undefined;
 
@@ -101,34 +59,75 @@ export default function VideoCallRoom() {
     }
 
     if (!user || !role) {
-      const savedRole = localStorage.getItem('userRole');
+      const prefRole = localStorage.getItem('userRole');
       const savedUserId = localStorage.getItem('userId');
-      const token = localStorage.getItem('accessToken');
+      const studentToken = localStorage.getItem('student_accessToken');
+      const mentorToken = localStorage.getItem('mentor_accessToken');
+      const genericToken = localStorage.getItem('accessToken');
 
-      if ((savedRole === 'mentor' || savedRole === 'student') && savedUserId && token) {
-        return { userId: savedUserId, userType: savedRole as 'mentor' | 'student' };
-      }
+      // Prioritize the token matching the preferred role
+      let activeToken = null;
+      if (prefRole === 'student') activeToken = studentToken || genericToken || mentorToken;
+      else if (prefRole === 'mentor') activeToken = mentorToken || genericToken || studentToken;
+      else activeToken = studentToken || mentorToken || genericToken;
+      
+      if (!activeToken) return null;
 
-      if (token) {
-        try {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          const tokenRole: 'mentor' | 'student' = payload.role === 'mentor' ? 'mentor' : 'student';
-          const id = payload.id || payload._id || payload.userId;
-          if (id) return { userId: id, userType: tokenRole };
-        } catch (e) {
-          console.error('Token decode failed', e);
+      try {
+        const payload = JSON.parse(atob(activeToken.split('.')[1]));
+        const tokenRole: 'mentor' | 'student' = payload.role === 'mentor' ? 'mentor' : 'student';
+        const id = payload.id || payload._id || payload.userId || savedUserId;
+        
+        if (id) {
+          return { 
+            userId: id, 
+            userType: tokenRole, 
+            name: payload.fullName || payload.name || 'User' 
+          };
         }
+      } catch (e) {
+        console.error('Token decode failed in VideoCallRoom', e);
       }
       return null;
     }
 
-    return { userId: user._id, userType: role };
+    return { userId: user._id, userType: role, name: user.fullName };
   }, [authUser, adminUser]);
+
+  const userId = currentUser?.userId ?? '';
+  const userType = currentUser?.userType ?? 'student';
+
+  // Actual Participants (Only 2)
+  const participants = useMemo(() => {
+    const list = [
+      { id: currentUser?.userId || 'me', name: currentUser?.name || 'You', role: currentUser?.userType || 'student' as const }
+    ];
+    
+    // Add remote participant if details are available and we're connected
+    if (trialDetails) {
+      if (userType === 'student' && trialDetails.mentor) {
+        const mentor = trialDetails.mentor;
+        list.push({ 
+          id: typeof mentor === 'string' ? mentor : mentor.id, 
+          name: typeof mentor === 'string' ? 'Mentor' : mentor.name, 
+          role: 'mentor' as const 
+        });
+      } else if (userType === 'mentor' && trialDetails.student) {
+        const student = trialDetails.student;
+        list.push({ 
+          id: typeof student === 'string' ? student : student.id, 
+          name: typeof student === 'string' ? 'Student' : student.fullName, 
+          role: 'student' as const 
+        });
+      }
+    }
+    
+    return list;
+  }, [currentUser, trialDetails, userType]);
 
   // If we don't have a minimal currentUser, redirect to login quickly
   useEffect(() => {
     if (!currentUser) {
-      // Wait a moment for role verification to possibly fill in state — but if no token/local data, redirect.
       const t = setTimeout(() => {
         if (!currentUser) navigate('/login');
       }, 600);
@@ -136,54 +135,72 @@ export default function VideoCallRoom() {
     }
   }, [currentUser, navigate]);
 
+  const hasInitializedRef = useRef(false);
+
   // Prepare environment & verify role with backend
+  // Stable identifiers for initialization
+  const stableUserId = currentUser?.userId;
+  const stableUserType = currentUser?.userType;
+
   useEffect(() => {
-    if (!currentUser || !trialClassId) return;
+    // Stop if we don't have basic info
+    if (!stableUserId || !trialClassId) return;
+
+    // If already initialized, just ensure we aren't stuck in "preparing"
+    if (hasInitializedRef.current) {
+        if (isPreparing && !roleLoading && roleFromStore) {
+            console.log('🩹 [VideoCall] Already initialized, clearing preparing state.');
+            setIsPreparing(false);
+        }
+        return;
+    }
 
     let mounted = true;
 
     const prepareCall = async () => {
+      console.log('🔄 [VideoCall] Starting initialization sequence...', { stableUserId, stableUserType, trialClassId });
+      hasInitializedRef.current = true;
       setIsPreparing(true);
+      setInitError(null);
 
-      // quick local preparation (permissions UI, CSS changes, etc)
-      if (!prepareForVideoCall()) {
-        dispatch(setError('Failed to prepare video call.'));
+      if (!prepareForVideoCall(stableUserType)) {
+        const msg = 'Failed to prepare video call environment.';
+        dispatch(setError(msg));
+        setInitError(msg);
         setIsPreparing(false);
         return;
       }
 
       try {
-        // verifyUserRole will call /role/verify and populate redux role slice
-        const result = await dispatch(verifyUserRole()).unwrap();
-        if (!mounted) return;
-
-        // result should contain user and role according to your controller
-        console.log('Role verify result:', result);
+        console.log('🔄 [VideoCall] Fetching trial details...');
+        const details = await studentTrialApi.getTrialClassById(trialClassId);
+        if (mounted) setTrialDetails(details);
+        
+        console.log('🔄 [VideoCall] Verifying role...');
+        await dispatch(verifyUserRole(stableUserType)).unwrap();
+        console.log('✅ [VideoCall] Initialization successful');
       } catch (err: unknown) {
-        console.warn('Role verification failed, proceeding with best-effort:', err);
-        // if role verify fails, we still allow user to attempt to join, but will not automatically join
+        const error = err as Error;
+        console.warn('❌ [VideoCall] Initialization failed:', error);
+        if (mounted) {
+            setInitError(error.message || 'Failed to verify user permissions.');
+            hasInitializedRef.current = false; // Allow retry on failure
+        }
       } finally {
-        if (mounted) setIsPreparing(false);
+        if (mounted) {
+            console.log('🔄 [VideoCall] Initialization sequence complete');
+            setIsPreparing(false);
+        }
       }
     };
 
     prepareCall();
 
-    return () => { 
-      mounted = false; 
+    return () => {
+      mounted = false;
     };
-  }, [currentUser, trialClassId, dispatch]);
+  }, [stableUserId, trialClassId, stableUserType, dispatch, roleLoading, roleFromStore, isPreparing]);
 
-  // safe extraction for passing to hook (these may be empty until verify completes)
-  const userId = currentUser?.userId ?? '';
-  const userType = currentUser?.userType ?? 'student';
-
-  // hook must be called unconditionally
-  const webRTCConfig = useMemo(() => ({
-    trialClassId: trialClassId || '',
-    userId,
-    userType: userType as 'mentor' | 'student',
-  }), [trialClassId, userId, userType]);
 
   const {
     localStream,
@@ -197,50 +214,34 @@ export default function VideoCallRoom() {
     toggleMute,
     toggleVideo,
     remoteMediaState,
-    status: webRTCStatus // Rename to avoid conflict
-  } = useWebRTC(webRTCConfig);
+    status,
+  } = useVideoCall();
 
-  // Join call only when:
-  // - we haven't attempted before
-  // - we have trialClassId & userId
-  // - preparation (and role verify attempt) is done
-  // - AND the redux role matches the userType derived from token (prevents mismatch)
   useEffect(() => {
-    // Check for missing requirements and update status
-    if (!trialClassId) setConnectionStatus('Missing Trial Class ID');
-    else if (!userId) setConnectionStatus('Missing User ID');
-    else if (roleLoading) setConnectionStatus('Verifying Role...');
-    else if (isPreparing) setConnectionStatus('Preparing Media...');
-    else if (roleFromStore && roleFromStore !== userType) setConnectionStatus(`Role Mismatch: Store(${roleFromStore}) vs Token(${userType})`);
-    else if (!roleFromStore) setConnectionStatus('Role verification failed or pending');
+    // Determine the actual values to use
+    const activeUserId = userIdFromStore || stableUserId || userId;
+    const activeRole = roleFromStore || stableUserType || userType;
+
+    console.log('🧐 [VideoCall] Join check:', { 
+        isPreparing, 
+        roleLoading, 
+        trialClassId, 
+        activeUserId, 
+        activeRole, 
+        joinAttempted,
+        hasJoined: hasJoinedRef.current,
+        roleFromStore,
+        userIdFromStore
+    });
+
+    if (isPreparing || roleLoading || !trialClassId || !activeUserId || !activeRole) return;
     
-    if (
-      !joinAttempted &&
-      !isPreparing &&
-      !roleLoading &&
-      trialClassId &&
-      userId &&
-      roleFromStore &&
-      roleFromStore === userType
-    ) {
-      setConnectionStatus('Joining Call...');
-      setJoinAttempted(true);
-
-      if (!hasJoinedRef.current) {
+    // GUARD: Ensure we only join once per lifecycle
+    if (!hasJoinedRef.current) {
+        console.log('🚀 [VideoCall] Attempting to join call...', { trialClassId, userId: activeUserId, userType: activeRole });
         hasJoinedRef.current = true;
-        console.log('🚀 Joining call as', { userId, userType, trialClassId });
-        setConnectionStatus('Emitting Join Event...');
-        joinCall();
-      }
-    }
-
-    // If role verification completed but the role does NOT match the token/userType, show error & navigate back
-    if (!isPreparing && !roleLoading && roleFromStore && roleFromStore !== userType) {
-      console.error('Role mismatch after verification', { roleFromStore, userType });
-      dispatch(setError(`Role mismatch: Logged in as ${roleFromStore} but token says ${userType}`));
-      // navigate away or show message
-      const t = setTimeout(() => navigate('/login'), 3000); // Increased delay to read error
-      return () => clearTimeout(t);
+        setJoinAttempted(true);
+        joinCall({ trialClassId, userId: activeUserId as string, userType: activeRole as 'mentor' | 'student' });
     }
   }, [
     joinAttempted,
@@ -248,46 +249,65 @@ export default function VideoCallRoom() {
     roleLoading,
     trialClassId,
     userId,
+    stableUserId,
+    stableUserType,
     userType,
     roleFromStore,
+    userIdFromStore,
     joinCall,
-    dispatch,
     navigate,
   ]);
 
-  // attach media streams to <video> elements
+  // Ensure local stream is attached to ref
   useEffect(() => {
     if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
+      if (localVideoRef.current.srcObject !== localStream) {
+        console.log('📹 [VideoCall] Attaching local stream');
+        localVideoRef.current.srcObject = localStream;
+      }
+      localVideoRef.current.play().catch(e => console.warn('Local video play failed:', e));
     }
-  }, [localStream]);
+  }, [localStream, isPreparing, joinAttempted]); // Trigger on join state changes too
+
+  // Ensure remote stream is attached to ref
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+        const hasVideo = remoteStream.getVideoTracks().length > 0;
+        const hasAudio = remoteStream.getAudioTracks().length > 0;
+        
+        console.log('📺 [VideoCall] Remote stream tracks:', { 
+            hasVideo, 
+            hasAudio, 
+            videoReadyState: remoteStream.getVideoTracks()[0]?.readyState,
+            videoEnabled: remoteStream.getVideoTracks()[0]?.enabled
+        });
+
+        if (remoteVideoRef.current.srcObject !== remoteStream) {
+            console.log('📺 [VideoCall] Attaching remote stream to element');
+            remoteVideoRef.current.srcObject = remoteStream;
+        }
+        
+        remoteVideoRef.current.play().catch(e => {
+            console.warn('Remote video play failed (retrying in 1s):', e);
+            setTimeout(() => remoteVideoRef.current?.play().catch(() => {}), 1000);
+        });
+    }
+  }, [remoteStream, remoteMediaState.isVideoOff, isPreparing]);
 
   useEffect(() => {
-    console.log('🎬 [VideoCallRoom] Remote stream useEffect triggered', {
-      hasRef: !!remoteVideoRef.current,
-      hasStream: !!remoteStream,
-      streamId: remoteStream?.id,
-      audioTracks: remoteStream?.getAudioTracks().length,
-      videoTracks: remoteStream?.getVideoTracks().length
-    });
-    
-    if (remoteVideoRef.current && remoteStream) {
-      console.log('✅ [VideoCallRoom] Setting remote video srcObject');
-      remoteVideoRef.current.srcObject = remoteStream;
-      
-      // Force play in case autoplay doesn't work
-      remoteVideoRef.current.play().catch(err => {
-        console.warn('⚠️ [VideoCallRoom] Remote video autoplay failed:', err);
-      });
-    } else {
-      console.warn('⚠️ [VideoCallRoom] Cannot set remote stream:', {
-        refExists: !!remoteVideoRef.current,
-        streamExists: !!remoteStream
-      });
+    let timer: ReturnType<typeof setInterval>;
+    if (isConnected) {
+      timer = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
     }
-  }, [remoteStream]);
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isConnected]);
 
-  // ensure cleanup on unmount
+  // REMOVED: Unmount should NOT end call anymore to allow for PIP (Floating Window)
+  /*
   useEffect(() => {
     return () => {
       try {
@@ -297,25 +317,84 @@ export default function VideoCallRoom() {
       }
     };
   }, [endCall]);
+  */
 
-  const handleEndCall = useCallback(() => {
+  const handleEndCall = useCallback(async () => {
     try {
+      if (userType === 'mentor' && trialClassId) {
+        try {
+          await studentTrialApi.completeTrialClass(trialClassId);
+        } catch (e) {
+          console.error('Failed to mark trial as completed:', e);
+        }
+      }
       endCall();
     } finally {
-      navigate(userType === 'mentor' ? '/mentor/dashboard' : `/trial-class/${trialClassId}/feedback`);
+      if (userType === 'student') {
+        navigate(`/trial-class/${trialClassId}/feedback`);
+      } else {
+        if (window.opener) {
+          window.close();
+        } else {
+          navigate('/mentor/dashboard');
+        }
+      }
     }
   }, [endCall, navigate, userType, trialClassId]);
+  
+  if (initError) {
+    return (
+      <div className="min-h-screen bg-[#F4FBFB] flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-xl p-8 max-w-md w-full text-center border border-red-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <VideoOff className="text-red-500" size={32} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 font-outfit">Initialization Failed</h2>
+          <p className="text-gray-600 mb-8">{initError}</p>
+          <div className="flex flex-col gap-3">
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full bg-[#1A1A80] text-white font-bold py-3.5 rounded-xl hover:bg-[#2A2A90] transition-all shadow-lg active:scale-[0.98]"
+            >
+              Retry Connection
+            </button>
+            <button 
+              onClick={() => navigate(-1)}
+              className="w-full bg-gray-50 text-gray-700 font-bold py-3.5 rounded-xl hover:bg-gray-100 transition-all border border-gray-100"
+            >
+              Go Back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isPreparing) {
+    return (
+      <div className="min-h-screen bg-[#F4FBFB] flex items-center justify-center">
+        <div className="text-center animate-in fade-in zoom-in duration-500">
+          <div className="w-16 h-16 border-4 border-[#3CB4B4] border-t-transparent rounded-full animate-spin mx-auto mb-6" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 font-outfit">Preparing Classroom</h2>
+          <p className="text-gray-500 flex items-center justify-center gap-2">
+            <AlertCircle size={14} className="text-[#3CB4B4] animate-pulse" />
+            Verifying secure connection...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
+    console.log('Call state:', { isConnected });
     return (
       <div className="h-screen flex items-center justify-center bg-gray-900 text-white">
-        <div className="text-center">
-          <VideoOff size={64} className="mx-auto mb-4 text-red-500" />
+        <div className="text-center p-8 bg-white/10 backdrop-blur rounded-2xl shadow-2xl">
           <h2 className="text-2xl font-bold mb-2">Call Failed</h2>
           <p className="text-gray-300 mb-6">{error}</p>
           <button
             onClick={handleEndCall}
-            className="px-6 py-3 bg-white text-black rounded-lg font-bold hover:bg-gray-100 transition"
+            className="px-6 py-3 bg-[#3CB4B4] text-white rounded-lg font-bold hover:bg-[#329898] transition"
           >
             Back to Dashboard
           </button>
@@ -325,179 +404,58 @@ export default function VideoCallRoom() {
   }
 
   return (
-    <div className="h-screen bg-gray-900 flex flex-col">
-      {/* DEBUG SECTION */}
-      <div className="fixed top-4 right-4 bg-black/80 text-white p-4 rounded-lg max-w-md z-50">
-        <button 
-          onClick={testConnection}
-          className="bg-blue-500 px-3 py-1 rounded mb-2 text-sm"
-        >
-          Test Connection
-        </button>
-        <pre className="text-xs whitespace-pre-wrap overflow-auto max-h-40">
-          {debugInfo || 'Click "Test Connection" to debug'}
-        </pre>
-      </div>
+    <ClassroomLayout
+      sidebar={userType === 'mentor' ? <ClassroomSidebar onLogout={() => navigate('/logout')} /> : null}
+      header={<ClassroomHeader />}
+      mainContent={
+        <div className="space-y-8 animate-in fade-in duration-700">
+          <ClassroomVideoGrid
+            localVideoRef={localVideoRef}
+            remoteVideoRef={remoteVideoRef}
+            remoteStream={remoteStream}
+            isMuted={isMuted}
+            isVideoOff={isVideoOff}
+            remoteMediaState={remoteMediaState}
+            onToggleMute={toggleMute}
+            onToggleVideo={toggleVideo}
+            onEndCall={handleEndCall}
+            onMinimize={() => navigate(-1)}
+            userType={userType}
+            duration={callDuration}
+            status={status}
+          />
 
-      <div className="flex-1 relative overflow-hidden">
-        {/* Remote Video */}
-        <div className="absolute inset-0">
-          {remoteStream ? (
-            <>
-              <video
-                ref={remoteVideoRef}
-                autoPlay
-                playsInline
-                controls
-                className={`w-full h-full object-cover ${remoteMediaState.isVideoOff ? 'hidden' : ''}`}
-                onPlay={() => setIsRemotePaused(false)}
-                onPause={() => setIsRemotePaused(true)}
-                onLoadedMetadata={() => {
-                   console.log('🎬 [VideoCallRoom] Remote video metadata loaded, attempting play...');
-                   remoteVideoRef.current?.play()
-                     .then(() => setIsRemotePaused(false))
-                     .catch(e => {
-                       console.error('Play failed or paused:', e);
-                       setIsRemotePaused(true);
-                     });
-                }}
-              />
-              
-              {/* Autoplay Fallback Overlay */}
-              {isRemotePaused && (
-                <div 
-                  className="absolute inset-0 flex items-center justify-center z-10 bg-black/40 backdrop-blur-sm"
-                >
-                    <button 
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-full font-bold text-lg pointer-events-auto transition flex items-center gap-3 shadow-xl transform hover:scale-105"
-                      onClick={() => {
-                         remoteVideoRef.current?.play().catch(console.error);
-                      }}
-                    >
-                      <Video size={24} />
-                      Click to Start Video Output
-                    </button>
-                </div>
-              )}
+          {/* Subject Information Section */}
+          <div className="bg-white rounded-3xl p-8 shadow-sm">
+            <h2 className="text-xl font-bold text-gray-800 mb-2">
+              {trialDetails?.subject?.subjectName || 'Aptus Live Session'}
+            </h2>
+            <h3 className="text-sm font-bold text-gray-800 mb-4">
+              Personalized Mentoring Session
+            </h3>
+            <p className="text-sm text-gray-500 leading-relaxed mb-10 max-w-3xl">
+              Welcome to your Aptus live classroom. This trial session is designed to evaluate your learning goals and match you with the perfect educational path.
+            </p>
 
-              {remoteMediaState.isVideoOff && (
-                <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                  <div className="text-center text-white">
-                    <div className="w-32 h-32 bg-indigo-600 rounded-full mx-auto mb-6 flex items-center justify-center border-4 border-indigo-400 shadow-xl">
-                      <span className="text-4xl font-bold">
-                        {userType === 'mentor' ? 'ST' : 'ME'}
-                      </span>
-                    </div>
-                    <p className="text-xl font-medium mt-4 text-gray-400">Camera is off</p>
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gray-800">
-              <div className="text-center text-white">
-                <div className="w-32 h-32 bg-indigo-600 rounded-full mx-auto mb-6 flex items-center justify-center border-4 border-indigo-400 shadow-xl">
-                  <span className="text-4xl font-bold">
-                    {userType === 'mentor' ? 'ST' : 'ME'}
-                  </span>
-                </div>
-                <Loader size={32} className="animate-spin mx-auto mb-4" />
-                <p className="text-xl font-medium">
-                  Waiting for {userType === 'mentor' ? 'student' : 'mentor'}...
-                </p>
-              </div>
-            </div>
-          )}
-          
-          {/* Remote Mute Indicator */}
-          {remoteMediaState.isMuted && isConnected && (
-             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 mt-24 bg-red-600/90 text-white px-4 py-2 rounded-full flex items-center gap-2">
-                <MicOff size={16} />
-                <span className="text-sm font-medium">Muted</span>
-             </div>
-          )}
-        </div>
-
-        {/* Local Video */}
-        <div className="absolute bottom-24 right-6 w-72 h-48 rounded-xl overflow-hidden shadow-2xl border-4 border-gray-700 bg-gray-900">
-          {isVideoOff ? (
-            <div className="w-full h-full flex items-center justify-center relative">
-               <div className="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center">
-                  <span className="text-xl font-bold text-gray-400">YOU</span>
-               </div>
-               <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <VideoOff size={32} className="text-white/50" />
+            {/* Attendance Stats - Hidden for 1:1 Trial */}
+            <div className="flex items-center justify-center gap-12 pt-6 border-t border-gray-100 opacity-20 pointer-events-none">
+               <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Aptus Trial Session</span>
                </div>
             </div>
-          ) : (
-            <video
-              ref={localVideoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover scale-x-[-1]"
-            />
-          )}
-          <div className="absolute top-2 left-2 bg-black/60 px-3 py-1 rounded text-xs text-white font-medium flex items-center gap-2">
-            <span>You ({userType})</span>
-            {isMuted && <MicOff size={12} className="text-red-400" />}
           </div>
         </div>
-
-        {/* Connection Status */}
-        <div className="absolute top-6 left-6 bg-black/60 backdrop-blur px-4 py-2 rounded-full">
-          <span
-            className={`w-3 h-3 ${isConnected ? 'bg-green-500' : 'bg-yellow-500'} rounded-full inline-block animate-pulse mr-2`}
-          />
-          <span className="text-white text-sm font-medium">
-            {isConnected ? 'Connected' : 'Connecting...'}
-          </span>
-        </div>
-      </div>
-
-      // Add this to your return statement, above the debug section
-<div className="fixed top-4 left-4 bg-black/80 text-white p-4 rounded-lg max-w-md z-50">
-  <div className="text-xs space-y-1">
-    <div>🔌 Socket: {socketConnected ? '✅' : '❌'}</div>
-    <div>🔗 WebRTC: {isConnected ? '✅ Connected' : '❌ Disconnected'}</div>
-    <div>🚦 Global Status: {connectionStatus}</div>
-    <div>🛠️ WebRTC Status: {webRTCStatus}</div>
-    <div>📹 Local Stream: {localStream ? '✅' : '❌'}</div>
-    <div>📹 Remote Stream: {remoteStream ? '✅' : '❌'}</div>
-    <div>🎤 Muted: {isMuted ? '✅' : '❌'}</div>
-    <div>📸 Video Off: {isVideoOff ? '✅' : '❌'}</div>
-    {error && <div className="text-red-400">❌ Error: {error}</div>}
-  </div>
-</div>
-
-      {/* Controls */}
-      <div className="bg-gray-800 border-t border-gray-700 p-6">
-        <div className="max-w-md mx-auto flex items-center justify-center gap-6">
-          <button
-            onClick={toggleMute}
-            className={`p-5 rounded-full transition ${isMuted ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-600'}`}
-            aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
-          >
-            {isMuted ? <MicOff size={28} className="text-white" /> : <Mic size={28} className="text-white" />}
-          </button>
-
-          <button
-            onClick={toggleVideo}
-            className={`p-5 rounded-full transition ${isVideoOff ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-600'}`}
-            aria-label={isVideoOff ? 'Turn camera on' : 'Turn camera off'}
-          >
-            {isVideoOff ? <VideoOff size={28} className="text-white" /> : <Video size={28} className="text-white" />}
-          </button>
-
-          <button
-            onClick={handleEndCall}
-            className="p-5 rounded-full bg-red-600 hover:bg-red-700 transition"
-            aria-label="End call"
-          >
-            <PhoneOff size={28} className="text-white" />
-          </button>
-        </div>
-      </div>
-    </div>
+      }
+      rightPanel={
+        <ClassroomRightPanel
+          currentUser={{
+            name: currentUser?.name || 'User',
+            role: currentUser?.userType === 'mentor' ? 'Mentor' : 'Student',
+          }}
+          participants={participants}
+          onFeedback={() => navigate(`/trial-class/${trialClassId}/feedback`)}
+        />
+      }
+    />
   );
 }

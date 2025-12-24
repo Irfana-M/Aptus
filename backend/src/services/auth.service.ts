@@ -7,7 +7,7 @@ import type { LoginUserDto } from "../dto/auth/LoginUserDTO";
 import type { RegisterUserDto } from "../dto/auth/RegisteruserDTO";
 import { hashPassword, comparePasswords } from "../utils/password.utils";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt.util";
-import type { IAuthService } from "../interfaces/services/IauthService";
+import type { IAuthService, UserContextResponse } from "../interfaces/services/IauthService";
 import type {
   AuthUser,
   MentorAuthUser,
@@ -17,7 +17,7 @@ import type { IProfileService } from "../interfaces/services/IProfileService";
 import { logger } from "../utils/logger";
 import type { SendOtpDto } from "../dto/auth/OtpDTO";
 import type { VerifyOtpDto } from "../dto/auth/VerifyOtpDTO";
-import type { ForgotPasswordDto } from "../dto/auth/ForgotPasswordDTO";
+// ForgotPasswordDto import removed as it is unused
 import type {
   MentorBaseResponseDto,
   StudentBaseResponseDto,
@@ -27,6 +27,10 @@ import { HttpStatusCode } from "@/constants/httpStatus";
 import { AppError } from "@/utils/AppError";
 import { injectable, inject } from "inversify";
 import { TYPES } from "../types";
+import type { IWalletService } from "../interfaces/services/IWalletService";
+import * as crypto from 'crypto';
+
+// ... (existing imports)
 
 @injectable()
 export class AuthService implements IAuthService {
@@ -36,7 +40,8 @@ export class AuthService implements IAuthService {
     @inject(TYPES.IEmailService) private _emailService: IEmailService,
     @inject(TYPES.IStudentAuthRepository) private _studentRepo: IStudentAuthRepository,
     @inject(TYPES.IMentorAuthRepository) private _mentorRepo: IMentorAuthRepository,
-    @inject(TYPES.IProfileService) private _profileService: IProfileService
+    @inject(TYPES.IProfileService) private _profileService: IProfileService,
+    @inject(TYPES.IWalletService) private _walletService: IWalletService
   ) {}
 
   async registerUser(data: RegisterUserDto) {
@@ -48,10 +53,49 @@ export class AuthService implements IAuthService {
         throw new Error("Passwords do not match");
 
       const hashedPassword = await hashPassword(data.password);
-      const user = await this._authRepo.createUser({
+      
+      // Generate unique referral code for the new user
+      const newReferralCode = crypto.randomBytes(4).toString('hex').toUpperCase();
+
+      // Handle referral usage (if new user signed up with a code)
+      let referredBy = undefined;
+      // Note: Data is typed as RegisterUserDto which has referralCode
+      const inputRefCode = data.referralCode;
+
+      if (inputRefCode && data.role === 'student') {
+         const referrer = await this._studentRepo.findByReferralCode(inputRefCode);
+         if (referrer) {
+            referredBy = referrer.referralCode;
+            // Credit the referrer - amount configurable, e.g., 100
+             // We can do this async or await. Await ensures reliability.
+             // Usually credit should happen ONLY after verification, but per user request 
+             // "credit referrer when new user signs up", we do it here or after verify.
+             // Safest is after verification (verifySignupOtp), but user said "Signs Up". 
+             // "Signs Up" usually implies successful registration.
+             // Let's defer actual credit to 'verifySignupOtp' to prevent spam/fake accounts 
+             // from draining budget, OR do it here if "Sign Up" means just filling form.
+             // Recommendation: Do it on Verification. 
+             // But to follow user instruction "Signs Up", I will store 'referredBy' now 
+             // and credit in 'verifySignupOtp'.
+         }
+      }
+
+      const userData: RegisterUserDto = {
         ...data,
         password: hashedPassword,
-      });
+        referralCode: newReferralCode,
+      };
+
+      if (referredBy) {
+          userData.referredBy = referredBy;
+      }
+
+      const user = await this._authRepo.createUser(userData);
+
+      // Initialize empty wallet for the new student
+      if (data.role === 'student') {
+        await this._walletService.createWallet(user._id);
+      }
 
       await this.sendSignupOtp({ email: user.email, role: data.role });
 
@@ -104,9 +148,27 @@ export class AuthService implements IAuthService {
         ? this._studentRepo.markUserVerified(data.email)
         : this._mentorRepo.markUserVerified(data.email));
 
+      // NEW: Credit Referral Bonus here to prevent spam
+      if (role === 'student') {
+          const student = await this._studentRepo.findByEmail(data.email);
+          if (student && (student as unknown as { referredBy?: string }).referredBy) {
+             const referrer = await this._studentRepo.findByReferralCode((student as unknown as { referredBy?: string }).referredBy!);
+             if (referrer) {
+                // Credit Referrer
+                await this._walletService.creditWallet(
+                    referrer._id, 
+                    100, // Reward Amount
+                    'REFERRAL', 
+                    `Referral bonus for inviting ${student.email}`
+                );
+                logger.info(`Referral bonus credited to ${referrer.email} for invoking ${student.email}`);
+             }
+          }
+      }
+
       await this._emailService.sendMail(
         data.email,
-        "Welcome to Mentora",
+        "Welcome to Aptus",
         `<p>Your account has been verified successfully!</p>`
       );
 
@@ -190,17 +252,21 @@ export class AuthService implements IAuthService {
             logger.error("Self-healing check failed:", healingError as Error);
           }
         }
+
       }
 
-      const userResponse: any = UserMapper.toLoginAuthUser(
+      const userResponse: AuthUser = UserMapper.toLoginAuthUser(
         user as MentorAuthUser | StudentAuthUser,
         isProfileComplete
       );
       
       if (role === 'mentor') {
-          userResponse.approvalStatus = (user as MentorAuthUser).approvalStatus;
+           const mentorUser = user as MentorAuthUser;
+           if (mentorUser.approvalStatus) {
+               userResponse.approvalStatus = mentorUser.approvalStatus;
+           }
       }
-
+      
       const result: {
         user: AuthUser;
         accessToken: string;
@@ -215,12 +281,11 @@ export class AuthService implements IAuthService {
         isProfileComplete,
       };
 
-      if (isTrialCompleted !== undefined) {
-        result.isTrialCompleted = isTrialCompleted;
-      }
-
       if (isPaid !== undefined) {
         result.isPaid = isPaid;
+      }
+      if (isTrialCompleted !== undefined) {
+        result.isTrialCompleted = isTrialCompleted;
       }
 
       logger.info(
@@ -343,6 +408,54 @@ export class AuthService implements IAuthService {
       logger.error(
         `Failed to get student profile: ${email} - ${errorMessage}`
       );
+      throw error;
+    }
+  }
+
+  async getUserById(id: string, role: string): Promise<UserContextResponse> {
+    try {
+      const repo = role === "student" ? this._studentRepo : this._mentorRepo;
+      const user = await repo.findById(id);
+      
+      if (!user) {
+        throw new AppError("User not found", HttpStatusCode.NOT_FOUND);
+      }
+
+      let isProfileComplete = false;
+      let isPaid: boolean | undefined = undefined;
+      let isTrialCompleted: boolean | undefined = undefined;
+
+      if (role === "mentor") {
+        isProfileComplete = this._profileService.isMentorProfileComplete(
+          user as MentorAuthUser
+        );
+      } else {
+        const studentUser = user as StudentAuthUser;
+        isPaid = Boolean(studentUser.isPaid);
+        isProfileComplete = Boolean(studentUser.isProfileCompleted);
+        isTrialCompleted = Boolean(studentUser.isTrialCompleted);
+      }
+
+      const userResponse: AuthUser = UserMapper.toLoginAuthUser(
+        user as MentorAuthUser | StudentAuthUser,
+        isProfileComplete
+      );
+      
+      if (role === 'mentor') {
+          userResponse.approvalStatus = (user as MentorAuthUser).approvalStatus;
+      }
+
+      const response: UserContextResponse = {
+        user: userResponse,
+        isProfileComplete,
+      };
+
+      if (isPaid !== undefined) response.isPaid = isPaid;
+      if (isTrialCompleted !== undefined) response.isTrialCompleted = isTrialCompleted;
+      
+      return response;
+    } catch (error) {
+      logger.error(`Failed to get user by id: ${id} - ${error}`);
       throw error;
     }
   }

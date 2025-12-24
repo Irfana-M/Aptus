@@ -186,10 +186,11 @@ export const MentorsManagement: React.FC = () => {
       setShowBlockModal(false);
       setSelectedMentor(null);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       showToast.dismiss();
       const action = selectedMentor.action === 'block' ? 'block' : 'unblock';
-      const errorMessage = error?.message || `Failed to ${action} ${selectedMentor.name}`;
+      const err = error as { message?: string };
+      const errorMessage = err?.message || `Failed to ${action} ${selectedMentor.name}`;
       showToast.error(errorMessage);
       console.error(`Failed to ${action} mentor:`, error);
     }
@@ -211,7 +212,7 @@ export const MentorsManagement: React.FC = () => {
     setSelectedMentorForEdit(null);
   };
 
-  const handleSaveMentor = async (mentorData: any) => {
+  const handleSaveMentor = async (mentorData: Partial<MentorProfile>) => {
     try {
       if (selectedMentorForEdit) {
         await dispatch(updateMentorAdmin({
@@ -225,9 +226,10 @@ export const MentorsManagement: React.FC = () => {
       }
       
       handleCloseMentorModal();
-    } catch (error: any) {
+    } catch (error: unknown) {
       const action = selectedMentorForEdit ? "update" : "add";
-      const errorMessage = error?.message || `Failed to ${action} mentor`;
+      const err = error as { message?: string };
+      const errorMessage = err?.message || `Failed to ${action} mentor`;
       showToast.error(errorMessage);
       console.error(`Failed to ${action} mentor:`, error);
     }

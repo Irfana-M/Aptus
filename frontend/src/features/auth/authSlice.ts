@@ -8,6 +8,7 @@ import {
   loginUser,
   refreshAccessToken,
 } from "./authThunks";
+import { adminLoginThunk } from "../admin/adminThunk";
 
 const initialState: AuthState = {
   loading: false,
@@ -17,7 +18,7 @@ const initialState: AuthState = {
   isVerified: false,
   isAuthenticated: false,
   isProfileComplete: undefined,
-  isPaid: undefined,
+  hasPaid: undefined,
   isTrialCompleted: undefined,
 };
 
@@ -33,19 +34,19 @@ const authSlice = createSlice({
       state.accessToken = null;
       state.isAuthenticated = false;
       state.isProfileComplete = undefined;
-      state.isPaid = undefined;
+      state.hasPaid = undefined;
       state.isTrialCompleted = undefined;
     },
     clearError: (state) => {
       state.error = null;
     },
     setCredentials: (state, action) => {
-      const { user, accessToken, isProfileComplete, isPaid, isTrialCompleted } = action.payload;
+      const { user, accessToken, isProfileComplete, hasPaid, isTrialCompleted } = action.payload;
       state.user = user;
       state.accessToken = accessToken;
       state.isAuthenticated = true;
       state.isProfileComplete = isProfileComplete;
-      state.isPaid = isPaid;
+      state.hasPaid = hasPaid;
       state.isTrialCompleted = isTrialCompleted;
       state.error = null;
     },
@@ -56,9 +57,9 @@ const authSlice = createSlice({
       }
     },
     updatePaymentStatus: (state, action) => {
-      state.isPaid = action.payload.isPaid;
+      state.hasPaid = action.payload.hasPaid;
       if (state.user) {
-        state.user.isPaid = action.payload.isPaid;
+        state.user.hasPaid = action.payload.hasPaid;
       }
     },
   },
@@ -96,7 +97,7 @@ const authSlice = createSlice({
         state.accessToken = action.payload.accessToken;
         state.isAuthenticated = true;
         state.isProfileComplete = action.payload.isProfileComplete;
-        state.isPaid = action.payload.isPaid;
+        state.hasPaid = action.payload.hasPaid;
         state.isTrialCompleted = action.payload.isTrialCompleted;
         state.error = null;
       })
@@ -104,12 +105,18 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
         state.isProfileComplete = undefined;
-        state.isPaid = undefined;
+        state.hasPaid = undefined;
         state.isTrialCompleted = undefined;
       })
       .addCase(refreshAccessToken.fulfilled, (state, action) => {
+        state.loading = false;
         state.accessToken = action.payload.accessToken;
+        state.user = action.payload.user;
         state.isAuthenticated = true;
+        state.isProfileComplete = action.payload.isProfileComplete;
+        state.hasPaid = action.payload.hasPaid;
+        state.isTrialCompleted = action.payload.isTrialCompleted;
+        state.error = null;
       })
       .addCase(refreshAccessToken.rejected, (state) => {
         state.accessToken = null;
@@ -117,12 +124,18 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
       })
       .addCase(logoutUser.fulfilled, (state) => {
-        state.user = null;
-        state.isVerified = false;
-        state.error = null;
-        state.loading = false;
         state.accessToken = null;
         state.isAuthenticated = false;
+      })
+      .addCase(adminLoginThunk.fulfilled, (state) => {
+        state.user = null;
+        state.accessToken = null;
+        state.isAuthenticated = false;
+        state.isProfileComplete = undefined;
+        state.hasPaid = undefined;
+        state.isTrialCompleted = undefined;
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("userRole");
       });
   },
 });
@@ -137,4 +150,5 @@ export const selectIsAuthenticated = (state: { auth: AuthState }) =>
   state.auth.isAuthenticated;
 export const selectIsProfileComplete = (state: { auth: AuthState }) =>
   state.auth.isProfileComplete;
-export const selectIsPaid = (state: { auth: AuthState }) => state.auth.isPaid;
+export const selectHasPaid = (state: { auth: AuthState }) => state.auth.hasPaid;
+export const selectUser = selectCurrentUser;

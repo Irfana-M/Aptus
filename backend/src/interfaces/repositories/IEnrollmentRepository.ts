@@ -5,4 +5,5 @@ export interface IEnrollmentRepository {
   findByStudentAndCourse(studentId: string, courseId: string): Promise<IEnrollment | null>;
   findByStudent(studentId: string): Promise<IEnrollment[]>;
   findByIdAndUpdate(id: string, update: Partial<IEnrollment>): Promise<IEnrollment | null>;
+  countActiveByStudent(studentId: string): Promise<number>;
 }

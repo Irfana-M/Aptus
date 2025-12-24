@@ -39,8 +39,11 @@ import {
   updateCourseRequestStatusAdmin,
   fetchStudentProfile,
 } from "./adminThunk";
+import { loginUser, refreshAccessToken } from "../auth/authThunks";
 import type { AdminLoginResponse } from "../../types/dtoTypes";
-import type { StudentBaseResponseDto } from "../../types/studentTypes";
+import type { StudentBaseResponseDto, CourseRequest } from "../../types/studentTypes";
+import type { StudentProfile } from "../../types/student.types";
+import type { TrialClass } from "../../types/trialTypes";
 import type { AddStudentResponseDto } from "./adminApi";
 import type { AvailableMentor } from "../../types/adminTypes";
 import type { Course } from "../../types/courseTypes";
@@ -69,39 +72,7 @@ interface MentorPaginationState {
 }
 
 
-interface TrialClass {
-  id: string;
-  student: {
-    id: string;
-    fullName: string;
-    email: string;
-    phoneNumber?: string;
-  };
-  subject: {
-    id: string;
-    subjectName: string;
-    syllabus: string;
-    grade: number;
-  };
-  status: 'requested' | 'assigned' | 'completed' | 'cancelled';
-  preferredDate: string;
-  preferredTime: string;
-  scheduledDateTime?: string;
-  mentor?: {
-    id: string;
-    name: string;
-    email: string;
-  };
-  meetLink?: string;
-  notes?: string;
-  feedback?: {
-    rating: number;
-    comment: string;
-    submittedAt: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
+// TrialClass interface moved to studentTypes.ts
 
 interface AdminState {
   admin: Admin | null;
@@ -119,7 +90,7 @@ interface AdminState {
   availableMentors: AvailableMentor[];
   studentsPagination: PaginationState;
   trialClassDetails: TrialClass | null;
-  availableMentorsForCourse: AvailableMentorDto[];
+  availableMentorsForCourse: { matches: AvailableMentorDto[]; alternates: AvailableMentorDto[] };
   courseCreationLoading: boolean;
   courseCreationError: string | null;
   courseCreationSuccess: boolean;
@@ -133,10 +104,10 @@ interface AdminState {
   subjectsError?: string;
   coursesPagination: PaginationState;
   
-  courseRequests: any[]; // Using any for now, better to define interface
+  courseRequests: CourseRequest[]; 
   courseRequestsLoading: boolean;
   courseRequestsError: string | null;
-  selectedStudentProfile: any | null;
+  selectedStudentProfile: StudentProfile | null;
 }
 
 const initialState: AdminState = {
@@ -168,7 +139,7 @@ const initialState: AdminState = {
     hasPrevPage: false,
   },
   trialClassDetails: null,
-  availableMentorsForCourse: [],
+  availableMentorsForCourse: { matches: [], alternates: [] },
   courseCreationLoading: false,
   courseCreationError: null,
   courseCreationSuccess: false,
@@ -214,8 +185,9 @@ const adminSlice = createSlice({
       state.error = null;
       state.success = null;
       
-      localStorage.removeItem("isAdmin");
-      localStorage.removeItem("accessToken");
+      localStorage.removeItem("admin_accessToken");
+      localStorage.removeItem("adminAccessToken");
+      sessionStorage.removeItem("active_role");
     },
     clearMentorProfile(state) {
       state.mentorProfile = null;
@@ -252,12 +224,12 @@ const adminSlice = createSlice({
       state.trialClasses = [];
     },
     clearCourseCreationState: (state) => {
-  state.availableMentorsForCourse = [];
+  state.availableMentorsForCourse = { matches: [], alternates: [] };
   state.courseCreationError = null;
   state.courseCreationSuccess = false;
 },
     updateTrialClassInList: (state, action: PayloadAction<TrialClass>) => {
-      const index = state.trialClasses.findIndex(tc => tc.id === action.payload.id);
+      const index = state.trialClasses.findIndex((tc: TrialClass) => tc.id === action.payload.id);
       if (index !== -1) {
         state.trialClasses[index] = action.payload;
       }
@@ -605,7 +577,7 @@ builder
       .addCase(updateTrialClassStatus.fulfilled, (state, action) => {
         state.loading = false;
         
-        const index = state.trialClasses.findIndex(tc => tc.id === action.payload.id);
+        const index = state.trialClasses.findIndex((tc: TrialClass) => tc.id === action.payload.id);
         if (index !== -1) {
           state.trialClasses[index] = action.payload;
         }
@@ -655,7 +627,7 @@ builder
 .addCase(createOneToOneCourse.fulfilled, (state) => {
   state.courseCreationLoading = false;
   state.courseCreationSuccess = true;
-  state.availableMentorsForCourse = []; // reset
+  state.availableMentorsForCourse = { matches: [], alternates: [] }; // reset
 })
 .addCase(createOneToOneCourse.rejected, (state, action) => {
   state.courseCreationLoading = false;
@@ -788,6 +760,21 @@ builder
       .addCase(fetchStudentProfile.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+      
+      // Reset admin state when a regular user logs in or refreshes
+      .addCase(loginUser.fulfilled, (state) => {
+        state.admin = null;
+        state.accessToken = null;
+        state.refreshToken = null;
+        state.mentorProfile = null;
+        localStorage.removeItem("admin_accessToken");
+      })
+      .addCase(refreshAccessToken.fulfilled, (state) => {
+        state.admin = null;
+        state.accessToken = null;
+        state.refreshToken = null;
+        localStorage.removeItem("admin_accessToken");
       });
   },
 });

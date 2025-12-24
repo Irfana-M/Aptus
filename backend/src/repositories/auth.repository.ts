@@ -8,6 +8,7 @@ import { injectable, inject } from "inversify";
 import { TYPES } from "../types";
 import type { IMentorAuthRepository } from "@/interfaces/repositories/IMentorAuthRepository";
 import type { IStudentAuthRepository } from "@/interfaces/repositories/IStudentAuthRepository";
+import { MentorModel } from "@/models/mentor/mentor.model";
 
 @injectable()
 export class AuthRepository implements IAuthRepository<AuthUser> {
@@ -27,9 +28,10 @@ export class AuthRepository implements IAuthRepository<AuthUser> {
         logger.warn(`User not found by email: ${email}`);
       }
       return user;
-    } catch (error: any) {
-      logger.error(`Error finding user by email: ${email} - ${error.message}`);
-      throw { statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR, message: error.message };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error(`Error finding user by email: ${email} - ${message}`);
+      throw { statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR, message };
     }
   }
 
@@ -42,9 +44,10 @@ export class AuthRepository implements IAuthRepository<AuthUser> {
 
       logger.info(`User created: ${user.email}, role: ${user.role}`);
       return user;
-    } catch (error: any) {
-      logger.error(`Error creating user: ${data.email} - ${error.message}`);
-      throw { statusCode: HttpStatusCode.BAD_REQUEST, message: error.message };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error(`Error creating user: ${data.email} - ${message}`);
+      throw { statusCode: HttpStatusCode.BAD_REQUEST, message };
     }
   }
 
@@ -61,8 +64,9 @@ export class AuthRepository implements IAuthRepository<AuthUser> {
       else await this._studentRepo.markUserVerified(email);
 
       logger.info(`User verified successfully: ${email}, role: ${user.role}`);
-    } catch (error: any) {
-      logger.error(`Error verifying user: ${email} - ${error.message}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error(`Error verifying user: ${email} - ${message}`);
       throw error;
     }
   }
@@ -86,9 +90,10 @@ export class AuthRepository implements IAuthRepository<AuthUser> {
     }
 
     throw { statusCode: HttpStatusCode.NOT_FOUND, message: "User not found" };
-  } catch (error: any) {
-    logger.error(`Error blocking user ${id}: ${error.message}`);
-    throw { statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR, message: error.message };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    logger.error(`Error blocking user ${id}: ${message}`);
+    throw { statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR, message };
   }
 }
 
@@ -114,9 +119,20 @@ export class AuthRepository implements IAuthRepository<AuthUser> {
       if (user) logger.info(`User found by ID: ${id}, role: ${user.role}`);
       else logger.warn(`User not found by ID: ${id}`);
       return user;
-    } catch (error: any) {
-      logger.error(`Error finding user by ID: ${id} - ${error.message}`);
-      throw { statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR, message: error.message };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error(`Error finding user by ID: ${id} - ${message}`);
+      throw { statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR, message };
+    }
+  }
+
+  async checkforAvailabilty({email, fullName}:{email: string, fullName:string}): Promise<boolean> {
+    const result =await MentorModel.find({email : email, fullName:fullName});
+    if(result) {
+      return true;
+    }
+    else{
+      return false;
     }
   }
 }

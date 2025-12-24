@@ -1,13 +1,14 @@
 import { OtpModel } from "../models/otp.model";
+import type { Document, Model } from "mongoose";
 import type { IOtp } from "../interfaces/models/otp.interface";
 import { BaseRepository } from "./baseRepository";
 import { logger } from "../utils/logger";
 import { injectable } from "inversify";
 
 @injectable()
-export class OtpRepository extends BaseRepository<IOtp> {
+export class OtpRepository extends BaseRepository<IOtp & Document> {
   constructor() {
-    super(OtpModel);
+    super(OtpModel as unknown as Model<IOtp & Document>);
   }
 
   async saveOtp(
@@ -33,8 +34,9 @@ export class OtpRepository extends BaseRepository<IOtp> {
         `OTP saved for ${email}, purpose: ${otpPurpose}, role: ${role}`
       );
       return savedOtp;
-    } catch (error: any) {
-      logger.error(`Failed to save OTP for ${email}: ${error.message}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error(`Failed to save OTP for ${email}: ${message}`);
       throw new Error("Failed to save OTP");
     }
   }
@@ -48,8 +50,9 @@ export class OtpRepository extends BaseRepository<IOtp> {
         logger.warn(`No OTP found for ${email}, purpose: ${otpPurpose}`);
       }
       return otp;
-    } catch (error: any) {
-      logger.error(`Error finding OTP for ${email}: ${error.message}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error(`Error finding OTP for ${email}: ${message}`);
       throw new Error("Failed to find OTP");
     }
   }
@@ -60,8 +63,9 @@ export class OtpRepository extends BaseRepository<IOtp> {
       logger.info(
         `Deleted ${result.deletedCount} OTP(s) for ${email}, purpose: ${otpPurpose}`
       );
-    } catch (error: any) {
-      logger.error(`Failed to delete OTP for ${email}: ${error.message}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error(`Failed to delete OTP for ${email}: ${message}`);
       throw new Error("Failed to delete OTP");
     }
   }
@@ -80,8 +84,9 @@ export class OtpRepository extends BaseRepository<IOtp> {
         logger.warn(`OTP not found or expired: ${otp}, purpose: ${otpPurpose}`);
       }
       return foundOtp;
-    } catch (error: any) {
-      logger.error(`Error finding OTP ${otp}: ${error.message}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error(`Error finding OTP ${otp}: ${message}`);
       throw new Error("Failed to find OTP by code");
     }
   }

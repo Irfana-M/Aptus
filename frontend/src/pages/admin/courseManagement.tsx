@@ -4,13 +4,15 @@ import { useNavigate } from "react-router-dom";
 import type { AppDispatch, RootState } from "../../app/store";
 import {
   createOneToOneCourse,
-  fetchCoursesPaginated, 
+  fetchCoursesPaginated,
+  // fetchMentorsPaginated // Assuming this was the intended import if fetchCoursesPaginated didn't exist, but it does now. 
 } from "../../features/admin/adminThunk";
 import {
   selectAdminLoading,
   selectAllCourses, 
 } from "../../features/admin/adminSelectors";
 import { CourseModal } from "../../components/admin/CourseModal";
+import { CourseDetailsModal } from "../../components/admin/CourseDetailsModal";
 import { Sidebar } from "../../components/admin/Sidebar";
 import { Topbar } from "../../components/admin/Topbar";
 import { DataTable } from "../../components/ui/DataTable";
@@ -20,6 +22,7 @@ import {
   type FilterConfig,
 } from "../../components/ui/SearchAndFilters";
 import type { Course } from "../../types/courseTypes";
+import type { CourseRequest } from "../../types/studentTypes";
 import {
   Plus,
   Edit2,
@@ -30,8 +33,38 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  AlertCircle
 } from "lucide-react";
 import { showToast } from "../../utils/toast";
+import AdminCourseRequestsPage from "./courseRequests";
+
+// Tab types
+type TabType = 'courses' | 'requests' | 'enrollments';
+
+interface TabButtonProps {
+  id: TabType;
+  label: string;
+  active: boolean;
+  onClick: (id: TabType) => void;
+  icon?: React.ReactNode;
+}
+
+const TabButton: React.FC<TabButtonProps> = ({ id, label, active, onClick, icon }) => (
+  <button
+    onClick={() => onClick(id)}
+    className={`flex items-center gap-2 px-6 py-3 font-medium transition-all relative ${
+      active 
+        ? "text-cyan-700 bg-cyan-50/50" 
+        : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+    }`}
+  >
+    {icon}
+    {label}
+    {active && (
+      <span className="absolute bottom-0 left-0 w-full h-0.5 bg-cyan-600 rounded-t-full" />
+    )}
+  </button>
+);
 
 interface Column<T> {
   header: string;
@@ -52,6 +85,7 @@ export const CreateOneToOneCourse: React.FC = () => {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("Courses");
+  const [activeTab, setActiveTab] = useState<TabType>('courses');
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -62,6 +96,10 @@ export const CreateOneToOneCourse: React.FC = () => {
   }>({ status: "", grade: "" });
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [selectedCourseForEdit, setSelectedCourseForEdit] = useState<Course | null>(null);
+  const [initialCourseValues, setInitialCourseValues] = useState<Partial<Parameters<typeof createOneToOneCourse>[0]> | null>(null);
+  
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedCourseForDetails, setSelectedCourseForDetails] = useState<Course | null>(null);
 
   const gradeOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -172,16 +210,23 @@ export const CreateOneToOneCourse: React.FC = () => {
     setSelectedCourseForEdit(null);
   }, []);
 
-  const handleSaveCourse = useCallback(async (courseData: any) => {
+  const handleSaveCourse = useCallback(async (courseData: Parameters<typeof createOneToOneCourse>[0]) => {
     try {
       await dispatch(createOneToOneCourse(courseData)).unwrap();
       showToast.success("Course created successfully!");
       handleCloseCourseModal();
       fetchCourses(); 
-    } catch (error: any) {
-      showToast.error(error?.message || "Failed to create course");
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      showToast.error(err?.message || "Failed to create course");
     }
+
   }, [dispatch, handleCloseCourseModal, fetchCourses]);
+
+  const handleEditFromDetails = useCallback((course: Course) => {
+    setShowDetailsModal(false);
+    handleEditCourse(course);
+  }, [handleEditCourse]);
 
   const columns: Column<Course>[] = useMemo(() => [
     {
@@ -250,7 +295,8 @@ export const CreateOneToOneCourse: React.FC = () => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/admin/course/${row._id}`);
+              setSelectedCourseForDetails(row);
+              setShowDetailsModal(true);
             }} 
             className="text-cyan-600 hover:bg-cyan-50 p-2 rounded"
           >
@@ -268,7 +314,7 @@ export const CreateOneToOneCourse: React.FC = () => {
         </div>
       ),
     },
-  ], [navigate, handleEditCourse]);
+  ], [handleEditCourse]);
 
   const handleFilterChange = useCallback((key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -278,6 +324,35 @@ export const CreateOneToOneCourse: React.FC = () => {
     setSearchTerm("");
     setFilters({ status: "", grade: "" });
   }, []);
+
+  const handleCreateCourseFromRequest = useCallback((request: CourseRequest) => {
+    // 1. Build maps for Name -> ID
+    const gradeMap = new Map<string, string>();
+    const subjectMap = new Map<string, string>();
+    
+    courses.forEach((c: Course) => {
+       if (c.grade?._id && c.grade?.name) gradeMap.set(c.grade.name, c.grade._id);
+       if (c.subject?._id && c.subject?.subjectName) subjectMap.set(c.subject.subjectName, c.subject._id);
+    });
+
+    const dayMap: {[key: string]: number} = {
+      "Sunday": 0, "Monday": 1, "Tuesday": 2, "Wednesday": 3, "Thursday": 4, "Friday": 5, "Saturday": 6
+    };
+    
+    const foundGradeId = gradeMap.get(request.grade) || "";
+    const foundSubjectId = subjectMap.get(request.subject) || "";
+
+    const prefilledValues = {
+       gradeId: foundGradeId,
+       subjectId: foundSubjectId,
+       dayOfWeek: dayMap[request.preferredDays?.[0]] ?? "",
+       timeSlot: request.timeSlot || "",
+    };
+    
+    setInitialCourseValues(prefilledValues);
+    setSelectedCourseForEdit(null); // Ensure creation mode
+    setShowCourseModal(true);
+  }, [courses]); // Dep on courses to rebuild maps
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -353,63 +428,115 @@ export const CreateOneToOneCourse: React.FC = () => {
             </div>
           </div>
 
-          <SearchAndFilters
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            filters={filters}
-            onFilterChange={handleFilterChange}
-            filterConfigs={filterConfigs}
-            onClearFilters={handleClearFilters}
-            searchPlaceholder="Search by grade, subject, or mentor..."
-            className="mb-6"
-          />
-
-          <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm mb-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-semibold">All 1:1 Courses</h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  Showing {courses.length} of {coursesPagination.totalStudents} courses
-                  {(searchTerm || filters.status || filters.grade) && ` (filtered)`}
-                </p>
+          
+          {/* Tabs Header */}
+           <div className="bg-white border-b border-gray-200 mb-6 sticky top-0 z-10">
+              <div className="flex px-6">
+                <TabButton 
+                  id="courses" 
+                  label="All Courses" 
+                  active={activeTab === 'courses'} 
+                  onClick={setActiveTab}
+                  icon={<BookOpen size={18} />}
+                />
+                <TabButton 
+                  id="requests" 
+                  label="Course Requests" 
+                  active={activeTab === 'requests'} 
+                  onClick={setActiveTab}
+                  icon={<AlertCircle size={18} />}
+                />
+                 <TabButton 
+                  id="enrollments" 
+                  label="Enrollments" 
+                  active={activeTab === 'enrollments'} 
+                  onClick={setActiveTab}
+                  icon={<Users size={18} />}
+                />
               </div>
-              <button
-                onClick={handleAddCourse}
-                className="flex items-center gap-2 px-6 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 font-medium"
-              >
-                <Plus size={20} />
-                Add 1:1 Course
-              </button>
-            </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <DataTable<Course>
-              columns={columns}
-              data={courses}
-              loading={loading}
-              onRowClick={(c: Course) => navigate(`/admin/course/${c._id}`)}
-              emptyMessage="No courses found"
-            />
-          </div>
+          {activeTab === 'courses' && (
+            <>
+              <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm mb-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-xl font-semibold">All 1:1 Courses</h2>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Showing {courses.length} of {coursesPagination.totalStudents} courses
+                      {(searchTerm || filters.status || filters.grade) && ` (filtered)`}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleAddCourse}
+                    className="flex items-center gap-2 px-6 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 font-medium"
+                  >
+                    <Plus size={20} />
+                    Add 1:1 Course
+                  </button>
+                </div>
+              </div>
 
-          {coursesPagination.totalStudents > 0 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={coursesPagination.totalPages}
-              onPageChange={handlePageChange}
-              totalItems={coursesPagination.totalStudents}
-              itemsPerPage={itemsPerPage}
-              onItemsPerPageChange={handleItemsPerPageChange}
-            />
+               <SearchAndFilters
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                filters={filters}
+                onFilterChange={handleFilterChange}
+                filterConfigs={filterConfigs}
+                onClearFilters={handleClearFilters}
+                searchPlaceholder="Search by grade, subject, or mentor..."
+                className="mb-6"
+              />
+
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <DataTable<Course>
+                  columns={columns}
+                  data={courses}
+                  loading={loading}
+                  onRowClick={(c: Course) => navigate(`/admin/course/${c._id}`)}
+                  emptyMessage="No courses found"
+                />
+              </div>
+
+              {coursesPagination.totalStudents > 0 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={coursesPagination.totalPages}
+                  onPageChange={handlePageChange}
+                  totalItems={coursesPagination.totalStudents}
+                  itemsPerPage={itemsPerPage}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                />
+              )}
+            </>
+          )}
+
+          {activeTab === 'requests' && (
+            <AdminCourseRequestsPage onCreateCourse={handleCreateCourseFromRequest} />
+          )}
+
+          {activeTab === 'enrollments' && (
+             <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+                <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900">Enrollments Management</h3>
+                <p className="text-gray-500 mt-1">Enrollment list and management features coming soon.</p>
+             </div>
           )}
 
           <CourseModal
             course={selectedCourseForEdit}
+            initialValues={initialCourseValues}
             isOpen={showCourseModal}
             onClose={handleCloseCourseModal}
             onSave={handleSaveCourse}
             loading={loading}
+          />
+          
+          <CourseDetailsModal
+            course={selectedCourseForDetails}
+            isOpen={showDetailsModal}
+            onClose={() => setShowDetailsModal(false)}
+            onEdit={handleEditFromDetails}
           />
         </div>
       </main>

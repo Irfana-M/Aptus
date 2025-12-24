@@ -4,6 +4,8 @@ import { TYPES } from '@/types';
 
 import type { RoleController } from '@/controllers/role.controller';
 
+import { verifyAccessToken } from '@/utils/jwt.util';
+
 const roleRoutes = Router();
 
 
@@ -22,9 +24,9 @@ roleRoutes.get('/debug', (req, res) => {
   
   if (token) {
     try {
-      const decoded = require('@/utils/jwt.util').verifyAccessToken(token);
+      const decoded = verifyAccessToken(token);
       res.json({ success: true, tokenInfo: decoded, timestamp: new Date().toISOString() });
-    } catch (error) {
+    } catch {
       res.json({ success: false, error: 'Invalid token' });
     }
   } else {

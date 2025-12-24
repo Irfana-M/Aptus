@@ -1,4 +1,3 @@
-import { BookOpen } from "lucide-react";
 import aptusLogo from "../../assets/images/aptusLogo.jpeg";
 
 export default function Footer() {

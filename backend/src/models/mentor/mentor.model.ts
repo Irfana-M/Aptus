@@ -26,10 +26,19 @@ const subjectProficiencySchema = new Schema({
   },
 });
 
+const timeSlotSchema = new Schema({
+  startTime: { type: String, required: true },
+  endTime: { type: String, required: true },
+  isBooked: { type: Boolean, default: false }
+});
+
 const availabilitySchema = new Schema({
-  dayOfWeek: { type: Number, required: true }, 
-  timeSlots: [{ type: String }], 
-  timezone: { type: String, default: "UTC" },
+  day: { 
+    type: String, 
+    enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+    required: true 
+  },
+  slots: [timeSlotSchema]
 });
 
 const mentorSchema = new Schema<MentorProfile>(

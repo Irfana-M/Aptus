@@ -376,6 +376,56 @@ export const StudentProfilePage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Subscription Details */}
+            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <CreditCard className="w-5 h-5 mr-2 text-purple-600" />
+                Subscription Details
+              </h2>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">
+                    Current Plan
+                  </label>
+                  <p className="text-gray-900 capitalize">
+                    {profile.subscription?.plan || "No active plan"}
+                  </p>
+                </div>
+                {profile.subscription && (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Start Date
+                      </label>
+                      <p className="text-gray-900">
+                        {new Date(profile.subscription.startDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Expiration Date
+                      </label>
+                      <p className="text-gray-900">
+                        {new Date(profile.subscription.endDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Status
+                      </label>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize mt-1 ${
+                        profile.subscription.status === 'active' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {profile.subscription.status}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Trial Classes */}
@@ -404,13 +454,13 @@ export const StudentProfilePage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {profile.trialClasses.map((trial: any, index: number) => (
+                    {profile.trialClasses.map((trial, index) => (
                       <tr key={index}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {trial.subject?.subjectName || "N/A"}
+                          {(typeof trial.subject === 'object' ? trial.subject.subjectName : trial.subject) || "N/A"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {trial.mentor?.fullName || "Not Assigned"}
+                          {(typeof trial.mentor === 'object' ? trial.mentor.fullName : trial.assignedMentor) || "Not Assigned"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
@@ -464,7 +514,7 @@ export const StudentProfilePage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {profile.enrollments.map((enrollment: any, index: number) => (
+                    {profile.enrollments.map((enrollment, index) => (
                       <tr key={index}>
                         <td className="px-6 py-4 text-sm text-gray-900">
                           <div>

@@ -31,7 +31,7 @@ export interface IMentorRepository extends IBaseRepository<MentorProfile> {
   findAvailableMentors(params: {
     gradeId: string;
     subjectId: string;
-    dayOfWeek?: number | undefined;
-    timeSlot?: string | undefined;
-  }): Promise<any[]>;
+    days?: string[];
+    timeSlot?: string;
+  }): Promise<unknown[]>;
 }

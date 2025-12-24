@@ -2,6 +2,7 @@ import type {
   StudentDBInput,
   StudentProfile,
   StudentRegisterInput,
+  SubscriptionDetails,
 } from "@/interfaces/models/student.interface";
 import type {
   StudentAuthUser,
@@ -10,6 +11,7 @@ import type {
 import type { StudentBaseResponseDto } from "@/dto/auth/UserResponseDTO";
 
 export class StudentMapper {
+
   static toDBInput(input: StudentRegisterInput): StudentDBInput {
     return {
       fullName: input.fullName,
@@ -20,35 +22,41 @@ export class StudentMapper {
     };
   }
 
-  static toResponseDto(student: any): StudentProfile {
-    const data = student.toObject ? student.toObject() : student;
+  static toResponseDto(student: StudentAuthUser | (StudentAuthUser & { toObject: () => StudentAuthUser })): StudentProfile {
+    const data = (student && 'toObject' in student && typeof student.toObject === 'function') 
+      ? student.toObject() 
+      : student as StudentAuthUser;
 
     return {
       _id: data._id,
-      fullName: data.fullName,
-      email: data.email,
-      phoneNumber: data.phoneNumber,
+      fullName: data.fullName || "",
+      email: data.email || "",
+      phoneNumber: data.phoneNumber || "",
       age: data.age,
       gender: data.gender,
       dateOfBirth: data.dateOfBirth,
       contactInfo: data.contactInfo,
       academicDetails: data.academicDetails,
-      profileImage: data.profileImage, // This might be the key now
-      profileImageKey: data.profileImageKey,
-      profileImageUrl: data.profileImageUrl, // The signed URL
-      goal: data.goal,
-      isVerified: data.isVerified,
-      isBlocked: data.isBlocked,
+      profileImage: data.profileImage || "",
+      profileImageKey: data.profileImageKey || undefined,
+      profileImageUrl: data.profileImageUrl || undefined,
+      goal: data.goal || "",
+      isVerified: data.isVerified ?? false,
+      isBlocked: data.isBlocked ?? false,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
-      hasPaid: data.hasPaid,
+      // Use actual hasPaid field from DB, fallback to subscription status check
+      hasPaid: data.hasPaid ?? (data.subscription?.status === 'active'),
+      isTrialCompleted: data.isTrialCompleted ?? false,
+      isProfileCompleted: data.isProfileCompleted ?? false,
+      subscription: data.subscription as SubscriptionDetails | undefined,
       authProvider: data.authProvider,
       googleId: data.googleId,
     };
   }
 
   static toProfileUpdate(
-    data: Partial<StudentProfile> & Record<string, any>
+    data: Partial<StudentProfile> & Record<string, unknown>
   ): Partial<StudentProfile> {
     const updateData: Partial<StudentProfile> = {};
 
@@ -64,17 +72,18 @@ export class StudentMapper {
         data.parentName || data.parentEmail || data.parentPhone) {
       
       const parentInfo = {
-         name: data.parentName || data.contactInfo?.parentInfo?.name,
-         email: data.parentEmail || data.contactInfo?.parentInfo?.email,
-         phoneNumber: data.parentPhone || data.contactInfo?.parentInfo?.phoneNumber
+         name: (data.parentName as string) || data.contactInfo?.parentInfo?.name || '',
+         email: (data.parentEmail as string) || data.contactInfo?.parentInfo?.email || '',
+         phoneNumber: (data.parentPhone as string) || data.contactInfo?.parentInfo?.phoneNumber || '',
+         relationship: (data.relationship as string) || data.contactInfo?.parentInfo?.relationship || ''
       };
 
       updateData.contactInfo = {
-        address: data.address || data.contactInfo?.address || '',
-        country: data.country || data.contactInfo?.country || '',
-        postalCode: data.postalCode || data.contactInfo?.postalCode || '',
+        address: (data.address as string) || data.contactInfo?.address || '',
+        country: (data.country as string) || data.contactInfo?.country || '',
+        postalCode: (data.postalCode as string) || data.contactInfo?.postalCode || '',
         parentInfo: parentInfo
-      } as any;
+      };
     } else if (data.contactInfo) {
       updateData.contactInfo = data.contactInfo;
     }
@@ -83,9 +92,9 @@ export class StudentMapper {
     // Map 'grade' from frontend to 'gradeId' in backend interface
     if (data.institution || data.institutionName || data.grade || data.gradeId || data.syllabus) {
       updateData.academicDetails = {
-        institutionName: data.institution || data.institutionName || data.academicDetails?.institutionName || '',
-        gradeId: (data.grade || data.gradeId || data.academicDetails?.gradeId) as any, // Cast because it might be string pending conversion
-        syllabus: data.syllabus || data.academicDetails?.syllabus || ''
+        institutionName: (data.institution as string) || (data.institutionName as string) || data.academicDetails?.institutionName || '',
+        grade: (data.grade as string) || data.academicDetails?.grade || '',
+        syllabus: (data.syllabus as string) || data.academicDetails?.syllabus || ''
       };
     } else if (data.academicDetails) {
       updateData.academicDetails = data.academicDetails;
@@ -93,61 +102,79 @@ export class StudentMapper {
 
     // 3. Learning Goal
     if (data.learningGoal) {
-        updateData.goal = data.learningGoal;
+        updateData.goal = data.learningGoal as string;
     }
     if (data.goal !== undefined) updateData.goal = data.goal;
     
     // Handle profile image key
     if (data.profileImage !== undefined) updateData.profileImage = data.profileImage;
-    if (data.profileImageKey !== undefined) updateData.profileImageKey = data.profileImageKey;
+    if (data.profileImageKey !== undefined) updateData.profileImageKey = data.profileImageKey as string;
 
     return updateData;
   }
 
   
-  static toStudentAuthUser(student: any): StudentAuthUser {
-    return {
-      _id: student._id.toString(),
-      fullName: student.fullName,
-      email: student.email,
-      password: student.password || "",
-      phoneNumber: student.phoneNumber,
-      role: "student",
-      isVerified: student.isVerified ?? false,
-      isProfileComplete: student.isProfileComplete || false,
-      approvalStatus: student.approvalStatus || "approved",
-      isBlocked: student.isBlocked || false,
-      createdAt: student.createdAt,
-      updatedAt: student.updatedAt,
+  static toStudentAuthUser(student: StudentAuthUser | (StudentAuthUser & { toObject: () => StudentAuthUser })): StudentAuthUser {
+    const s = (student && 'toObject' in student && typeof student.toObject === 'function') 
+      ? student.toObject() 
+      : student as StudentAuthUser;
 
+    return {
+      _id: s._id.toString(),
+      fullName: s.fullName,
+      email: s.email,
+      password: s.password || "",
+      phoneNumber: s.phoneNumber || "",
+      role: "student",
+      isVerified: s.isVerified ?? false,
+      isProfileComplete: s.isProfileComplete || false,
+      approvalStatus: "approved",
+      isBlocked: s.isBlocked || false,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+      isPaid: s.isPaid || false,
       
-      isPaid: student.isPaid || false,
-      gradeLevel: student.gradeLevel,
-      school: student.school,
-      parentName: student.parentName,
-      parentPhone: student.parentPhone,
+      // Add missing profile fields
+      age: s.age,
+      gender: s.gender,
+      dateOfBirth: s.dateOfBirth,
+      contactInfo: s.contactInfo,
+      academicDetails: s.academicDetails,
+      goal: s.goal,
+
+      gradeLevel: s.academicDetails?.grade || s.gradeLevel || "",
+      school: s.academicDetails?.institutionName || s.school || "",
+      parentName: s.contactInfo?.parentInfo?.name || s.parentName || "",
+      parentPhone: s.contactInfo?.parentInfo?.phoneNumber || s.parentPhone || "",
+      relationship: s.contactInfo?.parentInfo?.relationship || s.relationship || "",
+      profileImage: s.profileImage || "",
+      profileImageKey: s.profileImageKey || "",
+      profileImageUrl: s.profileImageUrl,
+      subscription: s.subscription as SubscriptionDetails | undefined,
+      isTrialCompleted: s.isTrialCompleted || false,
+      hasPaid: s.hasPaid ?? ((s.subscription?.status === 'active') || false),
     };
   }
 
-  static toStudentResponseDto(student: any): StudentBaseResponseDto {
+  static toStudentResponseDto(student: StudentAuthUser | (StudentAuthUser & { toObject: () => StudentAuthUser })): StudentBaseResponseDto {
+    const s = (student && 'toObject' in student && typeof student.toObject === 'function') 
+      ? student.toObject() 
+      : student as StudentAuthUser;
+    
     return {
-      _id: student._id.toString(),
-      fullName: student.fullName,
-      email: student.email,
-      phoneNumber: student.phoneNumber,
-      role: student.role,
-      isVerified: student.isVerified,
-      isProfileComplete: student.isProfileComplete || false,
-      isPaid: student.isPaid || false,
-      isBlocked: student.isBlocked || false, 
-      approvalStatus: student.approvalStatus || "approved",
-      createdAt: student.createdAt,
-      updatedAt: student.updatedAt,
-
-      ...(student.gradeLevel && { gradeLevel: student.gradeLevel }),
-      ...(student.school && { school: student.school }),
-      ...(student.parentName && { parentName: student.parentName }),
-      ...(student.parentPhone && { parentPhone: student.parentPhone }),
+      id: s._id.toString(),
+      fullName: s.fullName || "",
+      email: s.email || "",
+      phoneNumber: s.phoneNumber || "",
+      role: s.role,
+      isVerified: s.isVerified || false,
+      isProfileComplete: s.isProfileComplete || false,
+      subscription: s.subscription as SubscriptionDetails | undefined,
+      gradeLevel: s.academicDetails?.grade || s.gradeLevel || "",
+      school: s.academicDetails?.institutionName || s.school || "",
+      parentName: s.contactInfo?.parentInfo?.name || s.parentName || "",
+      parentPhone: s.contactInfo?.parentInfo?.phoneNumber || s.parentPhone || "",
+      relationship: s.contactInfo?.parentInfo?.relationship || s.relationship || "",
     };
   }
 
@@ -159,14 +186,14 @@ export class StudentMapper {
   if (data.email !== undefined) updateData.email = data.email;
   if (data.phoneNumber !== undefined) updateData.phoneNumber = data.phoneNumber;
   if (data.isVerified !== undefined) updateData.isVerified = data.isVerified;
-  if (data.isPaid !== undefined) updateData.isPaid = data.isPaid;
+
   if (data.isBlocked !== undefined) updateData.isBlocked = data.isBlocked;
   if (data.isProfileComplete !== undefined) updateData.isProfileComplete = data.isProfileComplete;
 
 
   Object.keys(updateData).forEach(key => {
-    if ((updateData as any)[key] === undefined) {
-      delete (updateData as any)[key];
+    if (updateData[key as keyof StudentAuthUser] === undefined) {
+      delete updateData[key as keyof StudentAuthUser];
     }
   });
   
@@ -187,6 +214,9 @@ export class StudentMapper {
       isBlocked: student.isBlocked ?? false,
       createdAt: student.createdAt ?? new Date(),
       updatedAt: student.updatedAt ?? new Date(),
+      subscription: student.subscription,
+      isPaid: student.isPaid || false,
+      isTrialCompleted: student.isTrialCompleted || false,
     };
   }
 

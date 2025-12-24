@@ -19,7 +19,7 @@ const seedGrades = async () => {
     console.log('🔗 Connecting to MongoDB...');
     
   
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/mentora');
+    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/aptus');
     console.log('✅ Connected to MongoDB');
 
    

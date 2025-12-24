@@ -1,9 +1,11 @@
 import { Router, type Request, type Response } from "express";
-import { TrialClass } from "@/models/student/trialClass.model";
-import { requireAuth } from "@/middleware/authMiddleware";
-import { AppError } from "@/utils/AppError";
+import { container } from "@/inversify.config";
+import { TYPES } from "@/types";
+import { TrialClassController } from "../controllers/trialClass.controller";
+import { requireAuth } from "../middleware/authMiddleware";
+import { TrialClass } from "../models/student/trialClass.model";
 
-
+const trialController = container.get<TrialClassController>(TYPES.TrialClassController);
 const router = Router();
 
 
@@ -43,6 +45,12 @@ router.get(
       res.status(500).json({ message: "Server error" });
     }
   }
+);
+
+router.put(
+  "/:id/complete",
+  requireAuth,
+  (req, res) => trialController.completeTrialClass(req, res)
 );
 
 export default router;

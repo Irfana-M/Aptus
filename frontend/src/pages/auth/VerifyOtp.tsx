@@ -19,6 +19,12 @@ export default function VerifyOtp() {
   const [timeLeft, setTimeLeft] = useState(30);
 
   useEffect(() => {
+    if (!email) {
+        navigate('/register', { replace: true });
+    }
+  }, [email, navigate]);
+
+  useEffect(() => {
     if (timeLeft <= 0) return;
     const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
     return () => clearInterval(timer);
@@ -49,7 +55,7 @@ export default function VerifyOtp() {
       const resultAction = await dispatch(verifyOtp({ email, otp: otpCode }));
       if (verifyOtp.fulfilled.match(resultAction)) {
         toast.success("OTP verified successfully!");
-        navigate("/login");
+        navigate("/login", { replace: true });
       } else {
         toast.error(resultAction.payload as string);
       }

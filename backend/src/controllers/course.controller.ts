@@ -1,6 +1,6 @@
 import { injectable, inject } from "inversify";
 import { TYPES } from "../types";
-import type { Request, Response, NextFunction } from "express";
+import type { Request, Response } from "express";
 import type { ICourseService } from "../interfaces/services/ICourseService";
 import { HttpStatusCode } from "../constants/httpStatus";
 
@@ -12,8 +12,7 @@ export class CourseController {
 
   public getAvailableCourses = async (
     req: Request,
-    res: Response,
-    next: NextFunction
+    res: Response
   ): Promise<void> => {
     try {
       const { gradeId, subjectId, dayOfWeek, timeSlot, syllabus } = req.query;
@@ -33,18 +32,18 @@ export class CourseController {
         message: "Available courses fetched successfully",
         data: courses,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching available courses:", error);
+      const err = error as Error;
       res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ message: "Internal server error", error: error.message });
+        .json({ message: "Internal server error", error: err.message });
     }
   };
 
   public getCourseById = async (
     req: Request,
-    res: Response,
-    next: NextFunction
+    res: Response
   ): Promise<void> => {
     try {
       const { id } = req.params;
@@ -66,11 +65,39 @@ export class CourseController {
         success: true,
         data: course,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching course:", error);
+      const err = error as Error;
       res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ message: "Internal server error", error: error.message });
+        .json({ message: "Internal server error", error: err.message });
+    }
+  };
+
+  public getStudentCourses = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const studentId = req.user?.id;
+      
+      if (!studentId) {
+        res.status(HttpStatusCode.UNAUTHORIZED).json({ message: "Student not authenticated" });
+        return;
+      }
+
+      const courses = await this._courseService.getCoursesByStudent(studentId);
+
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: courses,
+      });
+    } catch (error: unknown) {
+      console.error("Error fetching student courses:", error);
+      const err = error as Error;
+      res
+        .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
+        .json({ message: "Internal server error", error: err.message });
     }
   };
 }

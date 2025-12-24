@@ -11,6 +11,8 @@ import {
 import FormField from "../../components/ui/FormField";
 import { Button } from "../../components/ui/Button";
 import type { AppDispatch } from "../../app/store";
+// ProfileState interface defined below
+// Removed duplicate initialState declaration manually 
 import {
   updateMentorProfile,
   submitProfileForApproval,
@@ -47,7 +49,7 @@ interface ProfileState {
     name: string;
     issuingOrganization: string;
   };
-  availability: { dayOfWeek: number; timeSlots: string[] }[];
+  availability: { day: string; slots: { startTime: string; endTime: string }[] }[];
   profilePicture?: File | null;
 }
 
@@ -55,45 +57,22 @@ interface ValidationErrors {
   [key: string]: string;
 }
 
-const initialState: ProfileState = {
-  personalDetails: {
-    fullName: "",
-    email: "",
-    phoneNumber: "",
-    location: "",
-    bio: "",
-  },
-  academicQualifications: {
-    institutionName: "",
-    degree: "",
-    graduationYear: "",
-  },
-  experiences: [],
-  subjectProficiency: [],
-  certification: {
-    name: "",
-    issuingOrganization: "",
-  },
-  availability: [],
-  profilePicture: null,
-};
-
 const TIME_SLOTS = [
-  "09:00 AM - 10:00 AM",
-  "10:00 AM - 11:00 AM",
-  "11:00 AM - 12:00 PM",
-  "12:00 PM - 01:00 PM",
-  "01:00 PM - 02:00 PM",
-  "02:00 PM - 03:00 PM",
-  "03:00 PM - 04:00 PM",
-  "04:00 PM - 05:00 PM",
-  "05:00 PM - 06:00 PM",
-  "06:00 PM - 07:00 PM",
-  "07:00 PM - 08:00 PM",
+  "09:00-10:00",
+  "10:00-11:00",
+  "11:00-12:00",
+  "12:00-13:00",
+  "13:00-14:00",
+  "14:00-15:00",
+  "15:00-16:00",
+  "16:00-17:00",
+  "17:00-18:00",
+  "18:00-19:00",
+  "19:00-20:00",
 ];
 
 const DAYS_OF_WEEK = [
-  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+  "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
 ];
 
 const GRADUATION_YEARS = Array.from({ length: 30 }, (_, i) =>
@@ -120,6 +99,29 @@ const SUBJECT_OPTIONS = [
 const LEVEL_OPTIONS = ["basic", "intermediate", "expert"];
 
 type ApprovalStatus = "pending" | "approved" | "rejected" | "not_submitted";
+
+const initialState: ProfileState = {
+  personalDetails: {
+    fullName: "",
+    email: "",
+    phoneNumber: "",
+    location: "",
+    bio: "",
+  },
+  academicQualifications: {
+    institutionName: "",
+    degree: "",
+    graduationYear: "",
+  },
+  experiences: [],
+  subjectProficiency: [],
+  certification: {
+    name: "",
+    issuingOrganization: "",
+  },
+  availability: [],
+  profilePicture: null,
+};
 
 export default function MentorProfileSetup() {
   const dispatch = useDispatch<AppDispatch>();
@@ -263,33 +265,6 @@ export default function MentorProfileSetup() {
     }));
   };
 
-  const toggleAvailability = (dayIndex: number, slot: string) => {
-    setProfileData((prev) => {
-      const existing = prev.availability.find(a => a.dayOfWeek === dayIndex);
-      let newAvailability = [...prev.availability];
-
-      if (existing) {
-        // Toggle slot
-        const hasSlot = existing.timeSlots.includes(slot);
-        const newSlots = hasSlot 
-          ? existing.timeSlots.filter(s => s !== slot)
-          : [...existing.timeSlots, slot];
-        
-        if (newSlots.length === 0) {
-           newAvailability = newAvailability.filter(a => a.dayOfWeek !== dayIndex);
-        } else {
-           newAvailability = newAvailability.map(a => 
-             a.dayOfWeek === dayIndex ? { ...a, timeSlots: newSlots } : a
-           );
-        }
-      } else {
-        // Add new day with slot
-        newAvailability.push({ dayOfWeek: dayIndex, timeSlots: [slot] });
-      }
-      return { ...prev, availability: newAvailability };
-    });
-  };
-
   const addExperience = () => {
     if (
       currentExperience.institution &&
@@ -300,11 +275,7 @@ export default function MentorProfileSetup() {
         ...prev,
         experiences: [...prev.experiences, currentExperience],
       }));
-      setCurrentExperience({
-        institution: "",
-        jobTitle: "",
-        duration: "",
-      });
+      setCurrentExperience({ institution: "", jobTitle: "", duration: "" });
     } else {
       toast.error("Please fill all experience fields", {
         position: "bottom-right",
@@ -319,69 +290,72 @@ export default function MentorProfileSetup() {
     }));
   };
 
-  // Helper function to safely get nested values
-  const getNestedValue = (obj: any, path: string): string => {
-    const keys = path.split(".");
-    let result: any = obj;
+  const toggleAvailability = (day: string, slot: string) => {
+    setProfileData((prev) => {
+      const existing = prev.availability.find(a => a.day === day);
+      let newAvailability = [...prev.availability];
+      const [startTime, endTime] = slot.split("-");
 
-    for (const key of keys) {
-      if (result === null || result === undefined) {
-        return "";
+      if (existing) {
+        // Toggle slot
+        const hasSlot = existing.slots.some(s => s.startTime === startTime && s.endTime === endTime);
+        
+        let newSlots;
+        if (hasSlot) {
+            newSlots = existing.slots.filter(s => !(s.startTime === startTime && s.endTime === endTime));
+        } else {
+            newSlots = [...existing.slots, { startTime, endTime }];
+        }
+        
+        if (newSlots.length === 0) {
+           newAvailability = newAvailability.filter(a => a.day !== day);
+        } else {
+           newAvailability = newAvailability.map(a => 
+             a.day === day ? { ...a, slots: newSlots } : a
+           );
+        }
+      } else {
+        // Add new day with slot
+        newAvailability.push({ day: day, slots: [{ startTime, endTime }] });
       }
-      result = result[key];
-    }
-
-    return result?.toString() || "";
+      return { ...prev, availability: newAvailability };
+    });
   };
 
-  const validateForm = (): boolean => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getNestedValue = (obj: any, path: string) => {
+    return path.split(".").reduce((acc, part) => acc && acc[part], obj);
+  };
+
+  const validateForm = () => {
     const errors: ValidationErrors = {};
 
-    const requiredFields: { path: string; label: string }[] = [
-      { path: "personalDetails.fullName", label: "Full Name" },
-      { path: "personalDetails.email", label: "Email" },
-      { path: "personalDetails.phoneNumber", label: "Phone Number" },
-      { path: "personalDetails.location", label: "Location" },
-      {
-        path: "academicQualifications.institutionName",
-        label: "Institution Name",
-      },
-      { path: "academicQualifications.degree", label: "Degree" },
-      {
-        path: "academicQualifications.graduationYear",
-        label: "Graduation Year",
-      },
-      // { path: "experiences.institution", label: "Institution" },
-      // { path: "experiences.jobTitle", label: "Job Title" },
-      { path: "certification.name", label: "Certification Name" },
-    ];
+    if (!profileData.personalDetails.fullName)
+      errors["personalDetails.fullName"] = "Full Name is required";
+    if (!profileData.personalDetails.email)
+      errors["personalDetails.email"] = "Email is required";
+    if (!profileData.personalDetails.phoneNumber)
+      errors["personalDetails.phoneNumber"] = "Phone Number is required";
+    if (!profileData.personalDetails.location)
+      errors["personalDetails.location"] = "Location is required";
 
-    requiredFields.forEach(({ path, label }) => {
-      const value = getNestedValue(profileData, path);
-      if (!value || value.toString().trim() === "") {
-        errors[path] = `${label} is required`;
-      }
-    });
+    if (!profileData.academicQualifications.institutionName)
+      errors["academicQualifications.institutionName"] =
+        "Institution Name is required";
+    if (!profileData.academicQualifications.degree)
+      errors["academicQualifications.degree"] = "Degree is required";
+    if (!profileData.academicQualifications.graduationYear)
+      errors["academicQualifications.graduationYear"] =
+        "Graduation Year is required";
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (
-      profileData.personalDetails.email &&
-      !emailRegex.test(profileData.personalDetails.email)
-    ) {
-      errors["personalDetails.email"] = "Please enter a valid email address";
-    }
+    if (profileData.subjectProficiency.length === 0)
+      errors["subjectProficiency"] = "At least one subject is required";
 
-    // Subject proficiency validation
-    if (profileData.subjectProficiency.length === 0) {
-      errors["subjectProficiency"] =
-        "At least one subject proficiency is required";
-    }
+    if (!profileData.certification.name)
+      errors["certification.name"] = "Certification Name is required";
 
-    // Availability validation (optional but good to have)
-    if (profileData.availability.length === 0) {
-        errors["availability"] = "Please select at least one available time slot";
-    }
+    if (profileData.availability.length === 0)
+      errors["availability"] = "Please select your availability";
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -422,8 +396,13 @@ export default function MentorProfileSetup() {
     };
     formData.append("certification", JSON.stringify([certification]));
 
-    // Availability
-    formData.append("availability", JSON.stringify(profileData.availability));
+    // Availability - Clean up specifically for backend
+    // Ensure we only send the necessary fields and structure matches correctly
+    const requestAvailability = profileData.availability.map(d => ({
+        day: d.day,
+        slots: d.slots.map(s => ({ startTime: s.startTime, endTime: s.endTime }))
+    }));
+    formData.append("availability", JSON.stringify(requestAvailability));
 
     formData.append("isProfileComplete", isComplete.toString());
 
@@ -484,10 +463,10 @@ export default function MentorProfileSetup() {
           duration: 5000,
         }
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Submission error:", error);
       const errorMessage =
-        error?.message || "Failed to submit profile. Please try again.";
+        (error as Error)?.message || "Failed to submit profile. Please try again.";
       toast.error(errorMessage, {
         position: "bottom-right",
       });
@@ -595,7 +574,7 @@ export default function MentorProfileSetup() {
   const renderFormField = (
     section: keyof ProfileState,
     field: string,
-    props: any
+    props: React.ComponentProps<typeof FormField> & { label: string; required?: boolean }
   ) => {
     if (
       !isEditing &&
@@ -761,25 +740,36 @@ export default function MentorProfileSetup() {
       case "approved":
         return (
           <div className="flex justify-end space-x-4 mt-8">
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={handleEditProfile}
-              disabled={loading}
-              className="px-8"
-            >
-              <Edit className="w-4 h-4 mr-2" />
-              Edit Profile
-            </Button>
-            {isEditing && (
-               <Button
-                variant="primary"
+            {isEditing ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={handleCancelEdit}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={handleUpdateProfile}
+                  disabled={isSubmitting}
+                  className="px-8"
+                >
+                  {isSubmitting ? "Updating..." : "Update Profile"}
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="outline"
                 size="lg"
-                onClick={handleUpdateProfile}
-                disabled={isSubmitting}
+                onClick={handleEditProfile}
+                disabled={loading}
                 className="px-8"
               >
-                {isSubmitting ? "Updating..." : "Update Profile"}
+                <Edit className="w-4 h-4 mr-2" />
+                Edit Profile
               </Button>
             )}
             <Button
@@ -941,7 +931,7 @@ export default function MentorProfileSetup() {
           {["personal", "academic", "experience", "availability"].map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab as any)}
+              onClick={() => setActiveTab(tab as "personal" | "academic" | "experience" | "availability")}
               className={`px-6 py-3 font-medium transition-colors ${
                 activeTab === tab
                   ? "border-b-2 border-[rgb(73,187,189)] text-[rgb(73,187,189)]"
@@ -1257,9 +1247,9 @@ export default function MentorProfileSetup() {
               )}
 
               <div className="space-y-6">
-                {DAYS_OF_WEEK.map((day, dayIndex) => {
+                {DAYS_OF_WEEK.map((day) => {
                    const dayAvailability = profileData.availability?.find(
-                     (a) => a.dayOfWeek === dayIndex
+                     (a) => a.day === day
                    );
                    
                    return (
@@ -1267,13 +1257,16 @@ export default function MentorProfileSetup() {
                       <h4 className="font-medium text-gray-900 mb-3">{day}</h4>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                         {TIME_SLOTS.map((slot) => {
-                          const isSelected = dayAvailability?.timeSlots.includes(slot);
+                          const [startTime, endTime] = slot.split('-');
+                          const isSelected = dayAvailability?.slots.some(
+                              (s) => s.startTime === startTime && s.endTime === endTime
+                          );
                           return (
                             <button
                               key={slot}
                               type="button"
                               disabled={!isEditing}
-                              onClick={() => toggleAvailability(dayIndex, slot)}
+                              onClick={() => toggleAvailability(day, slot)}
                               className={`text-xs p-2 rounded border transition-colors ${
                                 isSelected
                                   ? "bg-blue-600 text-white border-blue-600"

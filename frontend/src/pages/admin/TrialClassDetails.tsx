@@ -4,8 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch } from '../../app/store';
 import { 
   fetchTrialClassDetails,
-  updateTrialClassStatus,
-  assignMentorToTrialClass
+  updateTrialClassStatus
 } from '../../features/admin/adminThunk';
 import { selectAdminLoading, selectTrialClassDetails } from '../../features/admin/adminSelectors';
 import { Sidebar } from '../../components/admin/Sidebar';
@@ -73,33 +72,7 @@ export const TrialClassDetailsPage: React.FC = () => {
     }
   };
 
-  const handleAssignMentor = async (mentorId: string, scheduledDate: string, scheduledTime: string) => {
-    if (!trialClassId) return;
 
-    try {
-      const loadingToastId = showToast.loading("Assigning mentor...");
-
-      await dispatch(assignMentorToTrialClass({
-        trialClassId,
-        mentorId,
-        scheduledDate,
-        scheduledTime
-      })).unwrap();
-
-      showToast.success("Mentor assigned successfully!");
-      showToast.dismiss(loadingToastId);
-      setShowAssignmentModal(false);
-      
-      
-      dispatch(fetchTrialClassDetails(trialClassId));
-      
-    } catch (error: any) {
-      showToast.dismiss();
-      const errorMessage = error?.message || "Failed to assign mentor";
-      showToast.error(errorMessage);
-      console.error("Failed to assign mentor:", error);
-    }
-  };
 
   const handleStatusUpdate = async (newStatus: string) => {
     if (!trialClassId) return;
@@ -118,9 +91,10 @@ export const TrialClassDetailsPage: React.FC = () => {
       // Refresh the trial class details
       dispatch(fetchTrialClassDetails(trialClassId));
       
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { message?: string };
       showToast.dismiss();
-      const errorMessage = error?.message || "Failed to update status";
+      const errorMessage = err?.message || "Failed to update status";
       showToast.error(errorMessage);
       console.error("Failed to update status:", error);
     }
@@ -236,18 +210,18 @@ export const TrialClassDetailsPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-500">Full Name</p>
-                    <p className="font-medium text-gray-900">{trialClass.student.fullName}</p>
+                    <p className="font-medium text-gray-900">{trialClass.student?.fullName}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Email</p>
                     <p className="font-medium text-gray-900 flex items-center">
                       <Mail className="w-4 h-4 mr-2 text-gray-400" />
-                      {trialClass.student.email}
+                      {trialClass.student?.email}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Student ID</p>
-                    <p className="font-medium text-gray-900">{trialClass.student.id}</p>
+                    <p className="font-medium text-gray-900">{trialClass.student?.id}</p>
                   </div>
                 </div>
               </div>
@@ -411,15 +385,15 @@ export const TrialClassDetailsPage: React.FC = () => {
                   <div>
                     <p className="text-sm text-gray-500">Created</p>
                     <p className="font-medium">
-                      {new Date(trialClass.createdAt).toLocaleDateString()} at{' '}
-                      {new Date(trialClass.createdAt).toLocaleTimeString()}
+                      {trialClass.createdAt ? new Date(trialClass.createdAt).toLocaleDateString() : 'N/A'} at{' '}
+                      {trialClass.createdAt ? new Date(trialClass.createdAt).toLocaleTimeString() : ''}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Last Updated</p>
                     <p className="font-medium">
-                      {new Date(trialClass.updatedAt).toLocaleDateString()} at{' '}
-                      {new Date(trialClass.updatedAt).toLocaleTimeString()}
+                      {trialClass.updatedAt ? new Date(trialClass.updatedAt).toLocaleDateString() : 'N/A'} at{' '}
+                      {trialClass.updatedAt ? new Date(trialClass.updatedAt).toLocaleTimeString() : ''}
                     </p>
                   </div>
                 </div>
@@ -433,10 +407,11 @@ export const TrialClassDetailsPage: React.FC = () => {
       {showAssignmentModal && (
         <MentorAssignmentModal
           isOpen={showAssignmentModal}
-          onClose={() => setShowAssignmentModal(false)}
-          onAssign={handleAssignMentor}
+          onClose={() => {
+            setShowAssignmentModal(false);
+            if (trialClassId) dispatch(fetchTrialClassDetails(trialClassId));
+          }}
           trialClass={trialClass}
-          loading={loading}
         />
       )}
     </div>

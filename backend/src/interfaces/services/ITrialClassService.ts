@@ -37,7 +37,7 @@ export interface ITrialClassService {
   ): Promise<TrialClassResponseDto>;
 
   getMentorTrialClasses(mentorId: string): Promise<TrialClassResponseDto[]>;
-  //getTodayTrialClasses(mentorId: string): Promise<TrialClassResponseDto[]>;
+  getTodayTrialClasses(mentorId: string): Promise<TrialClassResponseDto[]>;
   getTrialClassStats(mentorId: string): Promise<{ total: number; completed: number; upcoming: number }>;
   updateTrialClassStatus(trialClassId: string, status: string, reason?: string): Promise<TrialClassResponseDto>;
   

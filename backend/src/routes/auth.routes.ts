@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { AUTH_ROUTES } from "../constants/routes";
 import passport from "../config/passport.config";
 import { generateAccessToken } from "../utils/jwt.util";
 import { env } from "../utils/env";
@@ -9,8 +10,18 @@ import { TYPES } from "@/types";
 
 import type { AuthController } from "../controllers/auth.controller";
 import type { OtpController } from "../controllers/otp.controller";
-import type { MentorModel } from "../models/mentor/mentor.model";
-import type { StudentModel } from "../models/student/student.model";
+// Unused models removed
+interface GoogleUser {
+  id: string;
+  emails?: { value: string }[];
+  email?: string;
+  _id?: string;
+  isTrialCompleted?: boolean;
+  isProfileCompleted?: boolean;
+  isProfileComplete?: boolean;
+  approvalStatus?: string;
+  isPaid?: boolean;
+}
 
 const router = Router();
 
@@ -19,7 +30,7 @@ const authController = container.get<AuthController>(TYPES.AuthController);
 const otpController = container.get<OtpController>(TYPES.OtpController);
 
 router.get(
-  "/google",
+  AUTH_ROUTES.GOOGLE,
   (req: Request, res: Response, next: NextFunction) => {
 
     const role = req.query.role as string || 'student';
@@ -42,30 +53,29 @@ router.get(
 );
 
 router.get(
-  "/google/callback",
+  AUTH_ROUTES.GOOGLE_CALLBACK,
   (req: Request, res: Response, next: NextFunction) => {
     passport.authenticate("google", {
       failureRedirect: `${env.frontend.loginUrl}?error=google_auth_failed`,
       session: false,
-    }, async (err: any, user: any, info: any) => {
+    }, async (err: Error | null, user: unknown, info: unknown) => {
       try {
         if (err || !user) {
           console.error('Google auth failed:', err || info);
           return res.redirect(`${env.frontend.loginUrl}?error=auth_failed`);
         }
 
-    
+        const googleUser = user as GoogleUser;
+
         let role = 'student';
         try {
           if (req.query.state) {
             const stateData = JSON.parse(Buffer.from(req.query.state as string, 'base64').toString());
             role = stateData.role || 'student';
           }
-        } catch (error) {
+        } catch {
           console.warn('Failed to decode state, using default role');
         }
-
-        const googleUser = user;
         const userEmail = googleUser.emails?.[0]?.value || googleUser.email;
 
         if (!userEmail) {
@@ -111,6 +121,7 @@ router.get(
           isTrialCompleted: isTrialCompletedString,
           approvalStatus: googleUser.approvalStatus || (role === 'mentor' ? 'pending' : 'approved'),
           isPaid: String(googleUser.isPaid ?? false),
+          id: String(googleUser._id || googleUser.id),
         });
 
         console.log('🔗 Redirect URL:', `${env.frontend.googleCallbackUrl}?${redirectParams}`);
@@ -125,15 +136,15 @@ router.get(
   }
 );
 
-router.post("/signup", (req, res) => authController.registerUser(req, res));
-router.post("/signup/verify-otp", (req, res) => otpController.verifySignupOtp(req, res));
-router.post("/signup/resend-otp", (req, res) => otpController.resendOtp(req, res));
-router.post("/login", (req, res) => authController.login(req, res));
-router.post("/forgot-password/send-otp", (req, res) => authController.sendForgotPasswordOtp(req, res));
+router.post(AUTH_ROUTES.SIGNUP, (req, res) => authController.registerUser(req, res));
+router.post(AUTH_ROUTES.SIGNUP_VERIFY_OTP, (req, res) => otpController.verifySignupOtp(req, res));
+router.post(AUTH_ROUTES.SIGNUP_RESEND_OTP, (req, res) => otpController.resendOtp(req, res));
+router.post(AUTH_ROUTES.LOGIN, (req, res) => authController.login(req, res));
+router.post(AUTH_ROUTES.FORGOT_PASSWORD_SEND_OTP, (req, res) => authController.sendForgotPasswordOtp(req, res));
 import { requireAuth } from "@/middleware/authMiddleware";
 
-router.post("/refresh", (req, res, next) => authController.refreshAccessToken(req, res, next));
-router.get("/me", requireAuth, (req, res, next) => authController.getMe(req, res));
-router.post("/logout", (req, res) => authController.logout(req, res));
+router.post(AUTH_ROUTES.REFRESH, (req, res, next) => authController.refreshAccessToken(req, res, next));
+router.get(AUTH_ROUTES.ME, requireAuth, (req, res) => authController.getMe(req, res));
+router.post(AUTH_ROUTES.LOGOUT, (req, res) => authController.logout(req, res));
 
 export default router;

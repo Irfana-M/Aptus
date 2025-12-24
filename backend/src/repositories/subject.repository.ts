@@ -1,11 +1,17 @@
+import { Types } from "mongoose";
 import { injectable } from "inversify";
 import { Subject, type ISubject } from "@/models/subject.model";
 import { Grade } from "@/models/grade.model";
 import { logger } from "@/utils/logger";
 import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository";
+import { BaseRepository } from "./baseRepository";
 
 @injectable()
-export class SubjectRepository implements ISubjectRepository {
+export class SubjectRepository extends BaseRepository<ISubject> implements ISubjectRepository {
+  constructor() {
+    super(Subject);
+  }
+
   async findAllActive(): Promise<ISubject[]> {
     logger.info("Fetching all active subjects");
     return await Subject.find({ isActive: true })
@@ -38,18 +44,21 @@ export class SubjectRepository implements ISubjectRepository {
   }
 
   async findByGrade(gradeId: string): Promise<ISubject[]> {
-    logger.info(`Fetching subjects for grade ID: ${gradeId}`);
-    // Since we now store grade as ObjectId, we can query directly
-    return await Subject.find({ 
-      grade: gradeId,
-      isActive: true 
-    })
-    .sort({ subjectName: 1 })
-    .exec();
-  }
-
-  async findById(id: string): Promise<ISubject | null> {
-    logger.info(`Fetching subject by ID: ${id}`);
-    return await Subject.findById(id).exec();
+    console.log(`🔍 [SubjectRepository] findByGrade called with: ${gradeId}`);
+    
+    try {
+        const query = { 
+          grade: new Types.ObjectId(gradeId),
+          isActive: true 
+        };
+        console.log(`🔍 [SubjectRepository] Querying Subject with:`, query);
+        const results = await Subject.find(query).sort({ subjectName: 1 }).exec();
+        console.log(`✅ [SubjectRepository] Found ${results.length} results.`);
+        return results;
+    } catch (err) {
+        console.error(`❌ [SubjectRepository] Error in findByGrade:`, err);
+        // Fallback to string query if ObjectId casting fails for some reason
+        return await Subject.find({ grade: gradeId, isActive: true }).sort({ subjectName: 1 }).exec();
+    }
   }
 }

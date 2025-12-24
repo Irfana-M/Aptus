@@ -23,7 +23,7 @@ const Subject = mongoose.model('Subject', subjectSchema);
 const seedSubjects = async () => {
   try {
     console.log('🔗 Connecting...');
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/mentora');
+    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/aptus');
     console.log('✅ Connected');
 
     console.log('🧹 Clearing subjects...');
@@ -35,7 +35,7 @@ const seedSubjects = async () => {
       process.exit(1);
     }
 
-    const subjectsToInsert: any[] = [];
+    const subjectsToInsert: Record<string, unknown>[] = [];
     const standardSubjects = ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Computer Science"];
 
     for (const g of grades) {

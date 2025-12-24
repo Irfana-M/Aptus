@@ -18,7 +18,7 @@ import {
   Eye,
   ArrowLeft,
 } from 'lucide-react';
-import type { TrialClass } from '../../types/trialTypes';
+import type { TrialClass, TrialClassStudent } from '../../types/trialTypes';
 
 interface Column<T> {
   header: string;
@@ -36,13 +36,13 @@ export const StudentTrialClassesPage: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("Students");
   const [trialClasses, setTrialClasses] = useState<TrialClass[]>([]);
-  const [studentInfo, setStudentInfo] = useState<any>(null);
+  const [studentInfo, setStudentInfo] = useState<TrialClassStudent | null>(null);
 
   useEffect(() => {
     if (studentId) {
       loadStudentTrialClasses();
     }
-  }, [studentId]);
+  }, [studentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadStudentTrialClasses = async () => {
     try {
@@ -56,8 +56,9 @@ export const StudentTrialClassesPage: React.FC = () => {
       if (result.length > 0 && result[0].student) {
         setStudentInfo(result[0].student);
       }
-    } catch (error: any) {
-      showToast.error(error.message || 'Failed to load trial classes');
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      showToast.error(err.message || 'Failed to load trial classes');
     }
   };
 
@@ -97,7 +98,7 @@ export const StudentTrialClassesPage: React.FC = () => {
       accessor: (row) => (
         <div className="text-sm">
           <p className="font-medium text-gray-900">{row.subject.subjectName}</p>
-          <p className="text-gray-500">{row.subject.syllabus} - Grade {row.subject.grade}</p>
+          <p className="text-gray-500">{row.subject.syllabus} - Grade {row.subject.gradeId || row.subject.grade}</p>
         </div>
       ),
     },

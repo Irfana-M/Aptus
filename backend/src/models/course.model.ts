@@ -5,8 +5,10 @@ export interface ICourse extends Document {
   subject: mongoose.Types.ObjectId;      
   mentor: mongoose.Types.ObjectId;       
   student?: mongoose.Types.ObjectId;    
-  dayOfWeek: number;                    
-  timeSlot: string;                     
+  schedule: {
+    days: string[];
+    timeSlot: string;
+  };                     
   startDate: Date;
   endDate: Date;
   totalSessions?: number;
@@ -21,8 +23,13 @@ const CourseSchema = new Schema<ICourse>(
     subject: { type: Schema.Types.ObjectId, ref: "Subject", required: true },
     mentor: { type: Schema.Types.ObjectId, ref: "Mentor", required: true },
     student: { type: Schema.Types.ObjectId, ref: "Student", default: null },
-    dayOfWeek: { type: Number, min: 0, max: 6 }, 
-    timeSlot: { type: String }, 
+    schedule: {
+      days: [{ 
+        type: String, 
+        enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+      }],
+      timeSlot: { type: String } // "17:00-18:00"
+    }, 
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
     totalSessions: { type: Number },

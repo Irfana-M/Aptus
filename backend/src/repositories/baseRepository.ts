@@ -4,11 +4,14 @@ import { HttpStatusCode } from "@/constants/httpStatus";
 import type { IBaseRepository } from "@/interfaces/repositories/IBaseRepository";
 import { injectable } from "inversify";
 
-@injectable()
-export abstract class BaseRepository<T> implements IBaseRepository<T> {
-  protected model: any;
+import { Model, Document } from "mongoose";
+import type { FilterQuery } from "mongoose";
 
-  constructor(model: any) {
+@injectable()
+export abstract class BaseRepository<T extends Document> implements IBaseRepository<T> {
+  protected model: Model<T>;
+
+  constructor(model: Model<T>) {
     this.model = model;
   }
 
@@ -26,7 +29,7 @@ export abstract class BaseRepository<T> implements IBaseRepository<T> {
       }
       
       logger.info(`${this.model.modelName} found by ID: ${id}`);
-      return result;
+      return result as unknown as T;
     } catch (error) {
       logger.error(`Error finding ${this.model.modelName} by ID ${id}:`, error);
       if (error instanceof AppError) throw error;
@@ -39,7 +42,7 @@ export abstract class BaseRepository<T> implements IBaseRepository<T> {
 
   async create(data: Partial<T>): Promise<T> {
     try {
-      logger.debug(`Creating new ${this.model.modelName}`, { email: (data as any).email });
+      logger.debug(`Creating new ${this.model.modelName}`, { email: (data as unknown as Record<string, unknown>).email });
       const result = await this.model.create(data);
       
       if (!result) {
@@ -81,7 +84,7 @@ export abstract class BaseRepository<T> implements IBaseRepository<T> {
       }
       
       logger.info(`${this.model.modelName} updated successfully: ${id}`);
-      return result as T;
+      return result as unknown as T;
     } catch (error) {
       logger.error(`Error updating ${this.model.modelName} with ID ${id}:`, error);
       if (error instanceof AppError) throw error;
@@ -122,7 +125,7 @@ export abstract class BaseRepository<T> implements IBaseRepository<T> {
       logger.debug(`Finding all ${this.model.modelName} records`);
       const results = await this.model.find({}).lean().exec();
       logger.info(`Found ${results.length} ${this.model.modelName} records`);
-      return results;
+      return results as unknown as T[];
     } catch (error) {
       logger.error(`Error finding all ${this.model.modelName} records:`, error);
       throw new AppError(
@@ -132,7 +135,7 @@ export abstract class BaseRepository<T> implements IBaseRepository<T> {
     }
   }
 
-  async findOne(filter: Partial<T>): Promise<T | null> {
+  async findOne(filter: FilterQuery<T>): Promise<T | null> {
     try {
       logger.debug(`Finding one ${this.model.modelName} with filter:`, filter);
       const result = await this.model.findOne(filter).lean().exec();
@@ -143,7 +146,7 @@ export abstract class BaseRepository<T> implements IBaseRepository<T> {
         logger.debug(`${this.model.modelName} not found with filter`);
       }
       
-      return result;
+      return result as unknown as T;
     } catch (error) {
       logger.error(`Error finding ${this.model.modelName} with filter:`, error);
       throw new AppError(
@@ -153,7 +156,7 @@ export abstract class BaseRepository<T> implements IBaseRepository<T> {
     }
   }
 
-  async count(filter?: Partial<T>): Promise<number> {
+  async count(filter?: FilterQuery<T>): Promise<number> {
     try {
       logger.debug(`Counting ${this.model.modelName} records with filter:`, filter);
       const count = await this.model.countDocuments(filter || {}).exec();
@@ -193,7 +196,7 @@ async block(id: string): Promise<T> {
     }
     
     logger.info(`${this.model.modelName} blocked successfully: ${id}`);
-    return result; 
+    return result as unknown as T; 
   } catch (error) {
     logger.error(`Error blocking ${this.model.modelName} with ID ${id}:`, error);
     if (error instanceof AppError) throw error;
@@ -228,7 +231,7 @@ async unblock(id: string): Promise<T> {
     }
     
     logger.info(`${this.model.modelName} unblocked successfully: ${id}`);
-    return result; 
+    return result as unknown as T; 
   } catch (error) {
     logger.error(`Error unblocking ${this.model.modelName} with ID ${id}:`, error);
     if (error instanceof AppError) throw error;
@@ -253,7 +256,7 @@ async unblock(id: string): Promise<T> {
         );
       }
       
-      const isBlocked = !!user.isBlocked;
+      const isBlocked = !!(user as { isBlocked?: boolean }).isBlocked;
       logger.debug(`${this.model.modelName} blocked status: ${isBlocked} for ID: ${id}`);
       return isBlocked;
     } catch (error) {
@@ -273,7 +276,7 @@ async unblock(id: string): Promise<T> {
 
     for (const [key, value] of Object.entries(obj)) {
       if (value !== undefined) {
-        (cleanObj as any)[key] = value;
+        (cleanObj as Record<string, unknown>)[key] = value;
       }
     }
 

@@ -1,41 +1,51 @@
 import api from "../../api/api";
+import userApi from "../../api/userApi";
+import { API_ROUTES } from "../../constants/apiRoutes";
 
 export interface CourseRequestData {
   subject: string;
+  grade: string;
   mentoringMode: string;
-  preferredDay: string;
-  timeRange: string;
+  preferredDays: string[];
+  timeSlot: string;
   timezone?: string;
 }
 
-export const fetchAvailableCourses = async (filters: any) => {
-  const response = await api.get("/courses/available", { params: filters });
+
+export const fetchAvailableCourses = async (filters: Record<string, unknown>) => {
+  const response = await api.get(API_ROUTES.COURSES.AVAILABLE, { params: filters });
   return response.data;
 };
 
+export const findMentors = async (subject: string, grade?: string) => {
+  const response = await userApi.get(API_ROUTES.AVAILABILITY.MATCH, { 
+    params: { subject, grade } 
+  });
+  return response.data;
+};
+
+export const fetchSubjectsByGrade = async (grade: string, syllabus?: string) => {
+    // If grade is 'all', we might want a different endpoint or query
+
+    const response = await api.get(API_ROUTES.STUDENT.GET_BY_GRADE, { 
+        params: { grade, syllabus } 
+    });
+    return response.data;
+};
+
 export const createCourseRequest = async (data: CourseRequestData) => {
-  const response = await api.post("/course-requests", data);
+  const response = await userApi.post(API_ROUTES.COURSE_REQUESTS.BASE, data);
   return response.data;
 };
 
 export const getStudentProfile = async () => {
-    const response = await api.get("/auth/me"); // Assuming /auth/me returns the profile for now, or /student/profile if it exists. Based on backend routes, student profile is likely fetched via auth or a specific route.
-    // Looking at backend routes:
-    // admin routes has /students, but student routes doesn't have /me/profile. 
-    // However, `authApi.ts` usually handles `getMe`.
-    // Let's check `authApi` first to see if it returns the full profile.
-    // Actually, `student.routes.ts` DOES NOT have a /profile GET route.
-    // But I added a PUT /profile route.
-    // Typically `auth/me` returns the user. 
-    // I'll assume `auth/me` or similar is used, OR I should add a GET /profile route to student routes if specific profile data (like grade, syllabus) is needed beyond the basic user model.
-    // The `StudentController` usually has `getProfile`.
-    // Let's assume for now I added PUT /profile, I should probably also have GET /profile in student routes if it differs from Auth user.
-    // I will use /auth/me for fetching for now as it's common.
-    return response.data;
+    const response = await userApi.get(API_ROUTES.STUDENT.PROFILE);
+    // Return the full student profile data
+    return response.data?.data || response.data;
 };
 
 export const updateStudentProfile = async (data: FormData) => {
-    const response = await api.put("/student/profile", data, {
+    const response = await userApi.put(API_ROUTES.STUDENT.PROFILE, data, {
         headers: {
             'Content-Type': 'multipart/form-data',
         },
@@ -44,6 +54,48 @@ export const updateStudentProfile = async (data: FormData) => {
 };
 
 export const enrollInCourse = async (courseId: string) => {
-    const response = await api.post(`/enrollments`, { courseId });
+    // Construct URL: /enrollments/enroll/:courseId
+    // API_ROUTES.ENROLLMENTS.BASE is "/enrollments"
+    const response = await userApi.post(`${API_ROUTES.ENROLLMENTS.BASE}/enroll/${courseId}`);
     return response.data;
+};
+
+export const fetchMyEnrollments = async () => {
+    const response = await userApi.get(API_ROUTES.ENROLLMENTS.MY_ENROLLMENTS);
+    return response.data;
+};
+
+export const fetchMyCourses = async () => {
+    const response = await userApi.get(API_ROUTES.STUDENT.MY_COURSES);
+    return response.data;
+};
+
+export const fetchMyCourseRequests = async () => {
+    const response = await userApi.get(API_ROUTES.COURSE_REQUESTS.BASE);
+    return response.data;
+};
+
+export const fetchPaymentHistory = async () => {
+    const response = await userApi.get(API_ROUTES.STUDENT.PAYMENT_HISTORY);
+    return response.data;
+};
+
+export const getWallet = async () => {
+    const response = await userApi.get('/student/wallet'); 
+    return response.data;
+};
+
+export const studentApi = {
+    fetchAvailableCourses,
+    fetchSubjectsByGrade,
+    findMentors,
+    createCourseRequest,
+    getStudentProfile,
+    updateStudentProfile,
+    enrollInCourse,
+    fetchMyEnrollments,
+    fetchMyCourses,
+    fetchMyCourseRequests,
+    fetchPaymentHistory,
+    getWallet
 };

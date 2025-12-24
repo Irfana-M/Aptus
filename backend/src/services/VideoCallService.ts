@@ -127,7 +127,7 @@ export class VideoCallService implements IVideoCallService {
         logger.info(`📹 No existing call found - creating new VideoCall for trial class ${data.trialClassId}`);
         
         // Get meetLink from trial class or generate one
-        let meetLink = authCheck.trialClass?.meetLink;
+        let meetLink = (authCheck.trialClass as { meetLink?: string })?.meetLink;
         
         if (!meetLink) {
           meetLink = this.generateMeetLink(data.trialClassId);
@@ -170,7 +170,7 @@ export class VideoCallService implements IVideoCallService {
       logger.info(`✅ Participant added successfully`);
       return { success: true };
       
-    } catch (error: any) {
+    } catch (error) {
       logger.error("❌ Error joining call", error);
       
       // Return appropriate error message
@@ -285,7 +285,7 @@ export class VideoCallService implements IVideoCallService {
 
   async getCallStatus(
     trialClassId: string
-  ): Promise<{ status: string; participants: any[]; meetLink?: string }> {
+  ): Promise<{ status: string; participants: Record<string, unknown>[]; meetLink?: string }> {
     try {
       // First check if there's an active video call
       const videoCall = await this.videoCallRepo.findByTrialClassId(
@@ -330,19 +330,19 @@ export class VideoCallService implements IVideoCallService {
   }
 
   private verifyUserAuthorization(
-    trialClass: any,
+    trialClass: { mentor: unknown; student: unknown },
     userId: string,
     userType: string
   ): boolean {
     if (userType === "admin") return true;
 
     // Helper to extract ID string safely
-    const getId = (field: any): string | undefined => {
+    const getId = (field: unknown): string | undefined => {
       if (!field) return undefined;
       if (typeof field === 'string') return field;
       if (field instanceof Types.ObjectId) return field.toString();
-      if (field._id) return field._id.toString(); // Handle populated object
-      return field.toString();
+      if ((field as { _id?: unknown })._id) return (field as { _id: { toString: () => string } })._id.toString(); // Handle populated object
+      return undefined;
     };
 
     if (userType === "mentor") {

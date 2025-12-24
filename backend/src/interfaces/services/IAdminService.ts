@@ -25,7 +25,7 @@ export interface IAdminService {
   getAllStudents(): Promise<StudentBaseResponseDto[]>;
   getAllStudentsPaginated(params: StudentPaginationParams): Promise<PaginatedResponse<StudentBaseResponseDto>>;
 
-  getStudentsWithTrialStats(page: number, limit: number): Promise<any>;
+  getStudentsWithTrialStats(page: number, limit: number): Promise<unknown>;
 
   blockMentor(mentorId: string): Promise<MentorResponseDto>;
 
@@ -72,6 +72,11 @@ export interface IAdminService {
     status: string,
     reason?: string
   ): Promise<TrialClassResponseDto>;
-  getAvailableMentors(subjectId: string, preferredDate: string): Promise<MentorResponseDto[]>;
+  getAvailableMentors(
+    subjectId: string, 
+    preferredDate?: string,
+    days?: string[],
+    timeSlot?: string
+  ): Promise<{ matches: MentorResponseDto[], alternates: MentorResponseDto[] }>;
 }
 

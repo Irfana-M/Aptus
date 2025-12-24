@@ -3,8 +3,8 @@ import type { MentorProfile } from "../models/mentor.interface";
 import type { MentorResponseDto } from "@/dto/mentor/MentorResponseDTO";
 
 export interface IMentorService {
-  registerMentor(data: RegisterUserDto): Promise<any>;
-  updateMentorProfile(mentorId: string, data: any): Promise<MentorProfile>;
+  registerMentor(data: RegisterUserDto): Promise<unknown>;
+  updateMentorProfile(mentorId: string, data: Partial<MentorProfile>): Promise<MentorProfile>;
   submitProfileForApproval(
     mentorId: string,
     requestingUserId: string
@@ -19,7 +19,7 @@ export interface IMentorService {
     adminId: string,
     reason: string
   ): Promise<{ message: string }>;
-  getMentorTrialClasses(mentorId: string): Promise<any[]>;
+  getMentorTrialClasses(mentorId: string): Promise<unknown[]>;
   getById(id: string): Promise<MentorResponseDto | null>;
   getMentorProfile(mentorId: string): Promise<MentorProfile | null>;
 }

@@ -1,5 +1,5 @@
 import type { IAuthRepository } from "../auth/IAuthRepository";
-import type { AuthUser } from "../auth/auth.interface";
+import type { AuthUser, StudentAuthUser } from "../auth/auth.interface";
 import type { StudentProfile } from "../models/student.interface";
 
 export interface IStudentAuthRepository extends IAuthRepository {
@@ -10,4 +10,5 @@ export interface IStudentAuthRepository extends IAuthRepository {
     data: Partial<StudentProfile>
   ): Promise<StudentProfile | null>;
   listAllStudents(): Promise<StudentProfile[]>;
+  findByReferralCode(code: string): Promise<StudentAuthUser | null>;
 }

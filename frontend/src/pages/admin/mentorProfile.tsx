@@ -24,6 +24,7 @@ import {
   BookOpen,
   Image,
 } from "lucide-react";
+import { showToast } from "../../utils/toast";
 
 const MentorProfilePage: React.FC = () => {
   const { mentorId } = useParams<{ mentorId: string }>();
@@ -61,7 +62,7 @@ const MentorProfilePage: React.FC = () => {
   };
 
   const handleReject = () => {
-    if (!rejectionReason.trim()) return alert("Please provide a reason");
+    if (!rejectionReason.trim()) return showToast.error("Please provide a reason");
     if (profile?._id)
       dispatch(
         rejectMentorAdmin({ mentorId: profile._id, reason: rejectionReason })

@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import type { ZodSchema, ZodError } from 'zod';
+import { ZodError, type ZodSchema, type ZodIssue } from 'zod';
 import { AppError } from '../utils/AppError';
 import { HttpStatusCode } from '../constants/httpStatus';
 
@@ -11,9 +11,9 @@ export const validateBody = (schema: ZodSchema) => {
       req.body = validated;
       next();
     } catch (error) {
-      if (isZodError(error)) {
-        const errorMessage = (error as any).errors
-          .map((err: any) => `${err.path.join('.')}: ${err.message}`)
+      if (error instanceof ZodError) {
+        const errorMessage = error.issues
+          .map((err: ZodIssue) => `${err.path.join('.')}: ${err.message}`)
           .join(', ');
         
         next(new AppError(errorMessage, HttpStatusCode.BAD_REQUEST));
@@ -32,9 +32,9 @@ export const validateQuery = (schema: ZodSchema) => {
       req.query = validated as unknown as Request['query'];
       next();
     } catch (error) {
-      if (isZodError(error)) {
-        const errorMessage = (error as any).errors
-          .map((err: any) => `${err.path.join('.')}: ${err.message}`)
+      if (error instanceof ZodError) {
+        const errorMessage = error.issues
+          .map((err: ZodIssue) => `${err.path.join('.')}: ${err.message}`)
           .join(', ');
         
         next(new AppError(errorMessage, HttpStatusCode.BAD_REQUEST));
@@ -53,9 +53,9 @@ export const validateParams = (schema: ZodSchema) => {
       req.params = validated as unknown as Request['params'];
       next();
     } catch (error) {
-      if (isZodError(error)) {
-        const errorMessage = (error as any).errors
-          .map((err: any) => `${err.path.join('.')}: ${err.message}`)
+      if (error instanceof ZodError) {
+        const errorMessage = error.issues
+          .map((err: ZodIssue) => `${err.path.join('.')}: ${err.message}`)
           .join(', ');
         
         next(new AppError(errorMessage, HttpStatusCode.BAD_REQUEST));
@@ -67,6 +67,4 @@ export const validateParams = (schema: ZodSchema) => {
 };
 
 
-function isZodError(error: unknown): error is ZodError {
-  return (error as any)?.errors !== undefined && Array.isArray((error as any).errors);
-}
+

@@ -7,6 +7,8 @@ import studentTrialReducer from "../features/trial/student/studentTrialSlice";
 import videoCallReducer from "../features/videoCall/videoCallSlice";
 import roleReducer from "../features/role/roleSlice";
 import studentReducer from "../features/student/studentSlice";
+import financeReducer from "../features/admin/financeSlice";
+import paymentReducer from "../features/payment/paymentSlice";
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +20,8 @@ export const store = configureStore({
     videoCall: videoCallReducer,
     role: roleReducer,
     student: studentReducer,
+    finance: financeReducer,
+    payment: paymentReducer,
   },
 
   middleware: (getDefaultMiddleware) =>

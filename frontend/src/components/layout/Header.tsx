@@ -3,8 +3,10 @@ import Logo from "./logo";
 import { NAV_ITEMS } from "../../config/nav";
 import { Button } from "../ui/Button";
 import { Menu, X, Bell, User, LogOut, Settings } from "lucide-react";
-import { useSelector } from "react-redux";
-import type { RootState } from "../../app/store";
+import { useSelector, useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import type { RootState, AppDispatch } from "../../app/store";
+import { logoutUser } from "../../features/auth/authThunks";
 
 interface HeaderProps {
   onLoginClick?: () => void;
@@ -19,8 +21,25 @@ export default function Header({
   const [scrolled, setScrolled] = React.useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
 
+  const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
+
   const { user } = useSelector((state: RootState) => state.auth);
-  const { profile } = useSelector((state: RootState) => state.mentor);
+  const { profile: mentorProfile } = useSelector((state: RootState) => state.mentor);
+  const { profile: studentProfile } = useSelector((state: RootState) => state.student);
+
+  // Determine the correct profile image based on role and available data
+  const getProfileImage = () => {
+    if (user?.role === "mentor") {
+      return mentorProfile?.profilePicture || user?.profileImageUrl;
+    }
+    if (user?.role === "student") {
+      return studentProfile?.profileImageUrl || user?.profileImageUrl;
+    }
+    return null;
+  };
+  
+  const profileImageUrl = getProfileImage();
 
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -49,21 +68,41 @@ export default function Header({
   }, []);
 
   const handleNavClick = (href: string) => (e: React.MouseEvent) => {
-    if (!href.startsWith("#")) return;
     e.preventDefault();
     setOpen(false);
-    const el = document.querySelector(href);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    
+    if (href.startsWith("#")) {
+      const el = document.querySelector(href);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      navigate(href);
+    }
+  };
+
+  const handleLogout = async () => {
+    await dispatch(logoutUser());
+    setIsUserMenuOpen(false);
+    navigate("/login");
+  };
+
+  const handleProfileClick = () => {
+    setIsUserMenuOpen(false);
+    if (user?.role === "mentor") {
+      navigate("/mentor/profile-setup");
+    } else {
+      navigate("/student/profile");
+    }
   };
 
   const userNavigation = [
-    { name: "Your Profile", href: "/profile", icon: User },
-    { name: "Settings", href: "/settings", icon: Settings },
-    { name: "Sign out", href: "/logout", icon: LogOut },
+    { name: "Your Profile", onClick: handleProfileClick, icon: User },
+    { name: "Settings", onClick: () => navigate("/settings"), icon: Settings },
+    { name: "Sign out", onClick: handleLogout, icon: LogOut },
   ];
 
   const getUserDisplayName = () => {
-    if (profile?.fullName) return profile.fullName;
+    if (user?.role === "mentor" && mentorProfile?.fullName) return mentorProfile.fullName;
+    if (user?.role === "student" && studentProfile?.fullName) return studentProfile.fullName;
     if (user?.fullName) return user.fullName;
     if (user?.email) return user.email.split("@")[0];
     return "User";
@@ -98,7 +137,7 @@ export default function Header({
 
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 lg:px-6">
         {/* Left: Logo */}
-        <a href="/" aria-label="Mentora Home" className="flex items-center">
+        <a href="/" aria-label="Aptus Home" className="flex items-center">
           <Logo />
         </a>
 
@@ -110,7 +149,7 @@ export default function Header({
                 <a
                   href={item.href}
                   onClick={handleNavClick(item.href)}
-                  className="text-sm font-medium text-slate-700 hover:text-[rgb(73,187,189)] transition-colors"
+                  className="text-sm font-medium text-slate-700 hover:text-[rgb(73,187,189)] transition-colors cursor-pointer"
                 >
                   {item.label}
                 </a>
@@ -137,9 +176,9 @@ export default function Header({
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 transition-colors"
                 >
-                  {profile?.profilePicture ? (
+                  {profileImageUrl ? (
                     <img
-                      src={profile.profilePicture}
+                      src={profileImageUrl}
                       alt={getUserDisplayName()}
                       className="w-8 h-8 rounded-full object-cover"
                     />
@@ -157,14 +196,14 @@ export default function Header({
                 {isUserMenuOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
                     {userNavigation.map((item) => (
-                      <a
+                      <button
                         key={item.name}
-                        href={item.href}
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                        onClick={item.onClick}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
                       >
                         <item.icon className="w-4 h-4" />
                         {item.name}
-                      </a>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -221,14 +260,14 @@ export default function Header({
                   Welcome, {getUserDisplayName()}!
                 </li>
                 {userNavigation.map((item) => (
-                  <li key={item.href}>
-                    <a
-                      href={item.href}
-                      className="flex items-center gap-2 rounded-xl px-3 py-2 text-slate-700 hover:bg-slate-100 transition-colors"
+                  <li key={item.name}>
+                    <button
+                      onClick={item.onClick}
+                      className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-slate-700 hover:bg-slate-100 transition-colors text-left"
                     >
                       <item.icon className="w-4 h-4" />
                       {item.name}
-                    </a>
+                    </button>
                   </li>
                 ))}
               </>

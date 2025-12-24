@@ -1,9 +1,21 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { fetchStudentProfile, updateStudentProfile, fetchAvailableCourses, submitCourseRequest } from "./studentThunk";
+import { fetchStudentProfile, updateStudentProfile, fetchAvailableCourses, submitCourseRequest, fetchMyEnrollments } from "./studentThunk";
+import type { StudentProfile } from "../../types/student.types";
+import type { Course } from "../../types/courseTypes";
+
+export interface Enrollment {
+  _id: string;
+  studentId: string;
+  courseId: Course; // Populated course
+  enrolledAt: string;
+  status: 'active' | 'completed' | 'dropped';
+  progress: number;
+}
 
 interface StudentState {
-  profile: any | null;
-  courses: any[];
+  profile: StudentProfile | null;
+  courses: Course[];
+  enrollments: Enrollment[];
   courseRequestStatus: 'idle' | 'loading' | 'succeeded' | 'failed';
   loading: boolean;
   error: string | null;
@@ -12,6 +24,7 @@ interface StudentState {
 const initialState: StudentState = {
   profile: null,
   courses: [],
+  enrollments: [],
   courseRequestStatus: 'idle',
   loading: false,
   error: null,
@@ -82,6 +95,20 @@ const studentSlice = createSlice({
     builder.addCase(submitCourseRequest.rejected, (state, action) => {
       state.courseRequestStatus = 'failed';
       state.error = action.payload as string;
+    });
+
+    // Fetch My Enrollments
+    builder.addCase(fetchMyEnrollments.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+    });
+    builder.addCase(fetchMyEnrollments.fulfilled, (state, action) => {
+        state.loading = false;
+        state.enrollments = action.payload;
+    });
+    builder.addCase(fetchMyEnrollments.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
     });
   },
 });

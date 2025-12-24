@@ -9,11 +9,15 @@ export class CourseService implements ICourseService {
     @inject(TYPES.ICourseRepository) private _courseRepository: ICourseRepository
   ) {}
 
-  async getAvailableCourses(filters: any): Promise<any[]> {
+  async getAvailableCourses(filters: Record<string, unknown>): Promise<unknown[]> {
     return await this._courseRepository.findAvailableCourses(filters);
   }
 
-  async getCourseById(id: string): Promise<any | null> {
+  async getCourseById(id: string): Promise<unknown | null> {
     return await this._courseRepository.findById(id);
+  }
+
+  async getCoursesByStudent(studentId: string): Promise<unknown[]> {
+    return await this._courseRepository.findByStudent(studentId);
   }
 }

@@ -1,4 +1,5 @@
 import { injectable, inject } from "inversify";
+import { Types } from "mongoose";
 import type { IEnrollment } from "../models/enrollment.model";
 import { logger } from "../utils/logger";
 import { getErrorMessage } from "../utils/errorUtils";
@@ -6,12 +7,14 @@ import { TYPES } from "../types";
 import type { IEnrollmentRepository } from "../interfaces/repositories/IEnrollmentRepository";
 import type { ICourseRepository } from "../interfaces/repositories/ICourseRepository";
 import type { IEnrollmentService } from "../interfaces/services/IEnrollmentService";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
 
 @injectable()
 export class EnrollmentService implements IEnrollmentService {
   constructor(
     @inject(TYPES.IEnrollmentRepository) private enrollmentRepository: IEnrollmentRepository,
-    @inject(TYPES.ICourseRepository) private courseRepository: ICourseRepository
+    @inject(TYPES.ICourseRepository) private courseRepository: ICourseRepository,
+    @inject(TYPES.IStudentRepository) private studentRepository: IStudentRepository
   ) {}
 
   async enrollInCourse(
@@ -20,6 +23,35 @@ export class EnrollmentService implements IEnrollmentService {
   ): Promise<IEnrollment> {
     try {
       logger.info(`Enrolling student ${studentId} in course ${courseId}`);
+
+      // 1. Fetch Student & Subscription
+      const student = await this.studentRepository.findById(studentId);
+      if (!student) throw new Error("Student not found");
+
+      const sub = student.subscription;
+      if (!sub) {
+        throw new Error("Student does not have a subscription plan");
+      }
+      // (though our method sets it to 'pending_payment' below)
+      // We will allow the creation of the enrollment record so they can choose a slot.
+
+      // 2. Check Limits
+      const activeEnrollments = await this.enrollmentRepository.countActiveByStudent(studentId);
+      // @ts-expect-error - subjectCount existence check
+      const subjectCount = sub?.subjectCount || 1;
+
+      if (sub.plan === 'yearly') {
+          // Yearly Unlimited: 5 sessions/week limit (enforced via active enrollments)
+          const limit = subjectCount === 1 ? 1 : 5;
+          if (activeEnrollments >= limit) {
+              throw new Error(`Session limit reached. Your ${subjectCount === 1 ? 'Single Subject' : 'Unlimited'} plan allows up to ${limit} active course${limit > 1 ? 's' : ''}.`);
+          }
+      } else if (sub.plan === 'monthly') {
+          // Monthly: Limit by subjectCount
+          if (activeEnrollments >= subjectCount) {
+              throw new Error(`Subject limit reached. Your monthly plan allows up to ${subjectCount} subject${subjectCount > 1 ? 's' : ''}.`);
+          }
+      }
 
       // Check if course exists and is available result is typicaly a POJO from lean() or doc
       const course = await this.courseRepository.findById(courseId);
@@ -43,8 +75,8 @@ export class EnrollmentService implements IEnrollmentService {
 
       // Create enrollment
       const enrollment = await this.enrollmentRepository.create({
-        student: studentId,
-        course: courseId,
+        student: new Types.ObjectId(studentId),
+        course: new Types.ObjectId(courseId),
         status: "pending_payment",
       });
 

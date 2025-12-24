@@ -1,6 +1,6 @@
 export interface ICourseRequestRepository {
-  create(data: any): Promise<any>;
-  findAll(): Promise<any[]>;
-  findByStudent(studentId: string): Promise<any[]>;
-  updateStatus(id: string, status: string): Promise<any | null>;
+  create(data: unknown): Promise<unknown>;
+  findAll(): Promise<unknown[]>;
+  findByStudent(studentId: string): Promise<unknown[]>;
+  updateStatus(id: string, status: string): Promise<unknown | null>;
 }

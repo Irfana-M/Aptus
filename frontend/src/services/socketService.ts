@@ -3,14 +3,25 @@ import { io, Socket } from 'socket.io-client';
 class SocketService {
   private socket: Socket | null = null;
 
-  connect(): Socket {
+  connect(role?: string): Socket {
     if (this.socket?.connected) {
       console.log('⚡ Using existing socket connection');
       return this.socket;
     }
 
-    // Get token from localStorage
-    const token = localStorage.getItem('accessToken');
+    // Get correct token from localStorage
+    let token = null;
+    
+    if (role === 'admin') {
+      token = localStorage.getItem('admin_accessToken') || localStorage.getItem('adminAccessToken');
+    } else if (role) {
+      token = localStorage.getItem(`${role}_accessToken`) || localStorage.getItem('accessToken');
+    } else {
+      // Smart discovery
+      token = localStorage.getItem('student_accessToken') || 
+              localStorage.getItem('mentor_accessToken') || 
+              localStorage.getItem('accessToken');
+    }
     
     console.log('🔌 Connecting to WebSocket...');
     console.log('📝 Token exists:', !!token);
@@ -22,7 +33,7 @@ class SocketService {
     let socketUrl = apiUrl;
     try {
       socketUrl = new URL(apiUrl).origin;
-    } catch (e) {
+    } catch {
       console.warn('Invalid VITE_API_URL, using as is:', apiUrl);
     }
 

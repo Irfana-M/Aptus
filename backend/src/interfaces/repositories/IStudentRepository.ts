@@ -5,7 +5,7 @@ import type { StudentBaseResponseDto } from "@/dto/auth/UserResponseDTO";
 import type { StudentPaginationParams } from "@/dto/shared/paginationTypes";
 
 export interface StudentPaginatedResult {
-  students: any[];
+  students: unknown[];
   total: number;
 }
 
@@ -23,8 +23,8 @@ export interface IStudentRepository extends IBaseRepository<StudentAuthUser> {
   findAllStudents(): Promise<StudentBaseResponseDto[]>;
   findAllStudentsPaginated(params: StudentPaginationParams): Promise<StudentPaginatedResult>;
   findAllWithTrialStats(page: number, limit: number): Promise<{
-    students: any[];
+    students: unknown[];
     totalStudents: number;
   }>;
-  findStudentProfileById(id: string): Promise<any>;
+  findStudentProfileById(id: string): Promise<unknown>;
 }

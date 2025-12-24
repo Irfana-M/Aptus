@@ -19,9 +19,9 @@ import { injectable } from "inversify";
 export class MentorAuthRepository
   implements IAuthRepository<MentorAuthUser>, IMentorAuthRepository, IVerificationRepository<MentorAuthUser>
 {
-  private mapToMentorAuthUser(mentor: any): MentorAuthUser {
+  private mapToMentorAuthUser(mentor: MentorProfile & { _id: string }): MentorAuthUser {
     const academicQualifications = mentor.academicQualifications
-      ? mentor.academicQualifications.map((q: any) => ({
+      ? mentor.academicQualifications.map((q) => ({
           institutionName: q.institutionName,
           degree: q.degree,
           graduationYear: q.graduationYear,
@@ -29,7 +29,7 @@ export class MentorAuthRepository
       : undefined;
 
     const subjectProficiency = mentor.subjectProficiency
-      ? mentor.subjectProficiency.map((s: any) => ({
+      ? mentor.subjectProficiency.map((s) => ({
           subject: s.subject,
           level: s.level,
         }))

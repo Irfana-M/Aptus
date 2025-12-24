@@ -20,25 +20,25 @@ class Logger {
     this.level = level;
   }
 
-  debug(...args: any[]) {
+  debug(...args: unknown[]) {
     if (this.shouldLog(LogLevel.DEBUG)) {
       console.log("🔍 [DEBUG]", ...args);
     }
   }
 
-  info(...args: any[]) {
+  info(...args: unknown[]) {
     if (this.shouldLog(LogLevel.INFO)) {
       console.log("ℹ️ [INFO]", ...args);
     }
   }
 
-  warn(...args: any[]) {
+  warn(...args: unknown[]) {
     if (this.shouldLog(LogLevel.WARN)) {
       console.warn("⚠️ [WARN]", ...args);
     }
   }
 
-  error(...args: any[]) {
+  error(...args: unknown[]) {
     if (this.shouldLog(LogLevel.ERROR)) {
       console.error("❌ [ERROR]", ...args);
     }
@@ -48,11 +48,11 @@ class Logger {
     return this.levelPriority[this.level] <= this.levelPriority[level];
   }
 
-  api(url: string, method: string, data?: any) {
+  api(url: string, method: string, data?: unknown) {
     this.debug(`🔄 API ${method.toUpperCase()} ${url}`, data);
   }
 
-  auth(action: string, data?: any) {
+  auth(action: string, data?: unknown) {
     this.info(`🔐 AUTH ${action}`, data);
   }
 }

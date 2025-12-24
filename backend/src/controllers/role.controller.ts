@@ -3,12 +3,12 @@ import { injectable, inject } from 'inversify';
 import { TYPES } from '@/types';
 import type { IUserRoleService } from '@/interfaces/services/IUserRoleSrvice';
 import { 
-  verifyAccessToken, 
-  type CustomJwtPayload 
+  verifyAccessToken 
 } from '../utils/jwt.util'; 
 import { logger } from '@/utils/logger';
 import type { MentorResponseDto } from '@/dto/mentor/MentorResponseDTO';
 import type { StudentBaseResponseDto } from '@/dto/auth/UserResponseDTO';
+import type { ITrialClassDocument } from '@/models/student/trialClass.model';
 
 @injectable()
 export class RoleController {
@@ -106,7 +106,7 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
             role: 'student',
             fullName: studentDetails.fullName,
             phoneNumber: studentDetails.phoneNumber,
-            isPaid: studentDetails.isPaid,
+            isPaid: (studentDetails as unknown as { isPaid: boolean }).isPaid,
           },
           tokenInfo: {
             issuedAt: decoded.iat ? new Date(decoded.iat * 1000).toISOString() : null,
@@ -118,7 +118,8 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
 
       logger.info(`✅ [ROLE CONTROLLER] Role verified for: ${user.email}`);
 
-    } catch (jwtError: any) {
+    } catch (error: unknown) {
+      const jwtError = error as Error;
       
       if (jwtError.name === 'TokenExpiredError') {
         res.status(401).json({ 
@@ -138,7 +139,7 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('[ROLE CONTROLLER] Error in verifyRole:', error);
     res.status(500).json({ 
       success: false, 
@@ -204,11 +205,11 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
       }
 
       
-      const publicInfo: any = {
+      const publicInfo = {
         id: user.id?.toString() || user.id,
         email: user.email,
         role: role,
-        fullName: user.fullName || user.fullName,
+        fullName: user.fullName,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       };
@@ -220,11 +221,10 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
           const token = authHeader.split(' ')[1];
           if (!token) throw new Error('No token');
           
-          const decoded = verifyAccessToken(token);
+          verifyAccessToken(token);
           
           
-        } catch (error) {
-         
+        } catch {
           logger.debug('Token verification failed for additional info');
         }
       }
@@ -237,7 +237,7 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
 
       logger.info(`[ROLE CONTROLLER] User info returned for: ${userId}`);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('[ROLE CONTROLLER] Error in getUserInfo:', error);
       res.status(500).json({ 
         success: false, 
@@ -328,17 +328,18 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
             role: decoded.role
           },
           trialClass: {
-            id: authCheck.trialClass?._id?.toString(),
-            status: authCheck.trialClass?.status,
-            studentId: authCheck.trialClass?.student?.toString(),
-            mentorId: authCheck.trialClass?.mentor?.toString(),
-            preferredDate: authCheck.trialClass?.preferredDate,
-            meetLink: authCheck.trialClass?.meetLink
+            id: (authCheck.trialClass as ITrialClassDocument)?._id?.toString(),
+            status: (authCheck.trialClass as ITrialClassDocument)?.status,
+            studentId: (authCheck.trialClass as ITrialClassDocument)?.student?.toString(),
+            mentorId: (authCheck.trialClass as ITrialClassDocument)?.mentor?.toString(),
+            preferredDate: (authCheck.trialClass as ITrialClassDocument)?.preferredDate,
+            meetLink: (authCheck.trialClass as ITrialClassDocument)?.meetLink
           },
           verifiedAt: new Date().toISOString()
         });
 
-      } catch (jwtError: any) {
+      } catch (error: unknown) {
+        const jwtError = error as Error;
         
         if (jwtError.name === 'TokenExpiredError') {
           res.status(401).json({ 
@@ -354,7 +355,7 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
         return;
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('[ROLE CONTROLLER] Error in verifyTrialClassAccess:', error);
       res.status(500).json({ 
         success: false, 
@@ -395,8 +396,9 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
           userId: decoded.id,
           email: decoded.email
         });
-      } catch (error: any) {
-        if (error.name === 'TokenExpiredError') {
+      } catch (error: unknown) {
+        const err = error as Error;
+        if (err.name === 'TokenExpiredError') {
           res.status(401).json({ 
             success: false, 
             error: 'Token expired' 
@@ -480,7 +482,7 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
       email: existsCheck.email
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('[ROLE CONTROLLER] Error in getUserRoleById:', error);
     res.status(500).json({ 
       success: false, 

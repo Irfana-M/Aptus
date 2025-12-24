@@ -13,6 +13,9 @@ import type { ISubjectService } from "@/interfaces/services/ISubjectService";
 import type { IGradeService } from "@/interfaces/services/IGradeService";
 import type { CoursePaginationParams, PaginatedResponse } from "@/dto/shared/paginationTypes";
 import { logger } from "@/utils/logger";
+import type { IAvailabilityService } from "@/interfaces/services/IAvailabilityService";
+import type { MentorProfile } from "@/interfaces/models/mentor.interface";
+import type { CreateCourseParams } from "@/interfaces/services/ICourseAdminService";
 
 @injectable()
 export class CourseAdminService implements ICourseAdminService {
@@ -20,53 +23,107 @@ export class CourseAdminService implements ICourseAdminService {
     @inject(TYPES.IMentorRepository) private mentorRepo: IMentorRepository,
     @inject(TYPES.ICourseRepository) private courseRepo: ICourseRepository,
     @inject(TYPES.ISubjectService) private subjectService: ISubjectService,
-        @inject(TYPES.IGradeService) private gradeService: IGradeService
+    @inject(TYPES.IGradeService) private gradeService: IGradeService,
+    @inject(TYPES.IAvailabilityService) private availabilityService: IAvailabilityService
   ) {}
+
 
   async getAvailableMentorsForCourse(params: {
     gradeId: string;
     subjectId: string;
     dayOfWeek?: number;
     timeSlot?: string;
-  }): Promise<AvailableMentorDto[]> {
+    days?: string[]; // Added support for days
+  }): Promise<{ matches: AvailableMentorDto[], alternates: AvailableMentorDto[] }> {
     const subjectDoc = await Subject.findById(params.subjectId).lean();
     if (!subjectDoc) throw new AppError("Subject not found", HttpStatusCode.NOT_FOUND);
 
-    const rawMentors = await this.mentorRepo.findAvailableMentors({
-      gradeId: params.gradeId,
-      subjectId: params.subjectId,
-      dayOfWeek: params.dayOfWeek,
-      timeSlot: params.timeSlot,
-    });
+    // Normalize params
+    const days = params.days || (params.dayOfWeek ? [this.getDayName(params.dayOfWeek)] : []);
+    const timeSlot = params.timeSlot || "";
 
-    return rawMentors.map(
-      (m) => new AvailableMentorDto(m, subjectDoc.subjectName)
+    const { matches, alternates } = await this.availabilityService.findMatchingMentors(
+       params.subjectId,
+       params.gradeId,
+       days,
+       timeSlot
     );
+
+    return {
+        matches: matches.map((m: MentorProfile) => new AvailableMentorDto(m, subjectDoc.subjectName)),
+        alternates: alternates.map((m: MentorProfile) => new AvailableMentorDto(m, subjectDoc.subjectName))
+    };
   }
 
-  async createOneToOneCourse(data: any) {
-    // Check for conflicts ONLY if day and time are provided
-    if (data.dayOfWeek !== undefined && data.timeSlot) {
-      const conflict = await this.courseRepo.findActiveConflict({
-        mentorId: data.mentor,
-        dayOfWeek: data.dayOfWeek,
-        timeSlot: data.timeSlot,
-      });
+  private getDayName(dayIndex: number): string {
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    return days[dayIndex] || "";
+  }
 
-      if (conflict) {
-        throw new AppError(
-          "This slot was booked in the last few seconds. Please try again.",
-          HttpStatusCode.CONFLICT
-        );
-      }
+  async createOneToOneCourse(data: CreateCourseParams) {
+    // 1. Resolve Subject ID if name provided
+    let subjectId = data.subjectId;
+    if (subjectId && !/^[0-9a-fA-F]{24}$/.test(subjectId)) {
+        const resolvedId = await this.subjectService.findByName(subjectId);
+        if (resolvedId) {
+            subjectId = resolvedId;
+        } else {
+             // Fallback or throw? If strictly required, throw.
+             // But existing behavior might have crashed, so let's log and keep original to see if it works (unlikely)
+             // Or better, assume it's a name and fail if not found.
+             throw new AppError(`Subject '${subjectId}' not found`, HttpStatusCode.BAD_REQUEST);
+        }
     }
+
+    // 2. Resolve Grade ID if name provided
+    let gradeId = data.gradeId;
+    if (gradeId && !/^[0-9a-fA-F]{24}$/.test(gradeId)) {
+        const resolvedId = await this.gradeService.findByName(gradeId);
+        if (resolvedId) {
+            gradeId = resolvedId;
+        } else {
+             // Try lenient match for Grade? e.g. "Grade 10" -> "10"
+             // For now throw.
+             throw new AppError(`Grade '${gradeId}' not found`, HttpStatusCode.BAD_REQUEST);
+        }
+    }
+
+    // Check for conflicts ONLY if day and time are provided (Legacy) or schedule is provided
+    let days: string[] = [];
+    let timeSlot = "";
+
+    if (data.schedule) {
+       days = data.schedule.days; // ["Monday", "Friday"]
+       timeSlot = data.schedule.timeSlot; // "10:00-11:00"
+    } else if (data.dayOfWeek !== undefined) {
+       // Legacy fallback
+       // Map dayOfWeek index to string
+       const dayName = this.getDayName(data.dayOfWeek);
+       if (dayName) days.push(dayName);
+       
+       if (data.timeSlot) {
+           timeSlot = data.timeSlot;
+       }
+    }
+
+    if (days.length > 0 && timeSlot) {
+        await this.availabilityService.bookSlots(data.mentorId, days, timeSlot);
+    }
+    
+    // Construct schedule object for model if creating from legacy params
+    const schedule = data.schedule || {
+        days: days,
+        timeSlot: timeSlot
+    };
 
     const course = await this.courseRepo.createOneToOneCourse({
       ...data,
       mentor: data.mentorId,
-      subject: data.subjectId,
-      grade: data.gradeId,
-      status: "available",
+      student: data.studentId, // Map studentId to student
+      subject: subjectId,
+      grade: gradeId,
+      status: "available", 
+      schedule: schedule, 
       startDate: new Date(data.startDate),
       endDate: new Date(data.endDate),
     });
@@ -78,7 +135,7 @@ export class CourseAdminService implements ICourseAdminService {
     return await this.courseRepo.getAllOneToOneCourses();
   }
 
-  async getAllCoursesPaginated(params: CoursePaginationParams): Promise<PaginatedResponse<any>> {
+  async getAllCoursesPaginated(params: CoursePaginationParams): Promise<PaginatedResponse<unknown>> { // TODO: Replace any with Course type
     try {
       const page = params.page || 1;
       const limit = params.limit || 10;

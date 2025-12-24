@@ -10,7 +10,16 @@ const CourseRequestSchema: Schema = new Schema(
       ref: "Student",
       required: true,
     },
+    mentor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Mentor",
+      required: false,
+    },
     subject: {
+      type: String,
+      required: true,
+    },
+    grade: {
       type: String,
       required: true,
     },
@@ -19,12 +28,13 @@ const CourseRequestSchema: Schema = new Schema(
       enum: ["one-to-one", "one-to-many"],
       required: true,
     },
-    preferredDay: {
+    preferredDays: [{
       type: String,
+      enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
       required: true,
-    },
-    timeRange: {
-      type: String,
+    }],
+    timeSlot: {
+      type: String, // "17:00-18:00"
       required: true,
     },
     timezone: {
@@ -33,7 +43,7 @@ const CourseRequestSchema: Schema = new Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "reviewed", "fulfilled"],
+      enum: ["pending", "reviewed", "fulfilled", "approved", "rejected"],
       default: "pending",
     },
   },

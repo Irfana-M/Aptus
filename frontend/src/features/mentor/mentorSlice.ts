@@ -8,6 +8,7 @@ import {
   updateMentorProfile,
   fetchMentorTrialClasses,
 } from "./mentorThunk";
+import type { TrialClass } from "../../types/studentTypes";
 
 export interface MentorProfile {
   _id: string;
@@ -39,9 +40,12 @@ export interface MentorProfile {
   profileImageUrl?: string | null;
   profileImageKey?: string;
   availability?: {
-    dayOfWeek: number;
-    timeSlots: string[];
-    timezone: string;
+    day: string;
+    slots: {
+      startTime: string;
+      endTime: string;
+    }[];
+    timezone?: string;
   }[];
   rating?: number;
   totalRatings?: number;
@@ -60,7 +64,7 @@ export interface MentorProfile {
 interface MentorState {
   profile: MentorProfile | null;
   pendingMentors: MentorProfile[];
-  trialClasses: any[];
+  trialClasses: TrialClass[];
   loading: boolean;
   error: string | null;
 }

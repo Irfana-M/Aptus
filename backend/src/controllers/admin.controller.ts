@@ -6,15 +6,13 @@ import { logger } from "../utils/logger";
 import { HttpStatusCode } from "../constants/httpStatus";
 import { generateAccessToken, verifyRefreshToken } from "@/utils/jwt.util";
 import { AppError } from "@/utils/AppError";
-import type { IStudentService } from "@/interfaces/services/IStudentService";
 import { config } from "../config/app.config";
 
 @injectable()
 export class AdminController {
-  courseService: any;
+  
   constructor(
     @inject(TYPES.IAdminService) private _adminService: IAdminService,
-    @inject(TYPES.IStudentService) private _studentService: IStudentService
   ) {}
 
     addStudent = async (req: Request, res: Response): Promise<void> => {
@@ -44,12 +42,13 @@ export class AdminController {
         message: "Student added successfully",
         data: result,
       });
-    } catch (error: any) {
-      logger.error(`Admin: Add student error for ${req.body.email}:`, error);
-      const statusCode = error.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+    } catch (error: unknown) {
+      const err = error as AppError;
+      logger.error(`Admin: Add student error for ${req.body.email}:`, err);
+      const statusCode = err.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
       res.status(statusCode).json({
         success: false,
-        message: error.message,
+        message: err.message,
       });
     }
   };
@@ -60,7 +59,7 @@ export class AdminController {
     next: NextFunction
   ) => {
     try {
-      const refreshToken = req.cookies?.refreshToken;
+      const refreshToken = req.cookies?.adminRefreshToken;
       console.log("🔐 Backend Refresh - Cookies:", req.cookies);
       console.log(
         "🔐 Backend Refresh - Refresh token present:",
@@ -101,6 +100,13 @@ export class AdminController {
         message: "Admin access token refreshed successfully",
       });
     } catch (error) {
+      // Clear cookie immediately on any refresh failure to prevent infinite loops
+      res.clearCookie("adminRefreshToken", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      });
+
       next(
         error instanceof AppError
           ? error
@@ -121,7 +127,7 @@ export class AdminController {
 
       const { accessToken, refreshToken, admin } = result;
 
-      res.cookie("refreshToken", refreshToken, config.cookie.refreshToken);
+      res.cookie("adminRefreshToken", refreshToken, config.cookie.refreshToken);
       logger.info(`Admin login successful: ${email}`);
       return res.status(HttpStatusCode.OK).json({
         success: true,
@@ -129,9 +135,10 @@ export class AdminController {
         admin,
         message: "Login successful",
       });
-    } catch (error: any) {
-      logger.error(`Admin login failed: ${req.body.email} - ${error.message}`);
-      res.status(HttpStatusCode.UNAUTHORIZED).json({ message: error.message });
+    } catch (error: unknown) {
+      const err = error as AppError;
+      logger.error(`Admin login failed: ${req.body.email} - ${err.message}`);
+      res.status(HttpStatusCode.UNAUTHORIZED).json({ message: err.message });
     }
   };
 
@@ -141,11 +148,12 @@ export class AdminController {
       const data = await this._adminService.getDashboardData();
       logger.info("Dashboard data fetched successfully");
       res.status(HttpStatusCode.OK).json(data);
-    } catch (error: any) {
-      logger.error(`Error fetching dashboard data: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      logger.error(`Error fetching dashboard data: ${err.message}`);
       res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ message: error.message });
+        .json({ message: err.message });
     }
   };
 
@@ -191,11 +199,12 @@ export class AdminController {
         data: mentors,
         count: mentors.length,
       });
-    } catch (error: any) {
-      logger.error(`Error fetching all mentors: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      logger.error(`Error fetching all mentors: ${err.message}`);
       res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: error.message,
+        message: err.message,
       });
     }
   };
@@ -244,11 +253,12 @@ export class AdminController {
         data: students,
         count: students.length,
       });
-    } catch (error: any) {
-      logger.error(`Error fetching all students: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      logger.error(`Error fetching all students: ${err.message}`);
       res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: error.message,
+        message: err.message,
       });
     }
   };
@@ -272,13 +282,14 @@ export class AdminController {
       }
       logger.info(`Mentor profile fetched: ${mentorId}`);
       res.status(HttpStatusCode.OK).json(mentor);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as AppError;
       logger.error(
-        `Error fetching mentor profile ${mentorId}: ${error.message}`
+        `Error fetching mentor profile ${mentorId}: ${err.message}`
       );
       res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ message: error.message });
+        .json({ message: err.message });
     }
   };
 
@@ -306,13 +317,14 @@ export class AdminController {
       );
       logger.info(`Mentor ${mentorId} approved by admin ${adminId}`);
       res.status(HttpStatusCode.OK).json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as AppError;
       logger.error(
-        `Error approving mentor ${mentorId} by admin ${adminId}: ${error.message}`
+        `Error approving mentor ${mentorId} by admin ${adminId}: ${err.message}`
       );
       res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ message: error.message });
+        .json({ message: err.message });
     }
   };
 
@@ -344,13 +356,14 @@ export class AdminController {
       );
       logger.info(`Mentor ${mentorId} rejected by admin ${adminId}`);
       res.status(HttpStatusCode.OK).json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as AppError;
       logger.error(
-        `Error rejecting mentor ${mentorId} by admin ${adminId}: ${error.message}`
+        `Error rejecting mentor ${mentorId} by admin ${adminId}: ${err.message}`
       );
       res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ message: error.message });
+        .json({ message: err.message });
     }
   };
 
@@ -377,12 +390,13 @@ export class AdminController {
         data: result,
         message: "Mentor blocked successfully",
       });
-    } catch (error: any) {
-      logger.error(`Error blocking mentor ${mentorId}: ${error.message}`);
-      const statusCode = error.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+    } catch (error: unknown) {
+      const err = error as AppError;
+      logger.error(`Error blocking mentor ${mentorId}: ${err.message}`);
+      const statusCode = err.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
       res.status(statusCode).json({
         success: false,
-        message: error.message,
+        message: err.message,
       });
     }
   };
@@ -410,12 +424,13 @@ unblockMentor = async (req: Request, res: Response): Promise<void> => {
         data: result,
         message: "Mentor unblocked successfully",
       });
-    } catch (error: any) {
-      logger.error(`Error unblocking mentor ${mentorId}: ${error.message}`);
-      const statusCode = error.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+    } catch (error: unknown) {
+      const err = error as AppError;
+      logger.error(`Error unblocking mentor ${mentorId}: ${err.message}`);
+      const statusCode = err.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
       res.status(statusCode).json({
         success: false,
-        message: error.message,
+        message: err.message,
       });
     }
   };
@@ -450,14 +465,15 @@ unblockMentor = async (req: Request, res: Response): Promise<void> => {
       message: "Mentor added successfully",
       data: result,
     });
-  } catch (error: any) {
-    logger.error(`Admin: Add mentor error for ${req.body.email}:`, error);
-    const statusCode = error.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
-    res.status(statusCode).json({
-      success: false,
-      message: error.message,
-    });
-  }
+    } catch (error: unknown) {
+      const err = error as AppError;
+      logger.error(`Admin: Add mentor error for ${req.body.email}:`, err);
+      const statusCode = err.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+      res.status(statusCode).json({
+        success: false,
+        message: err.message,
+      });
+    }
 };
 
 
@@ -485,14 +501,15 @@ updateMentor = async (req: Request, res: Response): Promise<void> => {
       message: "Mentor updated successfully",
       data: result,
     });
-  } catch (error: any) {
-    logger.error(`Admin: Update mentor error for ${req.params.mentorId}:`, error);
-    const statusCode = error.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
-    res.status(statusCode).json({
-      success: false,
-      message: error.message,
-    });
-  }
+    } catch (error: unknown) {
+      const err = error as AppError;
+      logger.error(`Admin: Update mentor error for ${req.params.mentorId}:`, err);
+      const statusCode = err.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+      res.status(statusCode).json({
+        success: false,
+        message: err.message,
+      });
+    }
 };
 
 updateStudent = async (req: Request, res: Response): Promise<void> => {
@@ -519,14 +536,15 @@ updateStudent = async (req: Request, res: Response): Promise<void> => {
       message: "Student updated successfully",
       data: result,
     });
-  } catch (error: any) {
-    logger.error(`Admin: Update student error for ${req.params.studentId}:`, error);
-    const statusCode = error.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
-    res.status(statusCode).json({
-      success: false,
-      message: error.message,
-    });
-  }
+    } catch (error: unknown) {
+      const err = error as AppError;
+      logger.error(`Admin: Update student error for ${req.params.studentId}:`, err);
+      const statusCode = err.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+      res.status(statusCode).json({
+        success: false,
+        message: err.message,
+      });
+    }
 };
 
 
@@ -552,12 +570,13 @@ updateStudent = async (req: Request, res: Response): Promise<void> => {
         data: result,
         message: "Student blocked successfully",
       });
-    } catch (error: any) {
-      logger.error(`Error blocking student ${studentId}: ${error.message}`);
-      const statusCode = error.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+    } catch (error: unknown) {
+      const err = error as AppError;
+      logger.error(`Error blocking student ${studentId}: ${err.message}`);
+      const statusCode = err.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
       res.status(statusCode).json({
         success: false,
-        message: error.message,
+        message: err.message,
       });
     }
   };
@@ -584,12 +603,13 @@ updateStudent = async (req: Request, res: Response): Promise<void> => {
         data: result,
         message: "Student unblocked successfully",
       });
-    } catch (error: any) {
-      logger.error(`Error unblocking student ${studentId}: ${error.message}`);
-      const statusCode = error.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+    } catch (error: unknown) {
+      const err = error as AppError;
+      logger.error(`Error unblocking student ${studentId}: ${err.message}`);
+      const statusCode = err.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
       res.status(statusCode).json({
         success: false,
-        message: error.message,
+        message: err.message,
       });
     }
   };
@@ -620,10 +640,6 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
     const { studentId } = req.params;
     const { status } = req.query;
 
-    console.log('🔍 [DEBUG] AdminController.getStudentTrialClasses - START');
-    console.log('🔍 [DEBUG] Request params:', { studentId, status });
-    console.log('🔍 [DEBUG] AdminService instance:', !!this._adminService);
-    console.log('🔍 [DEBUG] AdminService methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(this._adminService)));
 
     logger.info(`AdminController: Fetching trial classes for student - ${studentId}`, { status });
 
@@ -632,15 +648,7 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
     }
 
     // Add try-catch around the service call
-    let trialClasses;
-    try {
-      console.log('🔍 [DEBUG] Calling _adminService.getStudentTrialClasses...');
-      trialClasses = await this._adminService.getStudentTrialClasses(studentId, status as string);
-      console.log('🔍 [DEBUG] Service call completed, result:', trialClasses);
-    } catch (serviceError) {
-      console.error('🔍 [DEBUG] Service error:', serviceError);
-      throw serviceError;
-    }
+    const trialClasses = await this._adminService.getStudentTrialClasses(studentId, status as string);
 
     logger.info(`AdminController: Found ${trialClasses.length} trial classes for student ${studentId}`);
 
@@ -787,25 +795,35 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
 
 getAvailableMentors = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { subjectId, preferredDate } = req.query;
+    const { subjectId, preferredDate, days, timeSlot } = req.query;
 
-    logger.info(`AdminController: Fetching available mentors`, { subjectId, preferredDate });
+    logger.info(`AdminController: Fetching available mentors`, { subjectId, preferredDate, days, timeSlot });
 
     if (!subjectId || typeof subjectId !== 'string') {
       throw new AppError("Subject ID is required", HttpStatusCode.BAD_REQUEST);
     }
 
-    const availableMentors = await this._adminService.getAvailableMentors(
+    // Parse days if it comes as a string (which query params often do)
+    // It might be ?days[]=Monday&days[]=Tuesday OR ?days=Monday,Tuesday
+    let daysArray: string[] = [];
+    if (Array.isArray(days)) {
+      daysArray = days as string[];
+    } else if (typeof days === 'string') {
+      daysArray = days.split(',').map(d => d.trim());
+    }
+
+    const result = await this._adminService.getAvailableMentors(
       subjectId, 
-      preferredDate as string
+      preferredDate as string,
+      daysArray,
+      timeSlot as string
     );
 
-    console.log('🔍 Controller returning mentors:', availableMentors.length);
+    console.log('🔍 Controller returning matches:', result.matches.length, 'alternates:', result.alternates.length);
 
     res.status(HttpStatusCode.OK).json({
       success: true,
-      data: availableMentors, 
-      count: availableMentors.length,
+      data: result, // result is { matches: [], alternates: [] }
       message: "Available mentors fetched successfully",
     });
   } catch (error) {
@@ -814,6 +832,7 @@ getAvailableMentors = async (req: Request, res: Response, next: NextFunction): P
     next(error);
   }
 };
+
 
 
 } 

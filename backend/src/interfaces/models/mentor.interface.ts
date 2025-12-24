@@ -45,10 +45,15 @@ export interface Certification {
   issuingOrganization: string;
 }
 
+export interface TimeSlot {
+  startTime: string;
+  endTime: string;
+  isBooked?: boolean;
+}
+
 export interface Availability {
-  dayOfWeek: number; 
-  timeSlots: string[]; 
-  timezone: string;
+  day: string; 
+  slots: TimeSlot[];
 }
 
 export interface MentorProfile {

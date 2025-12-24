@@ -1,5 +1,12 @@
 import type { RootState } from "../../app/store";
 import { createSelector } from "@reduxjs/toolkit";
+import type { Course } from "../../types/courseTypes";
+
+export interface Grade {
+  _id: string;
+  name: string;
+  syllabus?: string;
+}
 
 export const selectAdmin = (state: RootState) => state.admin.admin;
 export const selectAccessToken = (state: RootState) => state.admin.accessToken;
@@ -67,7 +74,7 @@ export const selectStudentById = createSelector(
 );
 
 export const selectFilteredStudents = createSelector(
-  [selectAllStudents, (_state: RootState, searchTerm: string) => searchTerm, (_state: RootState, _searchTerm: string, filters: any) => filters],
+  [selectAllStudents, (_state: RootState, searchTerm: string) => searchTerm, (_state: RootState, _searchTerm: string, filters: Record<string, string>) => filters],
   (students, searchTerm, filters = {}) => {
     if (!searchTerm && !filters.status && !filters.verification) return students;
 
@@ -169,18 +176,15 @@ export const selectAllCourses = createSelector(
     
     // Check if it's an object (not array) and try to access data property
     if (typeof coursesList === 'object' && coursesList !== null) {
-      // Use type assertion to bypass TypeScript's never inference
-      const coursesListAsAny = coursesList as any;
+      const coursesObj = coursesList as unknown as { data?: Course[] };
       
-      // Check if it has a data property that is an array
-      if (coursesListAsAny.data && Array.isArray(coursesListAsAny.data)) {
-        return coursesListAsAny.data;
+      if (Array.isArray(coursesObj.data)) {
+        return coursesObj.data;
       }
       
-      // If it's an object without a data property, try to convert values
-      const values = Object.values(coursesListAsAny);
+      const values = Object.values(coursesObj);
       if (values.length > 0) {
-        return Array.isArray(values[0]) ? values[0] : values;
+        return Array.isArray(values[0]) ? values[0] : (values as unknown as Course[]);
       }
     }
     
@@ -204,18 +208,15 @@ export const selectGrades = createSelector(
     
     // Check if it's an object (not array) and try to access data property
     if (typeof grades === 'object' && grades !== null) {
-      // Use type assertion to bypass TypeScript's never inference
-      const gradesAsAny = grades as any;
+      const gradesObj = grades as unknown as { data?: Grade[] };
       
-      // Check if it has a data property that is an array
-      if (gradesAsAny.data && Array.isArray(gradesAsAny.data)) {
-        return gradesAsAny.data;
+      if (Array.isArray(gradesObj.data)) {
+        return gradesObj.data;
       }
       
-      // If it's an object without a data property, try to convert values
-      const values = Object.values(gradesAsAny);
+      const values = Object.values(gradesObj);
       if (values.length > 0) {
-        return Array.isArray(values[0]) ? values[0] : values;
+        return Array.isArray(values[0]) ? values[0] : (values as unknown as Grade[]);
       }
     }
     

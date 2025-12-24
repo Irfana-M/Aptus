@@ -1,5 +1,4 @@
 import { injectable, inject } from 'inversify';
-import { ImageService } from '@/services/imageService';
 import type { IStudentService } from "../interfaces/services/IStudentService";
 import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
 import type { AuthUser } from "../interfaces/auth/auth.interface";
@@ -9,6 +8,8 @@ import { HttpStatusCode } from "../constants/httpStatus";
 import { TYPES } from '../types';
 import type { StudentBaseResponseDto } from '@/dto/auth/UserResponseDTO';
 import { StudentMapper } from '@/mappers/StudentMapper';
+import type { StudentProfile, StudentRegisterInput } from '@/interfaces/models/student.interface';
+import { AppError } from '@/utils/AppError';
 
 @injectable()
 export class StudentService implements IStudentService {
@@ -21,9 +22,8 @@ export class StudentService implements IStudentService {
       const existing = await this.studentRepo.findByEmail(data.email);
       if (existing) {
         logger.warn(`Attempted to register existing student: ${data.email}`);
-        const error = new Error("Student already exists");
-        (error as any).statusCode = HttpStatusCode.BAD_REQUEST;
-        throw error;
+        logger.warn(`Attempted to register existing student: ${data.email}`);
+        throw new AppError("Student already exists", HttpStatusCode.BAD_REQUEST);
       }
 
       const student = await this.studentRepo.createUser(data);
@@ -37,20 +37,28 @@ export class StudentService implements IStudentService {
     }
   }
 
-  async findStudentByEmail(email: string): Promise<any> {
+  async findStudentByEmail(email: string): Promise<AuthUser | null> {
     try {
       logger.debug(`Finding student by email: ${email}`);
-      return await this.studentRepo.findByEmail(email);
+      const student = await this.studentRepo.findByEmail(email);
+      return student;
     } catch (error: unknown) {
       logger.error(`Error finding student by email ${email}`, { error: getErrorMessage(error) });
       throw error;
     }
   }
 
-  async createStudent(studentData: any): Promise<any> {
+  async createStudent(studentData: StudentRegisterInput): Promise<AuthUser> {
     try {
       logger.info(`Creating student: ${studentData.email}`);
-      const student = await this.studentRepo.createUser(studentData);
+      // Cast to AuthUser for creation, assuming ID is generated and defaults are handled
+      const newUser = {
+          ...studentData,
+          role: 'student',
+          isVerified: false
+      } as unknown as AuthUser;
+      
+      const student = await this.studentRepo.createUser(newUser);
       logger.info(`Student created successfully: ${student.email}`);
       return student;
     } catch (error: unknown) {
@@ -69,7 +77,7 @@ export class StudentService implements IStudentService {
     return { ...dto, role: "student" };
   }
 
-  async updateProfile(id: string, data: any): Promise<any> {
+  async updateProfile(id: string, data: Partial<StudentProfile>): Promise<StudentProfile> {
     try {
       logger.info(`Updating profile for student: ${id}`);
       
@@ -86,37 +94,89 @@ export class StudentService implements IStudentService {
           }
         }
 
-      // Handle ID proof upload if provided
-      if (data.idProof) {
+      
+      /*
+      // Handle ID proof upload if provided 
+      // NOTE: idProof is not in StudentSchema. Disabling until model update.
+      if ((data as any).idProof) {
         try {
-          data.idProof = await this.handleProfilePictureUpload(data.idProof);
+          (data as any).idProof = await this.handleProfilePictureUpload((data as any).idProof);
           logger.debug(`ID proof uploaded for student: ${id}`);
         } catch (uploadError: unknown) {
           logger.error(`Error uploading ID proof for student ${id}: ${getErrorMessage(uploadError)}`);
           throw new Error(`Failed to upload ID proof: ${getErrorMessage(uploadError)}`);
         }
       }
+      */
       
-      // Determine if profile is complete based on required fields
+      // 1. Fetch current student to merge data for completeness check
+      const currentStudent = await this.studentRepo.findById(id);
+      if (!currentStudent) throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
+
+      const studentObj = currentStudent as unknown as StudentProfile;
+
+      // 3. Merging and mapping data using StudentMapper
+      const updateDataFlat = { ...data };
+      const updateDataMapped = StudentMapper.toProfileUpdate(updateDataFlat);
+
+      // Merge manually for completeness check if needed, but StudentMapper handles the nesting
+      const mergedForCheck = {
+        ...studentObj,
+        ...updateDataMapped,
+        contactInfo: {
+            ...studentObj.contactInfo,
+            ...updateDataMapped.contactInfo,
+            parentInfo: {
+                ...(studentObj.contactInfo?.parentInfo || {}),
+                ...(updateDataMapped.contactInfo?.parentInfo || {})
+            }
+        },
+        academicDetails: {
+            ...studentObj.academicDetails,
+            ...updateDataMapped.academicDetails
+        }
+      };
+
+      // Check if profile is complete based on essential fields only
       const isProfileCompleted = Boolean(
-        data.fullName && 
-        data.emailId && 
-        data.phoneNumber &&
-        data.grade &&
-        data.syllabus
+        mergedForCheck.fullName && 
+        mergedForCheck.email && 
+        mergedForCheck.phoneNumber &&
+        mergedForCheck.gender &&
+        mergedForCheck.dateOfBirth &&
+        mergedForCheck.age &&
+        mergedForCheck.contactInfo?.address &&
+        mergedForCheck.contactInfo?.country &&
+        mergedForCheck.contactInfo?.parentInfo?.name &&
+        mergedForCheck.contactInfo?.parentInfo?.phoneNumber &&
+        mergedForCheck.contactInfo?.parentInfo?.relationship &&
+        (mergedForCheck.gradeId || mergedForCheck.academicDetails?.grade) &&
+        mergedForCheck.academicDetails?.institutionName &&
+        mergedForCheck.academicDetails?.syllabus
+        // Note: 'goal' is optional, not required for profile completion
       );
 
-      const updateData = { ...data, isProfileCompleted };
+      // Always set the flag in the update
+      (updateDataMapped as Partial<StudentProfile> & { isProfileCompleted?: boolean }).isProfileCompleted = isProfileCompleted;
       
-      const updatedStudent = await this.studentRepo.updateProfile(id, updateData);
-      logger.info(`Student profile updated successfully: ${id}`);
-      return updatedStudent;
+      logger.info(`Profile completion check for ${id}: ${isProfileCompleted}`, {
+        hasGender: !!mergedForCheck.gender,
+        hasAge: !!mergedForCheck.age,
+        hasAddress: !!mergedForCheck.contactInfo?.address,
+        hasParentInfo: !!mergedForCheck.contactInfo?.parentInfo?.name,
+        hasAcademicDetails: !!(mergedForCheck.gradeId || mergedForCheck.academicDetails?.grade)
+      });
+      
+      const updatedStudent = await this.studentRepo.updateProfile(id, updateDataMapped);
+      logger.info(`Student profile updated successfully: ${id}, isProfileCompleted: ${isProfileCompleted}`);
+      return updatedStudent as StudentProfile;
     } catch (error: unknown) {
       logger.error(`Error updating student profile ${id}`, { error: getErrorMessage(error) });
       throw error;
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async handleProfilePictureUpload(file: any): Promise<string> {
     try {
       logger.debug("Handling profile picture upload:", {
@@ -151,19 +211,17 @@ export class StudentService implements IStudentService {
     }
   }
 
-  async getStudentProfileById(id: string): Promise<any> {
+  async getStudentProfileById(id: string): Promise<StudentProfile | null> {
     try {
       logger.info(`Fetching complete profile for student: ${id}`);
       const profile = await this.studentRepo.findStudentProfileById(id);
       
       if (!profile) {
-        const error = new Error("Student not found");
-        (error as any).statusCode = HttpStatusCode.NOT_FOUND;
-        throw error;
+        throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
       }
 
       logger.info(`Student profile retrieved successfully: ${id}`);
-      return profile;
+      return profile as StudentProfile;
     } catch (error: unknown) {
       logger.error(`Error fetching student profile ${id}`, { error: getErrorMessage(error) });
       throw error;

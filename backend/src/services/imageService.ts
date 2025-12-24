@@ -10,7 +10,7 @@ export class ImageService {
       if (!imageKey) return null;
 
       const command = new GetObjectCommand({
-        Bucket: process.env.S3_BUCKET_NAME,
+        Bucket: process.env.S3_BUCKET_NAME || process.env.AWS_S3_BUCKET!,
         Key: imageKey,
       });
 
@@ -23,6 +23,7 @@ export class ImageService {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async addImageUrlsToMentors(mentors: any[]): Promise<any[]> {
     return await Promise.all(
       mentors.map(async (mentor) => {

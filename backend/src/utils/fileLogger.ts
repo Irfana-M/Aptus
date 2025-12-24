@@ -4,7 +4,7 @@ import path from 'path';
 
 const logFile = path.join(process.cwd(), 'debug_video.log');
 
-export const fileLogger = (message: string, data?: any) => {
+export const fileLogger = (message: string, data?: unknown) => {
   const timestamp = new Date().toISOString();
   const logMessage = `[${timestamp}] ${message} ${data ? JSON.stringify(data) : ''}\n`;
   try {

@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { selectIsProfileComplete } from '../../features/auth/authSlice';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useAppDispatch } from '../../app/hooks';
 import { studentTrialApi } from '../../features/trial/student/studentTrialApi';
+import { fetchStudentProfile } from '../../features/student/studentThunk';
 import Header from '../../components/layout/Header';
 import { X } from 'lucide-react';
 
-// Main Feedback Page Component
+
 const TrialClassFeedback: React.FC = () => {
   const { trialClassId } = useParams<{ trialClassId: string }>();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [rating, setRating] = useState<number>(0);
   const [satisfaction, setSatisfaction] = useState<'satisfied' | 'unsatisfied' | ''>('');
   const [feedback, setFeedback] = useState<string>('');
@@ -17,8 +18,6 @@ const TrialClassFeedback: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
 
   const [showUnsatisfiedPopup, setShowUnsatisfiedPopup] = useState<boolean>(false);
-
-  const isProfileComplete = useSelector(selectIsProfileComplete);
 
   const handleSubmit = async () => {
     if (!trialClassId) return;
@@ -30,6 +29,9 @@ const TrialClassFeedback: React.FC = () => {
         comment: feedback
       });
       
+      // Refresh profile to pick up isTrialCompleted: true
+      dispatch(fetchStudentProfile());
+      
       setSubmitted(true);
       
       // Logic based on user requirement: 
@@ -40,11 +42,8 @@ const TrialClassFeedback: React.FC = () => {
       
       if (rating >= 4 || satisfaction === 'satisfied') {
         setTimeout(() => {
-          if (isProfileComplete) {
-            navigate('/student/time-slots'); // Redirect to dashboard/bookings if complete
-          } else {
-            navigate('/student/profile-setup');
-          }
+          // User Requirement: Always go to profile-setup when satisfied
+          navigate('/student/profile-setup');
         }, 1500);
       } else {
         // Show popup for unsatisfied users
