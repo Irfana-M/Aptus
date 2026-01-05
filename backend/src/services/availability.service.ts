@@ -6,6 +6,7 @@ import type { IMentorRepository } from "../interfaces/repositories/IMentorReposi
 import type { Availability, MentorProfile } from "../interfaces/models/mentor.interface";
 import { AppError } from "../utils/AppError";
 import { HttpStatusCode } from "../constants/httpStatus";
+import { logger } from "../utils/logger";
 
 @injectable()
 export class AvailabilityService implements IAvailabilityService {
@@ -23,56 +24,82 @@ export class AvailabilityService implements IAvailabilityService {
   }
 
   
-  async findMatchingMentors(subject: string, grade: string, days: string[], timeSlot: string): Promise<{ matches: MentorProfile[], alternates: MentorProfile[] }> {
-    const allMentors = await this.params.findAvailableMentors({
-      gradeId: grade,
-      subjectId: subject,
-      days: days,
-      timeSlot: timeSlot
-    }) as (MentorProfile & { conflictingBookings?: unknown[] })[];
+  async findMatchingMentors(subject: string, grade: string, days: string[], timeSlot: string, excludeCourseId?: string): Promise<{ matches: MentorProfile[], alternates: MentorProfile[] }> {
+    try {
+        const queryParams: any = {
+            gradeId: grade,
+            subjectId: subject,
+            days: days,
+            timeSlot: timeSlot,
+        };
+        if (excludeCourseId) queryParams.excludeCourseId = excludeCourseId;
 
-    const matches: MentorProfile[] = [];
-    const alternates: MentorProfile[] = [];
+        const allMentors = await this.params.findAvailableMentors(queryParams) as (MentorProfile & { conflictingBookings?: unknown[] })[];
 
-    for (const mentor of allMentors) {
-        let isPerfectMatch = true;
+        const matches: MentorProfile[] = [];
+        const alternates: MentorProfile[] = [];
 
-        // 1. Check for Booking Conflicts
-        if (mentor.conflictingBookings && mentor.conflictingBookings.length > 0) {
-            isPerfectMatch = false;
-        }
+        logger.info(`Checking matches for subject=${subject}, grade=${grade}, days=${days}, time=${timeSlot} among ${allMentors.length} candidates`);
 
-        // 2. Check Availability Definition (Slots must exist for all requested days)
-        if (isPerfectMatch && days.length > 0 && timeSlot) { // Only check if requested and not already ruled out
-            const [reqStart, reqEnd] = timeSlot.split('-');
-            for (const day of days) {
-                const daySchedule = mentor.availability?.find((d: Availability) => d.day === day);
-                if (!daySchedule) {
+        for (const mentor of allMentors) {
+            try {
+                let isPerfectMatch = true;
+
+                // 1. Check for Booking Conflicts
+                if (mentor.conflictingBookings && mentor.conflictingBookings.length > 0) {
+                    // logger.info(`Mentor ${mentor._id} rejected: Has conflicting bookings`); 
                     isPerfectMatch = false;
-                    break;
                 }
-                const hasSlot = daySchedule.slots.some(s => 
-                    s.startTime === reqStart && s.endTime === reqEnd && !s.isBooked
-                );
-                if (!hasSlot) {
-                    isPerfectMatch = false;
-                    break;
+
+                // 2. Check Availability Definition (Slots must exist for all requested days)
+                if (isPerfectMatch && days && days.length > 0 && timeSlot) { 
+                    const [reqStart, reqEnd] = timeSlot.split('-');
+                    for (const day of days) {
+                        const daySchedule = mentor.availability?.find((d: Availability) => d.day === day);
+                        if (!daySchedule) {
+                            // logger.info(`Mentor ${mentor._id} rejected: No availability set for ${day}`);
+                            isPerfectMatch = false;
+                            break;
+                        }
+                        
+                        // Defensive check for slots
+                        if (!daySchedule.slots || !Array.isArray(daySchedule.slots)) {
+                             logger.warn(`Mentor ${mentor._id} has malformed slots for ${day}`);
+                             isPerfectMatch = false;
+                             break;
+                        }
+
+                        const hasSlot = daySchedule.slots.some((s: any) => 
+                            s.startTime === reqStart && s.endTime === reqEnd && !s.isBooked
+                        );
+                        if (!hasSlot) {
+                            // logger.info(`Mentor ${mentor._id} rejected: No slot ${reqStart}-${reqEnd} on ${day}`);
+                            isPerfectMatch = false;
+                            break;
+                        }
+                    }
+                } else if (!days || days.length === 0 || !timeSlot) {
+                    isPerfectMatch = true;
                 }
+
+                if (isPerfectMatch) {
+                    matches.push(mentor);
+                } else {
+                    alternates.push(mentor);
+                }
+            } catch (mentorError) {
+                logger.error(`Error processing mentor ${mentor._id}:`, mentorError);
+                // Continue to next mentor instead of crashing entire request
+                continue;
             }
-        } else if (!days || days.length === 0 || !timeSlot) {
-            // If No time constraint, everyone who teaches the subject is a "match" for discovery
-            isPerfectMatch = true;
         }
-
-        if (isPerfectMatch) {
-            matches.push(mentor);
-        } else {
-            // It's an alternate because they teach the subject but failed time/booking check
-            alternates.push(mentor);
-        }
+        
+        logger.info(`Found ${matches.length} perfect matches and ${alternates.length} alternates`);
+        return { matches, alternates };
+    } catch (error) {
+        logger.error(`Fatal error in findMatchingMentors service:`, error);
+        throw error;
     }
-
-    return { matches, alternates };
   }
 
   async getAvailability(mentorId: string): Promise<Availability[]> {
@@ -112,5 +139,34 @@ export class AvailabilityService implements IAvailabilityService {
     });
 
     await this.params.updateProfile(mentorId, { availability: updatedAvailability });
+  }
+
+  async getPublicProfile(mentorId: string): Promise<Partial<MentorProfile>> {
+      const mentor = await this.params.getProfileWithImage(mentorId);
+      if (!mentor) {
+          throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
+      }
+
+      // Return only safe-to-display fields
+      const {
+          _id,
+          fullName,
+          profileImageUrl,
+          subjectProficiency,
+          academicQualifications,
+          experiences,
+          bio,
+          // Add other public fields as needed
+      } = mentor;
+
+      return {
+          _id,
+          fullName,
+          profileImageUrl,
+          subjectProficiency,
+          academicQualifications,
+          experiences,
+          bio: bio || undefined
+      };
   }
 }

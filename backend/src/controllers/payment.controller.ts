@@ -5,7 +5,10 @@ import type { IPaymentService } from '../interfaces/services/payment.service.int
 import type { IWalletService } from '../interfaces/services/IWalletService';
 import type { IStudentRepository } from '../interfaces/repositories/IStudentRepository';
 import type { ICourseRequestRepository } from '../interfaces/repositories/ICourseRequestRepository';
+import type { IStudentService } from '../interfaces/services/IStudentService';
+import type { ISubscriptionService } from '../interfaces/services/ISubscriptionService';
 import type { StudentDocument } from '../models/student/student.model';
+import type { OnboardingEvent } from '../enums/studentOnboarding.enum';
 
 interface AvailabilitySlot {
   day: string;
@@ -25,7 +28,9 @@ export class PaymentController {
     @inject(TYPES.IPaymentService) private paymentService: IPaymentService,
     @inject(TYPES.IWalletService) private walletService: IWalletService,
     @inject(TYPES.IStudentRepository) private studentRepository: IStudentRepository,
-    @inject(TYPES.CourseRequestRepository) private courseRequestRepository: ICourseRequestRepository
+    @inject(TYPES.ICourseRequestRepository) private courseRequestRepository: ICourseRequestRepository,
+    @inject(TYPES.IStudentService) private studentService: IStudentService,
+    @inject(TYPES.ISubscriptionService) private subscriptionService: ISubscriptionService
   ) {}
 
   createIntent = async (req: Request, res: Response): Promise<void> => {
@@ -33,11 +38,11 @@ export class PaymentController {
       const { planType, subjectCount = 1 } = req.body;
       let amount = 0;
 
-      // Define pricing (in paise/cents)
+     
       if (planType === 'monthly') {
-        amount = subjectCount * 500 * 100; // ₹500 per subject
+        amount = subjectCount * 500 * 100; 
       } else if (planType === 'yearly') {
-        // Tiered Yearly: 1:5k, 2:10k, 3:15k, 4+:20k
+        
         const baseAmount = subjectCount >= 4 ? 20000 : subjectCount * 5000;
         amount = baseAmount * 100;
       } else {
@@ -59,86 +64,28 @@ export class PaymentController {
 
   confirmPayment = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { paymentIntentId, studentId, planType, subjectCount = 1, availability = [], subjects = [] } = req.body;
+      const { paymentIntentId, studentId, planType: rawPlanType, subjectCount = 1 } = req.body;
 
-      // Ensure studentId is provided and valid
       if (!studentId) {
         res.status(400).json({ message: 'Student ID required to activate subscription' });
         return;
       }
 
+      // Normalize plan type
+      let planType = rawPlanType;
+      if (rawPlanType.toLowerCase() === 'basic') planType = 'monthly';
+      if (rawPlanType.toLowerCase() === 'premium') planType = 'yearly';
+
       const paymentIntent = await this.paymentService.verifyPaymentIntent(paymentIntentId);
 
       if (paymentIntent.status === 'succeeded') {
-        // Calculate dates with validity logic
-        const startDate = new Date();
-        const renewalDate = new Date(startDate);
-        const expiryDate = new Date();
-        const endDate = new Date();
-        
-        if (planType === 'monthly') {
-          // Renewal = same date next month
-          renewalDate.setMonth(renewalDate.getMonth() + 1);
-          // End date = renewal date (subscription valid until renewal)
-          endDate.setTime(renewalDate.getTime());
-        } else if (planType === 'yearly') {
-          // Renewal = same date next year
-          renewalDate.setFullYear(renewalDate.getFullYear() + 1);
-          // End date = renewal date
-          endDate.setTime(renewalDate.getTime());
-        }
-        
-        // Expiry = 3 days grace period after renewal date
-        expiryDate.setTime(renewalDate.getTime());
-        expiryDate.setDate(expiryDate.getDate() + 3);
-
-        // Update Student
-        const student = await this.studentRepository.updateById(studentId, {
-          hasPaid: true,
-          subscription: {
-            plan: planType,
-            startDate,
-            endDate,
-            renewalDate,
-            expiryDate,
-            subjectCount,
-            availability,
-            status: 'active',
-            paymentIntentId,
-            sessionId: paymentIntent.id
-          }
-        }) as unknown as StudentDocument;
-
-        // Auto-create CourseRequests for each weekly slot if availability provided
-        if (availability && availability.length > 0 && student) {
-            const count = Math.max(subjectCount, subjects.length);
-            for (let i = 0; i < count; i++) {
-                const subjectName = subjects[i] || `Subject ${i + 1}`;
-                await this.courseRequestRepository.create({
-                    student: studentId,
-                    subject: subjectName,
-                    grade: (student as unknown as StudentWithAcademics).academicDetails?.grade || "N/A",
-                    mentoringMode: "one-to-one",
-                    preferredDays: Array.from(new Set((availability as AvailabilitySlot[]).map((a: AvailabilitySlot) => a.day))),
-                    timeSlot: availability[0] ? `${availability[0].startTime}-${availability[0].endTime}` : "Flexible",
-                    status: "pending"
-                });
-            }
-        }
-
-        // Save Payment Record (Invoice)
-        const invoiceId = `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-        await this.paymentService.savePaymentRecord({
-            studentId,
-            amount: paymentIntent.amount / 100,
-            currency: paymentIntent.currency,
-            status: 'completed',
-            method: 'stripe',
-            transactionId: paymentIntentId,
-            invoiceId,
-            purpose: `Subscription - ${planType}`,
-            metadata: { planType, studentId }
-        });
+        const student = await this.subscriptionService.activateSubscription(
+          studentId,
+          planType,
+          subjectCount,
+          paymentIntentId,
+          paymentIntent.id
+        );
 
         res.status(200).json({ success: true, message: 'Subscription activated' });
       } else {
@@ -180,72 +127,13 @@ export class PaymentController {
         `Subscription payment for ${planType} plan`
       );
 
-      // 2. Activate Subscription with proper validity dates
-      const startDate = new Date();
-      const renewalDate = new Date(startDate);
-      const expiryDate = new Date();
-      const endDate = new Date();
-      
-      if (planType === 'monthly') {
-        // Renewal = same date next month
-        renewalDate.setMonth(renewalDate.getMonth() + 1);
-        endDate.setTime(renewalDate.getTime());
-      } else if (planType === 'yearly') {
-        // Renewal = same date next year
-        renewalDate.setFullYear(renewalDate.getFullYear() + 1);
-        endDate.setTime(renewalDate.getTime());
-      }
-      
-      // Expiry = 3 days grace period after renewal date
-      expiryDate.setTime(renewalDate.getTime());
-      expiryDate.setDate(expiryDate.getDate() + 3);
-
-      const student = await this.studentRepository.updateById(studentId, {
-        hasPaid: true,
-        subscription: {
-          plan: planType,
-          startDate,
-          endDate,
-          renewalDate,
-          expiryDate,
-          subjectCount,
-          availability,
-          status: 'active',
-          paymentIntentId: 'WALLET_PAYMENT',
-          sessionId: 'WALLET_SESSION'
-        }
-      }) as unknown as StudentDocument;
-
-      // Auto-create CourseRequests for each weekly slot
-      if (availability && availability.length > 0 && student) {
-          const count = Math.max(subjectCount, subjects.length);
-          for (let i = 0; i < count; i++) {
-              const subjectName = subjects[i] || `Subject ${i + 1}`;
-              await this.courseRequestRepository.create({
-                  student: studentId,
-                  subject: subjectName,
-                  grade: (student as unknown as StudentWithAcademics).academicDetails?.grade || "N/A",
-                  mentoringMode: "one-to-one",
-                  preferredDays: Array.from(new Set((availability as AvailabilitySlot[]).map((a: AvailabilitySlot) => a.day))),
-                  timeSlot: availability[0] ? `${availability[0].startTime}-${availability[0].endTime}` : "Flexible",
-                  status: "pending"
-              });
-          }
-      }
-
-      // Save Payment Record (Invoice)
-      const invoiceId = `INV-W-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-      await this.paymentService.savePaymentRecord({
-          studentId,
-          amount: amount, 
-          currency: 'inr',
-          status: 'completed',
-          method: 'wallet',
-          transactionId: `WALLET_TX_${Date.now()}`,
-          invoiceId,
-          purpose: `Subscription - ${planType}`,
-          metadata: { planType, studentId }
-      });
+      const student = await this.subscriptionService.activateSubscription(
+        studentId,
+        planType,
+        subjectCount,
+        'WALLET_PAYMENT',
+        'WALLET_SESSION'
+      );
 
       res.status(200).json({ success: true, message: 'Subscription activated via Wallet' });
 
@@ -263,7 +151,7 @@ export class PaymentController {
     try {
       const { PaymentModel } = await import('../models/payment.model');
       const payments = await PaymentModel.find()
-        .populate('studentId', 'name email')
+        .populate('studentId', 'fullName email')
         .sort({ createdAt: -1 });
 
       res.status(200).json({ success: true, data: payments });

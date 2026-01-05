@@ -1,5 +1,6 @@
 import React from "react";
-import { Menu, Search, Bell, MessageSquare, ChevronDown } from "lucide-react";
+import { Menu, Search, MessageSquare, ChevronDown } from "lucide-react";
+import { NotificationBell } from "../common/NotificationBell";
 
 export interface UserProfile {
   name: string;
@@ -60,10 +61,7 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
         </div>
 
         <div className="flex items-center space-x-2 border-l border-gray-200 pl-2 md:pl-5">
-            <button className="relative p-2.5 rounded-xl hover:bg-gray-50 text-gray-500 hover:text-cyan-600 transition-all duration-200 group">
-            <Bell size={20} />
-            <span className="absolute top-2 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
-            </button>
+            <NotificationBell />
 
             <button className="relative p-2.5 rounded-xl hover:bg-gray-50 text-gray-500 hover:text-cyan-600 transition-all duration-200 group">
             <MessageSquare size={20} />

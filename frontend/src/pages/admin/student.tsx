@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { type AdminCreateStudentInput } from '../../lib/schemas/student.schemas';
 import type { AppDispatch } from "../../app/store";
 import { 
   fetchAllStudentsAdmin,
@@ -12,7 +13,7 @@ import {
 } from "../../features/admin/adminThunk";
 import {
   selectAllStudents,
-  selectAdminLoading,
+  selectStudentsLoading,
 } from "../../features/admin/adminSelectors";
 import { Student } from "../../models/Student";
 import type { StudentBaseResponseDto } from "../../types/studentTypes";
@@ -50,7 +51,7 @@ export const StudentsManagement: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const students = useSelector(selectAllStudents);
-  const loading = useSelector(selectAdminLoading);
+  const loading = useSelector(selectStudentsLoading);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("Students");
@@ -242,8 +243,7 @@ export const StudentsManagement: React.FC = () => {
       const handleViewTrialClasses = (studentId: string) => {
   dispatch(fetchStudentTrialClasses({ studentId }))
     .unwrap()
-    .then(trialClasses => {
-      console.log('Fetched trial classes:', trialClasses);
+    .then(_trialClasses => {
       // Navigate to trial classes page - using plural 'students' to match route
       navigate(`/admin/students/${studentId}/trial-classes`);
     })
@@ -260,11 +260,9 @@ export const StudentsManagement: React.FC = () => {
           data: studentData
         })).unwrap();
         showToast.success("Student updated successfully");
-        dispatch(fetchAllStudentsAdmin());
       } else {
         await dispatch(addStudentAdmin(studentData as AdminCreateStudentInput)).unwrap();
         showToast.success("Student added successfully");
-        dispatch(fetchAllStudentsAdmin());
       }
       
       handleCloseStudentModal();

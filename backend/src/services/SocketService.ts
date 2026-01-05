@@ -120,6 +120,11 @@ export class SocketService implements ISocketService {
       const user = (socket as SocketWithUser).user;
       logger.info(`New client connected: ${socket.id}, user: ${user?.email} (${user?.role})`);
 
+      if (user) {
+        socket.join(`user-${user.id}`);
+        logger.info(`User ${user.id} joined private room user-${user.id} for notifications`);
+      }
+
       socket.on('join-call', async (data: JoinCallRequestDto) => {
         try {
           const socketUser = (socket as SocketWithUser).user;
@@ -148,10 +153,12 @@ export class SocketService implements ISocketService {
           }
 
           const roomName = `trial-class-${data.trialClassId}`;
+          const chatRoomName = `session_chat_${data.trialClassId}`;
           await socket.join(roomName);
+          await socket.join(chatRoomName);
 
           const clientsInRoom = Array.from(this.io.sockets.adapter.rooms.get(roomName) || []);
-          console.log(`[JOIN-CALL] User ${socketUser.email} joined room: ${roomName}. Current clients:`, clientsInRoom);
+          console.log(`[JOIN-CALL] User ${socketUser.email} joined rooms: ${roomName}, ${chatRoomName}. Current clients:`, clientsInRoom);
 
           // Call video service to join call
           const result = await this.videoCallService.joinCall({

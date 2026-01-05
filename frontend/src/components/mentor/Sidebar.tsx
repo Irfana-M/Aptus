@@ -24,7 +24,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   const menuItems = [
     { icon: Home, label: 'Dashboard', path: '/mentor/dashboard' },
-    { icon: User, label: 'Profile', path: '/mentor/profile-setup' },
+    { icon: User, label: 'Profile', path: '/mentor/profile' },
     { icon: Users, label: 'Students/Batches', path: '/mentor/students' },
     { icon: Calendar, label: 'Attendance', path: '/mentor/attendance' },
     { icon: BookOpen, label: 'Classroom', path: '/mentor/classroom' },

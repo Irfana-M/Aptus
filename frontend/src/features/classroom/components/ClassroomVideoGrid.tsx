@@ -132,15 +132,17 @@ export const ClassroomVideoGrid: React.FC<ClassroomVideoGridProps> = ({
               </button>
             </div>
 
-            {((!isSwapped && remoteMediaState.isVideoOff) || (isSwapped && isVideoOff)) && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-                <div className="text-center">
-                  <div className="w-16 lg:w-24 h-16 lg:h-24 bg-[#3CB4B4] rounded-full mx-auto flex items-center justify-center mb-4 shadow-xl">
+            {((!isSwapped && remoteMediaState.isVideoOff) || (isSwapped && isVideoOff) || (isSwapped && status?.includes('Camera'))) && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-800 transition-all duration-500">
+                <div className="text-center group">
+                  <div className="w-16 lg:w-24 h-16 lg:h-24 bg-[#3CB4B4] rounded-full mx-auto flex items-center justify-center mb-4 shadow-xl group-hover:scale-110 transition-transform duration-300">
                     <span className="text-xl lg:text-2xl font-bold text-white">
                       {!isSwapped ? (userType === 'mentor' ? 'ST' : 'ME') : 'YOU'}
                     </span>
                   </div>
-                  <p className="text-white/60 text-[10px] lg:text-sm font-medium">Camera is off</p>
+                  <p className="text-white/60 text-[10px] lg:text-sm font-medium">
+                    {isSwapped && status?.includes('Camera') ? status : 'Camera is off'}
+                  </p>
                 </div>
               </div>
             )}

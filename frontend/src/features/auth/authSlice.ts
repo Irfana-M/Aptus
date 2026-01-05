@@ -10,8 +10,14 @@ import {
 } from "./authThunks";
 import { adminLoginThunk } from "../admin/adminThunk";
 
+const hasToken = !!(
+  localStorage.getItem("student_accessToken") || 
+  localStorage.getItem("mentor_accessToken") || 
+  localStorage.getItem("accessToken")
+);
+
 const initialState: AuthState = {
-  loading: false,
+  loading: hasToken, // Initialize as loading if we have a token to rehydrate
   user: null,
   accessToken: null,
   error: null,
@@ -119,6 +125,7 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(refreshAccessToken.rejected, (state) => {
+        state.loading = false;
         state.accessToken = null;
         state.user = null;
         state.isAuthenticated = false;

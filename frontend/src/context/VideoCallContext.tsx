@@ -39,6 +39,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isSocketConnected, setIsSocketConnected] = useState(false);
   const [isMinimized, setMinimized] = useState(false);
 
+  const trialClassIdRef = useRef<string | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -114,28 +115,49 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const initializeMedia = useCallback(async () => {
     setStatus('Requesting Media Permissions...');
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setStatus('WebRTC Not Supported');
       return createFakeStream();
     }
+
     const constraintSets = [
-      { video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }, audio: true },
-      { video: true, audio: true },
-      { video: true, audio: false },
-      { video: false, audio: true }
+      { name: 'HD Video + Audio', constraints: { video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }, audio: true } },
+      { name: 'Standard Video + Audio', constraints: { video: true, audio: true } },
+      { name: 'Video Only', constraints: { video: true, audio: false } },
+      { name: 'Audio Only', constraints: { video: false, audio: true } }
     ];
-    for (const constraints of constraintSets) {
+
+    let lastErrorName = '';
+
+    for (const set of constraintSets) {
       try {
-        console.log('📽️ [VideoCall] Requesting media with constraints:', constraints);
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log(`📽️ [VideoCall] Trying ${set.name}:`, set.constraints);
+        const stream = await navigator.mediaDevices.getUserMedia(set.constraints);
+        
         const hasVideo = stream.getVideoTracks().length > 0;
         const hasAudio = stream.getAudioTracks().length > 0;
+        
         console.log('✅ [VideoCall] Media granted:', { hasAudio, hasVideo, tracks: stream.getTracks().length });
-        setStatus(stream.getAudioTracks().length === 0 ? 'Video Only (No Mic)' : 'Media Connected');
+        
+        if (hasVideo && hasAudio) setStatus('Media Connected');
+        else if (hasVideo) setStatus('Video Only (No Mic)');
+        else if (hasAudio) {
+            const isHardwareBusy = lastErrorName === 'NotReadableError';
+            setStatus(isHardwareBusy ? 'Camera Busy (Using Audio)' : 'Audio Only (No Camera)');
+        }
+        
         return stream;
       } catch (err: any) {
-        console.warn(`⚠️ [VideoCall] Constraint set failed (${err.name}):`, constraints);
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') break;
+        lastErrorName = err.name;
+        console.warn(`⚠️ [VideoCall] ${set.name} failed (${err.name})`);
+        
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+           setStatus('Permissions Denied');
+           break;
+        }
       }
     }
+
+    setStatus('Using Fallback Stream');
     return createFakeStream();
   }, [createFakeStream]);
 
@@ -157,6 +179,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setConnectionState('disconnected');
     setStatus('Call Ended');
     setTrialClassId(null);
+    trialClassIdRef.current = null;
     setRemoteMediaState({ isMuted: false, isVideoOff: false });
     setMinimized(false);
   }, []);
@@ -167,7 +190,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const offer = await pcRef.current.createOffer({ iceRestart: true });
       await pcRef.current.setLocalDescription(offer);
       socketRef.current?.emit('webrtc-offer', {
-        trialClassId,
+        trialClassId: trialClassIdRef.current,
         toSocketId: remoteSocketIdRef.current,
         offer: pcRef.current.localDescription,
       });
@@ -179,52 +202,78 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const createPeerConnection = useCallback((stream: MediaStream | null) => {
     const pc = new RTCPeerConnection(iceServers);
     pcRef.current = pc;
-    if (stream) {
-      stream.getTracks().forEach(track => {
-         console.log('📤 [WebRTC] Adding track to PC:', track.kind, track.label);
-         pc.addTrack(track, stream);
-      });
+
+    // Ensure we have transceivers for both audio and video regardless of local stream
+    // This allows us to receive remote video even if our local camera is busy/failed.
+    const hasAudioTrack = stream?.getAudioTracks().length ? true : false;
+    const hasVideoTrack = stream?.getVideoTracks().length ? true : false;
+
+    if (hasAudioTrack) {
+        stream?.getAudioTracks().forEach(track => pc.addTrack(track, stream!));
     } else {
-      console.log('📥 [WebRTC] Setup receive-only transceivers');
-      pc.addTransceiver('audio', { direction: 'recvonly' });
-      pc.addTransceiver('video', { direction: 'recvonly' });
+        console.log('📥 [WebRTC] No local audio track, adding receive-only audio transceiver');
+        pc.addTransceiver('audio', { direction: 'recvonly' });
+    }
+
+    if (hasVideoTrack) {
+        stream?.getVideoTracks().forEach(track => pc.addTrack(track, stream!));
+    } else {
+        console.log('📥 [WebRTC] No local video track, adding receive-only video transceiver');
+        pc.addTransceiver('video', { direction: 'recvonly' });
     }
     pc.ontrack = (event) => {
       const track = event.track;
-      console.log('🎵 [WebRTC] Track detected:', track.kind, track.id, { 
+      console.log(`🎵 [WebRTC] Track detected: ${track.kind} (${track.id})`, { 
           enabled: track.enabled, 
           readyState: track.readyState,
           streams: event.streams.length
       });
       
-      const incomingStream = event.streams[0] || new MediaStream([track]);
-      if (incomingStream) {
-        setRemoteStream(prev => {
-          if (!prev) {
-             console.log('📺 [WebRTC] Creating first remote stream container');
-             return new MediaStream(incomingStream.getTracks());
+      const incomingStream = event.streams[0];
+      
+      setRemoteStream(prev => {
+        // If no remote stream state yet, create one
+        if (!prev) {
+          console.log('📺 [WebRTC] Creating first remote stream container');
+          const newStream = new MediaStream();
+          if (incomingStream) {
+            incomingStream.getTracks().forEach(t => newStream.addTrack(t));
+          } else {
+            newStream.addTrack(track);
           }
-          const currentTracks = prev.getTracks();
-          const newTracks = incomingStream.getTracks();
-          const finalStream = new MediaStream(currentTracks);
-          newTracks.forEach(t => {
-            if (!currentTracks.find(existing => existing.id === t.id)) {
-                console.log('📺 [WebRTC] Adding new track to remote stream:', t.kind);
-                finalStream.addTrack(t);
-            }
-          });
-          return finalStream;
+          return newStream;
+        }
+
+        // If we already have a stream state, add the new tracks to it
+        // Note: Adding a track to an existing MediaStream that is already set to a video.srcObject
+        // should automatically start playing the new track if the video element is playing.
+        const currentTracks = prev.getTracks();
+        const tracksToAdd = incomingStream ? incomingStream.getTracks() : [track];
+        
+        let added = false;
+        tracksToAdd.forEach(t => {
+          if (!currentTracks.find(existing => existing.id === t.id)) {
+              console.log(`📺 [WebRTC] Adding new ${t.kind} track to remote stream`);
+              prev.addTrack(t);
+              added = true;
+          }
         });
-      }
+
+        // Trigger a re-render if we added tracks, otherwise return unchanged
+        return added ? new MediaStream(prev.getTracks()) : prev;
+      });
     };
     pc.onicecandidate = (event) => {
-      if (event.candidate && socketRef.current && remoteSocketIdRef.current && trialClassId) {
-        console.log('🧊 [WebRTC] Emitting ICE candidate');
+      const currentTid = trialClassIdRef.current;
+      if (event.candidate && socketRef.current && remoteSocketIdRef.current && currentTid) {
+        console.log('🧊 [WebRTC] Emitting ICE candidate for room:', currentTid);
         socketRef.current.emit('webrtc-ice-candidate', {
           candidate: event.candidate,
-          trialClassId,
+          trialClassId: currentTid,
           toSocketId: remoteSocketIdRef.current,
         });
+      } else if (event.candidate) {
+        console.warn('⚠️ [WebRTC] ICE candidate ready but missing metadata:', { socket: !!socketRef.current, remoteId: !!remoteSocketIdRef.current, tid: currentTid });
       }
     };
     pc.oniceconnectionstatechange = () => {
@@ -247,6 +296,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     
     try {
       setTrialClassId(tid);
+      trialClassIdRef.current = tid;
       setError(null);
       setStatus('Starting...');
       
@@ -261,6 +311,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       socket.off('webrtc-answer');
       socket.off('webrtc-ice-candidate');
       socket.off('media-state-change');
+      socket.off('join-success');
+      socket.off('join-error');
 
       setIsSocketConnected(socket.connected);
       socket.on('connect', () => setIsSocketConnected(true));
@@ -282,6 +334,17 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       };
 
       socketRef.current.emit('join-call', { trialClassId: tid, userId: uid, userType: utype });
+
+      socket.on('join-success', (data: any) => {
+          console.log('✅ [Socket] Join success:', data);
+          setStatus('Connected to Room');
+      });
+
+      socket.on('join-error', (data: any) => {
+          console.error('❌ [Socket] Join error:', data);
+          setError(data.error || 'Failed to join room');
+          setStatus('Join Error');
+      });
 
       socketRef.current.on('user-joined', (data: any) => {
         console.log('🤝 [Socket] User joined room:', data);
@@ -366,29 +429,31 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const newMutedState = !isMuted;
     localStreamRef.current?.getAudioTracks().forEach(t => t.enabled = !newMutedState);
     setIsMuted(newMutedState);
-    if (socketRef.current && remoteSocketIdRef.current && trialClassId) {
+    const currentTid = trialClassIdRef.current;
+    if (socketRef.current && remoteSocketIdRef.current && currentTid) {
       socketRef.current.emit('media-state-change', {
         type: 'audio',
         enabled: !newMutedState,
-        trialClassId,
+        trialClassId: currentTid,
         toSocketId: remoteSocketIdRef.current
       });
     }
-  }, [isMuted, trialClassId]);
+  }, [isMuted]);
 
   const toggleVideo = useCallback(() => {
     const newVideoState = !isVideoOff;
     localStreamRef.current?.getVideoTracks().forEach(t => t.enabled = !newVideoState);
     setIsVideoOff(newVideoState);
-    if (socketRef.current && remoteSocketIdRef.current && trialClassId) {
+    const currentTid = trialClassIdRef.current;
+    if (socketRef.current && remoteSocketIdRef.current && currentTid) {
       socketRef.current.emit('media-state-change', {
         type: 'video',
         enabled: !newVideoState,
-        trialClassId,
+        trialClassId: currentTid,
         toSocketId: remoteSocketIdRef.current
       });
     }
-  }, [isVideoOff, trialClassId]);
+  }, [isVideoOff]);
 
   return (
     <VideoCallContext.Provider value={{

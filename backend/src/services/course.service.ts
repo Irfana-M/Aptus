@@ -20,4 +20,8 @@ export class CourseService implements ICourseService {
   async getCoursesByStudent(studentId: string): Promise<unknown[]> {
     return await this._courseRepository.findByStudent(studentId);
   }
+
+  async getCoursesByMentor(mentorId: string): Promise<unknown[]> {
+    return await this._courseRepository.findByMentor(mentorId);
+  }
 }

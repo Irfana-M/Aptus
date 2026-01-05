@@ -169,4 +169,29 @@ userApi.interceptors.response.use(
   }
 );
 
+export const getUserNotifications = async () => {
+  const response = await userApi.get("/notifications");
+  return response.data;
+};
+
+export const markNotificationAsRead = async (id: string) => {
+  const response = await userApi.patch(`/notifications/${id}/read`);
+  return response.data;
+};
+
+export const getStudentUpcomingSessions = async () => {
+    const response = await userApi.get("/sessions/student/upcoming");
+    return response.data;
+}
+
+export const getMentorUpcomingSessions = async () => {
+    const response = await userApi.get("/sessions/mentor/upcoming");
+    return response.data;
+}
+
+export const getMentorTodaySessions = async () => {
+    const response = await userApi.get("/sessions/mentor/today");
+    return response.data;
+}
+
 export default userApi;

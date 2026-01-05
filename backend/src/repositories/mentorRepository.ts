@@ -243,113 +243,132 @@ export class MentorRepository
     subjectId: string;
     days?: string[];
     timeSlot?: string;
+    excludeCourseId?: string;
   }) {
 
-    const { subjectId, days, timeSlot } = params;
+    const { subjectId, days, timeSlot, excludeCourseId } = params;
     
-    let subjectName = "";
+    try {
+      logger.info(`findAvailableMentors called with: subjectId=${subjectId}, days=${days}, timeSlot=${timeSlot}`);
+      
+      let subjectName = "";
 
-    // Check if subjectId is a valid ObjectId
-    const isValidId = /^[0-9a-fA-F]{24}$/.test(subjectId);
-
-    if (isValidId) {
-      const subject = await Subject.findById(subjectId);
-      if (!subject) throw new AppError("Subject not found", HttpStatusCode.NOT_FOUND);
-      subjectName = subject.subjectName;
-    } else {
-      // Assume it is the name
-      subjectName = subjectId;
-    }
-
-    // 1. Base Match: Active, Verified, Approved, Subject Match
-    const matchStage: FilterQuery<MentorProfile> = {
-     isActive: { $ne: false },
-     isVerified: true,
-     approvalStatus: "approved",
-     isBlocked: false,
-     subjectProficiency: {
-       $elemMatch: {
-         subject: { $regex: new RegExp(`^${subjectName}$`, "i") },
-         level: { $in: ["intermediate", "expert"] }
-       }
-     }
-    };
-
-    logger.info(`🔍 findAvailableMentors query for '${subjectName}'`);
-
-    // 2. Lookup conflicting courses (if time provided)
-    // We do NOT filter by time availability in the initial match anymore
-    // We fetch ALL mentors for the subject, then check their specific availability in the result.
-    
-    const pipeline: PipelineStage[] = [
-      { $match: matchStage },
-      {
-        $project: {
-          fullName: 1,
-          profilePicture: 1,
-          rating: 1,
-          bio: 1,
-          availability: 1,
-          subjectProficiency: 1,
-        },
+      // Check if subjectId is a valid ObjectId
+      // Handle potential undefined subjectId
+      if (!subjectId) {
+         throw new AppError("Subject ID is required", HttpStatusCode.BAD_REQUEST);
       }
-    ];
 
-    if (days && days.length > 0 && timeSlot) {
-        // We still want to know if they represent a "Perfect Match"
-        // But we return everyone. The Service will filter based on the availability and conflicts.
-        // Actually, to make it efficient, we can check conflicts here but keep them in the result?
-        // Let's just return the availability and let the Service or Controller classify them.
-        
-        // However, we MUST check for "Conflicting Bookings" to know if they are available at the requested time.
-        // We can add a field "hasConflict" if they are booked at that time.
-        pipeline.push({
-            $lookup: {
-                from: "courses",
-                let: { mentorId: "$_id" },
-                pipeline: [
-                    {
-                        $match: {
-                            $expr: {
-                                $and: [
-                                    { $eq: ["$mentor", "$$mentorId"] },
-                                    { $eq: ["$status", "booked"] },
-                                    { $eq: ["$schedule.timeSlot", timeSlot] },
-                                    { $gt: [ { $size: { $setIntersection: ["$schedule.days", days] } }, 0 ] }
-                                ]
-                            }
-                        }
-                    }
-                ],
-                as: "conflictingBookings"
-            }
-        });
-    }
+      const isValidId = /^[0-9a-fA-F]{24}$/.test(subjectId);
 
-    const mentors = await MentorModel.aggregate(pipeline);
-    
-    // Sign URLs for profile pictures
-    const mentorsWithImages = await Promise.all(mentors.map(async (mentor) => {
-        const mentorObj = { ...mentor };
-        if (mentor.profilePicture) {
-            try {
-                if (mentor.profilePicture.startsWith('http')) {
-                    mentorObj.profileImageUrl = mentor.profilePicture;
-                } else {
-                    mentorObj.profileImageUrl = await getSignedFileUrl(mentor.profilePicture);
-                }
-            } catch (error) {
-                logger.error(`Error signing URL for findAvailableMentors result ${mentor._id}:`, error);
-                mentorObj.profileImageUrl = null;
-            }
-        } else {
-            mentorObj.profileImageUrl = null;
+      if (isValidId) {
+        const subject = await Subject.findById(subjectId);
+        if (!subject) throw new AppError("Subject not found", HttpStatusCode.NOT_FOUND);
+        subjectName = subject.subjectName;
+      } else {
+        // Assume it is the name
+        subjectName = subjectId;
+      }
+
+      // 1. Base Match: Active, Verified, Approved, Subject Match
+      const matchStage: FilterQuery<MentorProfile> = {
+       isActive: { $ne: false },
+       isVerified: true,
+       approvalStatus: "approved",
+       isBlocked: false,
+       subjectProficiency: {
+         $elemMatch: {
+           subject: { $regex: new RegExp(`^${subjectName}$`, "i") },
+           level: { $in: ["intermediate", "expert"] }
+         }
+       }
+      };
+
+      logger.info(`🔍 findAvailableMentorsDB query: ${JSON.stringify(matchStage)}`);
+
+      // 2. Lookup conflicting courses (if time provided)
+      // We do NOT filter by time availability in the initial match anymore
+      // We fetch ALL mentors for the subject, then check their specific availability in the result.
+      
+      const pipeline: PipelineStage[] = [
+        { $match: matchStage },
+        {
+          $project: {
+            fullName: 1,
+            profilePicture: 1,
+            rating: 1,
+            bio: 1,
+            availability: 1,
+            subjectProficiency: 1,
+          },
         }
-        return mentorObj;
-    }));
+      ];
 
-    logger.info(`🔍 findAvailableMentors found ${mentorsWithImages.length} subject potential matches`);
-    return mentorsWithImages;
+      if (days && days.length > 0 && timeSlot) {
+          // We still want to know if they represent a "Perfect Match"
+          // But we return everyone. The Service will filter based on the availability and conflicts.
+          // Actually, to make it efficient, we can check conflicts here but keep them in the result?
+          // Let's just return the availability and let the Service or Controller classify them.
+          
+          // However, we MUST check for "Conflicting Bookings" to know if they are available at the requested time.
+          // We can add a field "hasConflict" if they are booked at that time.
+          pipeline.push({
+              $lookup: {
+                  from: "courses",
+                  let: { mentorId: "$_id" },
+                  pipeline: [
+                      {
+                          $match: {
+                              $expr: {
+                                  $and: [
+                                      { $eq: ["$mentor", "$$mentorId"] },
+                                      { $in: ["$status", ["booked", "ongoing"]] },
+                                      { $eq: ["$isActive", true] },
+                                      { $eq: ["$schedule.timeSlot", timeSlot] },
+                                      { $gt: [ { $size: { $setIntersection: ["$schedule.days", days] } }, 0 ] },
+                                      ...(excludeCourseId ? [{ $ne: ["$_id", { $toObjectId: excludeCourseId }] }] : [])
+                                  ]
+                              }
+                          }
+                      }
+                  ],
+                  as: "conflictingBookings"
+              }
+          });
+      }
+
+      const mentors = await MentorModel.aggregate(pipeline);
+      
+      // Sign URLs for profile pictures
+      const mentorsWithImages = await Promise.all(mentors.map(async (mentor) => {
+          const mentorObj = { ...mentor };
+          if (mentor.profilePicture) {
+              try {
+                  if (mentor.profilePicture.startsWith('http')) {
+                      mentorObj.profileImageUrl = mentor.profilePicture;
+                  } else {
+                      mentorObj.profileImageUrl = await getSignedFileUrl(mentor.profilePicture);
+                  }
+              } catch (error) {
+                  logger.error(`Error signing URL for findAvailableMentors result ${mentor._id}:`, error);
+                  mentorObj.profileImageUrl = null;
+              }
+          } else {
+              mentorObj.profileImageUrl = null;
+          }
+          return mentorObj;
+      }));
+
+      logger.info(`🔍 findAvailableMentors found ${mentorsWithImages.length} subject potential matches`);
+      return mentorsWithImages;
+
+    } catch (error: any) {
+      logger.error(`CRITICAL: Error in findAvailableMentors: ${error.message}`, { stack: error.stack });
+      throw new AppError(
+        `Failed to find available mentors: ${error.message}`,
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   async findAllMentorsPaginated(params: MentorPaginationParams): Promise<MentorPaginatedResult> {

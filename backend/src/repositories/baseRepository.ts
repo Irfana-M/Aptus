@@ -5,7 +5,7 @@ import type { IBaseRepository } from "@/interfaces/repositories/IBaseRepository"
 import { injectable } from "inversify";
 
 import { Model, Document } from "mongoose";
-import type { FilterQuery } from "mongoose";
+import type { ClientSession, FilterQuery } from "mongoose";
 
 @injectable()
 export abstract class BaseRepository<T extends Document> implements IBaseRepository<T> {
@@ -15,10 +15,10 @@ export abstract class BaseRepository<T extends Document> implements IBaseReposit
     this.model = model;
   }
 
-  async findById(id: string): Promise<T | null> {
+  async findById(id: string, session?: ClientSession): Promise<T | null> {
     try {
       logger.debug(`Finding ${this.model.modelName} by ID: ${id}`);
-      const result = await this.model.findById(id).lean().exec();
+      const result = await this.model.findById(id).session(session || null).lean().exec();
       
       if (!result) {
         logger.warn(`${this.model.modelName} not found with ID: ${id}`);
@@ -40,12 +40,13 @@ export abstract class BaseRepository<T extends Document> implements IBaseReposit
     }
   }
 
-  async create(data: Partial<T>): Promise<T> {
+  async create(data: Partial<T>, session?: ClientSession): Promise<T> {
     try {
       logger.debug(`Creating new ${this.model.modelName}`, { email: (data as unknown as Record<string, unknown>).email });
-      const result = await this.model.create(data);
-      
-      if (!result) {
+      const result = await this.model.create([data], { session });
+      const createdItem = result[0];
+        logger.error(`Failed to create ${this.model.modelName}`);
+      if (!createdItem) {
         logger.error(`Failed to create ${this.model.modelName}`);
         throw new AppError(
           `Failed to create ${this.model.modelName}`,
@@ -53,8 +54,8 @@ export abstract class BaseRepository<T extends Document> implements IBaseReposit
         );
       }
       
-      logger.info(`${this.model.modelName} created successfully: ${result._id}`);
-      return result;
+      logger.info(`${this.model.modelName} created successfully: ${createdItem._id}`);
+      return createdItem;
     } catch (error) {
       logger.error(`Error creating ${this.model.modelName}:`, error);
       if (error instanceof AppError) throw error;
@@ -65,13 +66,13 @@ export abstract class BaseRepository<T extends Document> implements IBaseReposit
     }
   }
 
-  async updateById(id: string, data: Partial<T>): Promise<T> {
+  async updateById(id: string, data: Partial<T>, session?: ClientSession): Promise<T> {
     try {
       logger.debug(`Updating ${this.model.modelName} with ID: ${id}`);
       const cleanData = this.removeUndefinedProperties(data);
       
       const result = await this.model
-        .findByIdAndUpdate(id, cleanData, { new: true, runValidators: true })
+        .findByIdAndUpdate(id, cleanData, { new: true, runValidators: true, session: session || null })
         .lean()
         .exec();
       
@@ -95,10 +96,10 @@ export abstract class BaseRepository<T extends Document> implements IBaseReposit
     }
   }
 
-  async deleteById(id: string): Promise<boolean> {
+  async deleteById(id: string, session?: ClientSession): Promise<boolean> {
     try {
       logger.debug(`Deleting ${this.model.modelName} with ID: ${id}`);
-      const result = await this.model.findByIdAndDelete(id).exec();
+      const result = await this.model.findByIdAndDelete(id).session(session || null).exec();
       
       if (!result) {
         logger.warn(`${this.model.modelName} delete failed - ID not found: ${id}`);
@@ -135,10 +136,10 @@ export abstract class BaseRepository<T extends Document> implements IBaseReposit
     }
   }
 
-  async findOne(filter: FilterQuery<T>): Promise<T | null> {
+  async findOne(filter: FilterQuery<T>, session?: ClientSession): Promise<T | null> {
     try {
       logger.debug(`Finding one ${this.model.modelName} with filter:`, filter);
-      const result = await this.model.findOne(filter).lean().exec();
+      const result = await this.model.findOne(filter).session(session || null).lean().exec();
       
       if (result) {
         logger.info(`${this.model.modelName} found with filter`);
@@ -156,10 +157,10 @@ export abstract class BaseRepository<T extends Document> implements IBaseReposit
     }
   }
 
-  async count(filter?: FilterQuery<T>): Promise<number> {
+  async count(filter?: FilterQuery<T>, session?: ClientSession): Promise<number> {
     try {
       logger.debug(`Counting ${this.model.modelName} records with filter:`, filter);
-      const count = await this.model.countDocuments(filter || {}).exec();
+      const count = await this.model.countDocuments(filter || {}).session(session || null).exec();
       logger.debug(`Count result for ${this.model.modelName}: ${count}`);
       return count;
     } catch (error) {

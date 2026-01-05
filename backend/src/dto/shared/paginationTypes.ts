@@ -36,3 +36,9 @@ export interface PaginatedResponse<T> {
   data: T[];
   pagination: PaginationMeta;
 }
+
+// Added for terminology refactor mapping
+export interface CoursePaginatedResult {
+  courses: any[];
+  total: number;
+}

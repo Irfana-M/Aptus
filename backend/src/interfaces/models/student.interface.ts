@@ -7,7 +7,7 @@ export interface Availability {
 }
 
 export interface SubscriptionDetails {
-  plan: 'monthly' | 'yearly';
+  plan: 'monthly' | 'yearly'; // Deprecated
   startDate: Date;
   endDate: Date;
   renewalDate?: Date;
@@ -62,6 +62,13 @@ export interface AcademicDetails {
   syllabus: string;
 }
 
+export interface SubjectPreference {
+  subjectId: Schema.Types.ObjectId;
+  slots: Availability[];
+  status?: 'preferences_submitted' | 'mentor_requested' | 'mentor_assigned' | 'active' | 'reassigned';
+  assignedMentorId?: Schema.Types.ObjectId;
+}
+
 export interface StudentProfile {
   _id: string;
   fullName: string;
@@ -88,6 +95,11 @@ export interface StudentProfile {
   authProvider?: "local" | "google" | undefined;
   googleId?: string | undefined;
   gradeId?: Schema.Types.ObjectId | undefined;
+  activeSubscriptionId?: Schema.Types.ObjectId | undefined;
   referralCode?: string | undefined;
   referredBy?: string | undefined;
+  onboardingStatus?: string | undefined;
+  preferencesCompleted?: boolean | undefined;
+  preferredSubjects?: Schema.Types.ObjectId[] | undefined;
+  preferredTimeSlots?: SubjectPreference[] | undefined;
 }

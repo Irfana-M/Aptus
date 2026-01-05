@@ -174,7 +174,24 @@ export default function VideoCallRoom() {
       try {
         console.log('🔄 [VideoCall] Fetching trial details...');
         const details = await studentTrialApi.getTrialClassById(trialClassId);
-        if (mounted) setTrialDetails(details);
+        if (mounted) {
+            setTrialDetails(details);
+                        // Redirect if session is not active
+                    if (details.status === 'completed' || details.status === 'cancelled') {
+                        console.log(`🚫 [VideoCall] Session is ${details.status}, redirecting...`);
+                        
+                        // Treat a session as a trial ONLY if one of the following is true: 
+                        // session.trialClassId exists OR session.sessionType === 'trial' OR course.isTrial === true
+                        const isTrial = !!((details as any).trialClassId || (details as any).sessionType === 'trial' || (details as any).course?.isTrial);
+
+                        if (userType === 'student' && details.status === 'completed' && isTrial) {
+                            navigate(`/trial-class/${trialClassId}/feedback`);
+                        } else {
+                            navigate(userType === 'mentor' ? '/mentor/dashboard' : '/student/dashboard');
+                        }
+                        return;
+                    }
+        }
         
         console.log('🔄 [VideoCall] Verifying role...');
         await dispatch(verifyUserRole(stableUserType)).unwrap();
@@ -199,7 +216,7 @@ export default function VideoCallRoom() {
     return () => {
       mounted = false;
     };
-  }, [stableUserId, trialClassId, stableUserType, dispatch, roleLoading, roleFromStore, isPreparing]);
+  }, [stableUserId, trialClassId, stableUserType, dispatch, roleLoading, roleFromStore, isPreparing, userType, navigate]);
 
 
   const {
@@ -215,6 +232,7 @@ export default function VideoCallRoom() {
     toggleVideo,
     remoteMediaState,
     status,
+    isSocketConnected, // Destructure this
   } = useVideoCall();
 
   useEffect(() => {
@@ -275,24 +293,47 @@ export default function VideoCallRoom() {
         const hasVideo = remoteStream.getVideoTracks().length > 0;
         const hasAudio = remoteStream.getAudioTracks().length > 0;
         
-        console.log('📺 [VideoCall] Remote stream tracks:', { 
+        console.log('📺 [VideoCall] Remote stream state:', { 
             hasVideo, 
             hasAudio, 
+            trackCount: remoteStream.getTracks().length,
             videoReadyState: remoteStream.getVideoTracks()[0]?.readyState,
-            videoEnabled: remoteStream.getVideoTracks()[0]?.enabled
+            audioReadyState: remoteStream.getAudioTracks()[0]?.readyState
         });
 
+        // Always ensure the stream is attached if it's different
         if (remoteVideoRef.current.srcObject !== remoteStream) {
             console.log('📺 [VideoCall] Attaching remote stream to element');
             remoteVideoRef.current.srcObject = remoteStream;
         }
         
-        remoteVideoRef.current.play().catch(e => {
-            console.warn('Remote video play failed (retrying in 1s):', e);
-            setTimeout(() => remoteVideoRef.current?.play().catch(() => {}), 1000);
-        });
+        // Use a more aggressive play strategy
+        const playRemote = async () => {
+            try {
+                if (remoteVideoRef.current) {
+                    await remoteVideoRef.current.play();
+                    console.log('✅ [VideoCall] Remote video playing');
+                }
+            } catch (e) {
+                console.warn('⚠️ [VideoCall] Remote video play failed, waiting for user interaction or track:', e);
+                // No-op, browser might block autoplay without interaction
+            }
+        };
+
+        playRemote();
+
+        // Listen for new tracks being added to the stream
+        const handleTrackAdded = () => {
+            console.log('📺 [VideoCall] Track added to existing remote stream');
+            playRemote();
+        };
+
+        remoteStream.addEventListener('addtrack', handleTrackAdded);
+        return () => {
+            remoteStream.removeEventListener('addtrack', handleTrackAdded);
+        };
     }
-  }, [remoteStream, remoteMediaState.isVideoOff, isPreparing]);
+  }, [remoteStream, isPreparing]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setInterval>;
@@ -319,9 +360,16 @@ export default function VideoCallRoom() {
   }, [endCall]);
   */
 
+  // Determine if this is a trial session based on product rules
+  const isTrialSession = useMemo(() => {
+    if (!trialDetails) return false;
+    const details = trialDetails as any;
+    return !!(details.trialClassId || details.sessionType === 'trial' || details.course?.isTrial);
+  }, [trialDetails]);
+
   const handleEndCall = useCallback(async () => {
     try {
-      if (userType === 'mentor' && trialClassId) {
+      if (userType === 'mentor' && trialClassId && isTrialSession) {
         try {
           await studentTrialApi.completeTrialClass(trialClassId);
         } catch (e) {
@@ -331,7 +379,11 @@ export default function VideoCallRoom() {
       endCall();
     } finally {
       if (userType === 'student') {
-        navigate(`/trial-class/${trialClassId}/feedback`);
+        if (isTrialSession) {
+          navigate(`/trial-class/${trialClassId}/feedback`);
+        } else {
+          navigate('/student/dashboard');
+        }
       } else {
         if (window.opener) {
           window.close();
@@ -340,7 +392,7 @@ export default function VideoCallRoom() {
         }
       }
     }
-  }, [endCall, navigate, userType, trialClassId]);
+  }, [endCall, navigate, userType, trialClassId, isTrialSession]);
   
   if (initError) {
     return (
@@ -428,32 +480,37 @@ export default function VideoCallRoom() {
           {/* Subject Information Section */}
           <div className="bg-white rounded-3xl p-8 shadow-sm">
             <h2 className="text-xl font-bold text-gray-800 mb-2">
-              {trialDetails?.subject?.subjectName || 'Aptus Live Session'}
+              {trialDetails?.subject?.subjectName || (isTrialSession ? 'Aptus Trial Session' : 'Aptus Live Session')}
             </h2>
             <h3 className="text-sm font-bold text-gray-800 mb-4">
               Personalized Mentoring Session
             </h3>
-            <p className="text-sm text-gray-500 leading-relaxed mb-10 max-w-3xl">
-              Welcome to your Aptus live classroom. This trial session is designed to evaluate your learning goals and match you with the perfect educational path.
-            </p>
-
-            {/* Attendance Stats - Hidden for 1:1 Trial */}
-            <div className="flex items-center justify-center gap-12 pt-6 border-t border-gray-100 opacity-20 pointer-events-none">
-               <div className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Aptus Trial Session</span>
-               </div>
+            
+            <div className="space-y-1 mt-6">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{isTrialSession ? 'Aptus Trial Session' : 'Aptus Live Session'}</span>
+              <h1 className="text-2xl font-black text-gray-900 leading-tight">
+                Experience the <span className="text-[#3CB4B4]">Future</span> of Online Learning
+              </h1>
             </div>
+            {isTrialSession && (
+              <p className="text-gray-400 text-sm mt-2 leading-relaxed max-w-md">
+                This trial session is designed to evaluate your learning goals and match you with the perfect educational path.
+              </p>
+            )}
           </div>
         </div>
       }
       rightPanel={
         <ClassroomRightPanel
+          sessionId={trialClassId || ''}
           currentUser={{
+            id: currentUser?.userId || '',
             name: currentUser?.name || 'User',
             role: currentUser?.userType === 'mentor' ? 'Mentor' : 'Student',
           }}
           participants={participants}
-          onFeedback={() => navigate(`/trial-class/${trialClassId}/feedback`)}
+          onFeedback={userType === 'student' && isTrialSession ? () => navigate(`/trial-class/${trialClassId}/feedback`) : undefined}
+          isSocketConnected={isSocketConnected}
         />
       }
     />

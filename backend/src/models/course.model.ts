@@ -13,6 +13,9 @@ export interface ICourse extends Document {
   endDate: Date;
   totalSessions?: number;
   fee?: number;
+  courseType: "one-to-one" | "group";
+  maxStudents: number;
+  enrolledStudents: number;
   status: "available" | "booked" | "ongoing" | "completed" | "cancelled";
   isActive: boolean;
 }
@@ -34,6 +37,13 @@ const CourseSchema = new Schema<ICourse>(
     endDate: { type: Date, required: true },
     totalSessions: { type: Number },
     fee: { type: Number, required: false, default: 0 },
+    courseType: { 
+      type: String, 
+      enum: ["one-to-one", "group"], 
+      default: "one-to-one" 
+    },
+    maxStudents: { type: Number, default: 1 },
+    enrolledStudents: { type: Number, default: 0 },
     status: {
       type: String,
       enum: ["available", "booked", "ongoing", "completed", "cancelled"],

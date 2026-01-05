@@ -107,9 +107,6 @@ export default function Dashboard() {
   useEffect(() => {
     dispatch(fetchDashboardData())
       .unwrap()
-      .then((data) => {
-        console.log("✅ Dashboard data:", data);
-      })
       .catch((err: unknown) => {
         console.error("❌ Failed to fetch dashboard data:", err);
       });

@@ -1,16 +1,29 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Check, TrendingDown } from 'lucide-react';
+import { useAppSelector } from '../../app/hooks';
 
 const SubscriptionPlans: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAppSelector((state) => state.auth);
+  const { profile } = useAppSelector((state) => state.student);
   const [subjectCount, setSubjectCount] = useState<number>(1);
+
+  const status = profile?.onboardingStatus || user?.onboardingStatus;
+
+  React.useEffect(() => {
+    if (status === 'subscribed') {
+      navigate('/student/preferences/subjects');
+    } else if (status === 'preferences_completed') {
+      navigate('/student/dashboard');
+    }
+  }, [status, navigate]);
 
   const calculatePrice = (type: 'monthly' | 'yearly') => {
     if (type === 'monthly') return subjectCount * 500;
-    // Yearly: 1:5k, 2:10k, 3:15k, 4+:20k
-    if (subjectCount >= 4) return 20000;
-    return subjectCount * 5000;
+    // Premium Yearly: ₹5000 per subject, max ₹20,000
+    const rawYearly = subjectCount * 5000;
+    return Math.min(rawYearly, 20000);
   };
 
   const handleSelectPlan = (type: 'monthly' | 'yearly') => {
@@ -19,7 +32,8 @@ const SubscriptionPlans: React.FC = () => {
         state: { 
             planType: type, 
             amount: price,
-            subjectCount: subjectCount
+            subjectCount: subjectCount,
+            planLabel: type === 'monthly' ? 'BASIC PLAN' : 'PREMIUM PLAN'
         } 
     });
   };
@@ -62,8 +76,8 @@ const SubscriptionPlans: React.FC = () => {
             <div>
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Monthly Access</h2>
-                  <p className="text-gray-500 text-sm mt-1">Flexible pay-as-you-go</p>
+                  <h2 className="text-2xl font-bold text-gray-900">BASIC PLAN</h2>
+                  <p className="text-gray-500 text-sm mt-1">Flexible monthly learning</p>
                 </div>
               </div>
               
@@ -72,7 +86,7 @@ const SubscriptionPlans: React.FC = () => {
                   <span className="text-5xl font-extrabold text-gray-900">₹{calculatePrice('monthly')}</span>
                   <span className="text-xl text-gray-500 ml-2">/mo</span>
                 </div>
-                <p className="text-xs text-gray-400 mt-2 font-medium">₹500 per subject monthly</p>
+                <p className="text-xs text-gray-400 mt-2 font-medium">₹500 / month (per subject)</p>
               </div>
 
               <ul className="space-y-4 mb-10">
@@ -94,7 +108,7 @@ const SubscriptionPlans: React.FC = () => {
               onClick={() => handleSelectPlan('monthly')}
               className="w-full py-4 px-6 rounded-2xl bg-indigo-50 text-indigo-700 font-bold hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2 group"
             >
-              Get Started Monthly
+              Get Started – Basic
             </button>
           </div>
 
@@ -109,7 +123,7 @@ const SubscriptionPlans: React.FC = () => {
             <div>
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Yearly Pro</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">PREMIUM PLAN</h2>
                   <p className="text-indigo-600 text-sm mt-1 font-bold">Most popular choice</p>
                 </div>
               </div>
@@ -136,9 +150,9 @@ const SubscriptionPlans: React.FC = () => {
 
               <ul className="space-y-4 mb-10">
                 {[
-                  subjectCount === 1 ? '1 Selected Subject' : 'Unlimited Subjects (3+5 Model)',
+                  `${subjectCount} Selected Subject${subjectCount > 1 ? 's' : ''}`,
                   'Up to 3 Fixed Weekly Slots',
-                  '5 Total Live Sessions / Week',
+                  '5 Live Sessions per Week',
                   'Priority Mentor Matching',
                   'Comprehensive Exam Series'
                 ].map((item, i) => (
@@ -154,7 +168,7 @@ const SubscriptionPlans: React.FC = () => {
               onClick={() => handleSelectPlan('yearly')}
               className="w-full py-4 px-6 rounded-2xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2 group"
             >
-              Get Started Yearly
+              Upgrade to Premium
             </button>
           </div>
         </div>

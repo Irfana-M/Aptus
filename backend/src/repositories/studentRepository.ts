@@ -133,9 +133,11 @@ export class StudentRepository
     try {
       logger.debug(`Updating student profile: ${id}`);
 
-      const updateData = StudentMapper.toProfileUpdate(data);
-
-      const cleanUpdateData = this.removeUndefinedProperties(updateData);
+      // NOTE: Data is already mapped by the service layer. 
+      // Mapping it again here suppresses fields like 'isProfileCompleted' if they aren't in the mapper's whitelist.
+      // We trust the service to have prepared the data correctly.
+      
+      const cleanUpdateData = this.removeUndefinedProperties(data);
       
       const result = await this.model
         .findByIdAndUpdate(id, cleanUpdateData, { new: true, runValidators: true })
@@ -596,7 +598,19 @@ async findAllWithTrialStats(page: number, limit: number) {
         .select("-password")
         .populate({
           path: 'gradeId',
-          select: 'name level'
+          select: 'name grade'
+        })
+        .populate({
+          path: 'preferredSubjects',
+          select: 'subjectName'
+        })
+        .populate({
+          path: 'preferredTimeSlots.subjectId',
+          select: 'subjectName'
+        })
+        .populate({
+          path: 'preferredTimeSlots.assignedMentorId',
+          select: 'fullName email'
         })
         .lean()
         .exec();
@@ -607,7 +621,7 @@ async findAllWithTrialStats(page: number, limit: number) {
       }
 
       // Fetch trial classes separately
-      const { TrialClass } = await import("@/models/student/trialClass.model");
+      const { TrialClass } = await import("../models/student/trialClass.model");
       const trialClasses = await TrialClass
         .find({ student: id })
         .populate('subject', 'subjectName')
@@ -617,7 +631,7 @@ async findAllWithTrialStats(page: number, limit: number) {
         .exec();
 
       // Fetch enrollments separately
-      const { Enrollment } = await import("@/models/enrollment.model");
+      const { Enrollment } = await import("../models/enrollment.model");
       const enrollments = await Enrollment
         .find({ student: id })
         .populate({
@@ -676,6 +690,41 @@ async findAllWithTrialStats(page: number, limit: number) {
       );
     }
   }
+  async updatePreferredTimeSlotStatus(
+    studentId: string,
+    subjectId: string,
+    status: 'mentor_assigned' | 'mentor_requested' | 'preferences_submitted',
+    mentorId?: string
+  ): Promise<void> {
+    try {
+      logger.debug(`Updating time slot status for student ${studentId}, subject ${subjectId} to ${status}`);
+      
+      const updateQuery: any = {
+        $set: {
+          "preferredTimeSlots.$[elem].status": status
+        }
+      };
 
+      if (mentorId) {
+        updateQuery.$set["preferredTimeSlots.$[elem].assignedMentorId"] = mentorId;
+      } else if (status === 'preferences_submitted') {
+        updateQuery.$unset = {
+           "preferredTimeSlots.$[elem].assignedMentorId": ""
+        };
+      }
 
+      await this.model.updateOne(
+        { _id: studentId },
+        updateQuery,
+        {
+          arrayFilters: [{ "elem.subjectId": subjectId }]
+        }
+      );
+      
+      logger.info(`Updated time slot status for student ${studentId} to ${status}`);
+    } catch (error) {
+      logger.error(`Error updating time slot status:`, error);
+      throw new AppError("Failed to update time slot status", HttpStatusCode.INTERNAL_SERVER_ERROR);
+    }
+  }
 }

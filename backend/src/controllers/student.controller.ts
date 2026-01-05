@@ -6,12 +6,14 @@ import { HttpStatusCode } from "../constants/httpStatus";
 import { AppError } from "../utils/AppError";
 import { logger } from "../utils/logger";
 import type { IWalletService } from "../interfaces/services/IWalletService";
+import type { IMentorRequestService } from "../interfaces/services/IMentorRequestService";
 
 @injectable()
 export class StudentController {
   constructor(
     @inject(TYPES.IStudentService) private studentService: IStudentService,
-    @inject(TYPES.IWalletService) private walletService: IWalletService
+    @inject(TYPES.IWalletService) private walletService: IWalletService,
+    @inject(TYPES.IMentorRequestService) private mentorRequestService: IMentorRequestService 
   ) {}
 
   async updateProfile(
@@ -19,12 +21,11 @@ export class StudentController {
     res: Response,
     next: NextFunction
   ): Promise<void> {
+
     try {
       if (!req.user) {
         throw new AppError("User not authenticated", HttpStatusCode.UNAUTHORIZED);
       }
-
-      // Handle file uploads from multer
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
       
       if (files?.profilePicture?.[0]) {
@@ -50,7 +51,7 @@ export class StudentController {
     }
   }
 
-  // Get the current authenticated student's own profile
+  
   async getMyProfile(
     req: Request,
     res: Response,
@@ -134,6 +135,75 @@ export class StudentController {
         success: true,
         message: "Student profile retrieved successfully",
         data: profile,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updatePreferences(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      if (!req.user) {
+        throw new AppError("User not authenticated", HttpStatusCode.UNAUTHORIZED);
+      }
+
+      const { preferences } = req.body;
+      const updatedProfile = await this.studentService.updatePreferences(
+        req.user.id,
+        preferences
+      );
+
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        message: "Preferences updated successfully",
+        data: updatedProfile,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async requestMentor(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      if (!req.user) {
+        throw new AppError("User not authenticated", HttpStatusCode.UNAUTHORIZED);
+      }
+
+      const { subjectId, mentorId } = req.body;
+      await this.studentService.requestMentor(req.user.id, subjectId, mentorId);
+
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        message: "Mentor request submitted successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getMyMentorRequests(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      if (!req.user) {
+        throw new AppError("User not authenticated", HttpStatusCode.UNAUTHORIZED);
+      }
+
+      const requests = await this.mentorRequestService.getRequestsByStudent(req.user.id);
+      
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: requests,
       });
     } catch (error) {
       next(error);

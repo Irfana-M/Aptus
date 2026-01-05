@@ -27,4 +27,10 @@ export interface IStudentRepository extends IBaseRepository<StudentAuthUser> {
     totalStudents: number;
   }>;
   findStudentProfileById(id: string): Promise<unknown>;
+  updatePreferredTimeSlotStatus(
+    studentId: string,
+    subjectId: string,
+    status: 'mentor_assigned' | 'mentor_requested' | 'preferences_submitted',
+    mentorId?: string
+  ): Promise<void>;
 }

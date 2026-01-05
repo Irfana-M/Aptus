@@ -36,6 +36,7 @@ const navItems: NavItem[] = [
   },
   { icon: <Users size={20} />, label: "Students", path: "/admin/students" },
   { icon: <Users size={20} />, label: "Mentors", path: "/admin/mentors" },
+  { icon: <Users size={20} />, label: "Mentor Requests", path: "/admin/mentor-requests" },
   { icon: <BookOpen size={20} />, label: "Courses", path: "/admin/courses" },
   { icon: <DollarSign size={20} />, label: "Finance", path: "/admin/finance" },
   {
@@ -51,6 +52,8 @@ const navItems: NavItem[] = [
     path: "/admin/notifications",
     badge: 3,
   },
+  { icon: <Calendar size={20} />, label: "Attendance", path: "/admin/attendance" },
+  { icon: <BookOpen size={20} />, label: "Classroom", path: "/admin/classroom" },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({

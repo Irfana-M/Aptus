@@ -52,7 +52,7 @@ interface CourseModalProps {
     gradeId: string;
     subjectId: string;
     mentorId: string;
-    studentId: string;
+    studentId?: string;
     schedule: {
       days: string[];
       timeSlot?: string;
@@ -73,7 +73,7 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, initialValues,
   const [form, setForm] = useState({
     gradeId: "",
     subjectId: "",
-    dayOfWeek: "",
+    selectedDays: [] as string[],
     timeSlot: "",
     mentorId: "",
     studentId: "",
@@ -141,8 +141,8 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, initialValues,
         setForm({
           gradeId: course?.grade?._id || "",
           subjectId: course?.subject?._id || "",
-          dayOfWeek: course?.dayOfWeek?.toString() || "",
-          timeSlot: course?.timeSlot || "",
+          selectedDays: course?.schedule?.days || [],
+          timeSlot: course?.timeSlot || course?.schedule?.timeSlot || "",
           mentorId: course?.mentor?._id || "",
           studentId: course?.student?._id || "",
           startDate: course?.startDate ? new Date(course.startDate).toISOString().split('T')[0] : "",
@@ -153,7 +153,7 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, initialValues,
          setForm({
           gradeId: initialValues?.gradeId || "",
           subjectId: initialValues?.subjectId || "",
-          dayOfWeek: initialValues?.dayOfWeek?.toString() || "",
+          selectedDays: initialValues?.dayOfWeek !== undefined ? [DAYS[Number(initialValues.dayOfWeek)]] : [],
           timeSlot: initialValues?.timeSlot || "",
           mentorId: initialValues?.mentorId || "",
           studentId: initialValues?.studentId || "",
@@ -166,7 +166,7 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, initialValues,
         setForm({
             gradeId: "",
             subjectId: "",
-            dayOfWeek: "",
+            selectedDays: [],
             timeSlot: "",
             mentorId: "",
             studentId: "",
@@ -186,30 +186,42 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, initialValues,
     }
   }, [form.gradeId, dispatch]);
 
-  // Fetch available mentors when SUBJECT is selected (ignore time/day for fetching)
+  // Fetch available mentors when SUBJECT, Grade, or Schedule changes
   useEffect(() => {
     if (form.subjectId && form.gradeId) {
-      const selectedSubject = subjects.find(s => s._id === form.subjectId);
-      dispatch(
-        fetchAvailableMentorsForCourse({
-          gradeId: form.gradeId,
-          subject: selectedSubject?.name || "",
-          // Removed time/day filters to show all proficient mentors
-        })
-      );
+      const payload: any = {
+        gradeId: form.gradeId,
+        subjectId: form.subjectId, 
+        days: form.selectedDays,
+      };
+
+      if (form.timeSlot) {
+        payload.timeSlot = form.timeSlot;
+      }
+
+      if (course?._id) {
+        payload.excludeCourseId = course._id;
+      }
+
+      dispatch(fetchAvailableMentorsForCourse(payload));
     }
-  }, [form.gradeId, form.subjectId, dispatch, subjects]);
+  }, [form.gradeId, form.subjectId, form.selectedDays, form.timeSlot, dispatch, subjects]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      if (form.selectedDays.length === 0) {
+        showToast.warning("Please select at least one day.");
+        return;
+      }
+
       const courseData = {
         gradeId: form.gradeId,
         subjectId: form.subjectId,
         mentorId: form.mentorId,
-        studentId: form.studentId || "placeholder-student-id", // Ensure student is selected, handling placeholders if creating generically
+        studentId: form.studentId || undefined, 
         schedule: {
-            days: form.dayOfWeek ? [DAYS[Number(form.dayOfWeek)]] : [],
+            days: form.selectedDays,
             timeSlot: form.timeSlot || undefined,
         },
         startDate: form.startDate,
@@ -327,30 +339,40 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, initialValues,
                   {Array.isArray(mentors.matches) && mentors.matches.length > 0 ? (
                     mentors.matches.map(m => (
                       <label
-                        key={m.id}
+                        key={m._id}
                         className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
-                          form.mentorId === m.id ? "border-blue-500 bg-blue-50" : "border-gray-200"
+                          form.mentorId === m._id ? "border-blue-500 bg-blue-50" : "border-gray-200"
                         }`}
                       >
                         <input
                           type="radio"
                           name="mentor"
-                          value={m.id}
-                          checked={form.mentorId === m.id}
+                          value={m._id}
+                          checked={form.mentorId === m._id}
                           onChange={e => setForm({ ...form, mentorId: e.target.value })}
                           className="w-4 h-4 text-blue-600"
                           disabled={creating}
                           required
                         />
                         <img 
-                          src={m.profilePicture || "/avatar.png"} 
+                          src={m.profileImageUrl || m.profilePicture || "/avatar.png"} 
                           alt={m.fullName}
                           className="w-12 h-12 rounded-full object-cover border-2 border-gray-200" 
                         />
                         <div className="flex-1">
-                          <p className="font-medium text-gray-900">{m.fullName}</p>
+                          <div className="flex items-center justify-between">
+                            <p className="font-medium text-gray-900">{m.fullName}</p>
+                            {m.hasConflict && (
+                              <span className="px-2 py-0.5 bg-red-100 text-red-600 text-xs font-bold rounded-full animate-pulse">
+                                RESERVED
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm text-gray-600">
                              ★ {m.rating?.toFixed(1) || 'N/A'}
+                             {m.hasConflict && (
+                               <span className="text-red-500 ml-2 text-xs"> (Slot already booked)</span>
+                             )}
                           </p>
                         </div>
                       </label>
@@ -358,30 +380,40 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, initialValues,
                   ) : Array.isArray(mentors.alternates) && mentors.alternates.length > 0 ? (
                     mentors.alternates.map(m => (
                       <label
-                        key={m.id}
+                        key={m._id}
                         className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
-                          form.mentorId === m.id ? "border-blue-500 bg-blue-50" : "border-gray-200"
+                          form.mentorId === m._id ? "border-blue-500 bg-blue-50" : "border-gray-200"
                         }`}
                       >
                          <input
                           type="radio"
                           name="mentor"
-                          value={m.id}
-                          checked={form.mentorId === m.id}
+                          value={m._id}
+                          checked={form.mentorId === m._id}
                           onChange={e => setForm({ ...form, mentorId: e.target.value })}
                           className="w-4 h-4 text-blue-600"
                           disabled={creating}
                           required
                         />
                         <img 
-                          src={m.profilePicture || "/avatar.png"} 
+                          src={m.profileImageUrl || m.profilePicture || "/avatar.png"} 
                           alt={m.fullName}
                           className="w-12 h-12 rounded-full object-cover border-2 border-gray-200" 
                         />
                         <div className="flex-1">
-                          <p className="font-medium text-gray-900">{m.fullName}</p>
+                          <div className="flex items-center justify-between">
+                            <p className="font-medium text-gray-900">{m.fullName}</p>
+                            {m.hasConflict && (
+                              <span className="px-2 py-0.5 bg-red-100 text-red-600 text-xs font-bold rounded-full animate-pulse">
+                                RESERVED
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm text-gray-600">
                              ★ {m.rating?.toFixed(1) || 'N/A'} (Alternate)
+                             {m.hasConflict && (
+                               <span className="text-red-500 ml-2 text-xs"> (Slot already booked)</span>
+                             )}
                           </p>
                         </div>
                       </label>
@@ -395,22 +427,42 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, initialValues,
               </div>
             )}
 
-            {/* Day Select (Optional) */}
+            {/* Day Select (Multi-selection Checkboxes) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Day <span className="text-gray-400 font-normal">(Optional)</span>
+                Days <span className="text-gray-400 font-normal">(Select up to 3)</span>
               </label>
-              <select
-                value={form.dayOfWeek}
-                onChange={e => setForm({ ...form, dayOfWeek: e.target.value })}
-                disabled={!form.subjectId || creating}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-              >
-                <option value="">Select Day (Optional)</option>
-                {DAYS.map((d, i) => (
-                  <option key={i} value={i}>{d}</option>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {DAYS.map((day) => (
+                  <label 
+                    key={day} 
+                    className={`flex items-center gap-2 p-2 border rounded-lg cursor-pointer transition-colors text-sm ${
+                      form.selectedDays.includes(day) ? "bg-blue-50 border-blue-200 text-blue-700" : "hover:bg-gray-50 border-gray-200"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 text-blue-600 rounded"
+                      checked={form.selectedDays.includes(day)}
+                      onChange={() => {
+                        setForm(prev => {
+                          const alreadySelected = prev.selectedDays.includes(day);
+                          if (alreadySelected) {
+                            return { ...prev, selectedDays: prev.selectedDays.filter(d => d !== day) };
+                          } else if (prev.selectedDays.length < 3) {
+                            return { ...prev, selectedDays: [...prev.selectedDays, day] };
+                          } else {
+                            showToast.warning("Maximum 3 days allowed");
+                            return prev;
+                          }
+                        });
+                      }}
+                      disabled={creating}
+                    />
+                    {day}
+                  </label>
                 ))}
-              </select>
+              </div>
             </div>
 
             {/* Time Slot (Optional) */}
@@ -476,7 +528,7 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, initialValues,
             <div className="flex gap-4 pt-6">
               <button
                 type="submit"
-                disabled={creating || !form.mentorId || !form.startDate || !form.endDate}
+                disabled={creating || !form.mentorId || !form.startDate || !form.endDate || (mentors.matches?.find(m => m._id === form.mentorId)?.hasConflict || mentors.alternates?.find(m => m._id === form.mentorId)?.hasConflict)}
                 className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {creating ? (
@@ -487,7 +539,7 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, initialValues,
                     </svg>
                     {course ? "Updating..." : "Creating..."}
                   </span>
-                ) : course ? "Update Course" : "Create Course"}
+                ) : (mentors.matches?.find(m => m._id === form.mentorId)?.hasConflict || mentors.alternates?.find(m => m._id === form.mentorId)?.hasConflict) ? "Slot Reserved" : course ? "Update Course" : "Create Course"}
               </button>
               <button
                 type="button"

@@ -17,11 +17,22 @@ export const fetchAvailableCourses = async (filters: Record<string, unknown>) =>
   return response.data;
 };
 
-export const findMentors = async (subject: string, grade?: string) => {
+export const findMentors = async (subject: string, grade?: string, days?: string[], timeSlot?: string) => {
+  const params: any = { subject };
+  if (grade) params.grade = grade;
+  if (days && days.length > 0) params.days = days.join(',');
+  if (timeSlot) params.timeSlot = timeSlot;
+
   const response = await userApi.get(API_ROUTES.AVAILABILITY.MATCH, { 
-    params: { subject, grade } 
+    params: params
   });
   return response.data;
+};
+
+export const fetchMentorDetails = async (mentorId: string) => {
+  const url = API_ROUTES.AVAILABILITY.PROFILE.replace(':mentorId', mentorId);
+  const response = await userApi.get(url);
+  return response.data?.data || response.data;
 };
 
 export const fetchSubjectsByGrade = async (grade: string, syllabus?: string) => {
@@ -50,7 +61,7 @@ export const updateStudentProfile = async (data: FormData) => {
             'Content-Type': 'multipart/form-data',
         },
     });
-    return response.data;
+    return response.data?.data || response.data;
 };
 
 export const enrollInCourse = async (courseId: string) => {
@@ -80,6 +91,21 @@ export const fetchPaymentHistory = async () => {
     return response.data;
 };
 
+export const updatePreferences = async (preferences: any[]) => {
+    const response = await userApi.patch('/student/preferences', { preferences });
+    return response.data;
+};
+
+export const requestMentor = async (data: { subjectId: string; mentorId: string }) => {
+    const response = await userApi.post('/student/request-mentor', data);
+    return response.data;
+};
+
+export const fetchMyMentorRequests = async () => {
+    const response = await userApi.get('/student/mentor-requests');
+    return response.data;
+};
+
 export const getWallet = async () => {
     const response = await userApi.get('/student/wallet'); 
     return response.data;
@@ -89,6 +115,7 @@ export const studentApi = {
     fetchAvailableCourses,
     fetchSubjectsByGrade,
     findMentors,
+    fetchMentorDetails,
     createCourseRequest,
     getStudentProfile,
     updateStudentProfile,
@@ -97,5 +124,8 @@ export const studentApi = {
     fetchMyCourses,
     fetchMyCourseRequests,
     fetchPaymentHistory,
-    getWallet
+    getWallet,
+    updatePreferences,
+    requestMentor,
+    fetchMyMentorRequests
 };

@@ -12,6 +12,7 @@ import upload from "../middleware/upload.middleware";
 import { container } from "@/inversify.config";
 import { TYPES } from "@/types";
 import { MentorTrialClassController } from "../controllers/mentorTrialClass.controller";
+import { CourseController } from "../controllers/course.controller";
 
 const mentorRouter = Router();
 
@@ -28,6 +29,7 @@ const mentorService = new MentorService(
 const mentorController = new MentorController(mentorService);
 
 const mentorTrialClassController = container.get<MentorTrialClassController>(TYPES.MentorTrialClassController);
+const courseController = container.get<CourseController>(TYPES.CourseController);
 
 // validateBody, updateMentorProfileSchema removed as they are temporarily unused in this file
 
@@ -66,6 +68,13 @@ mentorRouter.patch(
   requireAuth,
   requireRole("mentor"),
   mentorTrialClassController.updateStatus.bind(mentorTrialClassController)
+);
+ 
+mentorRouter.get(
+  MENTOR_ROUTES.COURSES,
+  requireAuth,
+  requireRole("mentor"),
+  courseController.getMentorCourses.bind(courseController)
 );
 
 export default mentorRouter;

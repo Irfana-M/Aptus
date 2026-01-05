@@ -7,6 +7,7 @@ import { container } from "@/inversify.config";
 import { TYPES } from "@/types";
 import { CourseAdminController } from "@/controllers/courseAdmin.controller";
 import { StudentController } from "@/controllers/student.controller";
+import { HttpStatusCode } from "@/constants/httpStatus";
 
 const adminRouter = Router();
 
@@ -19,6 +20,8 @@ import { CourseRequestController } from "@/controllers/courseRequest.controller"
 const courseRequestController = container.get<CourseRequestController>(TYPES.CourseRequestController);
 import { PaymentController } from "@/controllers/payment.controller";
 const paymentController = container.get<PaymentController>(TYPES.PaymentController);
+import { EnrollmentController } from "@/controllers/enrollment.controller";
+const enrollmentController = container.get<EnrollmentController>(TYPES.EnrollmentController);
 
 adminRouter.post(ADMIN_ROUTES.LOGIN, adminController.login);
 adminRouter.get(
@@ -46,6 +49,7 @@ adminRouter.get(
   ADMIN_ROUTES.MENTOR_PROFILE,
   requireAuth,
   requireRole("admin"),
+  validateObjectId("mentorId"),
   adminController.getMentorProfile
 );
 adminRouter.patch(
@@ -98,7 +102,7 @@ adminRouter.patch(
   requireRole("admin"),
   adminController.unblockMentor
 );
-import { validateBody } from "../middleware/validate.middleware";
+import { validateBody, validateObjectId } from "../middleware/validate.middleware";
 import { updateMentorProfileSchema } from "../validators/mentor.validator";
 import { updateStudentProfileSchema } from "../validators/student.validator";
 
@@ -108,6 +112,7 @@ adminRouter.put(
   ADMIN_ROUTES.MENTOR_UPDATE,
   requireAuth,
   requireRole("admin"),
+  validateObjectId("mentorId"),
   validateBody(updateMentorProfileSchema),
   adminController.updateMentor
 );
@@ -118,6 +123,7 @@ adminRouter.put(
   ADMIN_ROUTES.STUDENT_UPDATE,
   requireAuth,
   requireRole("admin"),
+  validateObjectId("studentId"),
   validateBody(updateStudentProfileSchema),
   adminController.updateStudent
 );
@@ -162,6 +168,7 @@ adminRouter.get(
   ADMIN_ROUTES.STUDENT_PROFILE,
   requireAuth,
   requireRole("admin"),
+  validateObjectId("studentId"),
   (req, res, next) => studentController.getStudentProfile(req, res, next)
 );
 
@@ -172,17 +179,17 @@ adminRouter.get(
   adminController.getAvailableMentors
 );
 
-adminRouter.get(
-  ADMIN_ROUTES.MENTORS_AVAILABLE_FOR_COURSE,
-  requireAuth,
-  requireRole("admin"),
-  courseAdminController.getAvailableMentors
-);
 adminRouter.post(
   ADMIN_ROUTES.COURSES_ONE_TO_ONE,
   requireAuth,
   requireRole("admin"),
-  courseAdminController.createOneToOneCourse
+  courseAdminController.createEnrollment
+);
+adminRouter.put(
+  "/courses/one-to-one/:courseId",
+  requireAuth,
+  requireRole("admin"),
+  courseAdminController.updateOneToOneCourse
 );
 adminRouter.get(
   ADMIN_ROUTES.ALL_COURSES,
@@ -224,6 +231,82 @@ adminRouter.get(
   paymentController.getAllPayments
 );
 
+adminRouter.get(
+  ADMIN_ROUTES.ENROLLMENTS,
+  requireAuth,
+  requireRole("admin"),
+  enrollmentController.getAllEnrollments
+);
 
+
+
+
+// [DEPRECATED] This route now internally delegates to the approval flow via AdminService.assignMentor
+adminRouter.post(
+  "/student/assign-mentor",
+  requireAuth,
+  requireRole("admin"),
+  adminController.assignMentor
+);
+
+
+adminRouter.post(
+  "/student/reassign-mentor",
+  requireAuth,
+  requireRole("admin"),
+  adminController.reassignMentor
+);
+
+
+// Mentor Request routes
+adminRouter.get(
+  ADMIN_ROUTES.MENTOR_REQUESTS,
+  requireAuth,
+  requireRole("admin"),
+  async (req, res, next) => {
+    try {
+      const mentorRequestService = container.get<any>(TYPES.IMentorRequestService);
+      const requests = await mentorRequestService.getPendingRequests();
+      res.status(HttpStatusCode.OK).json({ success: true, data: requests });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+adminRouter.patch(
+  `${ADMIN_ROUTES.MENTOR_REQUESTS}/:requestId/approve`,
+  requireAuth,
+  requireRole("admin"),
+  async (req, res, next) => {
+    try {
+      const { requestId } = req.params;
+      const adminId = req.user?.id;
+      const mentorRequestService = container.get<any>(TYPES.IMentorRequestService);
+      await mentorRequestService.approveRequest(requestId, adminId);
+      res.status(HttpStatusCode.OK).json({ success: true, message: "Request approved" });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+adminRouter.patch(
+  `${ADMIN_ROUTES.MENTOR_REQUESTS}/:requestId/reject`,
+  requireAuth,
+  requireRole("admin"),
+  async (req, res, next) => {
+    try {
+      const { requestId } = req.params;
+      const { reason } = req.body;
+      const adminId = req.user?.id;
+      const mentorRequestService = container.get<any>(TYPES.IMentorRequestService);
+      await mentorRequestService.rejectRequest(requestId, adminId, reason);
+      res.status(HttpStatusCode.OK).json({ success: true, message: "Request rejected" });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 export default adminRouter;

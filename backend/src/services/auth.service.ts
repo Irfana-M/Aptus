@@ -235,8 +235,8 @@ export class AuthService implements IAuthService {
         // Self-healing: If flag is false but user might have completed a trial
         if (!isTrialCompleted) {
           try {
-            const { TrialClass } = await import("@/models/student/trialClass.model");
-            const { StudentModel } = await import("@/models/student/student.model");
+            const { TrialClass } = await import("../models/student/trialClass.model");
+            const { StudentModel } = await import("../models/student/student.model");
             
             const completedTrial = await TrialClass.findOne({
               student: user._id,

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '../../../app/store';
 import { fetchAvailableMentorsForCourse } from '../../../features/admin/adminThunk';
@@ -10,16 +10,20 @@ import toast from 'react-hot-toast';
 import { Button } from '../../../components/ui/Button';
 
 interface CourseRequestData {
-    _id: string;
+    id: string;
+    _id?: string;
     subject: string;
+    subjectName?: string;
     grade: string;
     preferredDays: string[];
-    timeSlot?: string;
+    timeSlot: string;
     timeRange?: string;
     student: {
-        _id: string;
+        id: string;
         fullName: string;
+        email: string;
     } | string;
+    plan?: string;
 }
 
 interface FindMatchModalProps {
@@ -27,6 +31,7 @@ interface FindMatchModalProps {
     onClose: () => void;
     request: CourseRequestData | null;
     onMatchConfirmed: () => void;
+    onSubmit?: (data: { mentorId: string; days: string[]; timeSlot?: string }) => Promise<void>;
 }
 
 interface MentorMatchResult {
@@ -34,7 +39,7 @@ interface MentorMatchResult {
     alternates: AvailableMentorDto[];
 }
 
-const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, request, onMatchConfirmed }) => {
+const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, request, onMatchConfirmed, onSubmit }) => {
     const dispatch = useDispatch<AppDispatch>();
     const [mentors, setMentors] = useState<MentorMatchResult>({ matches: [], alternates: [] });
     const [loading, setLoading] = useState(false);
@@ -42,56 +47,107 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
     const [selectedDays, setSelectedDays] = useState<string[]>([]);
     const [creating, setCreating] = useState(false);
     const [showSchedule, setShowSchedule] = useState(false);
+    const [lastSearchedId, setLastSearchedId] = useState<string | null>(null);
+    const isSearchingRef = useRef(false);
+    const scheduleSectionRef = useRef<HTMLDivElement>(null);
 
-    const findMentors = useCallback(async () => {
-        if (!request) return;
+    // Reset state when modal is closed
+    useEffect(() => {
+        if (!isOpen) {
+            setMentors({ matches: [], alternates: [] });
+            setLastSearchedId(null);
+            setLoading(false);
+            setSelectedMentor(null);
+            setSelectedDays([]);
+            isSearchingRef.current = false;
+        }
+    }, [isOpen]);
+
+    // Scroll to schedule section when a mentor is selected
+    useEffect(() => {
+        if (selectedMentor && scheduleSectionRef.current) {
+            scheduleSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, [selectedMentor]);
+
+    const findMentors = useCallback(async (requestId: string) => {
+        if (!request || isSearchingRef.current || !request.subject) {
+            return;
+        }
+
+        isSearchingRef.current = true;
         setLoading(true);
         try {
             const result = await dispatch(fetchAvailableMentorsForCourse({
-                subject: request.subject,
+                subjectId: request.subject,
                 gradeId: request.grade,
                 days: request.preferredDays,
                 timeSlot: request.timeSlot || request.timeRange
             })).unwrap();
+
             setMentors(result);
-        } catch {
-            toast.error("Failed to find mentors");
+        } catch (err: any) {
+            if (err?.name !== 'AbortError') {
+                toast.error("Failed to find mentors");
+            }
         } finally {
+            setLastSearchedId(requestId);
             setLoading(false);
+            isSearchingRef.current = false;
         }
-    }, [dispatch, request]);
+    }, [dispatch, request?.subject, request?.grade, request?.preferredDays, request?.timeSlot, request?.timeRange]);
 
     useEffect(() => {
-        if (isOpen && request) {
-            findMentors();
+        if (!isOpen || !request) return;
+
+        const currentRequestId = request.id || request._id;
+        if (currentRequestId && lastSearchedId !== currentRequestId && !isSearchingRef.current) {
+            findMentors(currentRequestId);
         }
-    }, [isOpen, request, findMentors]);
+    }, [isOpen, request?.id, request?._id, lastSearchedId, findMentors]);
+
+    const isGroupPlan = request?.plan === 'monthly';
 
     const handleCreateCourse = async () => {
         if (!selectedMentor || !request) return;
+        
+        // Validation: Required selection check only for 1:1 plans
+        if (!isGroupPlan && selectedDays.length !== 3) {
+            toast.error("Please select exactly 3 days for the 1:1 schedule.");
+            return;
+        }
+
         setCreating(true);
         try {
-            const studentId = typeof request.student === 'object' ? request.student._id : request.student;
-            
-            await adminCourseApi.createOneToOneCourse({
-                gradeId: request.grade,
-                subjectId: request.subject,
-                mentorId: selectedMentor._id,
-                studentId: studentId,
-                schedule: {
-                    days: selectedDays.length > 0 ? selectedDays : (request.preferredDays || []),
+            if (onSubmit) {
+                await onSubmit({
+                    mentorId: selectedMentor._id,
+                    days: isGroupPlan ? [] : selectedDays,
                     timeSlot: request.timeSlot || request.timeRange
-                },
-                startDate: new Date().toISOString(),
-                endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
-                fee: 0,
-            });
+                });
+            } else {
+                const studentId = typeof request.student === 'object' ? (request.student as any).id || (request.student as any)._id : request.student;
+                
+                await adminCourseApi.createOneToOneCourse({
+                    gradeId: request.grade,
+                    subjectId: request.subject,
+                    mentorId: selectedMentor._id,
+                    studentId: studentId,
+                    schedule: {
+                        days: isGroupPlan ? [] : selectedDays,
+                        timeSlot: request.timeSlot || request.timeRange
+                    },
+                    startDate: new Date().toISOString(),
+                    endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+                    fee: 0,
+                });
+            }
 
-            toast.success("Course created successfully");
+            toast.success("Assignment successful");
             onMatchConfirmed();
             onClose();
-        } catch {
-            toast.error("Failed to create course");
+        } catch (error: any) {
+            toast.error(error.message || "Failed to create assignment");
         } finally {
             setCreating(false);
         }
@@ -115,7 +171,9 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
                 <div className="mb-6 bg-teal-50 border border-teal-100 p-5 rounded-2xl flex justify-between items-center">
                     <div>
                         <div className="flex items-center gap-2">
-                             <span className="px-2 py-0.5 bg-teal-500 text-white text-[10px] font-black rounded uppercase">{request?.subject}</span>
+                             <span className="px-2 py-0.5 bg-teal-500 text-white text-[10px] font-black rounded uppercase">
+                                {request?.subjectName || request?.subject}
+                             </span>
                              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">
                                 {typeof request?.student === 'object' ? request.student.fullName : 'Student'}
                              </span>
@@ -142,7 +200,24 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
                                 </h3>
                                 {mentors.matches?.length === 0 ? (
                                     <div className="p-6 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                                        <p className="text-slate-400 italic text-sm">No exact matches found for this time slot.</p>
+                                        <p className="text-slate-400 italic text-sm mb-4">No exact matches found for this time slot.</p>
+                                        <button 
+                                            onClick={() => {
+                                              // Fetch strictly by subject/grade, ignoring time constraints to show full pool
+                                              dispatch(fetchAvailableMentorsForCourse({
+                                                  subjectId: request?.subject || '',
+                                                  gradeId: request?.grade,
+                                                  days: [], // Clear days to get broader results
+                                                  timeSlot: '' // Clear time slot
+                                              })).unwrap().then((res) => {
+                                                  setMentors(res);
+                                                  toast.success("Showing all mentors for this subject");
+                                              });
+                                            }}
+                                            className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors shadow-sm"
+                                        >
+                                            Show All Mentors for {request?.subjectName || 'Subject'}
+                                        </button>
                                     </div>
                                 ) : (
                                     <div className="grid gap-3">
@@ -167,7 +242,14 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <p className="font-black text-slate-800">{mentor.fullName}</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-black text-slate-800">{mentor.fullName}</p>
+                                                            {mentor.hasConflict && (
+                                                                <span className="px-2 py-0.5 bg-red-500 text-white text-[8px] font-black rounded uppercase animate-pulse">
+                                                                    Reserved
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         <div className="flex items-center gap-2 mt-0.5">
                                                             <div className="flex text-yellow-500 text-[10px]">
                                                                 {"★".repeat(Math.round(mentor.rating || 5))}
@@ -205,7 +287,7 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
                                                         : 'border-slate-100 hover:border-slate-200 bg-white'
                                                 }`}
                                             >
-                                                <div className="flex items-center gap-4">
+                                                 <div className="flex items-center gap-4">
                                                     <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm opacity-60">
                                                         {mentor.profileImageUrl ? (
                                                             <img src={mentor.profileImageUrl} alt="" className="w-full h-full object-cover" />
@@ -216,24 +298,33 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <p className="font-bold text-slate-600">{mentor.fullName}</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-bold text-slate-600">{mentor.fullName}</p>
+                                                            {selectedMentor?._id === mentor._id && (
+                                                                <div className="w-5 h-5 bg-slate-800 rounded-full flex items-center justify-center text-white">
+                                                                    <Check size={12} strokeWidth={4} />
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Availability Shift Required</p>
                                                     </div>
                                                 </div>
-                                                <button 
-                                                    onClick={(e) => { e.stopPropagation(); setSelectedMentor(mentor); setShowSchedule(true); }}
-                                                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-black text-slate-600 uppercase tracking-wider transition-colors"
-                                                >
-                                                    Check Slots
-                                                </button>
+                                                <div className="flex items-center gap-3">
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); setSelectedMentor(mentor); setShowSchedule(true); }}
+                                                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-black text-slate-600 uppercase tracking-wider transition-colors"
+                                                    >
+                                                        Check Slots
+                                                    </button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
                                 </section>
                             )}
-                             {/* 3-Day Schedule Selection */}
-                             {selectedMentor && (
-                                 <section className="animate-in slide-in-from-top-2 duration-300">
+                             {/* 3-Day Schedule Selection - ONLY for One-to-One */}
+                             {selectedMentor && !isGroupPlan && (
+                                 <section ref={scheduleSectionRef} className="animate-in slide-in-from-top-2 duration-300 border-t-2 border-slate-50 pt-6">
                                      <h3 className="text-xs font-black text-indigo-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
                                          Select Exactly 3 Days for the Schedule
@@ -241,7 +332,16 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
                                      <div className="flex flex-wrap gap-2">
                                          {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(day => {
                                              const isStudentAvailable = request?.preferredDays?.includes(day);
-                                             const isMentorAvailable = selectedMentor.availability?.some(a => a.day === day && a.slots.some(s => !s.isBooked));
+                                             const targetTime = request?.timeSlot || request?.timeRange;
+                                             const isMentorAvailable = selectedMentor.availability?.some(a => 
+                                                 a.day === day && a.slots.some(s => {
+                                                     if (s.isBooked) return false;
+                                                     if (!targetTime) return true;
+                                                     // Robust time comparison (handles "06:00 PM" vs "06:00 PM - 07:00 PM")
+                                                     const targetStart = targetTime.split(' - ')[0].trim();
+                                                     return s.startTime === targetStart || s.startTime === targetTime;
+                                                 })
+                                             );
                                              const isSelected = selectedDays.includes(day);
                                              
                                              return (
@@ -268,24 +368,39 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
                                              );
                                          })}
                                      </div>
+                                     <div className="mt-4 flex items-center gap-4">
+                                         <div className="text-xs font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full">
+                                             {selectedDays.length}/3 Days Selected
+                                         </div>
+                                         {selectedMentor.availability?.length === 0 && (
+                                               <p className="text-[10px] text-amber-600 font-bold italic">No availability data found for this mentor.</p>
+                                         )}
+                                     </div>
                                  </section>
+                             )}
+
+                             {/* Group Model Info Box */}
+                             {selectedMentor && isGroupPlan && (
+                                 <div className="p-6 bg-indigo-50 border border-indigo-100 rounded-2xl">
+                                     <h4 className="text-indigo-900 font-black text-xs uppercase tracking-widest mb-2">Group Class Model</h4>
+                                     <p className="text-indigo-700 text-sm leading-relaxed">
+                                         This student is on a <strong>Basic Plan</strong>. They will be added to a group session (max 10 students) led by <strong>{selectedMentor.fullName}</strong>. Small group learning ensures peer interaction while maintaining quality mentor guidance.
+                                     </p>
+                                 </div>
                              )}
                         </div>
                     )}
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-slate-100 flex justify-between items-center gap-4">
-                    <div className="text-xs font-bold text-slate-400">
-                        {selectedDays.length}/3 Days Selected
-                    </div>
+                <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end items-center gap-4">
                     <div className="flex gap-4">
                         <button onClick={onClose} className="px-6 py-2.5 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors">Cancel</button>
                         <button 
                             onClick={handleCreateCourse}
-                            disabled={!selectedMentor || creating || selectedDays.length !== 3}
+                            disabled={!selectedMentor || creating || (!isGroupPlan && selectedDays.length !== 3)}
                             className="px-8 py-2.5 bg-slate-900 text-white font-black rounded-xl hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed shadow-xl shadow-slate-900/20 transform active:scale-95 transition-all text-sm"
                         >
-                            {creating ? 'Processing...' : 'Finish Slot Selection & Confirm'}
+                            {creating ? 'Processing...' : isGroupPlan ? 'Confirm Group Assignment' : 'Finish Slot Selection & Confirm'}
                         </button>
                     </div>
                 </div>

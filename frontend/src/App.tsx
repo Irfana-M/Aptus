@@ -20,13 +20,13 @@ import { ROLES } from "./constants/roles";
 import StudentsManagement from "./pages/admin/student";
 import TrialBookingPage from "./pages/student/TrialBookingPage";
 import TrialClassesManagement from "./pages/admin/TrialClassesManagement";
+import MentorRequestsPage from './pages/admin/MentorRequestsPage';
 import StudentProfilePage from "./pages/admin/StudentProfile";
+import AdminEnrollmentsPage from "./pages/admin/AdminEnrollmentsPage";
 import TrialClassDetailsPage from "./pages/admin/TrialClassDetails";
 import StudentTrialClassesPage from "./pages/admin/StudentTrialClassPage";
 import CreateOneToOneCourse from "./pages/admin/courseManagement";
-import MentorDashboard from "./pages/mentor/MentorDashboard";
 import VideoCallRoom from "./pages/VideoCallRoom";
-import MentorAvailabilityPage from "./pages/mentor/Availability";
 import Finance from "./pages/admin/Finance";
 import TrialClassFeedback from "./pages/student/TrialFeedback";
 import StudentProfile from "./pages/student/StudentProfile";
@@ -37,10 +37,24 @@ import PaymentPage from "./pages/student/PaymentPage";
 import WalletPage from "./pages/student/WalletPage";
 import PaymentHistory from "./pages/student/PaymentHistory";
 import MyCourses from "./pages/student/MyCourses";
+import MentorDashboard from "./pages/mentor/MentorDashboard";
+import MentorAvailabilityPage from "./pages/mentor/Availability";
+import MentorStudentsPage from "./pages/mentor/Students";
+import MentorAttendance from "./pages/mentor/Attendance";
+import MentorClassroom from "./pages/mentor/Classroom";
+import StudentAttendance from "./pages/student/Attendance";
+import StudentClassroom from "./pages/student/Classroom";
+import AdminAttendance from "./pages/admin/Attendance";
+import AdminClassroom from "./pages/admin/Classroom";
+import CompletedTrialClasses from "./pages/mentor/CompletedTrialClasses";
+import SubjectsSelectionPage from "./pages/student/preferences/SubjectsSelectionPage";
+import TimeSlotsSelectionPage from "./pages/student/preferences/TimeSlotsSelectionPage";
+import MentorSelectionPage from "./pages/student/preferences/MentorSelectionPage";
 
 
 import { VideoCallProvider } from "./context/VideoCallContext";
 import FloatingCallOverlay from "./components/video/FloatingCallOverlay";
+import NotificationsPage from "./pages/common/NotificationsPage";
 
 
 const App: React.FC = () => {
@@ -253,6 +267,33 @@ const AppContent: React.FC = () => {
         />
 
         <Route
+          path="/student/preferences/subjects"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+              <SubjectsSelectionPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/student/preferences/time-slots"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+              <TimeSlotsSelectionPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/student/preferences/mentors"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+              <MentorSelectionPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/student/wallet"
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
@@ -306,6 +347,31 @@ const AppContent: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/student/attendance"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+              <StudentAttendance />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/classroom"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+              <StudentClassroom />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/mentor/profile-setup"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+              <MentorProfileSetup />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/mentor/profile"
@@ -325,10 +391,42 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
+          path="/mentor/students"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+              <MentorStudentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/mentor/availability"
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
               <MentorAvailabilityPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mentor/attendance"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+              <MentorAttendance />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mentor/classroom"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+              <MentorClassroom />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mentor/completed-trial-classes"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+              <CompletedTrialClasses />
             </ProtectedRoute>
           }
         />
@@ -350,8 +448,52 @@ const AppContent: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/admin/mentor-requests"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+              <MentorRequestsPage />
+            </ProtectedRoute>
+          }
+        />
         
+        <Route
+          path="/admin/enrollments"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+              <AdminEnrollmentsPage />
+            </ProtectedRoute>
+          }
+        />
+
         <Route path="/admin/logout" element={<AdminLoginPage />} />
+        
+        <Route
+          path="/admin/attendance"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+              <AdminAttendance />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/classroom"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+              <AdminClassroom />
+            </ProtectedRoute>
+          }
+        />
+
+
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT, ROLES.MENTOR, ROLES.ADMIN]}>
+              <NotificationsPage />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
   );
 };

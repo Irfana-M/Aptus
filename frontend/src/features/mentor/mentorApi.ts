@@ -46,4 +46,9 @@ export const mentorApi = {
     const response = await userApi.patch(url, { status });
     return response.data;
   },
+  
+  getMentorCourses: async () => {
+    const response = await userApi.get(API_ROUTES.MENTOR.COURSES);
+    return response.data.data;
+  },
 };

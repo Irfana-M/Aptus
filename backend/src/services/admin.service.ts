@@ -9,11 +9,14 @@ import type { MentorProfile } from "../interfaces/models/mentor.interface";
 import type { IStudentRepository } from "@/interfaces/repositories/IStudentRepository";
 import { AppError } from "../utils/AppError";
 import { HttpStatusCode } from "../constants/httpStatus";
+import mongoose from "mongoose";
 import type { MentorResponseDto } from "@/dto/mentor/MentorResponseDTO";
 import type { StudentBaseResponseDto } from "@/dto/auth/UserResponseDTO";
 import type { IAdminService } from "@/interfaces/services/IAdminService";
 import { AdminMapper } from "@/mappers/AdminMapper";
 import { MentorMapper } from "@/mappers/MentorMapper";
+import type { ICourseRepository } from "@/interfaces/repositories/ICourseRepository";
+import type { IEnrollmentLinkRepository } from "@/interfaces/repositories/IEnrollmentLinkRepository";
 import type {
   AdminLoginResponseDto,
   DashboardDataDto,
@@ -22,15 +25,19 @@ import { getSignedFileUrl } from "@/utils/s3Upload";
 import type { IEmailService } from "@/interfaces/services/IEmailService";
 import { StudentMapper } from "@/mappers/StudentMapper";
 import bcrypt from "bcryptjs";
-import type { StudentBaseResponseDto, SubscriptionDetails } from "@/dto/auth/UserResponseDTO";
+import type { SubscriptionDetails } from "@/dto/auth/UserResponseDTO";
 import { TrialClassMapper } from "@/mappers/trialClassMapper";
 import { type ITrialClassDocument } from "@/models/student/trialClass.model";
 import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
 import type { TrialClassResponseDto } from "@/dto/student/trialClassDTO";
 import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository";
 import type { MentorPaginationParams, StudentPaginationParams, PaginatedResponse } from "@/dto/shared/paginationTypes";
+import { InternalEventEmitter } from "@/utils/InternalEventEmitter";
+import { EVENTS } from "@/utils/InternalEventEmitter";
 
 
+
+import type { IMentorRequestService } from "../interfaces/services/IMentorRequestService";
 
 @injectable()
 export class AdminService implements IAdminService {
@@ -41,6 +48,11 @@ export class AdminService implements IAdminService {
     @inject(TYPES.IStudentRepository) private _studentRepo: IStudentRepository,
     @inject(TYPES.ITrialClassRepository) private _trialClassRepo: ITrialClassRepository,
     @inject(TYPES.ISubjectRepository) private _subjectRepo: ISubjectRepository,
+    @inject(TYPES.ICourseRepository) private _courseRepo: ICourseRepository,
+    @inject(TYPES.IEnrollmentLinkRepository) private _enrollmentLinkRepo: IEnrollmentLinkRepository,
+    @inject(TYPES.IMentorRequestService) private _mentorRequestService: IMentorRequestService,
+    @inject(TYPES.IMentorAssignmentRequestRepository) private _requestRepo: import("../interfaces/repositories/IMentorAssignmentRequestRepository").IMentorAssignmentRequestRepository,
+    @inject(TYPES.InternalEventEmitter) private _eventEmitter: InternalEventEmitter,
   ) {}
 
   async login(email: string, password: string): Promise<AdminLoginResponseDto> {
@@ -316,6 +328,14 @@ export class AdminService implements IAdminService {
       }
 
       await this.sendApprovalEmail(updatedMentor, status, reason);
+
+      this._eventEmitter.emit(status === 'approved' ? EVENTS.MENTOR_APPROVED : EVENTS.MENTOR_REJECTED, {
+        mentorId,
+        mentorName: updatedMentor.fullName,
+        email: updatedMentor.email,
+        status,
+        reason
+      });
 
       logger.info(`Mentor approval status updated successfully`, {
         mentorId,
@@ -631,7 +651,7 @@ async updateStudent(studentId: string, data: Partial<StudentBaseResponseDto>): P
       isVerified: true,
       isBlocked: false,
       isProfileComplete: false,
-      approvalStatus: "approved" as const,
+      approvalStatus: "approved" as any,
       authProvider: "local" as const,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -763,6 +783,17 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
       }
 
       const trialClassDto = TrialClassMapper.toResponseDto(updatedTrialClass);
+
+      this._eventEmitter.emit(EVENTS.TRIAL_MENTOR_ASSIGNED, {
+        trialClassId,
+        studentId: (updatedTrialClass as any).studentId?.toString(),
+        mentorId,
+        mentorName: mentor.fullName,
+        subjectName: (updatedTrialClass as any).subjectId?.subjectName || "Subject",
+        scheduledDate,
+        scheduledTime,
+        meetLink
+      });
 
       logger.info(`AdminService: Successfully assigned mentor to trial class ${trialClassId} with meet link: ${meetLink}`);
       
@@ -999,4 +1030,119 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
 
 
 
+
+  async assignMentor(
+    studentId: string, 
+    subjectId: string, 
+    mentorId: string, 
+    adminId?: string,
+    overrides?: {
+      days?: string[];
+      timeSlot?: string;
+    }
+  ): Promise<void> {
+    try {
+      logger.info(`AdminService: Assigning mentor ${mentorId} to student ${studentId} for subject ${subjectId}. Overrides: ${JSON.stringify(overrides)}`);
+
+      // 1. Find or Create MentorAssignmentRequest
+      // We check for any pending request first
+      let request = await this._requestRepo.findOne({
+        studentId: new mongoose.Types.ObjectId(studentId),
+        subjectId: new mongoose.Types.ObjectId(subjectId),
+        status: 'pending'
+      });
+
+      if (!request) {
+        logger.info(`AdminService: No pending request found. Creating a new one for assignment tracking.`);
+        // Note: studentId, subjectId, mentorId are enough to create a request
+        request = await this._requestRepo.create({
+          studentId: new mongoose.Types.ObjectId(studentId),
+          subjectId: new mongoose.Types.ObjectId(subjectId),
+          mentorId: new mongoose.Types.ObjectId(mentorId),
+          status: 'pending' // Create as pending so approveRequest can process it
+        });
+      }
+
+      // 2. Delegate to MentorRequestService.approveRequest
+      // This will handle:
+      // - Idempotency (won't error if course exists)
+      // - Creation of Course, EnrollmentLink, Sessions
+      // - Status updates for Request and Student Preferences
+      // - Notifications
+      const requestAny = request as any;
+      await this._mentorRequestService.approveRequest(
+        requestAny._id.toString(),
+        adminId || "system", // Use system if adminId not provided
+        {
+          mentorId,
+          days: overrides?.days,
+          timeSlot: overrides?.timeSlot
+        }
+      );
+
+      logger.info(`AdminService: Successfully delegated assignment to MentorRequestService for students ${studentId}`);
+
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(`AdminService: Error assigning mentor:`, error);
+      throw new AppError(
+        `Failed to assign mentor: ${error instanceof Error ? error.message : "Unknown error"}`,
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async reassignMentor(
+    studentId: string, 
+    subjectId: string, 
+    newMentorId: string,
+    adminId?: string,
+    overrides?: {
+      days?: string[];
+      timeSlot?: string;
+    }
+  ): Promise<void> {
+    try {
+      logger.info(`AdminService: Reassigning student ${studentId} to new mentor ${newMentorId} for subject ${subjectId}. Overrides: ${JSON.stringify(overrides)}`);
+      
+      // 1. Find or Create MentorAssignmentRequest
+      // Check for any existing request for this subject (pending or approved)
+      let request = await this._requestRepo.findOne({
+        studentId: new mongoose.Types.ObjectId(studentId),
+        subjectId: new mongoose.Types.ObjectId(subjectId)
+      });
+
+      if (!request) {
+        logger.info(`AdminService: No existing request found for reassignment. Creating a new one.`);
+        request = await this._requestRepo.create({
+          studentId: new mongoose.Types.ObjectId(studentId),
+          subjectId: new mongoose.Types.ObjectId(subjectId),
+          mentorId: new mongoose.Types.ObjectId(newMentorId),
+          status: 'approved' // Create as approved since it's an active reassignment
+        });
+      }
+
+      // 2. Delegate to MentorRequestService.approveRequest
+      // This will handle the course update and session recovery/regeneration
+      await this._mentorRequestService.approveRequest(
+        (request as any)._id.toString(),
+        adminId || "system",
+        {
+          mentorId: newMentorId,
+          days: overrides?.days,
+          timeSlot: overrides?.timeSlot
+        }
+      );
+
+      logger.info(`AdminService: Successfully delegated reassignment to MentorRequestService for student ${studentId}`);
+
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(`AdminService: Error reassigning mentor`, error);
+      throw new AppError(
+        `Failed to reassign mentor: ${error instanceof Error ? error.message : "Unknown error"}`, 
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
 }

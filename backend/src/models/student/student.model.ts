@@ -57,6 +57,27 @@ const studentSchema = new Schema<StudentProfile>(
     hasPaid: { type: Boolean, default: false },
     isTrialCompleted: { type: Boolean, default: false },
     isProfileCompleted: { type: Boolean, default: false },
+    onboardingStatus: { 
+      type: String, 
+      enum: ['registered', 'profile_complete', 'trial_booked', 'trial_attended', 'feedback_submitted', 'subscribed', 'preferences_completed'],
+      default: 'registered' 
+    },
+    preferencesCompleted: { type: Boolean, default: false },
+    preferredSubjects: [{ type: Schema.Types.ObjectId, ref: 'Subject' }],
+    preferredTimeSlots: [{
+      subjectId: { type: Schema.Types.ObjectId, ref: 'Subject' },
+      status: { 
+        type: String, 
+        enum: ['preferences_submitted', 'mentor_requested', 'mentor_assigned'],
+        default: 'preferences_submitted'
+      },
+      assignedMentorId: { type: Schema.Types.ObjectId, ref: 'Mentor' },
+      slots: [{
+        day: String,
+        startTime: String,
+        endTime: String
+      }]
+    }],
     authProvider: {
       type: String,
       enum: ["local", "google"],
@@ -65,6 +86,7 @@ const studentSchema = new Schema<StudentProfile>(
     googleId: { type: String },
     referralCode: { type: String, unique: true, sparse: true },
     referredBy: { type: String },
+    activeSubscriptionId: { type: Schema.Types.ObjectId, ref: 'StudentSubscription' },
   },
   { timestamps: true }
 );

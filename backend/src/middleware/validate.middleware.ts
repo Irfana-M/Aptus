@@ -68,3 +68,17 @@ export const validateParams = (schema: ZodSchema) => {
 
 
 
+
+export const validateObjectId = (paramName: string) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const id = req.params[paramName];
+    if (id && /^[0-9a-fA-F]{24}$/.test(id)) {
+      next();
+    } else {
+      // If it's not a valid ObjectId, skip this route and move to the next one
+      // This prevents literal routes like "available-for-course" from being processed
+      // as dynamic ID routes if they overlap.
+      next('route');
+    }
+  };
+};

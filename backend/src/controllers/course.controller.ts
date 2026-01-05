@@ -100,5 +100,32 @@ export class CourseController {
         .json({ message: "Internal server error", error: err.message });
     }
   };
+
+  public getMentorCourses = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const mentorId = req.user?.id;
+      
+      if (!mentorId) {
+        res.status(HttpStatusCode.UNAUTHORIZED).json({ message: "Mentor not authenticated" });
+        return;
+      }
+
+      const courses = await this._courseService.getCoursesByMentor(mentorId);
+
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: courses,
+      });
+    } catch (error: unknown) {
+      console.error("Error fetching mentor courses:", error);
+      const err = error as Error;
+      res
+        .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
+        .json({ message: "Internal server error", error: err.message });
+    }
+  };
 }
 

@@ -65,7 +65,7 @@ export interface TrialClass {
     syllabus?: string;
     grade?: number | string;
   };
-  status: 'requested' | 'assigned' | 'completed' | 'cancelled';
+  status: 'requested' | 'assigned' | 'completed' | 'cancelled' | 'approved';
   preferredDate: string;
   preferredTime: string;
   scheduledDateTime?: string;

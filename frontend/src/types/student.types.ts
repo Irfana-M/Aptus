@@ -15,6 +15,17 @@ export interface SubscriptionDetails {
   }[];
 }
 
+export interface SubjectPreference {
+  subjectId: string | { _id: string; subjectName: string };
+  slots: {
+    day: string;
+    startTime: string;
+    endTime: string;
+  }[];
+  status?: 'preferences_submitted' | 'mentor_requested' | 'mentor_assigned' | 'active' | 'reassigned';
+  assignedMentorId?: string;
+}
+
 export interface StudentProfile {
   _id: string;
   fullName: string;
@@ -53,4 +64,11 @@ export interface StudentProfile {
   isProfileCompleted?: boolean;
   authProvider?: "local" | "google";
   gradeId?: string;
+  onboardingStatus?: string;
+  preferencesCompleted?: boolean;
+  preferredSubjects?: string[];
+  preferredTimeSlots?: SubjectPreference[];
+  isPaid?: boolean;
+  trialClasses?: any[];
+  enrollments?: any[];
 }

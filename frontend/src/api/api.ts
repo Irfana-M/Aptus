@@ -1,4 +1,5 @@
 import axios from "axios";
+import { AuthContext } from "../utils/authContext";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -24,6 +25,29 @@ api.interceptors.request.use(
     } else if (path.startsWith('/mentor')) {
       token = localStorage.getItem('mentor_accessToken');
       roleHint = 'mentor';
+    } else if (path.startsWith('/trial-class/') || config.url?.includes('/chat/')) {
+        // SHARED ROUTES (Video Call, Chat) -> Use AuthContext for accurate role detection
+        const authContext = AuthContext.getInstance();
+        const activeRole = authContext.getCurrentRole();
+        const activeToken = authContext.getTokenForCurrentRole();
+
+        if (activeToken && activeRole) {
+             console.log(`🔑 [API] Using active context role: ${activeRole}`);
+             token = activeToken;
+             roleHint = activeRole;
+        } 
+        // Fallback heuristics if context is missing (e.g. initial load race condition)
+        else if (localStorage.getItem('student_accessToken')) {
+             token = localStorage.getItem('student_accessToken');
+             roleHint = 'student';
+        } 
+        else if (localStorage.getItem('mentor_accessToken')) {
+             token = localStorage.getItem('mentor_accessToken');
+             roleHint = 'mentor';
+        }
+        else {
+             token = localStorage.getItem('accessToken');
+        }
     } else if (path === '/') {
       // Landing page - determine from API endpoint
       const isAdminRequest = config.url?.includes('/admin/');

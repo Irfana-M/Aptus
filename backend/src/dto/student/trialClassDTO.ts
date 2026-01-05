@@ -34,6 +34,8 @@ export interface TrialClassResponseDto {
     email: string;
   } | undefined;
   meetLink?: string | undefined;
+  sessionType?: string;
+  trialClassId?: string;
   createdAt?: string | undefined;
   updatedAt?: string | undefined;
 }

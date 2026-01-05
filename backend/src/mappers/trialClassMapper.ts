@@ -114,6 +114,8 @@ export class TrialClassMapper {
           : undefined),
       notes: entity.notes,
       feedback: feedbackData,
+      sessionType: 'trial',
+      trialClassId: entityId,
       createdAt: entity.createdAt?.toISOString() || new Date().toISOString(),
       updatedAt: entity.updatedAt?.toISOString() || new Date().toISOString(),
     };

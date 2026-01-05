@@ -62,4 +62,4 @@ const isProd =
     ? process.env.NODE_ENV === "production"
     : import.meta.env.MODE === "production";
 
-export const logger = new Logger(isProd ? LogLevel.WARN : LogLevel.DEBUG);
+export const logger = new Logger(isProd ? LogLevel.WARN : LogLevel.INFO);

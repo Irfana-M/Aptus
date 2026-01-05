@@ -78,5 +78,26 @@ export interface IAdminService {
     days?: string[],
     timeSlot?: string
   ): Promise<{ matches: MentorResponseDto[], alternates: MentorResponseDto[] }>;
+
+  assignMentor(
+    studentId: string, 
+    subjectId: string, 
+    mentorId: string, 
+    adminId?: string,
+    overrides?: {
+      days?: string[];
+      timeSlot?: string;
+    }
+  ): Promise<void>;
+  reassignMentor(
+    studentId: string, 
+    subjectId: string, 
+    newMentorId: string,
+    adminId?: string,
+    overrides?: {
+      days?: string[];
+      timeSlot?: string;
+    }
+  ): Promise<void>;
 }
 

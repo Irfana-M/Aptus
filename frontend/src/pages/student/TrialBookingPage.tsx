@@ -149,17 +149,51 @@ const getAvailableDates = (): number[] => {
   const dates: number[] = [];
   const today = new Date();
   
-  for (let i = 1; i <= 14; i++) {
+  // Start from 0 to include today
+  for (let i = 0; i <= 14; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
     const dayOfWeek = date.getDay();
     
+    // Optional: You might want to allow weekends if user requested "today" specifically?
+    // For now, keeping weekend exclusion but including today if it's a weekday
     if (dayOfWeek !== 0 && dayOfWeek !== 6) {
       dates.push(date.getTime());
     }
   }
   
   return dates;
+};
+
+// Helper to filter time options based on selected date
+const getFilteredTimeOptions = (selectedDate: number | null) => {
+    if (!selectedDate) return TIME_OPTIONS;
+
+    const now = new Date();
+    const selected = new Date(selectedDate);
+    
+    // If selected date is not today, return all options
+    if (selected.getDate() !== now.getDate() || 
+        selected.getMonth() !== now.getMonth() || 
+        selected.getFullYear() !== now.getFullYear()) {
+        return TIME_OPTIONS;
+    }
+
+    // If today, filter out past times
+    // Add 1 hour buffer (user can't book a slot starting in less than 1 hour)
+    const currentHour = now.getHours() + 1; 
+
+    return TIME_OPTIONS.map(option => {
+        if (!option.value) return option; // "Select time" placeholder
+        
+        const [slotHour] = option.value.split(':').map(Number);
+        
+        // Disable past/too-soon slots
+        if (slotHour <= currentHour) {
+            return { ...option, disabled: true, label: `${option.label} (passed)` };
+        }
+        return option;
+    });
 };
 
 const TrialBookingPage: React.FC = () => {
@@ -174,6 +208,7 @@ const TrialBookingPage: React.FC = () => {
   const subjects = useSelector(selectSubjects);
   const gradesLoading = useSelector(selectGradesLoading);
   const subjectsLoading = useSelector(selectSubjectsLoading);
+  const studentProfile = useSelector((state: RootState) => state.student.profile);
 
   // State
   const [formData, setFormData] = useState<FormData>({
@@ -230,7 +265,51 @@ const TrialBookingPage: React.FC = () => {
   useEffect(() => {
     dispatch(fetchGrades());
     checkExistingBookings();
-  }, [dispatch, checkExistingBookings]);
+    
+    // Safety check: ensure profile is loaded if missing (though ProtectedRoute should handle this)
+    if (!studentProfile && user) {
+        // dispatch(fetchStudentProfile()); // optional
+    }
+  }, [dispatch, checkExistingBookings, studentProfile, user]);
+
+  // Pre-fill form from Student Profile
+  useEffect(() => {
+    if (studentProfile && !hasExistingBooking && !formData.grade) {
+        console.log('📝 Pre-filling form from profile:', studentProfile);
+        
+        let targetGradeId = '';
+        
+        // 1. Try to find grade ID directly
+        if (studentProfile.gradeId) {
+            const gradeIdVal = studentProfile.gradeId as any;
+            targetGradeId = typeof gradeIdVal === 'string' 
+                ? gradeIdVal 
+                : gradeIdVal._id || String(gradeIdVal);
+        } 
+        // 2. Try to match by grade name if no ID
+        else if (studentProfile.academicDetails?.grade && grades.length > 0) {
+            const gradeName = studentProfile.academicDetails.grade;
+            // Try to find a grade object that matches the name
+            const matchingGrade = grades.find(g => g.name === gradeName || g.name.includes(gradeName));
+            if (matchingGrade) targetGradeId = matchingGrade.id;
+        }
+
+        const targetSyllabus = studentProfile.academicDetails?.syllabus || '';
+
+        if (targetGradeId) {
+            setFormData(prev => ({
+                ...prev,
+                studentName: studentProfile.fullName || prev.studentName,
+                email: studentProfile.email || prev.email,
+                grade: targetGradeId,
+                syllabus: targetSyllabus
+            }));
+            
+            // Trigger syllabus options population
+            dispatch(setSelectedGrade(targetGradeId));
+        }
+    }
+  }, [studentProfile, grades, hasExistingBooking, formData.grade, dispatch]);
 
   // Form Data Effects
   useEffect(() => {
@@ -244,11 +323,16 @@ const TrialBookingPage: React.FC = () => {
 
         const uniqueSyllabi = [...new Set(syllabiForThisGrade)];
         setAvailableSyllabi(uniqueSyllabi);
+        
+        // Auto-select syllabus if there's only one option and it's not set
+        if (uniqueSyllabi.length === 1 && !formData.syllabus) {
+             setFormData(prev => ({ ...prev, syllabus: uniqueSyllabi[0] }));
+        }
       }
     } else {
       setAvailableSyllabi([]);
     }
-  }, [formData.grade, grades]);
+  }, [formData.grade, grades, formData.syllabus]);
 
   useEffect(() => {
     if (formData.grade && formData.syllabus) {
@@ -710,11 +794,12 @@ const TrialBookingPage: React.FC = () => {
             }
             className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition appearance-none cursor-pointer"
           >
-            {TIME_OPTIONS.map((option) => (
+            {getFilteredTimeOptions(selectedDate).map((option) => (
               <option
                 key={option.value}
                 value={option.value}
                 disabled={option.disabled}
+                className={option.disabled ? "text-gray-400 bg-gray-100" : ""}
               >
                 {option.label}
               </option>

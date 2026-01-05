@@ -92,3 +92,10 @@ export const requireAuth = (
     ));
   }
 };
+
+import { requireRole } from "./role.middleware";
+
+export class AuthMiddleware {
+  static verifyToken = requireAuth;
+  static authorizeRole = requireRole;
+}

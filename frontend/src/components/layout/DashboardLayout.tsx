@@ -10,6 +10,7 @@ interface DashboardLayoutProps {
   onLogout: () => void;
   logoSrc?: string;
   appTitle?: string;
+  extraContent?: React.ReactNode;
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ 
@@ -19,7 +20,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     title,
     onLogout,
     logoSrc,
-    appTitle
+    appTitle,
+    extraContent
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -32,6 +34,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         onLogout={onLogout}
         logoSrc={logoSrc}
         title={appTitle}
+        extraContent={extraContent}
       />
       
       <div className="flex-1 flex flex-col min-w-0 relative">

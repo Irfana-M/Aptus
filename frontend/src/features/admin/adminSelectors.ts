@@ -24,6 +24,13 @@ export const selectAllMentors = (state: RootState) => {
 export const selectMentorProfile = (state: RootState) =>
   state.admin.mentorProfile;
 export const selectAdminLoading = (state: RootState) => state.admin.loading;
+export const selectStudentsLoading = (state: RootState) => state.admin.studentsLoading;
+export const selectMentorsLoading = (state: RootState) => state.admin.mentorsLoading;
+export const selectMentorProfileLoading = (state: RootState) => state.admin.mentorProfileLoading;
+export const selectTrialClassesLoading = (state: RootState) => state.admin.trialClassesLoading;
+export const selectTrialClassDetailsLoading = (state: RootState) => state.admin.trialClassDetailsLoading;
+export const selectCoursesLoading = (state: RootState) => state.admin.coursesLoading;
+export const selectStudentProfileLoading = (state: RootState) => state.admin.studentProfileLoading;
 export const selectAdminError = (state: RootState) => state.admin.error;
 export const selectAdminSuccess = (state: RootState) => state.admin.success;
 

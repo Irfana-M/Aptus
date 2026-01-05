@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, Mic, MicOff, Video as VideoIcon, VideoOff, ArrowRight } from 'lucide-react';
+import { ChatWindow } from './ChatWindow';
 
 interface Participant {
   id: string;
@@ -11,19 +12,24 @@ interface Participant {
 }
 
 interface ClassroomRightPanelProps {
+  sessionId: string;
   currentUser: {
+    id: string;
     name: string;
     role: string;
     avatar?: string;
   };
   participants: Participant[];
-  onFeedback: () => void;
+  onFeedback?: () => void;
+  isSocketConnected?: boolean;
 }
 
 export const ClassroomRightPanel: React.FC<ClassroomRightPanelProps> = ({
+  sessionId,
   currentUser,
   participants,
   onFeedback,
+  isSocketConnected = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'participants' | 'chat'>('participants');
 
@@ -80,9 +86,9 @@ export const ClassroomRightPanel: React.FC<ClassroomRightPanelProps> = ({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
         {activeTab === 'participants' ? (
-          <div className="space-y-6 pb-6">
+          <div className="px-6 space-y-6 pb-6 mt-4">
             {/* Mentors Section */}
             <div>
               <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
@@ -108,22 +114,25 @@ export const ClassroomRightPanel: React.FC<ClassroomRightPanelProps> = ({
             </div>
           </div>
         ) : (
-          <div className="flex flex-col h-full items-center justify-center text-gray-400">
-            <p className="text-xs italic">Chat feature coming soon...</p>
-          </div>
+          <ChatWindow 
+            sessionId={sessionId} 
+            currentUserId={currentUser.id} 
+            isSocketConnected={isSocketConnected}
+          />
         )}
       </div>
 
-      {/* Feedback Button */}
-      <div className="p-6 border-t border-gray-50">
-        <button 
-          onClick={onFeedback}
-          className="w-full bg-[#1A1A80] hover:bg-[#121260] text-white py-3 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all group shadow-lg shadow-[#1A1A80]/20"
-        >
-          Feedback
-          <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-        </button>
-      </div>
+      {onFeedback && (
+        <div className="p-6 border-t border-gray-50">
+          <button 
+            onClick={onFeedback}
+            className="w-full bg-[#1A1A80] hover:bg-[#121260] text-white py-3 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all group shadow-lg shadow-[#1A1A80]/20"
+          >
+            Feedback
+            <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

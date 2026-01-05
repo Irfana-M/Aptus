@@ -1,11 +1,13 @@
-// src/services/trialClass.service.ts
 import type { ITrialClassDocument } from "@/models/student/trialClass.model";
+import type { OnboardingEvent } from "@/enums/studentOnboarding.enum";
 
 import { inject, injectable } from "inversify";
 import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
 import type { ITrialClassService } from "@/interfaces/services/ITrialClassService";
+import type { IStudentService } from "@/interfaces/services/IStudentService";
+import type { TrialEligibilityPolicy } from "@/domain/policy/TrialEligibilityPolicy";
 import type { TrialClassRequestDto, TrialClassResponseDto } from "@/dto/student/trialClassDTO";
-import { TYPES } from "../types";
+import { TYPES } from "@/types";
 import { logger } from "@/utils/logger";
 import { AppError } from "@/utils/AppError";
 import { HttpStatusCode } from "@/constants/httpStatus";
@@ -16,7 +18,11 @@ import { Types } from "mongoose";
 export class TrialClassService implements ITrialClassService {
   constructor(
     @inject(TYPES.ITrialClassRepository)
-    private trialRepo: ITrialClassRepository
+    private trialRepo: ITrialClassRepository,
+    @inject(TYPES.TrialEligibilityPolicy)
+    private policy: TrialEligibilityPolicy,
+    @inject(TYPES.IStudentService)
+    private studentService: IStudentService
   ) {}
 
   private getStringId(
@@ -41,7 +47,7 @@ export class TrialClassService implements ITrialClassService {
     studentId: string
   ): Promise<TrialClassResponseDto> {
     try {
-      this.validateTrialClassRequest(data);
+      this.policy.validateRequest(data);
       await this.validateSubjectExists(data.subject);
 
       const newTrial = await this.trialRepo.create({
@@ -56,6 +62,14 @@ export class TrialClassService implements ITrialClassService {
       if (!populatedTrial) throw new AppError("Failed to create trial class", HttpStatusCode.INTERNAL_SERVER_ERROR);
 
       logger.info(`Trial class requested by student ${studentId}`);
+      
+      // Advance onboarding to TRIAL_BOOKED
+      try {
+          await this.studentService.advanceOnboarding(studentId, 'TRIAL_BOOKED' as OnboardingEvent);
+      } catch (e) {
+          logger.warn(`Could not advance onboarding to TRIAL_BOOKED for ${studentId}`, e);
+      }
+
       return TrialClassMapper.toResponseDto(populatedTrial);
     } catch (err) {
       logger.error("Error creating trial class", err);
@@ -94,6 +108,11 @@ export class TrialClassService implements ITrialClassService {
 
   async assignMentor(trialClassId: string, mentorId: string, meetLink: string): Promise<TrialClassResponseDto> {
     try {
+      const trial = await this.trialRepo.findById(trialClassId);
+      if (!trial) throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
+      
+      this.policy.canAssignMentor(trial);
+
       const updated = await this.trialRepo.update(trialClassId, {
         mentor: new Types.ObjectId(mentorId) as unknown as Types.ObjectId,
         meetLink,
@@ -122,12 +141,7 @@ export class TrialClassService implements ITrialClassService {
       const existingTrial = await this.trialRepo.findById(trialClassId);
       if (!existingTrial) throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
 
-      const trialStudentId = this.getStringId(existingTrial.student);
-      if (trialStudentId !== studentId) throw new AppError("Access denied", HttpStatusCode.FORBIDDEN);
-
-      if (existingTrial.status === "completed" || existingTrial.status === "cancelled") {
-        throw new AppError("Cannot update completed or cancelled trial class", HttpStatusCode.BAD_REQUEST);
-      }
+      this.policy.canUpdate(existingTrial, studentId);
 
       if (updates.subject) await this.validateSubjectExists(updates.subject);
 
@@ -156,8 +170,9 @@ export class TrialClassService implements ITrialClassService {
       const trial = await this.trialRepo.findById(trialClassId);
       if (!trial) throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
 
+      this.policy.canSubmitFeedback(trial, studentId);
+
       const trialStudentId = this.getStringId(trial.student);
-      if (trialStudentId !== studentId) throw new AppError("Access denied", HttpStatusCode.FORBIDDEN);
 
       const updatedTrial = await this.trialRepo.update(trialClassId, {
         feedback: { rating: feedback.rating, comment: feedback.comment || "" },
@@ -166,12 +181,20 @@ export class TrialClassService implements ITrialClassService {
 
       if (!updatedTrial) throw new AppError("Failed to submit feedback", HttpStatusCode.INTERNAL_SERVER_ERROR);
 
-      const { StudentModel } = await import("@/models/student/student.model");
+      const { StudentModel } = await import("../models/student/student.model");
       await StudentModel.findByIdAndUpdate(trialStudentId, { isTrialCompleted: true });
+      
+      // Advance onboarding status to FEEDBACK_SUBMITTED
+      await this.studentService.advanceOnboarding(trialStudentId, 'FEEDBACK_SUBMITTED' as OnboardingEvent);
 
       return TrialClassMapper.toResponseDto(updatedTrial);
-    } catch (err) {
-      logger.error("Error submitting feedback", err);
+    } catch (err: any) {
+      logger.error("Error submitting feedback", {
+          message: err?.message,
+          stack: err?.stack,
+          trialClassId,
+          studentId
+      });
       throw err instanceof AppError ? err : new AppError("Unable to submit feedback", HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
@@ -226,6 +249,16 @@ export class TrialClassService implements ITrialClassService {
       const updated = await this.trialRepo.update(trialClassId, updateData as unknown as Partial<ITrialClassDocument>);
       if (!updated) throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
 
+      if (status === "completed") {
+        const trialStudentId = this.getStringId(updated.student);
+        const { StudentModel } = await import("../models/student/student.model");
+        await StudentModel.findByIdAndUpdate(trialStudentId, { isTrialCompleted: true });
+        logger.info(`✅ Student ${trialStudentId} marked as isTrialCompleted: true`);
+
+        // Advance onboarding status to TRIAL_ATTENDED
+        await this.studentService.advanceOnboarding(trialStudentId, 'TRIAL_ATTENDED' as OnboardingEvent);
+      }
+
       return TrialClassMapper.toResponseDto(updated);
     } catch (err) {
       logger.error("Error updating trial class status", err);
@@ -257,22 +290,9 @@ export class TrialClassService implements ITrialClassService {
     }
   }
 
-  private validateTrialClassRequest(data: TrialClassRequestDto): void {
-    const preferredDate = new Date(data.preferredDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (preferredDate < today) {
-      throw new AppError("Preferred date cannot be in the past", HttpStatusCode.BAD_REQUEST);
-    }
-
-    if (!data.preferredTime.match(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)) {
-      throw new AppError("Invalid time format. Use HH:MM (24-hour)", HttpStatusCode.BAD_REQUEST);
-    }
-  }
 
   private async validateSubjectExists(subjectId: string): Promise<void> {
-    const { Subject } = await import("@/models/subject.model");
+    const { Subject } = await import("../models/subject.model");
     const subject = await Subject.findById(subjectId);
 
     if (!subject) throw new AppError("Subject not found", HttpStatusCode.BAD_REQUEST);

@@ -1,5 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { adminAuthApi, adminCourseApi, adminStudentApi, adminRequestsApi, type AddStudentRequestDto, type AddStudentResponseDto, type AdminLoginDto, type StudentsWithStatsResponse, type PaginatedResponse } from "./adminApi";
+import { adminAuthApi, adminCourseApi, adminStudentApi, adminRequestsApi, adminMentorRequestApi, type AddStudentRequestDto, type AddStudentResponseDto, type AdminLoginDto, type StudentsWithStatsResponse, type PaginatedResponse } from "./adminApi";
 import type { AdminLoginResponse } from "../../types/dtoTypes";
 import { adminMentorApi } from "./adminApi";
 import type { RootState } from "../../app/store";
@@ -36,6 +36,7 @@ import type { Course } from "../../types/courseTypes";
       isBooked: boolean;
     }[];
   }[];
+  hasConflict?: boolean;
 }
 
 export const adminLoginThunk = createAsyncThunk<
@@ -741,7 +742,7 @@ export const updateTrialClassStatus = createAsyncThunk<
 
 export const fetchAvailableMentorsForCourse = createAsyncThunk<
   { matches: AvailableMentorDto[], alternates: AvailableMentorDto[] },
-  { gradeId?: string; subject: string; days?: string[]; timeSlot?: string },
+  { gradeId?: string; subjectId: string; days?: string[]; timeSlot?: string; excludeCourseId?: string },
   { rejectValue: string }
 >(
   "admin/fetchAvailableMentorsForCourse",
@@ -764,7 +765,7 @@ export const createOneToOneCourse = createAsyncThunk<
     gradeId: string;
     subjectId: string;
     mentorId: string;
-    studentId: string;
+    studentId?: string;
     schedule: {
       days: string[];
       timeSlot?: string;
@@ -788,6 +789,41 @@ export const createOneToOneCourse = createAsyncThunk<
     }
   }
 );
+
+export const updateCourseAdmin = createAsyncThunk<
+  Course,
+  {
+    courseId: string;
+    data: {
+      gradeId?: string;
+      subjectId?: string;
+      mentorId?: string;
+      studentId?: string;
+      schedule?: {
+        days: string[];
+        timeSlot?: string;
+      };
+      startDate?: string;
+      endDate?: string;
+      fee?: number;
+      status?: string;
+    };
+  },
+  { rejectValue: string }
+>(
+  "admin/updateCourse",
+  async ({ courseId, data }, { rejectWithValue }) => {
+    try {
+      const response = await adminCourseApi.updateCourse(courseId, data);
+      return response.data.data;
+    } catch (error: unknown) {
+      return rejectWithValue(
+        getApiErrorMessage(error, "Failed to update course")
+      );
+    }
+  }
+);
+
 // adminThunk.ts - Fix fetchAllCoursesAdmin
 export const fetchAllCoursesAdmin = createAsyncThunk<
   Course[], 
@@ -998,6 +1034,52 @@ export const updateCourseRequestStatusAdmin = createAsyncThunk<
   }
 });
 
+// Mentor Requests Thunks
+
+export const fetchAllMentorRequestsAdmin = createAsyncThunk<
+  any[], // Replace with specific type if available, e.g., MentorAssignmentRequest
+  void,
+  { rejectValue: string }
+>("admin/fetchAllMentorRequests", async (_, { rejectWithValue }) => {
+  try {
+    const response = await adminMentorRequestApi.fetchAllRequests();
+    if (response.data.success) {
+      return response.data.data;
+    }
+    return rejectWithValue("Failed to fetch mentor requests");
+  } catch (error: unknown) {
+    return rejectWithValue(getApiErrorMessage(error, "Failed to fetch mentor requests"));
+  }
+});
+
+export const approveMentorRequestAdmin = createAsyncThunk<
+  { message: string; data: any },
+  string,
+  { rejectValue: string }
+>("admin/approveMentorRequest", async (requestId, { rejectWithValue, dispatch }) => {
+  try {
+    const response = await adminMentorRequestApi.approveRequest(requestId);
+    dispatch(fetchAllMentorRequestsAdmin()); // Refresh list
+    return response.data;
+  } catch (error: unknown) {
+    return rejectWithValue(getApiErrorMessage(error, "Failed to approve request"));
+  }
+});
+
+export const rejectMentorRequestAdmin = createAsyncThunk<
+  { message: string; data: any },
+  { requestId: string; reason: string },
+  { rejectValue: string }
+>("admin/rejectMentorRequest", async ({ requestId, reason }, { rejectWithValue, dispatch }) => {
+  try {
+    const response = await adminMentorRequestApi.rejectRequest(requestId, reason);
+    dispatch(fetchAllMentorRequestsAdmin()); // Refresh list
+    return response.data;
+  } catch (error: unknown) {
+    return rejectWithValue(getApiErrorMessage(error, "Failed to reject request"));
+  }
+});
+
 export const fetchStudentProfile = createAsyncThunk<
   StudentProfile,
   string,
@@ -1019,3 +1101,51 @@ export const fetchStudentProfile = createAsyncThunk<
     return rejectWithValue(getApiErrorMessage(error, "Failed to fetch student profile"));
   }
 });
+
+export const fetchAllEnrollmentsAdmin = createAsyncThunk<
+  any[],
+  void,
+  { rejectValue: string }
+>("admin/fetchAllEnrollments", async (_, { rejectWithValue }) => {
+  try {
+    const { adminEnrollmentApi } = await import("./adminApi");
+    const response = await adminEnrollmentApi.fetchAllEnrollments();
+    return response.data.data;
+  } catch (error: unknown) {
+    return rejectWithValue(getApiErrorMessage(error, "Failed to fetch enrollments"));
+  }
+});
+
+export const assignMentorToStudent = createAsyncThunk<
+  { message: string; course?: Course; enrollment?: any },
+  { studentId: string; subjectId: string; mentorId: string; preferredDate?: string; days?: string[]; timeSlot?: string },
+  { rejectValue: string }
+>(
+  "admin/assignMentorToStudent",
+  async (data, { rejectWithValue, dispatch }) => {
+    try {
+      const response = await adminStudentApi.assignMentorToStudent(data);
+      dispatch(fetchAllEnrollmentsAdmin()); // Refresh enrollments
+      return response.data;
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error, "Failed to assign mentor"));
+    }
+  }
+);
+
+export const reassignMentorToStudent = createAsyncThunk<
+  { message: string; course?: Course },
+  { studentId: string; subjectId: string; newMentorId: string; reason?: string; days?: string[]; timeSlot?: string },
+  { rejectValue: string }
+>(
+  "admin/reassignMentorToStudent",
+  async (data, { rejectWithValue, dispatch }) => {
+    try {
+      const response = await adminStudentApi.reassignMentorToStudent(data);
+      dispatch(fetchAllEnrollmentsAdmin()); // Refresh enrollments
+      return response.data;
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error, "Failed to reassign mentor"));
+    }
+  }
+);

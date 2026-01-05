@@ -1,5 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import type { MentorProfile } from "@/interfaces/models/mentor.interface";
+import { ApprovalStatus } from "../../domain/enums/ApprovalStatus";
 const academicQualificationSchema = new Schema({
   institutionName: String,
   degree: String,
@@ -29,7 +30,6 @@ const subjectProficiencySchema = new Schema({
 const timeSlotSchema = new Schema({
   startTime: { type: String, required: true },
   endTime: { type: String, required: true },
-  isBooked: { type: Boolean, default: false }
 });
 
 const availabilitySchema = new Schema({
@@ -58,7 +58,9 @@ const mentorSchema = new Schema<MentorProfile>(
     rating: { type: Number, default: 0 },
     totalRatings: { type: Number, default: 0 },
     expertise: [{ type: String }], 
-    maxStudentsPerWeek: { type: Number, default: 10 },
+    maxStudentsPerWeek: { type: Number, default: 20 },
+    maxSessionsPerDay: { type: Number, default: 4 },
+    maxSessionsPerWeek: { type: Number, default: 20 },
     currentWeeklyBookings: { type: Number, default: 0 },
     isActive: { type: Boolean, default: true },
     isVerified: { type: Boolean, default: false },
@@ -66,8 +68,8 @@ const mentorSchema = new Schema<MentorProfile>(
     isProfileComplete: { type: Boolean, default: false },
     approvalStatus: {
       type: String,
-      enum: ["not_submitted", "pending", "approved", "rejected"],
-      default: "not_submitted",
+      enum: Object.values(ApprovalStatus),
+      default: ApprovalStatus.NOT_SUBMITTED,
     },
     authProvider: {
       type: String,

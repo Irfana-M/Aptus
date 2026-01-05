@@ -24,7 +24,6 @@
     // Environment Settings
     "module": "ESNext",
     "target": "ES2020",
-    //"types": [],
     "esModuleInterop": true,
     "allowImportingTsExtensions": false,
     "allowSyntheticDefaultImports": true,
@@ -37,7 +36,6 @@
       "reflect-metadata",
       "node"
     ],
-    // and npm install -D @types/node
     // Other Outputs
     "sourceMap": true,
     "declaration": true,
@@ -45,13 +43,6 @@
     // Stricter Typechecking Options
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
-    // Style Options
-    // "noImplicitReturns": true,
-    // "noImplicitOverride": true,
-    // "noUnusedLocals": true,
-    // "noUnusedParameters": true,
-    // "noFallthroughCasesInSwitch": true,
-    // "noPropertyAccessFromIndexSignature": true,
     // Recommended Options
     "strict": true,
     "moduleResolution": "Node",
@@ -68,6 +59,5 @@
   "exclude": [
     "node_modules",
     "dist"
-  ],
-  "ignoreDeprecations": "6.0"
+  ]
 }

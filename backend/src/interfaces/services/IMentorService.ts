@@ -22,4 +22,5 @@ export interface IMentorService {
   getMentorTrialClasses(mentorId: string): Promise<unknown[]>;
   getById(id: string): Promise<MentorResponseDto | null>;
   getMentorProfile(mentorId: string): Promise<MentorProfile | null>;
+  normalizeMentorAvailability(mentorId: string): Promise<void>;
 }

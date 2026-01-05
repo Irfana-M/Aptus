@@ -17,7 +17,10 @@ dotenv.config();
 
 import app from "./app";
 import { container } from "./inversify.config";
+(global as any).container = container;
 import { SocketService } from "./services/SocketService";
+import { CronService } from "./services/CronService";
+import { NotificationManager } from "./services/NotificationManager";
 import { TYPES } from "./types";
 
 const PORT = 5000;
@@ -34,3 +37,13 @@ console.log("✅ HTTP Server running on port:", PORT);
 console.log("✅ SocketService attached to HTTP server");
 console.log("✅ SocketService initialized");
 console.log("📡 WebSocket server should be ready at:", `ws://localhost:${PORT}`);
+
+// Initialize Notification Manager
+const notificationManager = container.get<NotificationManager>(TYPES.INotificationManager);
+notificationManager.initialize();
+console.log("🔔 Notification Manager initialized");
+
+// Start Cron Jobs
+const cronService = container.get<CronService>(TYPES.CronService);
+cronService.start();
+console.log("⏰ Cron Jobs started");

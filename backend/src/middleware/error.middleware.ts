@@ -11,8 +11,13 @@ export const errorHandler: ErrorRequestHandler = (
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   next
 ) => {
+  console.error('🚨 ERROR HANDLER CALLED');
+  console.error('🚨 Error:', err);
+  console.error('🚨 Error message:', err.message);
+  console.error('🚨 Error stack:', err.stack);
+  
   let statusCode = HttpStatusCode.INTERNAL_SERVER_ERROR;
-  let message = "Internal Server Error";
+  let message = err.message || "Internal Server Error";
 
   if (err instanceof ZodError) {
     statusCode = HttpStatusCode.BAD_REQUEST;

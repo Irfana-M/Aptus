@@ -26,6 +26,7 @@ export const STUDENT_ROUTES = {
   MY_COURSES: "/courses",
   PAYMENTS: "/payments",
   PROFILE: "/profile",
+  PREFERENCES: "/preferences",
 };
 
 export const ADMIN_ROUTES = {
@@ -56,6 +57,8 @@ export const ADMIN_ROUTES = {
   SUBJECTS: "/subjects",
   COURSE_REQUESTS: "/course-requests",
   COURSE_REQUEST_STATUS: "/course-requests/:id/status",
+  ENROLLMENTS: "/enrollments",
+  MENTOR_REQUESTS: "/mentor-requests",
 };
 
 export const MENTOR_ROUTES = {
@@ -64,4 +67,5 @@ export const MENTOR_ROUTES = {
   TRIAL_CLASSES: "/me/trial-classes",
   TRIAL_CLASS_STATUS: "/me/trial-classes/:id/status",
   PROFILE: "/me/profile",
+  COURSES: "/me/courses",
 };

@@ -17,7 +17,8 @@ export class CourseAdminController {
 
   getAvailableMentors = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { gradeId, subjectId, dayOfWeek, timeSlot, days } = req.query;
+        const { gradeId, subjectId, dayOfWeek, timeSlot, days, excludeCourseId } = req.query;
+        logger.info(`🔍 [CourseAdminController] Fetching available mentors:`, { gradeId, subjectId, days, timeSlot });
         
         const params: { 
           gradeId: string; 
@@ -25,10 +26,12 @@ export class CourseAdminController {
           dayOfWeek?: number; 
           timeSlot?: string; 
           days?: string[]; 
+          excludeCourseId?: string;
         } = {
           gradeId: (Array.isArray(gradeId) ? (gradeId[0] as string) : (gradeId as string)),
           subjectId: (Array.isArray(subjectId) ? (subjectId[0] as string) : (subjectId as string)),
           timeSlot: timeSlot as string,
+          excludeCourseId: excludeCourseId as string,
         };
         
         if (dayOfWeek) {
@@ -36,20 +39,34 @@ export class CourseAdminController {
         }
         
         if (days) {
-           params.days = Array.isArray(days) ? (days as string[]) : [days as string];
+           params.days = Array.isArray(days) 
+             ? (days as string[]) 
+             : (days as string).split(',').filter(d => d.trim().length > 0);
         }
 
         const mentors = await this.courseService.getAvailableMentorsForCourse(params);
+        logger.info(`✅ [CourseAdminController] Found ${mentors.matches.length} matches and ${mentors.alternates.length} alternates for ${subjectId}`);
         res.json({ success: true, data: mentors });
       } catch (err) {
         next(err);
       }
   };
 
-  createOneToOneCourse = async (req: Request, res: Response, next: NextFunction) => {
+  createEnrollment = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const course = await this.courseService.createOneToOneCourse(req.body);
+      const course = await this.courseService.createEnrollment(req.body);
       res.status(HttpStatusCode.CREATED).json({ success: true, data: course });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  updateOneToOneCourse = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { courseId } = req.params;
+      if (!courseId) throw new AppError("Course ID is required", HttpStatusCode.BAD_REQUEST);
+      const course = await this.courseService.updateOneToOneCourse(courseId, req.body);
+      res.status(HttpStatusCode.OK).json({ success: true, data: course });
     } catch (err) {
       next(err);
     }

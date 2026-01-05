@@ -119,9 +119,17 @@ export const CourseDetailsModal: React.FC<CourseDetailsModalProps> = ({ course, 
                         <User size={14} /> Mentor
                     </h3>
                     <div className="flex items-center gap-3">
-                         <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                             {course.mentor?.fullName?.charAt(0) || 'M'}
-                         </div>
+                         {course.mentor?.profileImageUrl || course.mentor?.profilePicture ? (
+                           <img 
+                             src={course.mentor?.profileImageUrl || course.mentor?.profilePicture} 
+                             alt={course.mentor?.fullName} 
+                             className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
+                           />
+                         ) : (
+                           <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                               {course.mentor?.fullName?.charAt(0) || 'M'}
+                           </div>
+                         )}
                          <div>
                              <p className="font-medium text-gray-900">{course.mentor?.fullName || 'Unassigned'}</p>
                          </div>

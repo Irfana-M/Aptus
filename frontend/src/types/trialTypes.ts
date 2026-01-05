@@ -53,6 +53,8 @@ export interface TrialClass {
   notes?: string;
   scheduledDateTime?: string;
   feedback?: TrialClassFeedback;
+  trialClassId?: string;
+  sessionType?: string;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -2,9 +2,11 @@ import React, { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../../app/store";
-import { fetchStudentProfile } from "../../features/admin/adminThunk";
+import { fetchStudentProfile, fetchAllEnrollmentsAdmin, assignMentorToStudent, reassignMentorToStudent } from "../../features/admin/adminThunk";
 import { Sidebar } from "../../components/admin/Sidebar";
 import { Topbar } from "../../components/admin/Topbar";
+import FindMatchModal from "./components/FindMatchModal";
+import toast from "react-hot-toast";
 import {
   User,
   Mail,
@@ -25,12 +27,51 @@ export const StudentProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
 
-  const { selectedStudentProfile: profile, loading } = useSelector(
+  const { selectedStudentProfile: profile, studentProfileLoading: loading } = useSelector(
     (state: RootState) => state.admin
   );
 
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [activeNav, setActiveNav] = React.useState("Students");
+  const [isMatchModalOpen, setIsMatchModalOpen] = React.useState(false);
+  const [matchRequest, setMatchRequest] = React.useState<any>(null);
+
+  const handleOpenMatchModal = (pref: any) => {
+    if (!profile) return;
+    const subjectId = typeof pref.subjectId === 'object' ? pref.subjectId._id : pref.subjectId;
+    const subjectName = typeof pref.subjectId === 'object' ? pref.subjectId.subjectName : `Subject ID: ${pref.subjectId}`;
+    
+      const isReassign = pref.status === 'mentor_assigned' || profile.enrollments?.some((e: any) => 
+      (e.course?.subject?._id === subjectId || e.course?.subject === subjectId) && 
+      e.status === 'active'
+    );
+
+    setMatchRequest({
+      _id: `pref-${subjectId}`,
+      subject: subjectId,
+      subjectName: subjectName,
+      grade: typeof profile.gradeId === 'object' ? (profile.gradeId as any)._id : profile.gradeId,
+      preferredDays: pref.slots.map((s: any) => s.day),
+      timeSlot: pref.slots.length > 0 ? `${pref.slots[0].startTime} - ${pref.slots[0].endTime}` : "",
+      student: {
+        _id: profile._id,
+        fullName: profile.fullName
+      },
+      plan: profile.subscription?.plan,
+      status: isReassign ? 'active' : pref.status
+    });
+    setIsMatchModalOpen(true);
+  };
+
+
+  
+  const handleMatchConfirmed = () => {
+    if (studentId) {
+      dispatch(fetchStudentProfile(studentId));
+      dispatch(fetchAllEnrollmentsAdmin());
+      toast.success("Course booked and profile updated!");
+    }
+  };
 
   useEffect(() => {
     if (studentId) {
@@ -155,7 +196,7 @@ export const StudentProfilePage: React.FC = () => {
                   <h1 className="text-2xl font-bold text-gray-900">
                     {profile.fullName}
                   </h1>
-                  {getStatusBadge(profile.isVerified, profile.isBlocked)}
+                  {getStatusBadge(profile.isVerified || false, profile.isBlocked || false)}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
                   <div className="flex items-center text-gray-600">
@@ -169,11 +210,11 @@ export const StudentProfilePage: React.FC = () => {
                   <div className="flex items-center text-gray-600">
                     <Calendar className="w-4 h-4 mr-2" />
                     Joined{" "}
-                    {new Date(profile.createdAt).toLocaleDateString("en-US", {
+                    {profile.createdAt ? new Date(profile.createdAt).toLocaleDateString("en-US", {
                       year: "numeric",
                       month: "long",
                       day: "numeric",
-                    })}
+                    }) : "N/A"}
                   </div>
                   {profile.isPaid && (
                     <div className="flex items-center text-blue-600">
@@ -305,7 +346,7 @@ export const StudentProfilePage: React.FC = () => {
                     Grade
                   </label>
                   <p className="text-gray-900">
-                    {profile.gradeId?.name || profile.academicDetails?.grade || "N/A"}
+                    {typeof profile.gradeId === 'object' ? (profile.gradeId as any).name : (profile.academicDetails?.grade || "N/A")}
                   </p>
                 </div>
                 <div>
@@ -428,6 +469,117 @@ export const StudentProfilePage: React.FC = () => {
             </div>
           </div>
 
+          {/* Course Preferences & Availability */}
+          {profile.preferencesCompleted && profile.preferredTimeSlots && profile.preferredTimeSlots.length > 0 && (
+            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm mt-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Clock className="w-5 h-5 mr-2 text-purple-600" />
+                Course Preferences & Availability
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {profile.preferredTimeSlots.map((pref, idx) => {
+                  // Skip if it doesn't have slots (legacy format)
+                  if (!pref.slots) return null;
+                  
+                  return (
+                    <div key={idx} className="border border-gray-100 rounded-lg p-4 bg-gray-50/50">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-bold text-gray-900">
+                          {typeof pref.subjectId === 'object' ? pref.subjectId.subjectName : `Subject ID: ${pref.subjectId}`}
+                        </h3>
+                        <span className="px-2 py-1 bg-purple-100 text-purple-700 text-[10px] font-bold uppercase rounded">
+                          {pref.slots.length} Slots
+                        </span>
+                      </div>
+                      
+                      <div className="flex flex-col gap-3">
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                                  (pref as any).status === 'mentor_requested' ? 'bg-yellow-100 text-yellow-800' :
+                                  (pref as any).status === 'mentor_assigned' ? 'bg-green-100 text-green-800' :
+                                  (pref as any).status === 'active' ? 'bg-indigo-100 text-indigo-800' :
+                                  'bg-gray-100 text-gray-800'
+                              }`}>
+                                  {(pref as any).status ? (pref as any).status.replace('_', ' ') : 'Preferences Submitted'}
+                              </span>
+                          </div>
+                          {pref.slots.map((slot, sIdx) => (
+                            <div key={sIdx} className="flex items-center justify-between text-sm bg-white p-2 rounded border border-gray-100 shadow-sm">
+                              <span className="font-medium text-gray-700">{slot.day}</span>
+                              <span className="text-gray-500">{slot.startTime} - {slot.endTime}</span>
+                            </div>
+                          ))}
+                          
+                          {/* Display Assigned Mentor if available */}
+                          {(pref as any).assignedMentorId && (
+                            <div className="mt-2 p-2 bg-purple-50 rounded border border-purple-100">
+                                <span className="text-xs text-purple-600 font-bold block mb-1">ASSIGNED MENTOR</span>
+                                <div className="text-sm font-medium text-gray-800">
+                                    {typeof (pref as any).assignedMentorId === 'object' 
+                                        ? (pref as any).assignedMentorId.fullName 
+                                        : 'Mentor Assigned'}
+                                </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Improved State Display */}
+                        {(() => {
+                           const subjectIdStr = typeof (pref as any).subjectId === 'object' 
+                               ? (pref as any).subjectId._id 
+                               : (pref as any).subjectId;
+                           
+                           const hasActiveEnrollment = profile.enrollments?.some((e: any) => 
+                               (e.course?.subject?._id === subjectIdStr || e.course?.subject === subjectIdStr) && 
+                               e.status === 'active'
+                           );
+
+                           const isMentorAssigned = 
+                               (pref as any).status === 'mentor_assigned' || 
+                               hasActiveEnrollment || 
+                               profile.onboardingStatus === 'mentor_assigned';
+
+                           if (isMentorAssigned) {
+                               return (
+                                 <div className="space-y-3">
+                                   <div className="flex items-center gap-2 px-3 py-2 bg-green-50 text-green-700 rounded-lg border border-green-100 text-xs font-bold shadow-sm">
+                                      <CheckCircle size={14} />
+                                      MENTOR ASSIGNED
+                                   </div>
+                                   
+                                   <button
+                                      onClick={() => handleOpenMatchModal(pref)}
+                                      className="w-full py-2 bg-white text-indigo-600 border border-indigo-200 text-xs font-bold rounded-lg hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2"
+                                   >
+                                      <Clock size={14} />
+                                      Reassign Mentor
+                                   </button>
+                                 </div>
+                               );
+                           }
+
+                           return (
+                             <button
+                               onClick={() => handleOpenMatchModal(pref)}
+                               className={`w-full py-2 text-white text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-2 ${
+                                   (pref as any).status === 'mentor_requested' ? 'bg-green-600 hover:bg-green-700' :
+                                   'bg-slate-900 hover:bg-slate-800'
+                               }`}
+                             >
+                               <BookOpen size={14} />
+                               {(pref as any).status === 'mentor_requested' ? 'Assign Mentor' : 'Find Mentor & Book'}
+                             </button>
+                           );
+                        })()}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Trial Classes */}
           {profile.trialClasses && profile.trialClasses.length > 0 && (
             <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm mt-6">
@@ -478,7 +630,7 @@ export const StudentProfilePage: React.FC = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(trial.preferredDate).toLocaleDateString()}
+                          {trial.preferredDate ? new Date(trial.preferredDate).toLocaleDateString() : "N/A"}
                         </td>
                       </tr>
                     ))}
@@ -553,6 +705,40 @@ export const StudentProfilePage: React.FC = () => {
             </div>
           )}
         </div>
+        
+        <FindMatchModal 
+          isOpen={isMatchModalOpen}
+          onClose={() => setIsMatchModalOpen(false)}
+          request={matchRequest}
+          onMatchConfirmed={handleMatchConfirmed}
+          onSubmit={async (data) => {
+              if (studentId && matchRequest) {
+                  if (matchRequest.status === 'active') {
+                      await dispatch(reassignMentorToStudent({
+                          studentId,
+                          subjectId: matchRequest.subject,
+                          newMentorId: data.mentorId,
+                          reason: "Admin reassignment via profile",
+                          days: data.days,
+                          timeSlot: data.timeSlot
+                      })).unwrap();
+                      toast.success("Mentor reassigned successfully");
+                  } else {
+                      await dispatch(assignMentorToStudent({
+                          studentId,
+                          subjectId: matchRequest.subject,
+                          mentorId: data.mentorId,
+                          preferredDate: new Date().toISOString(),
+                          days: data.days,
+                          timeSlot: data.timeSlot
+                      })).unwrap();
+                      toast.success("Mentor assigned successfully");
+                  }
+                 // Refresh profile to show updated status
+                 dispatch(fetchStudentProfile(studentId));
+             }
+          }}
+        />
       </main>
     </div>
   );

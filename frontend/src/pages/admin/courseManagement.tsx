@@ -5,10 +5,10 @@ import type { AppDispatch, RootState } from "../../app/store";
 import {
   createOneToOneCourse,
   fetchCoursesPaginated,
-  // fetchMentorsPaginated // Assuming this was the intended import if fetchCoursesPaginated didn't exist, but it does now. 
+  updateCourseAdmin,
 } from "../../features/admin/adminThunk";
 import {
-  selectAdminLoading,
+  selectCoursesLoading,
   selectAllCourses, 
 } from "../../features/admin/adminSelectors";
 import { CourseModal } from "../../components/admin/CourseModal";
@@ -37,6 +37,8 @@ import {
 } from "lucide-react";
 import { showToast } from "../../utils/toast";
 import AdminCourseRequestsPage from "./courseRequests";
+import AdminEnrollmentsPage from "./AdminEnrollmentsPage";
+import { useDebounce } from "../../hooks/useDebounce";
 
 // Tab types
 type TabType = 'courses' | 'requests' | 'enrollments';
@@ -81,13 +83,12 @@ export const CreateOneToOneCourse: React.FC = () => {
 
   const courses = useSelector(selectAllCourses);
   const coursesPagination = useSelector((state: RootState) => state.admin.coursesPagination);
-  const loading = useSelector(selectAdminLoading);
+  const loading = useSelector(selectCoursesLoading);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("Courses");
   const [activeTab, setActiveTab] = useState<TabType>('courses');
   const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [filters, setFilters] = useState<{
@@ -136,12 +137,7 @@ export const CreateOneToOneCourse: React.FC = () => {
   ], [gradeOptions]);
 
   // Debounce search term
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchTerm);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
   // Fetch courses when pagination/search/filters change
   const fetchCourses = useCallback(() => {
@@ -161,7 +157,7 @@ export const CreateOneToOneCourse: React.FC = () => {
   // Reset to page 1 when search/filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, filters]);
+  }, [searchTerm, filters]);
 
   // Pagination handlers
   const handlePageChange = (page: number) => {
@@ -210,18 +206,23 @@ export const CreateOneToOneCourse: React.FC = () => {
     setSelectedCourseForEdit(null);
   }, []);
 
-  const handleSaveCourse = useCallback(async (courseData: Parameters<typeof createOneToOneCourse>[0]) => {
+  const handleSaveCourse = useCallback(async (courseData: any) => {
     try {
-      await dispatch(createOneToOneCourse(courseData)).unwrap();
-      showToast.success("Course created successfully!");
+      if (selectedCourseForEdit) {
+        await dispatch(updateCourseAdmin({ courseId: selectedCourseForEdit._id, data: courseData })).unwrap();
+        showToast.success("Course updated successfully!");
+      } else {
+        await dispatch(createOneToOneCourse(courseData)).unwrap();
+        showToast.success("Course created successfully!");
+      }
       handleCloseCourseModal();
       fetchCourses(); 
     } catch (error: unknown) {
       const err = error as { message?: string };
-      showToast.error(err?.message || "Failed to create course");
+      showToast.error(err?.message || "Failed to save course");
     }
 
-  }, [dispatch, handleCloseCourseModal, fetchCourses]);
+  }, [dispatch, handleCloseCourseModal, fetchCourses, selectedCourseForEdit]);
 
   const handleEditFromDetails = useCallback((course: Course) => {
     setShowDetailsModal(false);
@@ -248,19 +249,37 @@ export const CreateOneToOneCourse: React.FC = () => {
     {
       header: "Mentor",
       accessor: (row: Course) => (
-        <div className="text-sm">
-          <p className="font-medium text-gray-900">{row.mentor.fullName}</p>
+        <div className="flex items-center space-x-3">
+          {row.mentor.profileImageUrl || row.mentor.profilePicture ? (
+            <img 
+              src={row.mentor.profileImageUrl || row.mentor.profilePicture} 
+              alt={row.mentor.fullName} 
+              className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 font-bold text-sm border-2 border-white shadow-sm">
+              {row.mentor.fullName?.charAt(0) || 'M'}
+            </div>
+          )}
+          <div>
+            <p className="font-semibold text-gray-900 text-sm">{row.mentor.fullName}</p>
+            <p className="text-xs text-gray-500">Mentor</p>
+          </div>
         </div>
       ),
     },
     {
       header: "Schedule",
-      accessor: (row: Course) => (
-        <div className="text-sm">
-          <p className="font-medium">{DAYS[row.dayOfWeek]}</p>
-          <p className="text-gray-500">{row.timeSlot}</p>
-        </div>
-      ),
+      accessor: (row: Course) => {
+        const dayNames = row.schedule?.days?.join(", ");
+        const legacyDay = row.dayOfWeek !== undefined ? DAYS[row.dayOfWeek] : null;
+        return (
+          <div className="text-sm">
+            <p className="font-medium">{dayNames || legacyDay || "No Day Set"}</p>
+            <p className="text-gray-500">{row.schedule?.timeSlot || row.timeSlot}</p>
+          </div>
+        );
+      },
     },
     {
       header: "Dates",
@@ -516,11 +535,7 @@ export const CreateOneToOneCourse: React.FC = () => {
           )}
 
           {activeTab === 'enrollments' && (
-             <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-                <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900">Enrollments Management</h3>
-                <p className="text-gray-500 mt-1">Enrollment list and management features coming soon.</p>
-             </div>
+             <AdminEnrollmentsPage />
           )}
 
           <CourseModal

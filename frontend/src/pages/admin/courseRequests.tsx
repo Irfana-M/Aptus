@@ -1,18 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import type { AppDispatch, RootState } from '../../app/store'; // Correct path to store
+import type { AppDispatch, RootState } from '../../app/store';
 import { fetchAllCourseRequestsAdmin, updateCourseRequestStatusAdmin } from '../../features/admin/adminThunk';
 import type { CourseRequest } from "../../types/studentTypes";
 import { Check, X, Clock, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-interface AdminCourseRequestsPageProps {
-    onCreateCourse?: (request: CourseRequest) => void;
-}
-
 import FindMatchModal from './components/FindMatchModal';
 
-const AdminCourseRequestsPage: React.FC<AdminCourseRequestsPageProps> = ({ onCreateCourse }) => {
+const AdminCourseRequestsPage: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { courseRequests, courseRequestsLoading, courseRequestsError } = useSelector((state: RootState) => state.admin);
     const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
@@ -102,12 +98,16 @@ const AdminCourseRequestsPage: React.FC<AdminCourseRequestsPageProps> = ({ onCre
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {courseRequests.map((request: CourseRequest) => (
-                                    <tr key={request._id} className="hover:bg-gray-50 transition-colors">
+                                    <tr key={request.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
                                                 <div className="ml-4">
-                                                    <div className="text-sm font-medium text-gray-900">{request.student?.fullName || 'Unknown Student'}</div>
-                                                    <div className="text-sm text-gray-500">{request.student?.email}</div>
+                                                    <div className="text-sm font-medium text-gray-900">
+                                                        {typeof request.student === 'object' ? request.student.fullName : 'Unknown Student'}
+                                                    </div>
+                                                    <div className="text-sm text-gray-500">
+                                                        {typeof request.student === 'object' ? request.student.email : ''}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </td>
@@ -119,13 +119,11 @@ const AdminCourseRequestsPage: React.FC<AdminCourseRequestsPageProps> = ({ onCre
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-1.5 text-slate-700 font-medium">
                                                     <Clock size={14} className="text-indigo-500" />
-                                                    {request.timeSlot || `${request.preferredTimeRange?.startTime} - ${request.preferredTimeRange?.endTime}`}
+                                                    {request.timeSlot}
                                                 </div>
                                                 <div className="flex items-center gap-1.5 text-xs text-slate-500">
                                                     <span className="font-semibold bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
-                                                        {request.preferredDays && request.preferredDays.length > 0 
-                                                            ? request.preferredDays.join(', ') 
-                                                            : request.preferredDay}
+                                                        {request.preferredDays?.join(', ')}
                                                     </span>
                                                 </div>
                                                 <span className="text-[10px] text-slate-400 capitalize">{request.timezone}</span>
@@ -141,14 +139,14 @@ const AdminCourseRequestsPage: React.FC<AdminCourseRequestsPageProps> = ({ onCre
                                             {request.status === 'pending' && (
                                                 <div className="flex gap-2">
                                                     <button 
-                                                        onClick={() => handleStatusUpdate(request._id, 'approved')}
+                                                        onClick={() => handleStatusUpdate(request.id, 'approved')}
                                                         className="text-green-600 hover:text-green-900 bg-green-50 p-1 rounded transition-colors"
                                                         title="Approve"
                                                     >
                                                         <Check size={18} />
                                                     </button>
                                                     <button 
-                                                        onClick={() => handleStatusUpdate(request._id, 'rejected')}
+                                                        onClick={() => handleStatusUpdate(request.id, 'rejected')}
                                                         className="text-red-600 hover:text-red-900 bg-red-50 p-1 rounded transition-colors"
                                                         title="Reject"
                                                     >
@@ -164,14 +162,6 @@ const AdminCourseRequestsPage: React.FC<AdminCourseRequestsPageProps> = ({ onCre
                                                     >
                                                         Find Match
                                                     </button>
-                                                    {onCreateCourse && (
-                                                        <button 
-                                                            className="text-blue-600 hover:text-blue-900 text-xs bg-blue-50 px-3 py-1 rounded-full transition-colors font-semibold"
-                                                            onClick={() => onCreateCourse(request)}
-                                                        >
-                                                            Manual Create
-                                                        </button>
-                                                    )}
                                                 </div>
                                              )}
                                         </td>

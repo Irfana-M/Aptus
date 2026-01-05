@@ -244,10 +244,11 @@ const StudentProfile: React.FC = () => {
 
         const resultAction = await dispatch(updateStudentProfile(formData));
         if (updateStudentProfile.fulfilled.match(resultAction)) {
+             console.log("✅ Profile updated successfully, total profile in state:", resultAction.payload);
              dispatch(updateProfileStatus({ isProfileComplete: true }));
              toast.success('Profile updated successfully!');
              setIsEditing(false); // Switch to view mode on success
-             navigate('/student/time-slots');
+             navigate('/student/dashboard');
         } else {
             toast.error('Failed to update profile: ' + (resultAction.payload as string));
         }
@@ -292,10 +293,22 @@ const StudentProfile: React.FC = () => {
                 )}
                 {!isEditing && (
                     <button 
-                        onClick={() => navigate('/student/time-slots')}
-                        className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium ml-2"
+                        onClick={() => {
+                            const hasLockedPreferences = profile?.preferredTimeSlots?.some((p: any) => p.status && p.status !== 'preferences_submitted');
+                            if (hasLockedPreferences) {
+                                toast.error("Preferences are locked because a mentor request is pending or active.");
+                                return;
+                            }
+                            navigate('/student/preferences/subjects');
+                        }}
+                        className={`flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-colors font-medium ml-2 ${
+                             profile?.preferredTimeSlots?.some((p: any) => p.status && p.status !== 'preferences_submitted')
+                             ? "bg-gray-400 cursor-not-allowed" 
+                             : "bg-teal-600 hover:bg-teal-700"
+                        }`}
+                        title={profile?.preferredTimeSlots?.some((p: any) => p.status && p.status !== 'preferences_submitted') ? "Preferences are locked" : "Update Preferences"}
                     >
-                        Proceed to Booking <ArrowRight size={16} />
+                        Update Preferences <ArrowRight size={16} />
                     </button>
                 )}
               </div>
@@ -411,6 +424,75 @@ const StudentProfile: React.FC = () => {
                            <InfoRow label="Grade" value={profileData.grade} />
                            <InfoRow label="Syllabus" value={profileData.syllabus} />
                            <InfoRow label="Goal" value={profileData.learningGoal} />
+                       </div>
+
+                       <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
+                           <div className="flex justify-between items-center mb-4">
+                               <h3 className="text-sm uppercase tracking-wider text-gray-500 font-bold">Preferences</h3>
+                               <button 
+                                   onClick={() => navigate('/student/preferences/subjects')}
+                                   className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
+                               >
+                                   Edit Preferences
+                               </button>
+                           </div>
+                           <div className="space-y-4">
+                               <div>
+                                   <label className="text-xs text-gray-500 font-medium">Selected Subjects</label>
+                                   <div className="flex flex-wrap gap-2 mt-2">
+                                       {profile?.preferredSubjects && profile.preferredSubjects.length > 0 ? (
+                                           profile.preferredSubjects.map((subject: any, idx: number) => (
+                                               <span key={idx} className="px-3 py-1 bg-white border border-gray-100 rounded-lg text-sm text-gray-700 shadow-sm">
+                                                   {typeof subject === 'string' ? subject : subject.subjectName || 'Subject'}
+                                               </span>
+                                           ))
+                                       ) : (
+                                           <span className="text-sm text-gray-400 italic font-medium">No subjects selected</span>
+                                       )}
+                                   </div>
+                               </div>
+                               <div>
+                                   <label className="text-xs text-gray-500 font-medium">Preferred Time Slots</label>
+                                   <div className="space-y-2 mt-2 font-medium">
+                                       {profile?.preferredTimeSlots && profile.preferredTimeSlots.length > 0 ? (
+                                           profile.preferredTimeSlots.map((group: any, gIdx: number) => {
+                                               // Handle both populated object and flat ID cases for subject
+                                               const subjectName = typeof group.subjectId === 'object' 
+                                                    ? group.subjectId?.subjectName 
+                                                    : 'Subject';
+                                                    
+                                               // Iterate over slots array within the group
+                                                // Iterate over slots array within the group
+                                               const status = group.status || 'preferences_submitted';
+                                               const isLocked = status !== 'preferences_submitted';
+                                               
+                                               const getStatusBadge = (s: string) => {
+                                                   switch(s) {
+                                                       case 'mentor_requested': return <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-bold uppercase rounded-full">Pending Match</span>;
+                                                       case 'mentor_assigned': return <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold uppercase rounded-full">Assigned</span>;
+                                                       case 'active': return <span className="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase rounded-full">Active</span>;
+                                                       default: return null;
+                                                   }
+                                               };
+
+                                               return Array.isArray(group.slots) ? group.slots.map((slot: any, sIdx: number) => (
+                                                   <div key={`${gIdx}-${sIdx}`} className="flex items-center gap-2 text-sm text-gray-700 bg-white p-2 rounded-lg border border-gray-100 shadow-sm relative overflow-hidden">
+                                                       {isLocked && <div className="absolute left-0 top-0 bottom-0 w-1 bg-gray-300"></div>}
+                                                       <span className="text-teal-600 font-bold text-xs uppercase w-24 truncate" title={subjectName}>
+                                                           {subjectName}
+                                                       </span>
+                                                       <span className="text-indigo-600 font-bold w-20">{slot.day}</span>
+                                                       <span className="truncate flex-1">{slot.startTime} - {slot.endTime}</span>
+                                                       {getStatusBadge(status)}
+                                                   </div>
+                                               )) : null;
+                                           })
+                                       ) : (
+                                           <span className="text-sm text-gray-400 italic">No time slots selected</span>
+                                       )}
+                                   </div>
+                               </div>
+                           </div>
                        </div>
                   </div>
               )}

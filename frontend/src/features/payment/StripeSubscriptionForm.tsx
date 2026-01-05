@@ -8,21 +8,15 @@ import { useAppSelector, useAppDispatch } from '../../app/hooks';
 import { updatePaymentStatus } from '../auth/authSlice';
 import { fetchStudentProfile } from '../student/studentThunk';
 
-interface AvailabilitySlot {
-  day: string;
-  startTime: string;
-  endTime: string;
-}
+
 
 interface Props {
   planType: 'monthly' | 'yearly';
   amount: number;
   subjectCount: number;
-  availability?: AvailabilitySlot[];
-  subjects?: string[];
 }
 
-const StripeSubscriptionForm: React.FC<Props> = ({ planType, amount, subjectCount, availability, subjects }) => {
+const StripeSubscriptionForm: React.FC<Props> = ({ planType, amount, subjectCount }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -51,8 +45,6 @@ const StripeSubscriptionForm: React.FC<Props> = ({ planType, amount, subjectCoun
           studentId: studentId.toString(), 
           planType,
           subjectCount,
-          availability,
-          subjects
         });
         
         // Update Redux state immediately to unlock sidebar
@@ -65,7 +57,7 @@ const StripeSubscriptionForm: React.FC<Props> = ({ planType, amount, subjectCoun
         console.error(err);
         toast.error(err instanceof Error ? err.message : 'Payment verified but activation failed. Contact support.');
       }
-  }, [user, planType, subjectCount, availability, subjects, navigate, dispatch]);
+  }, [user, planType, subjectCount, navigate, dispatch]);
 
   useEffect(() => {
     if (stripe) {

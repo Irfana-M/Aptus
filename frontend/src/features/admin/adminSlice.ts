@@ -29,6 +29,7 @@ import {
   updateTrialClassStatus,
   fetchAvailableMentorsForCourse,
   createOneToOneCourse,
+  updateCourseAdmin,
   type AvailableMentorDto,
   fetchAllCoursesAdmin,
   fetchCoursesPaginated,
@@ -38,6 +39,8 @@ import {
   fetchAllCourseRequestsAdmin,
   updateCourseRequestStatusAdmin,
   fetchStudentProfile,
+  fetchAllEnrollmentsAdmin,
+  fetchAllMentorRequestsAdmin,
 } from "./adminThunk";
 import { loginUser, refreshAccessToken } from "../auth/authThunks";
 import type { AdminLoginResponse } from "../../types/dtoTypes";
@@ -47,6 +50,7 @@ import type { TrialClass } from "../../types/trialTypes";
 import type { AddStudentResponseDto } from "./adminApi";
 import type { AvailableMentor } from "../../types/adminTypes";
 import type { Course } from "../../types/courseTypes";
+import type { Enrollment } from "../../types/enrollmentTypes";
 
 interface Admin {
   role: "admin";
@@ -108,7 +112,20 @@ interface AdminState {
   courseRequestsLoading: boolean;
   courseRequestsError: string | null;
   selectedStudentProfile: StudentProfile | null;
+  studentProfileLoading: boolean;
+  enrollmentsList: Enrollment[];
+  enrollmentsLoading: boolean;
+  enrollmentsError: string | null;
+  studentsLoading: boolean;
+  mentorsLoading: boolean;
+  mentorProfileLoading: boolean;
+  trialClassesLoading: boolean;
+  trialClassDetailsLoading: boolean;
+  coursesLoading: boolean;
+  mentorAssignmentRequests: any[]; // using any for now, ideally strictly typed
 }
+
+const hasToken = !!(localStorage.getItem("admin_accessToken") || localStorage.getItem("adminAccessToken"));
 
 const initialState: AdminState = {
   admin: null,
@@ -126,7 +143,7 @@ const initialState: AdminState = {
   },
   studentsList: [],
   selectedStudent: null,
-  loading: false,
+  loading: hasToken, // Initialize as loading if we have a token to rehydrate
   error: null,
   success: null,
   trialClasses: [],
@@ -162,6 +179,17 @@ const initialState: AdminState = {
   courseRequestsLoading: false,
   courseRequestsError: null,
   selectedStudentProfile: null,
+  enrollmentsList: [],
+  enrollmentsLoading: false,
+  enrollmentsError: null,
+  studentProfileLoading: false,
+  studentsLoading: false,
+  mentorsLoading: false,
+  mentorProfileLoading: false,
+  trialClassesLoading: false,
+  trialClassDetailsLoading: false,
+  coursesLoading: false,
+  mentorAssignmentRequests: [],
 };
 
 const adminSlice = createSlice({
@@ -350,82 +378,82 @@ const adminSlice = createSlice({
 
       
       .addCase(fetchMentorProfileAdmin.pending, (state) => {
-        state.loading = true;
+        state.mentorProfileLoading = true;
         state.error = null;
       })
       .addCase(
         fetchMentorProfileAdmin.fulfilled,
         (state, action: PayloadAction<MentorProfile>) => {
-          state.loading = false;
+          state.mentorProfileLoading = false;
           state.mentorProfile = action.payload;
         }
       )
       .addCase(fetchMentorProfileAdmin.rejected, (state, action) => {
-        state.loading = false;
+        state.mentorProfileLoading = false;
         state.error = action.payload as string;
       })
 
       
       .addCase(fetchAllMentorsAdmin.pending, (state) => {
-        state.loading = true;
+        state.mentorsLoading = true;
         state.error = null;
       })
       .addCase(
         fetchAllMentorsAdmin.fulfilled,
         (state, action: PayloadAction<MentorProfile[]>) => {
-          state.loading = false;
+          state.mentorsLoading = false;
           state.mentorsList = action.payload;
         }
       )
       .addCase(fetchAllMentorsAdmin.rejected, (state, action) => {
-        state.loading = false;
+        state.mentorsLoading = false;
         state.error = action.payload as string;
       })
 
       // Paginated Mentors
       .addCase(fetchMentorsPaginated.pending, (state) => {
-        state.loading = true;
+        state.mentorsLoading = true;
         state.error = null;
       })
       .addCase(
         fetchMentorsPaginated.fulfilled,
         (state, action: PayloadAction<MentorPaginatedResponse>) => {
-          state.loading = false;
+          state.mentorsLoading = false;
           state.mentorsList = action.payload.mentors;
           state.mentorsPagination = action.payload.pagination;
         }
       )
       .addCase(fetchMentorsPaginated.rejected, (state, action) => {
-        state.loading = false;
+        state.mentorsLoading = false;
         state.error = action.payload as string;
       })
 
       
       .addCase(fetchAllStudentsAdmin.pending, (state) => {
-        state.loading = true;
+        state.studentsLoading = true;
         state.error = null;
       })
       .addCase(
         fetchAllStudentsAdmin.fulfilled,
         (state, action: PayloadAction<StudentBaseResponseDto[]>) => {
-          state.loading = false;
+          state.studentsLoading = false;
           state.studentsList = action.payload;
         }
       )
       .addCase(fetchAllStudentsAdmin.rejected, (state, action) => {
-        state.loading = false;
+        state.studentsLoading = false;
         state.error = action.payload as string;
       })
 
       // Paginated Students
       .addCase(fetchStudentsPaginated.pending, (state) => {
-        state.loading = true;
+        state.studentsLoading = true;
         state.error = null;
       })
       .addCase(
         fetchStudentsPaginated.fulfilled,
         (state, action: PayloadAction<StudentPaginatedResponse>) => {
-          state.loading = false;
+          state.studentsLoading = false;
           state.studentsList = action.payload.students;
           // Update studentsPagination with the new format
           state.studentsPagination = {
@@ -438,7 +466,7 @@ const adminSlice = createSlice({
         }
       )
       .addCase(fetchStudentsPaginated.rejected, (state, action) => {
-        state.loading = false;
+        state.studentsLoading = false;
         state.error = action.payload as string;
       })
 
@@ -505,15 +533,15 @@ const adminSlice = createSlice({
       });
           builder
       .addCase(fetchAvailableMentors.pending, (state) => {
-        state.loading = true;
+        state.mentorsLoading = true;
         state.error = null;
       })
       .addCase(fetchAvailableMentors.fulfilled, (state, action: PayloadAction<AvailableMentor[]>) => {
-        state.loading = false;
+        state.mentorsLoading = false;
         state.availableMentors = action.payload;
       })
       .addCase(fetchAvailableMentors.rejected, (state, action) => {
-        state.loading = false;
+        state.mentorsLoading = false;
         state.error = action.payload as string;
       });
 
@@ -532,42 +560,42 @@ const adminSlice = createSlice({
         state.error = action.payload as string;
       })
       .addCase(fetchStudentsWithStats.pending, (state) => {
-        state.loading = true;
+        state.studentsLoading = true;
         state.error = null;
       })
       .addCase(fetchStudentsWithStats.fulfilled, (state, action) => {
-        state.loading = false;
+        state.studentsLoading = false;
         state.studentsList = action.payload.students;
         state.studentsPagination = action.payload.pagination;
       })
       .addCase(fetchStudentsWithStats.rejected, (state, action) => {
-        state.loading = false;
+        state.studentsLoading = false;
         state.error = action.payload as string;
       })
        .addCase(fetchTrialClassDetails.pending, (state) => {
-      state.loading = true;
+      state.trialClassDetailsLoading = true;
       state.error = null;
     })
     .addCase(fetchTrialClassDetails.fulfilled, (state, action) => {
-      state.loading = false;
+      state.trialClassDetailsLoading = false;
       state.trialClassDetails = action.payload;
     })
     .addCase(fetchTrialClassDetails.rejected, (state, action) => {
-      state.loading = false;
+      state.trialClassDetailsLoading = false;
       state.error = action.payload as string;
     })
     
 builder
   .addCase(fetchStudentTrialClasses.pending, (state) => {
-    state.loading = true;
+    state.trialClassesLoading = true;
     state.error = null;
   })
   .addCase(fetchStudentTrialClasses.fulfilled, (state, action) => {
-    state.loading = false;
+    state.trialClassesLoading = false;
     state.trialClasses = action.payload; 
   })
   .addCase(fetchStudentTrialClasses.rejected, (state, action) => {
-    state.loading = false;
+    state.trialClassesLoading = false;
     state.error = action.payload as string;
   })
       .addCase(updateTrialClassStatus.pending, (state) => {
@@ -593,28 +621,28 @@ builder
 
       // Fetch All Trial Classes
       .addCase(fetchAllTrialClassesAdmin.pending, (state) => {
-        state.loading = true;
+        state.trialClassesLoading = true;
         state.error = null;
       })
       .addCase(fetchAllTrialClassesAdmin.fulfilled, (state, action) => {
-        state.loading = false;
+        state.trialClassesLoading = false;
         state.trialClasses = action.payload;
       })
       .addCase(fetchAllTrialClassesAdmin.rejected, (state, action) => {
-        state.loading = false;
+        state.trialClassesLoading = false;
         state.error = action.payload as string;
       })
       // Fetch available mentors for course
 .addCase(fetchAvailableMentorsForCourse.pending, (state) => {
-  state.loading = true;
+  state.courseCreationLoading = true;
   state.courseCreationError = null;
 })
 .addCase(fetchAvailableMentorsForCourse.fulfilled, (state, action) => {
-  state.loading = false;
+  state.courseCreationLoading = false;
   state.availableMentorsForCourse = action.payload;
 })
 .addCase(fetchAvailableMentorsForCourse.rejected, (state, action) => {
-  state.loading = false;
+  state.courseCreationLoading = false;
   state.courseCreationError = action.payload as string;
 })
 
@@ -634,9 +662,31 @@ builder
   state.courseCreationError = action.payload as string;
   state.courseCreationSuccess = false;
 })
+.addCase(updateCourseAdmin.pending, (state) => {
+  state.courseCreationLoading = true;
+  state.courseCreationError = null;
+  state.courseCreationSuccess = false;
+})
+.addCase(updateCourseAdmin.fulfilled, (state, action) => {
+  state.courseCreationLoading = false;
+  state.courseCreationSuccess = true;
+  state.availableMentorsForCourse = { matches: [], alternates: [] }; // reset
+  // Update the item in the list if it exists
+  if (Array.isArray(state.coursesList)) {
+    const index = state.coursesList.findIndex(c => c._id === action.payload._id);
+    if (index !== -1) {
+      state.coursesList[index] = action.payload;
+    }
+  }
+})
+.addCase(updateCourseAdmin.rejected, (state, action) => {
+  state.courseCreationLoading = false;
+  state.courseCreationError = action.payload as string;
+  state.courseCreationSuccess = false;
+})
 // In extraReducers
 .addCase(fetchAllCoursesAdmin.pending, (state) => {
-  state.loading = true;
+  state.coursesLoading = true;
   state.error = null;
 })
 .addCase(fetchAllCoursesAdmin.fulfilled, (state, action) => {
@@ -654,24 +704,24 @@ builder
     state.coursesList = [];
   }
   
-  state.loading = false;
+  state.coursesLoading = false;
 })
 .addCase(fetchAllCoursesAdmin.rejected, (state, action) => {
   console.error("❌ Failed to fetch courses:", action.payload);
-  state.loading = false;
+  state.coursesLoading = false;
   state.error = action.payload as string;
   state.coursesList = []; // Reset to empty array
 })
 
 // Paginated Courses
 .addCase(fetchCoursesPaginated.pending, (state) => {
-  state.loading = true;
+  state.coursesLoading = true;
   state.error = null;
 })
 .addCase(
   fetchCoursesPaginated.fulfilled,
   (state, action: PayloadAction<CoursePaginatedResponse>) => {
-    state.loading = false;
+    state.coursesLoading = false;
     state.coursesList = action.payload.courses;
     // Update coursesPagination with the new format
     state.coursesPagination = {
@@ -684,7 +734,7 @@ builder
   }
 )
 .addCase(fetchCoursesPaginated.rejected, (state, action) => {
-  state.loading = false;
+  state.coursesLoading = false;
   state.error = action.payload as string;
 })
 
@@ -743,22 +793,42 @@ builder
         state.courseRequestsError = action.payload as string;
       })
       
+      
       .addCase(updateCourseRequestStatusAdmin.fulfilled, (state) => {
         state.loading = false;
         // Optionally update the specific item in the list if not re-fetching
       })
-      
-      // Student Profile
-      .addCase(fetchStudentProfile.pending, (state) => {
+
+      // Mentor Requests (Admin)
+      .addCase(fetchAllMentorRequestsAdmin.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchStudentProfile.fulfilled, (state, action) => {
+      .addCase(fetchAllMentorRequestsAdmin.fulfilled, (state, action) => {
         state.loading = false;
+        // We'll need to store these requests. 
+        // Assuming we add `mentorRequests` to state or just reuse courseRequests for now if structure allows? 
+        // No, let's look at defining a new state property `mentorAssignmentRequests`.
+        // Ideally we should have defined it in AdminState interface first.
+        // For now, let's assume we will add it.
+        state.mentorAssignmentRequests = action.payload; 
+      })
+      .addCase(fetchAllMentorRequestsAdmin.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      
+      // Student Profile
+      .addCase(fetchStudentProfile.pending, (state) => {
+        state.studentProfileLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchStudentProfile.fulfilled, (state, action) => {
+        state.studentProfileLoading = false;
         state.selectedStudentProfile = action.payload;
       })
       .addCase(fetchStudentProfile.rejected, (state, action) => {
-        state.loading = false;
+        state.studentProfileLoading = false;
         state.error = action.payload as string;
       })
       
@@ -775,6 +845,20 @@ builder
         state.accessToken = null;
         state.refreshToken = null;
         localStorage.removeItem("admin_accessToken");
+      })
+      
+      // Fetch All Enrollments
+      .addCase(fetchAllEnrollmentsAdmin.pending, (state) => {
+        state.enrollmentsLoading = true;
+        state.enrollmentsError = null;
+      })
+      .addCase(fetchAllEnrollmentsAdmin.fulfilled, (state, action) => {
+        state.enrollmentsLoading = false;
+        state.enrollmentsList = action.payload;
+      })
+      .addCase(fetchAllEnrollmentsAdmin.rejected, (state, action) => {
+        state.enrollmentsLoading = false;
+        state.enrollmentsError = action.payload as string;
       });
   },
 });

@@ -29,7 +29,16 @@ router.get(
   "/match/find",
   requireAuth,
   requireRole(["admin", "student"]),
+  requireRole(["admin", "student"]),
   availabilityController.findMatches
+);
+
+// Get Public Profile (Student view)
+router.get(
+  "/profile/:mentorId",
+  requireAuth,
+  requireRole(["student", "admin"]),
+  availabilityController.getPublicProfile
 );
 
 export default router;

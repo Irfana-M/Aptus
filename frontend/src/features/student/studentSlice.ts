@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { fetchStudentProfile, updateStudentProfile, fetchAvailableCourses, submitCourseRequest, fetchMyEnrollments } from "./studentThunk";
+import { fetchStudentProfile, updateStudentProfile, fetchAvailableCourses, submitCourseRequest, fetchMyEnrollments, requestMentor } from "./studentThunk";
 import type { StudentProfile } from "../../types/student.types";
 import type { Course } from "../../types/courseTypes";
 
@@ -93,6 +93,20 @@ const studentSlice = createSlice({
       state.courseRequestStatus = 'succeeded';
     });
     builder.addCase(submitCourseRequest.rejected, (state, action) => {
+      state.courseRequestStatus = 'failed';
+      state.error = action.payload as string;
+    });
+
+    // Request Mentor
+    builder.addCase(requestMentor.pending, (state) => {
+      state.courseRequestStatus = 'loading'; // Using same status for simplicity or add specific
+      state.error = null;
+    });
+    builder.addCase(requestMentor.fulfilled, (state) => {
+      state.courseRequestStatus = 'succeeded';
+      // Ideally update profile locally to reflect 'mentor_requested' status
+    });
+    builder.addCase(requestMentor.rejected, (state, action) => {
       state.courseRequestStatus = 'failed';
       state.error = action.payload as string;
     });

@@ -1,3 +1,5 @@
+import { ApprovalStatus } from '../../domain/enums/ApprovalStatus';
+
 export interface MentorRegisterInput {
   fullName: string;
   email: string;
@@ -48,7 +50,6 @@ export interface Certification {
 export interface TimeSlot {
   startTime: string;
   endTime: string;
-  isBooked?: boolean;
 }
 
 export interface Availability {
@@ -76,6 +77,8 @@ export interface MentorProfile {
   totalRatings?: number;
   expertise?: string[];
   maxStudentsPerWeek?: number;
+  maxSessionsPerDay?: number;
+  maxSessionsPerWeek?: number;
   currentWeeklyBookings?: number;
   isActive?: boolean;
   
@@ -86,9 +89,10 @@ export interface MentorProfile {
   createdAt?: Date;
   updatedAt?: Date;
   isProfileComplete?: boolean;
-  approvalStatus?: "pending" | "approved" | "rejected";
+  approvalStatus?: ApprovalStatus;
   submittedForApprovalAt?: Date;
   rejectionReason?: string;
   authProvider?: "local" | "google";
   googleId?: string;
+  conflictingBookings?: any[];
 }

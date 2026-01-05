@@ -33,5 +33,6 @@ export interface IMentorRepository extends IBaseRepository<MentorProfile> {
     subjectId: string;
     days?: string[];
     timeSlot?: string;
+    excludeCourseId?: string;
   }): Promise<unknown[]>;
 }

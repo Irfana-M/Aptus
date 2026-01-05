@@ -1,6 +1,7 @@
 export const API_ROUTES = {
   AVAILABILITY: {
     MATCH: '/availability/match/find',
+    PROFILE: '/availability/profile/:mentorId',
   },
   AUTH: {
     SIGNUP: "/auth/signup",
@@ -40,6 +41,12 @@ export const API_ROUTES = {
     GRADES: "/admin/grades",
     SUBJECTS: "/admin/subjects",
     TRANSACTIONS: "/admin/finance/transactions",
+    ALL_ENROLLMENTS: "/admin/enrollments",
+    STUDENT_ASSIGN_MENTOR: "/admin/student/assign-mentor",
+    STUDENT_REASSIGN_MENTOR: '/admin/students/reassign-mentor',
+    MENTOR_REQUESTS: '/admin/mentor-requests',
+    MENTOR_REQUEST_APPROVE: '/admin/mentor-requests/:requestId/approve',
+    MENTOR_REQUEST_REJECT: '/admin/mentor-requests/:requestId/reject',
   },
   MENTOR: {
     PROFILE_UPDATE: "/mentor/me/profile-update",
@@ -47,6 +54,7 @@ export const API_ROUTES = {
     PROFILE: "/mentor/me/profile",
     TRIAL_CLASSES: "/mentor/me/trial-classes",
     TRIAL_CLASS_STATUS: "/mentor/me/trial-classes/:id/status",
+    COURSES: "/mentor/me/courses",
     // Admin routes accessed by mentor? The api file had /mentor/admin/... 
     // Wait, let's double check those. "authApi.get("/mentor/admin/pending")"
     // Usually that implies a /mentor/admin route prefix in backend.

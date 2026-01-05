@@ -5,6 +5,8 @@ import type { RootState, AppDispatch } from "../app/store";
 import { ROLES } from "../constants/roles";
 import { AuthContext } from "../utils/authContext";
 import { fetchStudentProfile } from "../features/student/studentThunk";
+import { getStudentRedirect } from "../utils/StudentOnboardingGuard";
+import type { User } from "../types/authTypes";
 
 interface ProtectedRouteProps {
   children: JSX.Element;
@@ -54,16 +56,17 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
   }, [pathRole, path, authContext]);
   
-  // Fetch student profile to get accurate hasPaid status when accessing student paths
+  // Fetch student profile to get accurate onboardingStatus when accessing student paths
   useEffect(() => {
     const studentToken = localStorage.getItem('student_accessToken');
-    const hasPaidInfo = studentProfile?.hasPaid ?? authState.user?.hasPaid;
+    const status = studentProfile?.onboardingStatus ?? authState.user?.onboardingStatus;
     
     // SKIP profile fetch if on a call route - those components handle their own data
     const isCallRoute = path.includes('/trial-class/') && path.endsWith('/call');
     
-    if (pathRole === ROLES.STUDENT && studentToken && hasPaidInfo === undefined && !studentLoading && !isCallRoute) {
-      console.log('📥 Fetching student profile for hasPaid check...');
+    // If status is missing, we need to fetch the profile to determine the onboarding state
+    if (pathRole === ROLES.STUDENT && studentToken && !status && !studentLoading && !isCallRoute) {
+      console.log('📥 Fetching student profile for onboarding check...');
       dispatch(fetchStudentProfile());
     }
   }, [pathRole, studentProfile, studentLoading, authState.user, dispatch, path]);
@@ -123,9 +126,17 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return children;
   }
   
-  // Show loading while profile is being fetched for student paths
+  // Show loading while state is being fetched
   if (pathRole === ROLES.STUDENT && studentLoading && !studentProfile) {
     return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-500"></div>
+      </div>
+    );
+  }
+
+  if (pathRole === ROLES.ADMIN && adminState.loading && !adminState.admin) {
+     return (
       <div className="flex justify-center items-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-500"></div>
       </div>
@@ -194,93 +205,43 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const user = pathRole === ROLES.ADMIN ? adminState.admin : authState.user;
   
   // Verify Redux state matches path role
-  if (pathRole === ROLES.ADMIN && !adminState.admin) {
+  // Supress warning if:
+  // 1. We are currently loading (rehydrating)
+  // 2. We are on a shared route (trial-class call) where profile fetching is bypassed
+  const isHydrating = (pathRole === ROLES.ADMIN ? adminState.loading : authState.loading);
+  const isBypassRoute = path.includes('/trial-class/') && path.endsWith('/call');
+
+  if (pathRole === ROLES.ADMIN && !adminState.admin && !isHydrating && !isBypassRoute) {
     console.warn('⚠️ Admin path but no admin in Redux state');
-  } else if (pathRole === ROLES.STUDENT && !authState.user) {
+  } else if (pathRole === ROLES.STUDENT && !authState.user && !isHydrating && !isBypassRoute) {
     console.warn('⚠️ Student path but no user in Redux state');
-  } else if (pathRole === ROLES.MENTOR && !authState.user) {
+  } else if (pathRole === ROLES.MENTOR && !authState.user && !isHydrating && !isBypassRoute) {
     console.warn('⚠️ Mentor path but no user in Redux state');
   }
   
-  // Student-specific flow logic
+  // Centralized Student Onboarding Guard
   if (pathRole === ROLES.STUDENT && user) {
-    // Allow trial class routes
-    if (path.startsWith("/trial-class/")) {
-      return children;
-    }
+     // Merge fresh profile data if available to prevent stale token redirects
+     const effectiveUser = studentProfile
+        ? { 
+            ...user, 
+            ...studentProfile, 
+            // Ensure compatibility if types differ slightly
+            isProfileComplete: studentProfile.isProfileCompleted ?? (user as User).isProfileComplete,
+             // Explicitly use onboardingStatus from profile if present
+            onboardingStatus: studentProfile.onboardingStatus ?? (user as User).onboardingStatus
+          } as User
+        : user as User;
 
-    const studentUser = user as { 
-      isTrialCompleted?: boolean; 
-      isProfileComplete?: boolean; 
-      hasPaid?: boolean;
-      academicDetails?: { institutionName?: string; grade?: string };
-      contactInfo?: { parentInfo?: { name?: string } };
-      age?: number;
-      gender?: string;
-    };
-    
-    // Check hasPaid from BOTH auth.user AND student profile (profile is more current)
-    const profileHasPaid = studentProfile?.hasPaid;
-    const userHasPaid = studentUser?.hasPaid;
-    const hasPaid = profileHasPaid ?? userHasPaid;
-    
-    const isTrialCompleted = studentProfile?.isTrialCompleted ?? studentUser?.isTrialCompleted;
-    
-    // Check if profile is actually complete (more reliable than flag)
-    const profileData = studentProfile || studentUser;
-    const hasCompleteProfile = !!(
-      profileData?.academicDetails?.institutionName &&
-      profileData?.academicDetails?.grade &&
-      profileData?.contactInfo?.parentInfo?.name &&
-      profileData?.age &&
-      profileData?.gender
-    );
-
-    console.log('🔍 Student access check:', { profileHasPaid, userHasPaid, hasPaid, isTrialCompleted, hasCompleteProfile });
-
-    // If user has paid, allow full access regardless of profile completion flag
-    if (hasPaid) {
-      console.log('✅ Paid user - full dashboard access granted');
-      return children;
-    }
-
-    // For unpaid users, enforce the flow
-    if (!hasPaid) {
-      if (isTrialCompleted) {
-        // Check actual profile data, not just the flag
-        if (!hasCompleteProfile) {
-          const allowed = ["/student/profile-setup"];
-          if (!allowed.some(p => path.startsWith(p))) {
-            console.log('⚠️ Profile incomplete, redirecting to profile-setup');
-            return <Navigate to="/student/profile-setup" replace />;
-          }
-        } else {
-          // Trial completed, profile complete, but not paid
-          const allowed = [
-            "/student/dashboard", 
-            "/student/subscription-plans", 
-            "/student/payment",
-            "/student/my-courses",
-            "/student/profile",
-            "/student/profile-setup",
-            "/trial-class/"
-          ];
-          if (!allowed.some(p => path.startsWith(p))) {
-            console.log('⚠️ Not paid yet, limiting access');
-            return <Navigate to="/student/dashboard" replace />;
-          }
-        }
-      } else {
-        // Trial not completed
-        const allowedPathsDuringFlow = ["/student/book-free-trial", "/trial-class/"];
-        const isCurrentlyInFlow = allowedPathsDuringFlow.some(p => path.startsWith(p));
-        
-        if (!isCurrentlyInFlow) {
-          console.log(`🛡️ Student trial not completed, redirecting from ${path} to book-free-trial`);
-          return <Navigate to="/student/book-free-trial" replace />;
-        }
-      }
-    }
+      const isTrialRoute = path.startsWith('/trial-class/');
+     const redirect = isTrialRoute ? null : getStudentRedirect(effectiveUser);
+     
+     if (redirect && redirect !== path) {
+        console.log(`🛡️ Onboarding Guard: Redirecting from ${path} to ${redirect}`, {
+            status: effectiveUser.onboardingStatus
+        });
+        return <Navigate to={redirect} replace />;
+     }
   }
 
   // Mentor-specific flow logic

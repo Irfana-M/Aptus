@@ -27,7 +27,7 @@ export default function Finance() {
 
   const filteredPayments = payments.filter(p => 
     p.invoiceId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.studentId?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.studentId?.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.studentId?.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -110,7 +110,7 @@ export default function Finance() {
                       <td className="px-6 py-4 font-mono text-gray-900">{payment.invoiceId}</td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
-                          <span className="font-medium text-gray-900">{payment.studentId?.name || 'Unknown'}</span>
+                          <span className="font-medium text-gray-900">{payment.studentId?.fullName || 'Unknown'}</span>
                           <span className="text-xs text-gray-500">{payment.studentId?.email}</span>
                         </div>
                       </td>

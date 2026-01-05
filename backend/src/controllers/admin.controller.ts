@@ -265,6 +265,8 @@ export class AdminController {
 
   getMentorProfile = async (req: Request, res: Response) => {
     const mentorId = req.params.mentorId;
+    logger.info(`👤 [AdminController] Attempting to fetch mentor profile for ID: ${mentorId}`);
+    
     if (!mentorId) {
       logger.warn("Mentor ID is missing in request");
       return res
@@ -280,7 +282,7 @@ export class AdminController {
           .status(HttpStatusCode.NOT_FOUND)
           .json({ message: "Mentor not found" });
       }
-      logger.info(`Mentor profile fetched: ${mentorId}`);
+      logger.info(`✅ [AdminController] Successfully fetched mentor profile for: ${mentorId}`);
       res.status(HttpStatusCode.OK).json(mentor);
     } catch (error: unknown) {
       const err = error as AppError;
@@ -835,4 +837,61 @@ getAvailableMentors = async (req: Request, res: Response, next: NextFunction): P
 
 
 
+
+  assignMentor = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      console.log('🔍 assignMentor controller called');
+      console.log('🔍 Request body:', JSON.stringify(req.body, null, 2));
+      
+      const { studentId, subjectId, mentorId } = req.body;
+      
+      console.log('🔍 Extracted params:', { studentId, subjectId, mentorId });
+      
+      const adminId = (req as any).user?.id;
+      const { days, timeSlot } = req.body;
+      
+      if (!studentId || !subjectId || !mentorId) {
+        console.log('❌ Missing required fields');
+        throw new AppError("Student ID, Subject ID, and Mentor ID are required", HttpStatusCode.BAD_REQUEST);
+      }
+
+      console.log('🔍 Calling adminService.assignMentor...');
+      await this._adminService.assignMentor(studentId, subjectId, mentorId, adminId, {
+         days,
+         timeSlot
+      });
+      console.log('✅ assignMentor completed successfully');
+
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        message: "Mentor assigned successfully",
+      });
+    } catch (error) {
+      console.error('❌ assignMentor controller error:', error);
+      next(error);
+    }
+  };
+
+  reassignMentor = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { studentId, subjectId, newMentorId, days, timeSlot } = req.body;
+      const adminId = (req as any).user?.id;
+
+      if (!studentId || !subjectId || !newMentorId) {
+        throw new AppError("Student ID, Subject ID, and New Mentor ID are required", HttpStatusCode.BAD_REQUEST);
+      }
+
+      await this._adminService.reassignMentor(studentId, subjectId, newMentorId, adminId, {
+        days,
+        timeSlot
+      });
+
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        message: "Mentor reassigned successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 } 

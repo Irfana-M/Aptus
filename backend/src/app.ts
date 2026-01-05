@@ -4,6 +4,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import { connectDB } from "./config/db.config";
+import { errorHandler } from "./middleware/error.middleware";
 import router from "./routes/auth.routes";
 import adminRouter from "./routes/admin.routes";
 import passport from "./config/passport.config";
@@ -19,6 +20,9 @@ import enrollmentRouter from "./routes/enrollment.routes";
 import paymentRouter from "./routes/payment.routes";
 import availabilityRouter from "./routes/availability.routes";
 import trialClassRouter from "./routes/trialClassRoutes";
+import chatRouter from "./routes/chat.routes";
+import notificationRouter from "./routes/notification.routes";
+import sessionRouter from "./routes/session.routes";
 
 dotenv.config();
 const app = express();
@@ -55,6 +59,11 @@ app.use('/api/enrollments', enrollmentRouter);
 app.use('/api/payment', paymentRouter);
 app.use('/api/availability', availabilityRouter);
 app.use('/api/trial-classes', trialClassRouter);
+app.use('/api/chat', chatRouter);
+app.use('/api/notifications', notificationRouter);
+app.use('/api/sessions', sessionRouter);
+
+app.use(errorHandler);
 
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 

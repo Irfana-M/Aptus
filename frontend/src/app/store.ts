@@ -9,6 +9,7 @@ import roleReducer from "../features/role/roleSlice";
 import studentReducer from "../features/student/studentSlice";
 import financeReducer from "../features/admin/financeSlice";
 import paymentReducer from "../features/payment/paymentSlice";
+import chatReducer from "../features/classroom/chatSlice";
 
 export const store = configureStore({
   reducer: {
@@ -22,6 +23,7 @@ export const store = configureStore({
     student: studentReducer,
     finance: financeReducer,
     payment: paymentReducer,
+    chat: chatReducer,
   },
 
   middleware: (getDefaultMiddleware) =>

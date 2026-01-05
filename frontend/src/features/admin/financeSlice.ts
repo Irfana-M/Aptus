@@ -5,7 +5,7 @@ interface Payment {
   _id: string;
   studentId: {
     _id: string;
-    name: string;
+    fullName: string;
     email: string;
   };
   amount: number;

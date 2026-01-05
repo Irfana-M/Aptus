@@ -68,4 +68,18 @@ export class AvailabilityController {
         next(error);
     }
   }
+
+  public getPublicProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      try {
+          const { mentorId } = req.params;
+          if (!mentorId) {
+              res.status(400).json({ message: "Mentor ID is required" });
+              return;
+          }
+          const profile = await this.service.getPublicProfile(mentorId);
+          res.status(200).json({ data: profile });
+      } catch (error) {
+          next(error);
+      }
+  }
 }

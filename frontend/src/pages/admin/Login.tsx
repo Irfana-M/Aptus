@@ -35,18 +35,6 @@ export default function AdminLoginPage() {
 
   const [loginAttempted, setLoginAttempted] = useState(false);
 
-  useEffect(() => {
-    console.log("🔐 Auth State Update:", {
-      accessToken: accessToken
-        ? accessToken.substring(0, 20) + "..."
-        : "undefined",
-      admin,
-      loading,
-      error,
-      loginAttempted,
-      timestamp: new Date().toISOString(),
-    });
-  }, [accessToken, admin, loading, error, loginAttempted]);
 
   useEffect(() => {
     if (loginAttempted && accessToken && admin && !loading) {
@@ -58,29 +46,16 @@ export default function AdminLoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    console.log("🔄 Starting login process...", { email });
-
     try {
       const result = await dispatch(
         adminLoginThunk({ email, password })
       ).unwrap();
-      console.log("✅ Login thunk response:", {
-        fullResponse: result,
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken,
-        admin: result.admin,
-      });
+      
       if (!result.accessToken || !result.admin) {
-        console.error("❌ Missing data in response:", {
-          hasAccessToken: !!result.accessToken,
-          hasAdmin: !!result.admin,
-          responseKeys: Object.keys(result),
-        });
         toast.error("Login response incomplete");
         return;
       }
 
-      console.log("✅ Login data validated, saving token and navigating...");
       localStorage.setItem("admin_accessToken", result.accessToken);
       
       // Set loginAttempted only AFTER successful login
@@ -90,22 +65,10 @@ export default function AdminLoginPage() {
       navigate("/admin/dashboard");
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Login failed!";
-      console.error("❌ Login thunk failed:", err);
-      // Keep loginAttempted false on failure - this prevents the useEffect from navigating
       toast.error(errorMessage);
     }
   };
 
-  const AuthDebugger = () => {
-    const accessToken = useSelector(selectAccessToken);
-    const admin = useSelector(selectAdmin);
-
-    useEffect(() => {
-  console.log('Auth state changed →', { accessToken: !!accessToken, admin: !!admin });
-}, [accessToken, admin]);
-
-    return null;
-  };
 
   return (
     <AuthLayout
@@ -113,7 +76,6 @@ export default function AdminLoginPage() {
       title="Admin Login"
       subtitle="Welcome back! Please login to your account."
     >
-      <AuthDebugger />
       <form onSubmit={handleSubmit} className="space-y-6">
         <input
           type="email"

@@ -17,6 +17,7 @@ import type { MentorResponseDto } from '@/dto/mentor/MentorResponseDTO';
 import { MentorMapper } from '@/mappers/MentorMapper';
 import { TrialClassMapper } from '@/mappers/trialClassMapper';
 import type { TrialClassResponseDto } from "@/dto/student/trialClassDTO";
+import { MentorAvailabilityModel } from '../models/mentor/mentorAvailability.model';
 
 @injectable()
 export class MentorService implements IMentorService {
@@ -230,6 +231,14 @@ export class MentorService implements IMentorService {
         throw new Error("Mentor not found");
       }
 
+      // Normalization of availability: One-time migration after approval
+      try {
+        await this.normalizeMentorAvailability(mentorId);
+        logger.info(`Availability normalized for mentor: ${mentorId}`);
+      } catch (normError: unknown) {
+        logger.error(`Failed to normalize availability for mentor ${mentorId}: ${getErrorMessage(normError)}`);
+      }
+
       try {
         await this._emailService.sendMail(
           updatedMentor.email,
@@ -369,6 +378,57 @@ export class MentorService implements IMentorService {
     } catch (error: unknown) {
 
       logger.error(`Error in getMentorProfile service: ${getErrorMessage(error)}`);
+      throw error;
+    }
+  }
+
+  async normalizeMentorAvailability(mentorId: string): Promise<void> {
+    try {
+      logger.info(`Normalizing availability for mentor: ${mentorId}`);
+      
+      const mentor = await this._mentorRepo.findById(mentorId);
+      if (!mentor) throw new Error("Mentor not found for normalization");
+
+      if (!mentor.availability || mentor.availability.length === 0) {
+        logger.info(`No availability found to normalize for mentor: ${mentorId}`);
+        return;
+      }
+
+      const dayMap: { [key: string]: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday' } = {
+        'monday': 'Monday',
+        'tuesday': 'Tuesday',
+        'wednesday': 'Wednesday',
+        'thursday': 'Thursday',
+        'friday': 'Friday',
+        'saturday': 'Saturday',
+        'sunday': 'Sunday'
+      };
+
+      for (const avail of mentor.availability) {
+        const dayOfWeek = dayMap[avail.day.toLowerCase()];
+        if (!dayOfWeek) {
+          logger.warn(`Invalid day of week found in normalization: ${avail.day}`);
+          continue;
+        }
+
+        const slots = avail.slots.map(s => ({
+          startTime: s.startTime,
+          endTime: s.endTime
+        }));
+
+        await MentorAvailabilityModel.findOneAndUpdate(
+          { mentorId: mentorId as any, dayOfWeek },
+          { slots, isActive: true },
+          { upsert: true, new: true }
+        );
+      }
+
+      // One-time cleanup: Clear embedded availability to maintain single source of truth
+      await this._mentorRepo.updateProfile(mentorId, { availability: [] });
+      
+      logger.info(`Normalization completed and embedded availability cleared for: ${mentorId}`);
+    } catch (error: unknown) {
+      logger.error(`Error in normalizeMentorAvailability for ${mentorId}: ${getErrorMessage(error)}`);
       throw error;
     }
   }

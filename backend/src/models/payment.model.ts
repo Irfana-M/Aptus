@@ -2,13 +2,13 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IPayment extends Document {
   studentId: mongoose.Schema.Types.ObjectId;
-  amount: number; // Stored in smallest currency unit (e.g., paise for INR)
+  amount: number; 
   currency: string;
   status: 'pending' | 'completed' | 'failed' | 'refunded';
   method: 'stripe' | 'wallet' | 'other';
-  transactionId?: string; // Stripe PaymentIntent ID
-  invoiceId: string; // Internal Invoice ID (e.g., INV-1700000001)
-  purpose: string; // e.g., 'Subscription', 'Course Purchase'
+  transactionId?: string; 
+  invoiceId: string; 
+  purpose: string;
   metadata?: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;

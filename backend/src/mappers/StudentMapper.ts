@@ -52,6 +52,11 @@ export class StudentMapper {
       subscription: data.subscription as SubscriptionDetails | undefined,
       authProvider: data.authProvider,
       googleId: data.googleId,
+      gradeId: data.gradeId,
+      onboardingStatus: data.onboardingStatus,
+      preferencesCompleted: data.preferencesCompleted,
+      preferredSubjects: data.preferredSubjects,
+      preferredTimeSlots: data.preferredTimeSlots,
     };
   }
 
@@ -62,42 +67,85 @@ export class StudentMapper {
 
     if (data.fullName !== undefined) updateData.fullName = data.fullName;
     if (data.phoneNumber !== undefined) updateData.phoneNumber = data.phoneNumber;
+    if (data.dateOfBirth !== undefined) {
+        updateData.dateOfBirth = data.dateOfBirth;
+        // Auto-calculate age if not provided
+        if (data.age === undefined && data.dateOfBirth) {
+            const dob = new Date(data.dateOfBirth);
+            const today = new Date();
+            let age = today.getFullYear() - dob.getFullYear();
+            const m = today.getMonth() - dob.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+                age--;
+            }
+            updateData.age = age;
+        }
+    }
     if (data.age !== undefined) updateData.age = data.age;
     if (data.gender !== undefined) updateData.gender = data.gender;
-    if (data.dateOfBirth !== undefined) updateData.dateOfBirth = data.dateOfBirth;
     
     // Map flat input fields to nested schema structure
+    // Map flat input fields to nested schema structure
     // 1. Contact Info & Parent Info
-    if (data.address || data.country || data.postalCode || 
-        data.parentName || data.parentEmail || data.parentPhone) {
+    // Initialize contactInfo in updateData if any related field is present or if contactInfo is explicitly provided
+    if (data.address !== undefined || data.country !== undefined || data.postalCode !== undefined || 
+        data.parentName !== undefined || data.parentEmail !== undefined || data.parentPhone !== undefined || 
+        data.relationship !== undefined || data.contactInfo !== undefined) {
       
-      const parentInfo = {
-         name: (data.parentName as string) || data.contactInfo?.parentInfo?.name || '',
-         email: (data.parentEmail as string) || data.contactInfo?.parentInfo?.email || '',
-         phoneNumber: (data.parentPhone as string) || data.contactInfo?.parentInfo?.phoneNumber || '',
-         relationship: (data.relationship as string) || data.contactInfo?.parentInfo?.relationship || ''
-      };
+      const existingContact = (updateData.contactInfo as any) || {};
+      const existingParent = existingContact.parentInfo || {};
 
-      updateData.contactInfo = {
-        address: (data.address as string) || data.contactInfo?.address || '',
-        country: (data.country as string) || data.contactInfo?.country || '',
-        postalCode: (data.postalCode as string) || data.contactInfo?.postalCode || '',
-        parentInfo: parentInfo
-      };
-    } else if (data.contactInfo) {
-      updateData.contactInfo = data.contactInfo;
+      // We need to be careful not to overwrite with undefined/empty if not provided in a partial update
+      // But we don't have the "existing" DB record here, only the input "data".
+      // So we should only set keys that are defined in "data".
+      
+      const newParentInfo: any = { ...existingParent };
+      if (data.parentName !== undefined) newParentInfo.name = data.parentName;
+      if (data.parentEmail !== undefined) newParentInfo.email = data.parentEmail;
+      if (data.parentPhone !== undefined) newParentInfo.phoneNumber = data.parentPhone;
+      if (data.relationship !== undefined) newParentInfo.relationship = data.relationship;
+      
+      // If data.contactInfo.parentInfo exists, merge it too
+      if (data.contactInfo?.parentInfo) {
+          Object.assign(newParentInfo, data.contactInfo.parentInfo);
+      }
+
+      const newContactInfo: any = { ...existingContact };
+      if (data.address !== undefined) newContactInfo.address = data.address;
+      if (data.country !== undefined) newContactInfo.country = data.country;
+      if (data.postalCode !== undefined) newContactInfo.postalCode = data.postalCode;
+      
+      if (Object.keys(newParentInfo).length > 0) {
+          newContactInfo.parentInfo = newParentInfo;
+      }
+      
+      // If data.contactInfo exists (non-flattened), merge it
+      if (data.contactInfo) {
+           const { parentInfo, ...rest } = data.contactInfo;
+           Object.assign(newContactInfo, rest);
+      }
+
+      updateData.contactInfo = newContactInfo;
     }
 
     // 2. Academic Details
-    // Map 'grade' from frontend to 'gradeId' in backend interface
-    if (data.institution || data.institutionName || data.grade || data.gradeId || data.syllabus) {
-      updateData.academicDetails = {
-        institutionName: (data.institution as string) || (data.institutionName as string) || data.academicDetails?.institutionName || '',
-        grade: (data.grade as string) || data.academicDetails?.grade || '',
-        syllabus: (data.syllabus as string) || data.academicDetails?.syllabus || ''
-      };
-    } else if (data.academicDetails) {
-      updateData.academicDetails = data.academicDetails;
+    if (data.institution !== undefined || data.institutionName !== undefined || 
+        data.grade !== undefined || data.gradeId !== undefined || data.syllabus !== undefined ||
+        data.academicDetails !== undefined) {
+        
+        const existingAcademic = updateData.academicDetails || {};
+        const newAcademic: any = { ...existingAcademic };
+
+        if (data.institution !== undefined) newAcademic.institutionName = data.institution;
+        if (data.institutionName !== undefined) newAcademic.institutionName = data.institutionName;
+        if (data.grade !== undefined) newAcademic.grade = data.grade;
+        if (data.syllabus !== undefined) newAcademic.syllabus = data.syllabus;
+        
+        if (data.academicDetails) {
+            Object.assign(newAcademic, data.academicDetails);
+        }
+        
+        updateData.academicDetails = newAcademic;
     }
 
     // 3. Learning Goal
@@ -109,6 +157,14 @@ export class StudentMapper {
     // Handle profile image key
     if (data.profileImage !== undefined) updateData.profileImage = data.profileImage;
     if (data.profileImageKey !== undefined) updateData.profileImageKey = data.profileImageKey as string;
+
+    // Explicitly allow status flags to be updated
+    if (data.isProfileCompleted !== undefined) {
+        updateData.isProfileCompleted = data.isProfileCompleted;
+    }
+    if (data.onboardingStatus !== undefined) {
+        updateData.onboardingStatus = data.onboardingStatus;
+    }
 
     return updateData;
   }
@@ -127,7 +183,7 @@ export class StudentMapper {
       phoneNumber: s.phoneNumber || "",
       role: "student",
       isVerified: s.isVerified ?? false,
-      isProfileComplete: s.isProfileComplete || false,
+      isProfileComplete: s.isProfileCompleted || s.isProfileComplete || false,
       approvalStatus: "approved",
       isBlocked: s.isBlocked || false,
       createdAt: s.createdAt,
@@ -153,6 +209,11 @@ export class StudentMapper {
       subscription: s.subscription as SubscriptionDetails | undefined,
       isTrialCompleted: s.isTrialCompleted || false,
       hasPaid: s.hasPaid ?? ((s.subscription?.status === 'active') || false),
+      onboardingStatus: s.onboardingStatus || 'registered',
+      gradeId: s.gradeId,
+      preferencesCompleted: s.preferencesCompleted,
+      preferredSubjects: s.preferredSubjects,
+      preferredTimeSlots: s.preferredTimeSlots,
     };
   }
 
@@ -168,7 +229,7 @@ export class StudentMapper {
       phoneNumber: s.phoneNumber || "",
       role: s.role,
       isVerified: s.isVerified || false,
-      isProfileComplete: s.isProfileComplete || false,
+      isProfileComplete: s.isProfileCompleted || s.isProfileComplete || false,
       subscription: s.subscription as SubscriptionDetails | undefined,
       gradeLevel: s.academicDetails?.grade || s.gradeLevel || "",
       school: s.academicDetails?.institutionName || s.school || "",
@@ -217,6 +278,9 @@ export class StudentMapper {
       subscription: student.subscription,
       isPaid: student.isPaid || false,
       isTrialCompleted: student.isTrialCompleted || false,
+      hasPaid: student.hasPaid ?? (student.subscription?.status === 'active'),
+      onboardingStatus: student.onboardingStatus,
+      preferencesCompleted: student.preferencesCompleted,
     };
   }
 

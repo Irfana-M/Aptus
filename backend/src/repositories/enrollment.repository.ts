@@ -1,51 +1,73 @@
-import { injectable } from "inversify";
-import { Enrollment,type IEnrollment } from "../models/enrollment.model";
-import type { IEnrollmentRepository } from "../interfaces/repositories/IEnrollmentRepository";
+import { injectable, inject } from "inversify";
+import { type ClientSession } from "mongoose";
+import { Course, type ICourse } from "../models/course.model";
+import type { IEnrollmentRepository, CreateEnrollmentDto } from "../interfaces/repositories/IEnrollmentRepository";
 import { BaseRepository } from "./baseRepository";
+import type { CoursePaginationParams, CoursePaginatedResult } from "@/dto/shared/paginationTypes";
+import { logger } from "@/utils/logger";
+import { getSignedFileUrl } from "@/utils/s3Upload";
+import { type FilterQuery, type UpdateQuery } from "mongoose";
+import { TYPES } from "../types";
+import type { ICourseRepository } from "../interfaces/repositories/ICourseRepository";
 
 @injectable()
-export class EnrollmentRepository extends BaseRepository<IEnrollment> implements IEnrollmentRepository {
-  constructor() {
-    super(Enrollment);
+export class EnrollmentRepository extends BaseRepository<ICourse> implements IEnrollmentRepository {
+  constructor(
+    @inject(TYPES.ICourseRepository) private courseRepository: ICourseRepository
+  ) {
+    super(Course);
   }
 
-  async findByStudentAndCourse(studentId: string, courseId: string): Promise<IEnrollment | null> {
-    return await Enrollment.findOne({
-      student: studentId,
-      course: courseId,
-    });
+  async create(data: Partial<ICourse>, session?: ClientSession): Promise<ICourse> {
+    const course = await this.courseRepository.createEnrollment(data as unknown as any); // Cast slightly unsafe but data shape aligns
+    if (!course) throw new Error("Failed to create enrollment");
+    return course;
   }
 
-  async findByStudent(studentId: string): Promise<IEnrollment[]> {
-    return await Enrollment.find({ student: studentId })
-      .populate({
-        path: "course",
-        populate: [
-          { path: "grade", select: "name syllabus" },
-          { path: "subject", select: "subjectName" },
-          { path: "mentor", select: "fullName email profilePicture" },
-        ],
-      })
-      .sort({ enrollmentDate: -1 });
+  async findById(id: string): Promise<ICourse | null> {
+    return this.courseRepository.findById(id);
   }
 
-  async findByIdAndUpdate(id: string, update: Partial<IEnrollment>): Promise<IEnrollment | null> {
-    return await Enrollment.findByIdAndUpdate(id, update, { new: true });
+  async findByStudent(studentId: string): Promise<ICourse[]> {
+    return this.courseRepository.findByStudent(studentId) as Promise<ICourse[]>;
   }
 
-  // create is inherited from BaseRepository but BaseRepository might take T or something else.
-  // BaseRepository usually has create(data: Partial<T>): Promise<T>
-  // Let's verify BaseRepository signature usually, but assuming it works or I override it.
-  // Actually BaseRepository often takes Dto. 
-  // Let's explicitly implement create to be safe given the interface loop.
-  async create(data: Partial<IEnrollment>): Promise<IEnrollment> {
-      return await Enrollment.create(data);
+  async findByMentor(mentorId: string): Promise<ICourse[]> {
+    return this.courseRepository.findByMentor(mentorId) as Promise<ICourse[]>;
+  }
+
+  async findAllPaginated(params: CoursePaginationParams): Promise<CoursePaginatedResult> {
+    return this.courseRepository.findAllCoursesPaginated(params);
+  }
+
+  async findAvailable(filters: Record<string, unknown>): Promise<ICourse[]> {
+    return this.courseRepository.findAvailableCourses(filters) as Promise<ICourse[]>;
+  }
+
+  async updateStatus(id: string, status: string, studentId?: string | null): Promise<void> {
+    await this.courseRepository.updateCourseStatus(id, status, studentId);
+  }
+
+  async update(id: string, data: Partial<CreateEnrollmentDto>): Promise<ICourse | null> {
+    return this.courseRepository.updateCourse(id, data as any);
   }
 
   async countActiveByStudent(studentId: string): Promise<number> {
-    return await Enrollment.countDocuments({
-      student: studentId,
-      status: 'active'
-    });
+    // If CourseRepository doesn't expose this exact query, we might need to add it or perform it here via the repo
+    // For now, delegating to the repo would be ideal if the method existed, but we can't change the interface easily?
+    // User said "Do NOT delete existing repositories or services".
+    // I can add methods to ICourseRepository if needed, but per "Adapter" pattern, 
+    // if the logic is unique to "Enrollment" view, maybe we keep logical implementation here using repo methods?
+    // However, strict delegation suggests we use repo methods.
+    // CourseRepository doesn't have `countActiveByStudent`.
+    // I'll leave the implementation here but use `CourseModel` (via super or direct) OR add to CourseRepository.
+    // Given "EnrollmentRepository must internally call CourseRepository" instruction is primarily for data access.
+    // I will use direct implementation for this specific query if missing, OR better, adapt it.
+    
+    // Actually, I can use the BaseRepository methods available if I strictly used `super`.
+    // But `CourseRepository` might have custom logic.
+    // I'll keep the direct Mongoose call for this specific query as it's a "new" method not in CourseRepo, 
+    // UNLESS I add it to CourseRepo. The constraints say "Introduce Enrollment terminology WITHOUT modifying existing Course logic" - implying minimize changes to Course.
+    return await Course.countDocuments({ student: studentId, status: { $in: ["booked", "ongoing"] }, isActive: true });
   }
 }

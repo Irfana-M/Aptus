@@ -20,6 +20,8 @@ export interface User {
   profileImageUrl?: string;
   createdAt?: string | Date;
   updatedAt?: string | Date;
+  onboardingStatus?: 'registered' | 'profile_complete' | 'trial_booked' | 'trial_attended' | 'feedback_submitted' | 'subscribed' | 'preferences_completed';
+  preferencesCompleted?: boolean;
 }
 
 export interface AuthState {

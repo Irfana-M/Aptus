@@ -67,3 +67,12 @@ export const updateTrialClassStatus = createAsyncThunk<
   dispatch(fetchMentorTrialClasses()); // Refresh list
   return data;
 });
+
+export const fetchMentorCourses = createAsyncThunk<
+  any[], // Using any[] for now, will refine if needed
+  void,
+  { state: RootState }
+>("mentor/fetchCourses", async () => {
+  const data = await mentorApi.getMentorCourses();
+  return data;
+});

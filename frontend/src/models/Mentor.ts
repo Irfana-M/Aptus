@@ -15,7 +15,7 @@ export class Mentor {
   get isBlocked() { return this.data.isBlocked; }
   get rating() { return this.data.rating || 0; }
 
-  // Logic: Get initials
+
   get initials() {
     return this.data.fullName
       ?.split(' ')
@@ -24,7 +24,7 @@ export class Mentor {
       .toUpperCase() || 'M';
   }
 
-  // Logic: Approval Status formatting
+  
   get approvalStatusText() {
     switch (this.data.approvalStatus) {
       case 'approved': return 'Approved';
@@ -44,7 +44,7 @@ export class Mentor {
     }
   }
 
-  // Logic: expertise summary
+  
   get expertiseSummary() {
     if (!this.data.subjectProficiency || this.data.subjectProficiency.length === 0) return 'No subjects listed';
     return this.data.subjectProficiency.map(s => s.subject).join(', ');

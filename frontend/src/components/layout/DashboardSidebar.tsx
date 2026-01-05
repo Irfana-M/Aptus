@@ -1,5 +1,4 @@
 import React from "react";
-// We need to import the logo - assuming standard location or prop
 import aptusLogo from "../../assets/images/aptusLogo.jpeg"; 
 import { useNavigate, useLocation } from "react-router-dom";
 import { LogOut } from "lucide-react";
@@ -14,12 +13,12 @@ export interface NavItem {
 
 interface DashboardSidebarProps {
   isOpen: boolean;
-  activeItem?: string; // Optional internal tracking if needed, but path matching is better
   navItems: NavItem[];
   onClose: () => void;
   onLogout: () => void;
   logoSrc?: string;
   title?: string;
+  extraContent?: React.ReactNode;
 }
 
 export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
@@ -29,21 +28,17 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   onLogout,
   logoSrc = aptusLogo,
   title = "Aptus",
+  extraContent,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
   const getCurrentActiveItem = (): string => {
     const currentPath = location.pathname;
-
-    // Sort by length descending to match most specific path first
     const sortedItems = [...navItems].sort((a, b) => b.path.length - a.path.length);
 
     const foundActiveItem = sortedItems.find((item) => {
-        // Exact match
         if (item.path === currentPath) return true;
-        
-        // Prefix match (but avoid partial word matches like /student matching /students)
         if (currentPath.startsWith(item.path + '/') || currentPath === item.path) {
             return true;
         }
@@ -81,10 +76,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         <div className="flex flex-col h-full">
           {/* Logo Section */}
           <div className="flex items-center justify-between p-6 border-b border-cyan-500/30">
-            <div
-              className="flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg cursor-pointer hover:bg-white transition-colors duration-200 w-full"
-              // onClick={() => handleNavigation("/student/dashboard")} // default or generic?
-            >
+            <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg cursor-pointer hover:bg-white transition-colors duration-200 w-full">
               <img 
                 src={logoSrc} 
                 alt={title} 
@@ -111,12 +103,10 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                           : "text-cyan-50 hover:bg-white/5 hover:text-white"
                     }`}
                   >
-                    {/* Active Background Decoration */}
                     {isActive && (
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-cyan-300 rounded-full" />
                     )}
                     
-                    {/* Disabled Lock Decoration */}
                     {item.disabled && (
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 text-cyan-200/30">
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
@@ -140,7 +130,6 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                       </span>
                     </div>
 
-                    {/* Badge */}
                     {item.badge && !item.disabled && (
                       <span className="bg-rose-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-md z-10">
                         {item.badge}
@@ -149,6 +138,12 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   </button>
                 );
             })}
+            
+            {extraContent && (
+              <div className="pt-4 border-t border-cyan-500/20">
+                {extraContent}
+              </div>
+            )}
           </nav>
 
           {/* Footer Section */}

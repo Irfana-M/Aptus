@@ -22,6 +22,8 @@ export interface AuthUser extends BaseUser {
   hasPaid?: boolean | undefined;
   isTrialCompleted?: boolean | undefined;
   profileImageUrl?: string | null | undefined;
+  onboardingStatus?: string | undefined;
+  preferencesCompleted?: boolean | undefined;
 }
 
 
@@ -55,8 +57,10 @@ export interface StudentAuthUser extends Omit<AuthUser, 'role'> {
   profileImage?: string;
   profileImageKey?: string;
   subscription?: SubscriptionDetails | undefined;
+  preferencesCompleted?: boolean | undefined;
   
   // Profile fields
+  onboardingStatus?: 'registered' | 'profile_complete' | 'trial_booked' | 'trial_attended' | 'feedback_submitted' | 'subscribed' | 'preferences_completed' | undefined;
   age?: number | undefined;
   gender?: string | undefined;
   dateOfBirth?: Date | undefined;
@@ -79,4 +83,10 @@ export interface StudentAuthUser extends Omit<AuthUser, 'role'> {
   goal?: string | undefined;
   authProvider?: "local" | "google" | undefined;
   googleId?: string | undefined;
+  gradeId?: any | undefined;
+  preferredSubjects?: any[] | undefined;
+  preferredTimeSlots?: {
+    subjectId: any;
+    slots: import("../models/student.interface").Availability[];
+  }[] | undefined;
 }

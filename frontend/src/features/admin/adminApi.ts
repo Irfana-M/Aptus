@@ -197,6 +197,14 @@ export const adminStudentApi = {
   updateTrialClassStatus: (trialClassId: string, data: { status: string; reason?: string }) => {
     return adminApi.patch(API_ROUTES.ADMIN.TRIAL_CLASS_STATUS.replace(":trialClassId", trialClassId), data);
   },
+
+  assignMentorToStudent: (data: { studentId: string; subjectId: string; mentorId: string; preferredDate?: string; days?: string[]; timeSlot?: string }) => {
+     return adminApi.post(API_ROUTES.ADMIN.STUDENT_ASSIGN_MENTOR, data);
+  },
+
+  reassignMentorToStudent: (data: { studentId: string; subjectId: string; newMentorId: string; reason?: string; days?: string[]; timeSlot?: string }) => {
+     return adminApi.post(API_ROUTES.ADMIN.STUDENT_REASSIGN_MENTOR, data);
+  },
   
 };
 
@@ -212,17 +220,26 @@ export const adminCourseApi = {
 
  
   getAvailableMentorsForCourse: (params: {
-    gradeId?: string; // Made optional as we might search by subject only
-    subject: string; // Changed from subjectId to subject name for new API, or keep consistent?
+    gradeId?: string;
+    subjectId: string;
     days?: string[];
     timeSlot?: string;
+    excludeCourseId?: string;
   }) => {
-    // Manually serialize array to comma-separated string to avoid days[]=... format
-    const queryParams: Record<string, unknown> = { ...params };
+    if (!params.subjectId) {
+      logger.error("subjectId is missing in getAvailableMentorsForCourse call");
+      throw new Error("subjectId is required for mentor search");
+    }
+
+    const queryParams: Record<string, any> = { ...params };
+    
+    // Ensure array is joined for Backend (comma separated)
     if (params.days && Array.isArray(params.days)) {
       queryParams.days = params.days.join(',');
     }
-    return adminApi.get(API_ROUTES.AVAILABILITY.MATCH, { params: queryParams });
+    
+    logger.api(API_ROUTES.ADMIN.MENTORS_AVAILABLE_FOR_COURSE, "GET", queryParams);
+    return adminApi.get(API_ROUTES.ADMIN.MENTORS_AVAILABLE_FOR_COURSE, { params: queryParams });
   },
 
   
@@ -230,7 +247,7 @@ export const adminCourseApi = {
     gradeId: string;
     subjectId: string;
     mentorId: string;
-    studentId: string;
+    studentId?: string;
     schedule: {
       days: string[];
       timeSlot?: string;
@@ -239,6 +256,21 @@ export const adminCourseApi = {
     endDate: string;
     fee: number;
   }) => adminApi.post(API_ROUTES.ADMIN.ONE_TO_ONE_COURSES, data),
+
+  updateCourse: (courseId: string, data: {
+    gradeId?: string;
+    subjectId?: string;
+    mentorId?: string;
+    studentId?: string;
+    schedule?: {
+      days: string[];
+      timeSlot?: string;
+    };
+    startDate?: string;
+    endDate?: string;
+    fee?: number;
+    status?: string;
+  }) => adminApi.put(`/admin/courses/one-to-one/${courseId}`, data),
 
   getAllOneToOneCourses: (params?: CoursePaginationParams): Promise<AxiosResponse<PaginatedResponse<Course> | Course[]>> => {
     if (params && Object.keys(params).some(key => params[key as keyof CoursePaginationParams] !== undefined)) {
@@ -267,4 +299,14 @@ export const adminRequestsApi = {
 export const adminStudentProfileApi = {
   getStudentProfile: (studentId: string) =>
     adminApi.get(API_ROUTES.ADMIN.STUDENT_PROFILE.replace(":studentId", studentId)),
+};
+
+export const adminEnrollmentApi = {
+  fetchAllEnrollments: () => adminApi.get(API_ROUTES.ADMIN.ALL_ENROLLMENTS),
+};
+
+export const adminMentorRequestApi = {
+  fetchAllRequests: () => adminApi.get(API_ROUTES.ADMIN.MENTOR_REQUESTS),
+  approveRequest: (requestId: string) => adminApi.patch(API_ROUTES.ADMIN.MENTOR_REQUEST_APPROVE.replace(':requestId', requestId)),
+  rejectRequest: (requestId: string, reason: string) => adminApi.patch(API_ROUTES.ADMIN.MENTOR_REQUEST_REJECT.replace(':requestId', requestId), { reason }),
 };

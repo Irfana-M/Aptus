@@ -62,3 +62,15 @@ export const fetchMyEnrollments = createAsyncThunk(
     }
   }
 );
+
+export const requestMentor = createAsyncThunk(
+  "student/requestMentor",
+  async (data: { subjectId: string; mentorId: string }, { rejectWithValue }) => {
+    try {
+      const response = await studentApi.requestMentor(data);
+      return response;
+    } catch (error: unknown) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  }
+);

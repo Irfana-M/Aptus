@@ -11,7 +11,7 @@ import {
 } from "../../features/admin/adminThunk";
 import {
   selectAllMentors,
-  selectAdminLoading,
+  selectMentorsLoading,
 } from "../../features/admin/adminSelectors";
 import type { RootState } from "../../app/store";
 import type { MentorProfile } from "../../features/mentor/mentorSlice";
@@ -37,6 +37,7 @@ import {
   Check,
 } from "lucide-react";
 import { showToast } from "../../utils/toast";
+import { useDebounce } from "../../hooks/useDebounce";
 
 interface Column<T> {
   header: string;
@@ -49,13 +50,12 @@ export const MentorsManagement: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const mentors = useSelector(selectAllMentors);
-  const loading = useSelector(selectAdminLoading);
+  const loading = useSelector(selectMentorsLoading);
   const mentorsPagination = useSelector((state: RootState) => state.admin.mentorsPagination);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("Mentors");
   const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [filters, setFilters] = useState({
@@ -92,12 +92,7 @@ export const MentorsManagement: React.FC = () => {
   ];
 
   // Debounce search term
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchTerm);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
   // Fetch mentors when pagination/search/filters change
   const fetchMentors = useCallback(() => {
@@ -117,7 +112,7 @@ export const MentorsManagement: React.FC = () => {
   // Reset to page 1 when search/filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, filters]);
+  }, [searchTerm, filters]);
 
   // Pagination handlers
   const handlePageChange = (page: number) => {

@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { Users, Calendar, FileText, ChevronLeft, ChevronRight, MessageSquare, Video, Clock, Home, User, BookOpen, ClipboardList, Bell } from 'lucide-react';
+import { Users, Calendar, FileText, ChevronLeft, ChevronRight, MessageSquare, Video, Clock, Home, User, BookOpen, ClipboardList } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import type { NavItem } from '../../components/layout/DashboardSidebar';
 import { Table, type TableColumn } from '../../components/mentor/Table';
-import { fetchMentorTrialClasses, fetchMentorProfile, updateTrialClassStatus } from "../../features/mentor/mentorThunk";
+import { fetchMentorTrialClasses, fetchMentorProfile, updateTrialClassStatus, fetchMentorCourses } from "../../features/mentor/mentorThunk";
 import { logoutUser } from "../../features/auth/authThunks";
 import type { AppDispatch, RootState } from "../../app/store";
 import { isClassOverdue } from '../../utils/timeUtils';
 import { toast } from 'react-hot-toast';
+import { MentorSidebarProfile } from './MentorSidebarProfile';
 
 interface Student {
   id: string;
@@ -48,37 +49,49 @@ const renderAssignmentStatus = (item: Assignment) => {
     );
 };
 
+import { getMentorTodaySessions, getMentorUpcomingSessions } from '../../api/userApi';
+import type { Session } from '../../types/schedulingTypes';
+
+// ... (existing imports)
+
 // Main Dashboard Component
 const MentorDashboard: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const { trialClasses, loading, profile } = useSelector((state: RootState) => state.mentor);
+  const { trialClasses, courses, loading, profile } = useSelector((state: RootState) => state.mentor);
   const { user } = useSelector((state: RootState) => state.auth);
   
   const [currentDate] = useState(new Date());
   const [showNotificationDetails, setShowNotificationDetails] = useState(false);
+  
+  const [todaySessions, setTodaySessions] = useState<Session[]>([]);
+  const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
 
   useEffect(() => {
     dispatch(fetchMentorTrialClasses());
+    dispatch(fetchMentorCourses()); // Fetch Premium Courses
     if (!profile) {
         dispatch(fetchMentorProfile());
     }
+    
+    // Fetch Sessions
+    Promise.all([
+        getMentorTodaySessions(),
+        getMentorUpcomingSessions()
+    ]).then(([today, upcoming]) => {
+        setTodaySessions(today.data || []);
+        setUpcomingSessions(upcoming.data || []);
+    }).finally(() => {
+        setSessionsLoading(false);
+    });
   }, [dispatch, profile]);
 
+  // Debugging logs
   useEffect(() => {
-    console.log("DEBUG MentorDashboard: All Trial Classes:", trialClasses);
-    if (trialClasses && trialClasses.length > 0) {
-        trialClasses.forEach((cls, idx) => {
-            console.log(`Class ${idx}: ID=${cls.id}, Status=${cls.status}, Student=${cls.student?.fullName}`);
-        });
-    }
-  }, [trialClasses]);
-
-  useEffect(() => {
-    if (profile) {
-        console.log("DEBUG MentorDashboard: profile:", profile);
-    }
-  }, [profile]);
+    console.log("DEBUG MentorDashboard: Trial Classes:", trialClasses);
+    console.log("DEBUG MentorDashboard: Courses:", courses);
+  }, [trialClasses, courses]);
 
   const handleLogout = async () => {
     await dispatch(logoutUser());
@@ -87,16 +100,16 @@ const MentorDashboard: React.FC = () => {
 
   const mentorNavItems: NavItem[] = [
     { icon: <Home size={20} />, label: 'Dashboard', path: '/mentor/dashboard' },
-    { icon: <User size={20} />, label: 'Profile', path: '/mentor/profile' },
+    { icon: <User size={20} />, label: 'Profile', path: '/mentor/profile-setup' },
     { icon: <Users size={20} />, label: 'Students/Batches', path: '/mentor/students' },
     { icon: <Calendar size={20} />, label: 'Attendance', path: '/mentor/attendance' },
     { icon: <BookOpen size={20} />, label: 'Classroom', path: '/mentor/classroom' },
-    { icon: <FileText size={20} />, label: 'Study Materials', path: '/mentor/materials' },
-    { icon: <ClipboardList size={20} />, label: 'Assignments', path: '/mentor/assignments' },
+    // { icon: <FileText size={20} />, label: 'Study Materials', path: '/mentor/materials' },
+    // { icon: <ClipboardList size={20} />, label: 'Assignments', path: '/mentor/assignments' },
     { icon: <ClipboardList size={20} />, label: 'Completed Classes', path: '/mentor/completed-trial-classes' },
-    { icon: <Bell size={20} />, label: 'Notifications', path: '/mentor/notifications' },
+    // { icon: <Bell size={20} />, label: 'Notifications', path: '/mentor/notifications' },
     { icon: <Clock size={20} />, label: 'Availability', path: '/mentor/availability' },
-    { icon: <MessageSquare size={20} />, label: 'Chats', path: '/mentor/chats' },
+    // { icon: <MessageSquare size={20} />, label: 'Chats', path: '/mentor/chats' },
   ];
 
   const dashboardUser = {
@@ -106,18 +119,40 @@ const MentorDashboard: React.FC = () => {
       role: "mentor"
   };
 
-  // Filter for assigned classes only
-  const assignedClasses = (trialClasses || []).filter(cls => cls.status === 'assigned');
-
-  // Map trial classes to Student format for display
-  const students: Student[] = assignedClasses.map(cls => ({
+  // 1. Filter Approved Trial Classes
+  const approvedTrialClasses = (trialClasses || []).filter(cls => cls.status === 'approved');
+  
+  // 2. Map Trial Classes to Student format
+  const trialStudents: Student[] = approvedTrialClasses.map(cls => ({
     id: cls.id || cls._id || '',
-    name: cls.student?.fullName || "Student",
-    time: cls.preferredTime,
-    color: 'bg-green-100', // You can make this dynamic if needed
+    name: cls.student?.fullName || "Student (Trial)",
+    time: cls.preferredTime, // Trial has preferredTime
+    color: 'bg-green-100',
     meetLink: cls.meetLink,
     status: cls.status
   }));
+
+  // 3. Map Premium Courses to Student format
+  // Assuming 'courses' contains Enrollment/Course objects with populated 'student' and 'schedule'
+  const premiumStudents: Student[] = (courses || []).map((course: any) => ({
+    id: course._id || '',
+    name: course.student?.fullName || "Premium Student",
+    time: course.schedule ? `${course.schedule.timeSlot} (${course.schedule.days?.join(', ')})` : "Scheduled",
+    color: 'bg-indigo-100', // Different color for Premium
+    meetLink: undefined, // Or populate if available
+    status: course.status
+  }));
+
+  // 4. Combine Lists
+  const students: Student[] = [...trialStudents, ...premiumStudents];
+
+  // For the "Today's Sessions/Upcoming Classes" view (assignedClasses), we might want to blend them too
+  // The original code used 'assignedClasses' for the main list. 
+  // We can treat 'courses' as classes too or keep them separate.
+  // Given the UI layout, blending them into 'students' list handles the "Assigned Students" sidebar and main list.
+  // But the "Trial Class Notification" block (assignedClasses.map...) is specific to Trial Classes notifications.
+  // We'll keep 'assignedClasses' as just trial classes for the notification block to avoid breaking that UI logic.
+  const assignedClasses = approvedTrialClasses; 
 
   const assignments: Assignment[] = [];
 
@@ -149,6 +184,78 @@ const MentorDashboard: React.FC = () => {
     }
   };
 
+  const AssignedStudentsSidebar = (
+    <div className="px-4 py-2">
+      <h3 className="text-xs font-semibold text-cyan-200/60 uppercase tracking-wider mb-3 px-2">
+        Assigned Students
+      </h3>
+      <div className="space-y-1">
+        {students.length === 0 ? (
+          <p className="text-xs text-cyan-100/40 px-2 italic">No students assigned</p>
+        ) : (
+          students.slice(0, 5).map((student) => (
+            <div 
+              key={student.id} 
+              className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors group cursor-pointer"
+              onClick={() => navigate(`/mentor/students`)}
+            >
+              <div className="relative flex-shrink-0">
+                <img
+                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${student.name}`}
+                  alt={student.name}
+                  className="w-8 h-8 rounded-full border border-white/10"
+                />
+                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-teal-700 rounded-full"></div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-cyan-50 truncate group-hover:text-white transition-colors">
+                  {student.name}
+                </p>
+                <div className="flex items-center gap-1 text-[10px] text-cyan-200/60 truncate">
+                  <Clock size={10} />
+                  {student.time}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+        {students.length > 5 && (
+            <button 
+                onClick={() => navigate('/mentor/students')}
+                className="text-[10px] text-cyan-300 hover:text-white px-2 mt-1 transition-colors"
+            >
+                View all students...
+            </button>
+        )}
+      </div>
+    </div>
+  );
+
+  const sidebarContent = (
+    <>
+      <MentorSidebarProfile 
+        profile={profile ? {
+          fullName: profile.fullName,
+          email: profile.email,
+          profileImageUrl: profile.profilePicture as string, // Type assertion if needed based on your type definition
+          bio: profile.bio
+        } : null} 
+      />
+      {AssignedStudentsSidebar}
+    </>
+  );
+
+  // ...
+  
+  const handleJoinSession = (session: Session) => {
+      if (session.meetingLink && (session.meetingLink.startsWith('http') || session.meetingLink.startsWith('https'))) {
+          window.open(session.meetingLink, '_blank');
+      } else {
+          // Placeholder for internal video call or missing link
+          toast("Classroom feature for regular sessions coming soon!", { icon: '🚧' });
+      }
+  };
+
   return (
     <DashboardLayout
       navItems={mentorNavItems}
@@ -156,6 +263,7 @@ const MentorDashboard: React.FC = () => {
       title="Mentor Dashboard"
       onLogout={handleLogout}
       appTitle="Aptus"
+      extraContent={sidebarContent}
     >
       <div className="flex-1 overflow-y-auto p-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -304,52 +412,38 @@ const MentorDashboard: React.FC = () => {
                 <div className="bg-white rounded-lg p-6 shadow-sm min-h-[300px] flex flex-col">
                   <h3 className="text-xl font-bold text-gray-900 mb-6">Today's Upcoming Sessions</h3>
                   
-                  {loading ? (
+                  {sessionsLoading ? (
                       <div className="flex justify-center p-4">
                           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
                       </div>
-                  ) : assignedClasses.length > 0 ? (
-                    // Filter for today's classes
-                    (() => {
-                      const todaysClasses = assignedClasses.filter(cls => {
-                        const classDateStr = cls.preferredDate || cls.scheduledDateTime;
-                        if (!classDateStr) return false;
-                        const classDate = new Date(classDateStr);
-                        const today = new Date();
-                        return (
-                          classDate.getDate() === today.getDate() &&
-                          classDate.getMonth() === today.getMonth() &&
-                          classDate.getFullYear() === today.getFullYear()
-                        );
-                      });
-
-                      return todaysClasses.length > 0 ? (
+                  ) : todaySessions.length > 0 ? (
                         <div className="space-y-6 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                            {todaysClasses.map((cls) => (
-                              <div key={cls.id || cls._id} className="relative pl-6">
+                            {todaySessions.map((session) => (
+                              <div key={session.id} className="relative pl-6">
                                 {/* Purple indicator line */}
                                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 rounded-full"></div>
                                 
                                 <div className="space-y-2">
                                   {/* Time */}
                                   <p className="text-indigo-600 font-medium text-sm">
-                                    {cls.preferredTime}
+                                    {new Date(session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - 
+                                    {new Date(session.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                   </p>
                                   
                                   {/* Student Name */}
                                   <h4 className="text-lg font-bold text-gray-900">
-                                    Student: {cls.student?.fullName || 'N/A'}
+                                    Student: {typeof session.studentId === 'object' ? session.studentId.fullName : 'Student'}
                                   </h4>
                                   
                                   {/* Subject */}
                                   <p className="text-slate-500 text-sm font-medium">
-                                    Subject: {cls.subject?.subjectName || 'N/A'}
+                                    Subject: {typeof session.subjectId === 'object' ? session.subjectId.name : 'Subject'}
                                   </p>
                                   
                                   {/* Join Button */}
                                   <div className="pt-2">
                                     <button 
-                                      onClick={() => handleStartClass(cls.id || cls._id || '')}
+                                      onClick={() => handleJoinSession(session)}
                                       className="px-6 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-900 text-sm font-semibold rounded-lg transition-colors duration-200"
                                     >
                                       Join Now
@@ -359,15 +453,9 @@ const MentorDashboard: React.FC = () => {
                               </div>
                             ))}
                         </div>
-                      ) : (
-                        <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
-                          No upcoming sessions scheduled for today
-                        </div>
-                      );
-                    })()
                   ) : (
                     <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
-                      No assigned students yet
+                      No upcoming sessions scheduled for today
                     </div>
                   )}
                 </div>
@@ -416,21 +504,27 @@ const MentorDashboard: React.FC = () => {
                 
                 <div className="space-y-4">
                   {/* Dynamic schedule based on assignments/classes */}
-                  {students.slice(0, 3).map((student, idx) => (
-                      <div key={student.id || idx}>
-                        <h4 className="font-semibold text-sm mb-3">{idx === 0 ? "Today" : "Upcoming"}</h4>
+                  {upcomingSessions.slice(0, 5).map((session, idx) => (
+                      <div key={session.id || idx}>
+                        <h4 className="font-semibold text-sm mb-3">
+                            {new Date(session.startTime).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                        </h4>
                         <div className="space-y-3">
                         <div className="flex gap-3">
                             <Users className="w-5 h-5 text-gray-400 flex-shrink-0" />
                             <div>
-                            <p className="text-sm font-medium">Session with {student.name}</p>
-                            <p className="text-xs text-gray-500">{student.time}</p>
+                            <p className="text-sm font-medium">
+                                Session with {typeof session.studentId === 'object' ? session.studentId.fullName : 'Student'}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                                {new Date(session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
                             </div>
                         </div>
                         </div>
                     </div>
                   ))}
-                  {students.length === 0 && (
+                  {upcomingSessions.length === 0 && (
                       <p className="text-sm text-gray-500">No upcoming schedule.</p>
                   )}
                 </div>

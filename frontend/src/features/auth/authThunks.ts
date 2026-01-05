@@ -82,23 +82,27 @@ export const refreshAccessToken = createAsyncThunk<
         isTrialCompleted,
     };
   } catch (err: unknown) {
-    // Determine role to clear specifically
-    const state = store.getState() as RootState;
-    const role = state.auth.user?.role;
-    
-    if (role) {
-      localStorage.removeItem(`${role}_accessToken`);
-    } else {
-      // Fallback: try to find which one failed if multiple exist (discovery)
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("userRole");
-    }
+    // Clear all potential tokens to prevent infinite refresh loops
+    const tokens = [
+      "accessToken", 
+      "student_accessToken", 
+      "mentor_accessToken", 
+      "admin_accessToken", 
+      "userRole",
+      "userId",
+      "isTrialCompleted", 
+      "hasPaid",
+      "isProfileComplete"
+    ];
+    tokens.forEach(key => localStorage.removeItem(key));
     
     return rejectWithValue(
       getApiErrorMessage(err, "Token refresh failed")
     );
   }
 });
+
+
 
 export const loginUser = createAsyncThunk<
   LoginResponse,

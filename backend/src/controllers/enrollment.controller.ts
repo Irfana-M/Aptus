@@ -96,5 +96,21 @@ export class EnrollmentController {
       next(error);
     }
   };
+
+  getAllEnrollments = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const enrollments = await this.enrollmentService.getAllEnrollments();
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: enrollments,
+      });
+    } catch (error: unknown) {
+      next(error);
+    }
+  };
 }
 

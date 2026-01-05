@@ -1,12 +1,17 @@
-import type { CreateOneToOneCourseDto, ICourseRepository, CoursePaginatedResult } from "@/interfaces/repositories/ICourseRepository";
+import { BaseRepository } from "./baseRepository";
+import { Model, type FilterQuery, type PipelineStage, type UpdateQuery } from "mongoose";
 import { Course, type ICourse } from "@/models/course.model";
-import { type FilterQuery, type PipelineStage, type UpdateQuery } from "mongoose";
 import { injectable } from "inversify";
+import type { ICourseRepository, CreateOneToOneCourseDto, CoursePaginatedResult } from "@/interfaces/repositories/ICourseRepository";
 import type { CoursePaginationParams } from "@/dto/shared/paginationTypes";
 import { logger } from "@/utils/logger";
+import { getSignedFileUrl } from "@/utils/s3Upload";
 
 @injectable()
-export class CourseRepository implements ICourseRepository {
+export class CourseRepository extends BaseRepository<ICourse> implements ICourseRepository {
+  constructor() {
+    super(Course as unknown as Model<ICourse>);
+  }
   async findActiveConflict(params: {
     mentorId: string;
     dayOfWeek?: number;
@@ -29,15 +34,36 @@ export class CourseRepository implements ICourseRepository {
     return await Course.findOne(query).lean();
   }
 
-  async createOneToOneCourse(data: CreateOneToOneCourseDto) {
+  async createEnrollment(data: CreateOneToOneCourseDto) {
     // We trust the service to pass valid dayOfWeek/timeSlot
-    const course = await Course.create({
-      ...data,
+    const courseDoc = await Course.create({
       status: "available",
       maxStudents: 1,
       enrolledStudents: 0,
+      ...data,
     });
-    return course;
+    
+    const course = await Course.findById(courseDoc._id)
+      .populate("grade", "name syllabus")
+      .populate("subject", "subjectName")
+      .populate("mentor", "fullName profilePicture")
+      .lean()
+      .exec();
+
+    if (course && course.mentor && (course.mentor as any).profilePicture) {
+       try {
+           const mentor = course.mentor as any;
+           if (mentor.profilePicture.startsWith('http')) {
+               mentor.profileImageUrl = mentor.profilePicture;
+           } else {
+               mentor.profileImageUrl = await getSignedFileUrl(mentor.profilePicture);
+           }
+       } catch (error) {
+           logger.error(`Error signing URL in createEnrollment:`, error);
+       }
+    }
+    
+    return course as unknown as ICourse;
   }
 
   async getAllOneToOneCourses() {
@@ -95,7 +121,7 @@ export class CourseRepository implements ICourseRepository {
       { $unwind: { path: "$subjectDoc", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
-          from: "users",
+          from: "mentors",
           localField: "mentor",
           foreignField: "_id",
           as: "mentorDoc"
@@ -149,7 +175,8 @@ export class CourseRepository implements ICourseRepository {
         mentor: {
           _id: "$mentorDoc._id",
           fullName: "$mentorDoc.fullName",
-          profilePicture: "$mentorDoc.profilePicture"
+          profilePicture: "$mentorDoc.profilePicture",
+          profileImageUrl: "$mentorDoc.profileImageUrl"
         }
       }
     });
@@ -162,6 +189,25 @@ export class CourseRepository implements ICourseRepository {
     );
 
     const courses = await Course.aggregate(pipeline);
+    
+    // Sign URLs for mentor profile pictures
+    const coursesWithSignedUrls = await Promise.all(
+      courses.map(async (course: any) => {
+        if (course.mentor && course.mentor.profilePicture) {
+          try {
+            if (course.mentor.profilePicture.startsWith('http')) {
+              course.mentor.profileImageUrl = course.mentor.profilePicture;
+            } else {
+              course.mentor.profileImageUrl = await getSignedFileUrl(course.mentor.profilePicture);
+            }
+          } catch (error) {
+            logger.error(`Error signing URL for mentor in course result ${course.mentor._id}:`, error);
+            course.mentor.profileImageUrl = null;
+          }
+        }
+        return course;
+      })
+    );
 
     // Count total (need to run a separate count query with same filters)
     const countQuery: FilterQuery<ICourse> = { isActive: true };
@@ -175,7 +221,7 @@ export class CourseRepository implements ICourseRepository {
         { $match: countQuery },
         {
           $lookup: {
-            from: "users",
+            from: "mentors",
             localField: "mentor",
             foreignField: "_id",
             as: "mentorDoc"
@@ -220,7 +266,7 @@ export class CourseRepository implements ICourseRepository {
     logger.info(`findAllCoursesPaginated: Found ${courses.length} courses, total=${total}`);
 
     return {
-      courses,
+      courses: coursesWithSignedUrls,
       total
     };
   }
@@ -243,7 +289,7 @@ export class CourseRepository implements ICourseRepository {
     return await Course.find(query)
       .populate("grade", "name syllabus")
       .populate("subject", "subjectName")
-      .populate("mentor", "name fullName profilePicture")
+      .populate("mentor", "name fullName profilePicture profileImageUrl")
       .sort({ startDate: 1 })
       .lean();
   }
@@ -264,11 +310,48 @@ export class CourseRepository implements ICourseRepository {
     await Course.findByIdAndUpdate(id, update);
   }
 
+  async updateCourse(id: string, data: Partial<CreateOneToOneCourseDto>): Promise<ICourse | null> {
+    const updated = await Course.findByIdAndUpdate(
+      id,
+      { $set: data },
+      { new: true }
+    )
+    .populate("grade", "name syllabus")
+    .populate("subject", "subjectName")
+    .populate("mentor", "fullName profilePicture")
+    .lean()
+    .exec();
+
+    if (updated && updated.mentor && (updated.mentor as any).profilePicture) {
+        try {
+            const mentor = updated.mentor as any;
+            if (mentor.profilePicture.startsWith('http')) {
+                mentor.profileImageUrl = mentor.profilePicture;
+            } else {
+                mentor.profileImageUrl = await getSignedFileUrl(mentor.profilePicture);
+            }
+        } catch (error) {
+            logger.error(`Error signing URL in updateCourse:`, error);
+        }
+    }
+
+    return updated as unknown as ICourse;
+  }
+
   async findByStudent(studentId: string): Promise<ICourse[]> {
     return await Course.find({ student: studentId, isActive: true })
       .populate("grade", "name grade syllabus")
       .populate("subject", "name subjectName")
-      .populate("mentor", "fullName profilePicture email")
+      .populate("mentor", "fullName profilePicture profileImageUrl email")
+      .sort({ createdAt: -1 })
+      .lean();
+  }
+
+  async findByMentor(mentorId: string): Promise<ICourse[]> {
+    return await Course.find({ mentor: mentorId, isActive: true })
+      .populate("grade", "name grade syllabus")
+      .populate("subject", "name subjectName")
+      .populate("student", "fullName profilePicture email phoneNumber")
       .sort({ createdAt: -1 })
       .lean();
   }

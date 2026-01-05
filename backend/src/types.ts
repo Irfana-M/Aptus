@@ -15,6 +15,18 @@ const TYPES = {
   VerificationRepositoryMap: Symbol.for("VerificationRepositoryMap"),
   AuthRepositoryMap: Symbol.for("AuthRepositoryMap"),
   ICourseRepository: Symbol.for("ICourseRepository"),
+  ITimeSlotRepository: Symbol.for("ITimeSlotRepository"),
+  IBookingRepository: Symbol.for("IBookingRepository"),
+  IEnrollmentRepository: Symbol.for("IEnrollmentRepository"),
+  INotificationRepository: Symbol.for("INotificationRepository"),
+  ISessionRepository: Symbol.for("ISessionRepository"),
+  IChatRoomRepository: Symbol.for("IChatRoomRepository"),
+  IChatMessageRepository: Symbol.for("IChatMessageRepository"),
+  IAvailabilityRepository: Symbol.for("IAvailabilityRepository"),
+  IEnrollmentLinkRepository: Symbol.for("IEnrollmentLinkRepository"),
+  IMentorAssignmentRequestRepository: Symbol.for("IMentorAssignmentRequestRepository"),
+
+
   // Services
   IAuthService: Symbol.for("IAuthService"),
   IAdminService: Symbol.for("IAdminService"),
@@ -32,6 +44,19 @@ const TYPES = {
   IUserRoleService: Symbol.for('IUserRoleService'),
   ICourseAdminService: Symbol.for('ICourseAdminService'),
   IAvailabilityService: Symbol.for('IAvailabilityService'),
+  ISchedulingService: Symbol.for('ISchedulingService'),
+  IPaymentService: Symbol.for("IPaymentService"),
+  IEnrollmentService: Symbol.for("IEnrollmentService"),
+  ISessionService: Symbol.for("ISessionService"), // New Session Domain Service
+  IAttendanceService: Symbol.for("IAttendanceService"),
+  IMentorDashboardService: Symbol.for("IMentorDashboardService"),
+  IWalletService: Symbol.for("IWalletService"),
+  INotificationService: Symbol.for("INotificationService"),
+  INotificationManager: Symbol.for("INotificationManager"),
+  ISessionAccessService: Symbol.for("ISessionAccessService"),
+  IChatService: Symbol.for("IChatService"),
+  ISubscriptionService: Symbol.for("ISubscriptionService"),
+
   // Controllers
   AuthController: Symbol.for("AuthController"),
   AdminController: Symbol.for("AdminController"),
@@ -47,6 +72,10 @@ const TYPES = {
   CourseAdminController: Symbol.for("CourseAdminController"),
   PaymentController: Symbol.for("PaymentController"),
   AvailabilityController: Symbol.for("AvailabilityController"),
+  EnrollmentController: Symbol.for("EnrollmentController"),
+  MentorDashboardController: Symbol.for("MentorDashboardController"),
+  ChatController: Symbol.for("ChatController"),
+
   // Middleware
   AuthMiddleware: Symbol.for("AuthMiddleware"),
   RoleMiddleware: Symbol.for("RoleMiddleware"),
@@ -54,20 +83,25 @@ const TYPES = {
   // Utils
   PassportConfig: Symbol.for("PassportConfig"),
   EmailService: Symbol.for("EmailService"),
+
   // Course Request
-  CourseRequestRepository: Symbol.for("CourseRequestRepository"),
-  CourseRequestService: Symbol.for("CourseRequestService"),
+  ICourseRequestRepository: Symbol.for("ICourseRequestRepository"),
+  ICourseRequestService: Symbol.for("ICourseRequestService"),
   CourseRequestController: Symbol.for("CourseRequestController"),
   CourseController: Symbol.for("CourseController"),
   ICourseService: Symbol.for("ICourseService"),
-  ICourseRequestService: Symbol.for("ICourseRequestService"),
-  IPaymentService: Symbol.for("IPaymentService"),
-  IEnrollmentService: Symbol.for("IEnrollmentService"),
-  IEnrollmentRepository: Symbol.for("IEnrollmentRepository"),
-  EnrollmentController: Symbol.for("EnrollmentController"),
-  IMentorDashboardService: Symbol.for("IMentorDashboardService"),
-  MentorDashboardController: Symbol.for("MentorDashboardController"),
-  IWalletService: Symbol.for("IWalletService"),
+
+  // Policies
+  SchedulingPolicy: Symbol.for("SchedulingPolicy"),
+  TrialEligibilityPolicy: Symbol.for("TrialEligibilityPolicy"),
+  SessionAttendancePolicy: Symbol.for("SessionAttendancePolicy"),
+
+  SchedulingOrchestrator: Symbol.for("SchedulingOrchestrator"),
+  CronService: Symbol.for("CronService"),
+  InternalEventEmitter: Symbol.for("InternalEventEmitter"),
+  IMentorRequestService: Symbol.for("IMentorRequestService"),
+  NotificationController: Symbol.for("NotificationController"),
+
 };
 
 export { TYPES };

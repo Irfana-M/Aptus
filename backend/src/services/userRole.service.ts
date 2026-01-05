@@ -9,8 +9,6 @@ import { logger } from "../utils/logger";
 import { MentorMapper } from "@/mappers/MentorMapper";
 import { StudentMapper } from "@/mappers/StudentMapper";
 import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
-import type { IStudentService } from "@/interfaces/services/IStudentService";
-import type { IMentorService } from "@/interfaces/services/IMentorService";
 import { verifyAccessToken } from "../utils/jwt.util";
 import { Types } from "mongoose";
 
@@ -19,9 +17,7 @@ export class UserRoleService implements IUserRoleService {
   constructor(
     @inject(TYPES.IMentorRepository) private mentorRepository: IMentorRepository,
     @inject(TYPES.IStudentRepository) private studentRepository: IStudentRepository,
-    @inject(TYPES.ITrialClassRepository) private trialClassRepository: ITrialClassRepository,
-     @inject(TYPES.IStudentService) private studentService: IStudentService,
-    @inject(TYPES.IMentorService) private mentorService: IMentorService
+    @inject(TYPES.ITrialClassRepository) private trialClassRepository: ITrialClassRepository
   ) {}
 
   
@@ -32,15 +28,16 @@ export class UserRoleService implements IUserRoleService {
   ): Promise<VerificationResponse> {
     try {
       if (role === "mentor") {
-        const mentor = await this.mentorService.getById(userId);
+        const mentor = await this.mentorRepository.findById(userId);
         if (!mentor) return { success: false, error: "Mentor not found" };
-        return { success: true, user: mentor };
+        return { success: true, user: MentorMapper.toResponseDto(mentor) };
       }
 
       if (role === "student") {
-        const student = await this.studentService.getById(userId);
+        const student = await this.studentRepository.findById(userId);
         if (!student) return { success: false, error: "Student not found" };
-        return { success: true, user: student };
+        const dto = StudentMapper.toStudentResponseDto(student);
+        return { success: true, user: { ...dto, role: "student" } };
       }
 
       if (role === "admin") {
