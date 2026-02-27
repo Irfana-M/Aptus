@@ -7,8 +7,8 @@ export interface BaseUserResponseDto {
   isVerified: boolean;
   isProfileComplete?: boolean;
   isBlocked?: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt?: Date | undefined;
+  updatedAt?: Date | undefined;
 }
 export interface MentorBaseResponseDto extends BaseUserResponseDto {
   approvalStatus?: "approved" | "pending" | "rejected" | "not_submitted";
@@ -25,7 +25,7 @@ export interface SubscriptionDetails {
 }
 
 export interface StudentBaseResponseDto extends BaseUserResponseDto {
-  isTrialCompleted?: boolean;
+  isTrialCompleted?: boolean | undefined;
   subscription?: SubscriptionDetails | undefined;
   
   // Profile fields for DTO

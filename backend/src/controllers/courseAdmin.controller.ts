@@ -4,6 +4,7 @@ import type { ICourseAdminService } from "../interfaces/services/ICourseAdminSer
 import {TYPES} from "@/types";
 import { HttpStatusCode } from "@/constants/httpStatus";
 import { logger } from "@/utils/logger";
+import type { CoursePaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes";
 import type { SubjectResponseDto } from "@/dtos/student/subject.dto";
 import { AppError } from "@/utils/AppError";
 import { getPaginationParams } from "@/utils/pagination.util";
@@ -82,13 +83,16 @@ getAllOneToOneCourses = async (req: Request, res: Response, next: NextFunction):
 
     logger.info("Admin: Fetching courses with pagination/filters", { page, limit, search, status, gradeId });
     
-    const paginationParams = {
+    const paginationParams: CoursePaginationParams = {
       page,
       limit,
       search,
-      status,
       gradeId,
     };
+
+    if (status) {
+      paginationParams.status = status;
+    }
 
     const result = await this.courseService.getAllCoursesPaginated(paginationParams);
     res.status(HttpStatusCode.OK).json(result);

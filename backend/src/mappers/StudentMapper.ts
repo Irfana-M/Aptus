@@ -220,11 +220,11 @@ export class StudentMapper {
       isTrialCompleted: s.isTrialCompleted || false,
       hasPaid: s.hasPaid ?? ((s.subscription?.status === 'active') || false),
       onboardingStatus: s.onboardingStatus || StudentOnboardingStatus.REGISTERED,
-      gradeId: s.gradeId ? new Types.ObjectId(s.gradeId as any) : undefined,
+      gradeId: s.gradeId?.toString(),
       preferencesCompleted: s.preferencesCompleted,
-      preferredSubjects: s.preferredSubjects?.map(id => new Types.ObjectId(id as any)),
+      preferredSubjects: s.preferredSubjects?.map(id => id.toString()),
       preferredTimeSlots: s.preferredTimeSlots?.map((slot: any) => ({
-        subjectId: new Types.ObjectId(slot.subjectId as any),
+        subjectId: slot.subjectId?.toString(),
         slots: slot.slots,
         status: slot.status
       })),
@@ -297,7 +297,7 @@ export class StudentMapper {
       isPaid: student.isPaid || false,
       isTrialCompleted: student.isTrialCompleted || false,
       hasPaid: student.hasPaid ?? (student.subscription?.status === 'active'),
-      onboardingStatus: student.onboardingStatus || undefined,
+      onboardingStatus: student.onboardingStatus as StudentOnboardingStatus | undefined,
       preferencesCompleted: student.preferencesCompleted as boolean | undefined,
     };
   }

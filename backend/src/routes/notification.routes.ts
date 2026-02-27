@@ -4,6 +4,7 @@ import { container } from '../inversify.config';
 import { TYPES } from '../types';
 import { NotificationController } from '../controllers/notification.controller';
 import { AuthMiddleware } from '../middlewares/authMiddleware';
+import type { INotificationService } from '../interfaces/services/INotificationService';
 
 const router = Router();
 const notificationService = container.get<INotificationService>(TYPES.INotificationService);

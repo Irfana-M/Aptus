@@ -12,6 +12,7 @@ import type {
   SubjectProficiencyDto,
   CertificationDto,
 } from "../dtos/mentor/MentorResponseDTO";
+import { ApprovalStatus } from "@/domain/enums/ApprovalStatus";
 export class MentorMapper {
   static toResponseDto(mentor: MentorProfile): MentorResponseDto {
     const mentorData = (mentor && 'toObject' in mentor && typeof mentor.toObject === 'function') 
@@ -47,7 +48,7 @@ export class MentorMapper {
       createdAt: mentorData.createdAt || new Date(),
       updatedAt: mentorData.updatedAt || new Date(),
       isProfileComplete: mentorData.isProfileComplete ?? false,
-      approvalStatus: mentorData.approvalStatus || "pending",
+      approvalStatus: mentorData.approvalStatus || ApprovalStatus.PENDING,
       submittedForApprovalAt: mentorData.submittedForApprovalAt,
       rejectionReason: mentorData.rejectionReason,
       authProvider: mentorData.authProvider,

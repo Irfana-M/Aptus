@@ -44,12 +44,12 @@
     // Recommended Options
     "strict": true,
     "moduleResolution": "node",
-    
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "ignoreDeprecations": "6.0"
   },
   "include": [
     "src"

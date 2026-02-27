@@ -62,7 +62,7 @@ export class SchedulingOrchestrator {
         startTime: { $gte: new Date(new Date(slot.startTime).setHours(0,0,0,0)) }
       }, session);
 
-      const limitCheck = this._policy.isMentorWithinLimits(mentor, dailyCount, 0);
+      const limitCheck = this._policy.isMentorWithinLimits(mentor || {} as any, dailyCount, 0);
       if (!limitCheck.allowed) {
           throw new AppError(limitCheck.reason || "Mentor limits exceeded", HttpStatusCode.CONFLICT);
       }

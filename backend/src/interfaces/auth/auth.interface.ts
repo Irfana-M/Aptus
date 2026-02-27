@@ -23,7 +23,7 @@ export interface AuthUser extends BaseUser {
   hasPaid?: boolean | undefined;
   isTrialCompleted?: boolean | undefined;
   profileImageUrl?: string | null | undefined;
-  onboardingStatus?: StudentOnboardingStatus;
+  onboardingStatus?: StudentOnboardingStatus | undefined;
   preferencesCompleted?: boolean | undefined;
 }
 
@@ -52,17 +52,17 @@ export interface StudentAuthUser extends Omit<AuthUser, 'role'> {
   parentPhone?: string;
   relationship?: string;
   isTrialCompleted?: boolean | undefined;
-  isProfileCompleted?: boolean;
-  referralCode?: string;
-  referredBy?: string;
-  profileImage?: string;
-  profileImageKey?: string;
+  isProfileCompleted?: boolean | undefined;
+  referralCode?: string | undefined;
+  referredBy?: string | undefined;
+  profileImage?: string | undefined;
+  profileImageKey?: string | undefined;
   subscription?: SubscriptionDetails | undefined;
   activeSubscriptionId?: string | import('mongoose').Types.ObjectId;
   preferencesCompleted?: boolean | undefined;
   
   // Profile fields
-  onboardingStatus?: StudentOnboardingStatus;
+  onboardingStatus?: StudentOnboardingStatus | undefined;
   age?: number | undefined;
   gender?: string | undefined;
   dateOfBirth?: Date | undefined;

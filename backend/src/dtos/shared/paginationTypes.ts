@@ -1,9 +1,10 @@
 export interface PaginationParams {
-  page?: number;
-  limit?: number;
-  search?: string;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  page?: number | undefined;
+  limit?: number | undefined;
+  search?: string | undefined;
+  sortBy?: string | undefined;
+  sortOrder?: 'asc' | 'desc' | undefined;
+  [key: string]: unknown;
 }
 
 export interface MentorPaginationParams extends PaginationParams {
@@ -18,12 +19,12 @@ export interface StudentPaginationParams extends PaginationParams {
 }
 
 export interface CoursePaginationParams extends PaginationParams {
-  status?: 'available' | 'booked' | 'ongoing' | 'completed' | 'cancelled' | undefined;
-  gradeId?: string;
-  subjectId?: string;
-  dayOfWeek?: number;
-  timeSlot?: string;
-  syllabus?: string;
+  status?: 'available' | 'booked' | 'ongoing' | 'completed' | 'cancelled' | '' | undefined;
+  gradeId?: string | undefined;
+  subjectId?: string | undefined;
+  dayOfWeek?: number | undefined;
+  timeSlot?: string | undefined;
+  syllabus?: string | undefined;
 }
 
 export interface PaginationMeta {
