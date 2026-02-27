@@ -238,9 +238,8 @@ export class MentorRequestService implements IMentorRequestService {
               throw new AppError(`Mentor is NOT available on: ${missingDays.join(', ')}. forced assignment blocked.`, HttpStatusCode.BAD_REQUEST);
           }
       } else if (schedule && schedule.timeSlot) {
-          const safeSchedule = schedule;
-          const startSlot = safeSchedule.timeSlot.split('-')[0].trim();
-          for (const day of safeSchedule.days) {
+          const startSlot = schedule.timeSlot.split('-')[0]?.trim() || "10:00";
+          for (const day of schedule.days) {
               const daySched = mentorAvailability.find((d: { day: string, slots?: { startTime: string }[] }) => d.day === day && d.slots && d.slots.length > 0);
               if (!daySched) {
                   missingDays.push(day);
