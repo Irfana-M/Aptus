@@ -43,8 +43,8 @@
     "exactOptionalPropertyTypes": true,
     // Recommended Options
     "strict": true,
-    "moduleResolution": "Bundler",
-    "verbatimModuleSyntax": true,
+    "moduleResolution": "node",
+    
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
