@@ -1,37 +1,31 @@
 import { Router } from "express";
 import { MENTOR_ROUTES } from "../constants/routes";
 import { MentorController } from "../controllers/mentor.controller";
-import { MentorService } from "../services/mentor.services";
-import { MentorRepository } from "../repositories/mentorRepository";
-import { TrialClassRepository } from "../repositories/trialClass.repository";
-import { NodemailerService } from "../services/email.service.js";
-import { MentorAuthRepository } from "../repositories/mentorAuth.repository";
-import { requireAuth } from "../middleware/authMiddleware";
-import { requireRole } from "@/middleware/role.middleware";
-import upload from "../middleware/upload.middleware";
+
+import { requireAuth } from "../middlewares/authMiddleware";
+import { requireRole } from "../middlewares/role.middleware";
+import { upload } from "../middlewares/upload.middleware";
 import { container } from "@/inversify.config";
 import { TYPES } from "@/types";
 import { MentorTrialClassController } from "../controllers/mentorTrialClass.controller";
 import { CourseController } from "../controllers/course.controller";
+import { StudyMaterialController } from "../controllers/studyMaterial.controller";
 
 const mentorRouter = Router();
 
-const mentorRepo = new MentorRepository();
-const emailService = new NodemailerService();
-const mentorAuthRepo = new MentorAuthRepository();
-const trialClassRepo = new TrialClassRepository();
-const mentorService = new MentorService(
-  mentorAuthRepo,
-  mentorRepo,
-  trialClassRepo,
-  emailService
-);
-const mentorController = new MentorController(mentorService);
-
+const mentorController = container.get<MentorController>(TYPES.MentorController);
 const mentorTrialClassController = container.get<MentorTrialClassController>(TYPES.MentorTrialClassController);
 const courseController = container.get<CourseController>(TYPES.CourseController);
+const studyMaterialController = container.get<StudyMaterialController>(TYPES.StudyMaterialController);
 
 // validateBody, updateMentorProfileSchema removed as they are temporarily unused in this file
+
+mentorRouter.post(
+  MENTOR_ROUTES.LEAVE_REQUEST,
+  requireAuth,
+  requireRole("mentor"),
+  mentorController.requestLeave
+);
 
 mentorRouter.put(
   MENTOR_ROUTES.PROFILE_UPDATE,
@@ -62,6 +56,29 @@ mentorRouter.get(
   requireRole("mentor"),
   mentorController.getProfile
 );
+
+mentorRouter.get(
+  MENTOR_ROUTES.SESSIONS, // This constant might not exist yet, need to check or add it
+  requireAuth,
+  requireRole("mentor"),
+  mentorController.getDailySessions
+);
+
+// Get only one-to-one students
+mentorRouter.get(
+  MENTOR_ROUTES.STUDENTS_ONE_TO_ONE,
+  requireAuth,
+  requireRole("mentor"),
+  mentorController.getOneToOneStudents
+);
+
+// Get only group batches
+mentorRouter.get(
+  MENTOR_ROUTES.BATCHES,
+  requireAuth,
+  requireRole("mentor"),
+  mentorController.getGroupBatches
+);
  
 mentorRouter.patch(
   MENTOR_ROUTES.TRIAL_CLASS_STATUS,
@@ -75,6 +92,77 @@ mentorRouter.get(
   requireAuth,
   requireRole("mentor"),
   courseController.getMentorCourses.bind(courseController)
+);
+
+mentorRouter.get(
+  MENTOR_ROUTES.AVAILABLE_SLOTS,
+  requireAuth, // Public or requires auth? If student calls it, requireAuth is fine.
+  mentorController.getAvailableSlots
+);
+
+mentorRouter.post(
+  MENTOR_ROUTES.STUDY_MATERIALS,
+  requireAuth,
+  requireRole("mentor"),
+  upload.single("file"),
+  studyMaterialController.uploadMaterial.bind(studyMaterialController)
+);
+
+mentorRouter.get(
+  MENTOR_ROUTES.STUDY_MATERIALS,
+  requireAuth,
+  requireRole("mentor"),
+  studyMaterialController.getSessionMaterials.bind(studyMaterialController)
+);
+
+mentorRouter.delete(
+  MENTOR_ROUTES.STUDY_MATERIAL_DELETE,
+  requireAuth,
+  requireRole("mentor"),
+  studyMaterialController.deleteMaterial.bind(studyMaterialController)
+);
+
+// === ASSIGNMENT ROUTES ===
+
+// Create assignment
+mentorRouter.post(
+  "/assignments",
+  requireAuth,
+  requireRole("mentor"),
+  upload.single("file"),
+  studyMaterialController.createAssignment.bind(studyMaterialController)
+);
+
+// Get mentor's materials (study materials and/or assignments)
+mentorRouter.get(
+  "/classroom/materials",
+  requireAuth,
+  requireRole("mentor"),
+  studyMaterialController.getMentorMaterials.bind(studyMaterialController)
+);
+
+// Get submissions for an assignment
+mentorRouter.get(
+  "/assignments/:assignmentId/submissions",
+  requireAuth,
+  requireRole("mentor"),
+  studyMaterialController.getAssignmentSubmissions.bind(studyMaterialController)
+);
+
+// Provide feedback on a submission
+mentorRouter.put(
+  "/submissions/:submissionId/feedback",
+  requireAuth,
+  requireRole("mentor"),
+  studyMaterialController.provideFeedback.bind(studyMaterialController)
+);
+
+// Get download URL for file
+mentorRouter.get(
+  "/download/:fileKey",
+  requireAuth,
+  requireRole("mentor"),
+  studyMaterialController.getDownloadUrl.bind(studyMaterialController)
 );
 
 export default mentorRouter;

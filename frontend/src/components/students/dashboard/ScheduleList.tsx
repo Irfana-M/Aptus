@@ -6,6 +6,7 @@ import { fetchStudentTrialClasses } from '../../../features/trial/student/studen
 import { fetchMyEnrollments } from '../../../features/student/studentThunk';
 import type { RootState, AppDispatch } from '../../../app/store'; 
 import { format, addDays, startOfWeek, isSameDay } from 'date-fns';
+import type { Course } from '../../../types/courseTypes';
 
 const ScheduleList: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -50,37 +51,55 @@ const ScheduleList: React.FC = () => {
                     scheduleItems.push({
                         id: trial.id,
                         type: 'Trial Class',
-                        subject: typeof trial.subject === 'object' && trial.subject ? (trial.subject as { subjectName: string }).subjectName : String(trial.subject),
+                        subject: typeof trial.subject === 'object' && trial.subject ? trial.subject.subjectName : String(trial.subject),
                         time: trial.preferredTime,
                         status: trial.status,
-                        link: trial.meetLink,
+                        link: trial.meetLink || `/trial-class/${trial.id}/call`,
                         isTrial: true
                     });
                 }
             }
         });
 
+        const getTimeForDay = (course: Course, day: string) => {
+            const schedule = course?.schedule;
+            if (schedule?.slots && schedule.slots.length > 0) {
+                const matched = schedule.slots.find((s) => s.day === day);
+                if (matched) return `${matched.startTime} - ${matched.endTime}`;
+            }
+
+            const timeSlot = schedule?.timeSlot || (course as unknown as Record<string, unknown>).timeSlot as string;
+            if (!timeSlot) return 'TBD';
+            if (!timeSlot.includes('|')) return timeSlot;
+            const parts = timeSlot.split('|');
+            if (day === 'Saturday') return parts[0];
+            if (day === 'Sunday') return parts[1];
+            return timeSlot;
+        };
+
         // 2. Enrollments (Regular Classes)
         enrollments.forEach(enrollment => {
-            const course = enrollment.courseId;
+            const course = enrollment.course;
             if (course && course.startDate && course.endDate) {
                 const start = new Date(course.startDate);
                 const end = new Date(course.endDate);
                 
                 // Check if date is within course range
                 if (date >= start && date <= end) {
-                    const dayNum = date.getDay(); // 0 (Sun) to 6 (Sat)
-                    // If course.dayOfWeek is 1-7 (Mon-Sun), we might need adjustment.
-                    // Assuming course.dayOfWeek matches JS getDay() or similar.
-                    // Let's check for match.
-                    if (course.dayOfWeek === dayNum) {
+                    const dayName = format(date, 'EEEE'); // 'Monday'
+                    const dayNum = date.getDay(); // 0-6
+                    
+                    // Match by string day names or old numeric dayOfWeek
+                    const isMatch = course.schedule?.days?.includes(dayName) || (course as unknown as Record<string, unknown>).dayOfWeek === dayNum;
+
+                    if (isMatch) {
                         scheduleItems.push({
                             id: enrollment._id,
                             type: 'Class',
                             subject: course.subject?.subjectName || 'Course Session',
-                            time: course.timeSlot,
+                            time: getTimeForDay(course, dayName),
                             status: enrollment.status,
-                            link: null, 
+                            link: `/student/classroom`, 
                             isTrial: false,
                             courseId: course._id
                         });
@@ -154,9 +173,14 @@ const ScheduleList: React.FC = () => {
                         </div>
                         {item.link && (
                             <button 
-                                onClick={() => navigate(`/trial-class/${item.id}/call`)}
-                                className="text-blue-600 hover:text-blue-800 p-1"
+                                onClick={() => {
+                                    if (item.isTrial) navigate(`/trial-class/${item.id}/call`);
+                                    else navigate(item.link!);
+                                }}
+                                className="text-blue-600 hover:text-blue-800 p-1 flex items-center gap-1 group/btn"
+                                title={item.isTrial ? "Join Trial Call" : "Open Classroom"}
                             >
+                                <span className="text-[10px] font-bold opacity-0 group-hover/btn:opacity-100 transition-opacity">JOIN</span>
                                 <Video size={18} />
                             </button>
                         )}

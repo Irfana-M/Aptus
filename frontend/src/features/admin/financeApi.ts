@@ -10,3 +10,5 @@ export const getAllPayments = async () => {
     throw new Error(getErrorMessage(error));
   }
 };
+
+

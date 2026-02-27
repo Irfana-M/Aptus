@@ -4,12 +4,16 @@ import type { INotificationService } from '../interfaces/services/INotificationS
 import type { InternalEventEmitter } from '../utils/InternalEventEmitter';
 import { EVENTS } from '../utils/InternalEventEmitter';
 import { logger } from '../utils/logger';
+import type { IAdminRepository } from '@/interfaces/repositories/IAdminRepository';
+import type { NotificationType } from '@/interfaces/models/notification.interface';
 
 @injectable()
 export class NotificationManager {
   constructor(
     @inject(TYPES.InternalEventEmitter) private _eventEmitter: InternalEventEmitter,
-    @inject(TYPES.INotificationService) private _notificationService: INotificationService
+    @inject(TYPES.INotificationService) private _notificationService: INotificationService,
+    @inject(TYPES.IAdminRepository)
+private _adminRepository: IAdminRepository
   ) {}
 
   public initialize(): void {
@@ -104,16 +108,30 @@ export class NotificationManager {
     // Session Scheduled
     this._eventEmitter.on(EVENTS.SESSION_SCHEDULED, async (data) => {
       try {
-        await this._notificationService.notifyUser(
-          data.studentId,
-          'student',
-          'session_booked',
-          { 
-            subjectName: data.subjectName,
-            startTime: data.startTime,
-            message: `New session for ${data.subjectName} scheduled for ${data.startTime}`
-          }
-        );
+        await Promise.all([
+          // Notify Student
+          this._notificationService.notifyUser(
+            data.studentId,
+            'student',
+            'session_booked',
+            { 
+              subjectName: data.subjectName,
+              startTime: data.startTime,
+              message: `New session for ${data.subjectName} scheduled for ${data.startTime}`
+            }
+          ),
+          // Notify Mentor
+          this._notificationService.notifyUser(
+            data.mentorId,
+            'mentor',
+            'session_booked',
+            { 
+              subjectName: data.subjectName,
+              startTime: data.startTime,
+              message: `A student has booked a session for ${data.subjectName} in your slot on ${data.startTime}`
+            }
+          )
+        ]);
       } catch (error) {
         logger.error('Error handling SESSION_SCHEDULED:', error);
       }
@@ -172,5 +190,106 @@ export class NotificationManager {
         logger.error('Error handling BOOKING_CANCELLED:', error);
       }
     });
+
+    // Admin Notifications
+    this._eventEmitter.on(EVENTS.MENTOR_REQUEST_SUBMITTED, async (data) => {
+      try {
+        await this.notifyAdmins('mentor_request_submitted', {
+          studentName: data.studentName,
+          mentorName: data.mentorName,
+          subjectName: data.subjectName,
+          message: `New mentor request submitted by ${data.studentName} for ${data.subjectName}`
+        });
+      } catch (error) {
+        logger.error('Error handling MENTOR_REQUEST_SUBMITTED:', error);
+      }
+    });
+
+    this._eventEmitter.on(EVENTS.PREFERENCES_SUBMITTED, async (data) => {
+      try {
+        await this.notifyAdmins('preferences_submitted', {
+          studentName: data.studentName,
+          subjectName: data.subjectName,
+          message: `New preferences submitted by ${data.studentName} for ${data.subjectName}`
+        });
+      } catch (error) {
+        logger.error('Error handling PREFERENCES_SUBMITTED:', error);
+      }
+    });
+
+    this._eventEmitter.on(EVENTS.COURSE_REQUEST_SUBMITTED, async (data) => {
+      try {
+        await this.notifyAdmins('admin_course_request', {
+          requestId: data.requestId,
+          studentId: data.studentId,
+          subject: data.subject,
+          message: `New course request for ${data.subject} (${data.mentoringMode})`
+        });
+      } catch (error) {
+        logger.error('Error handling COURSE_REQUEST_SUBMITTED:', error);
+      }
+    });
+
+    this._eventEmitter.on(EVENTS.SUBSCRIPTION_ACTIVATED, async (data) => {
+      try {
+        await this.notifyAdmins('admin_subscription_activated', {
+          studentName: data.studentName,
+          plan: data.plan,
+          message: `New student ${data.studentName} has subscribed to ${data.plan}`
+        });
+      } catch (error) {
+        logger.error('Error handling SUBSCRIPTION_ACTIVATED:', error);
+      }
+    });
+
+    this._eventEmitter.on(EVENTS.TRIAL_BOOKED, async (data) => {
+      try {
+        await this.notifyAdmins('admin_trial_booked', {
+          studentName: data.studentName,
+          subjectName: data.subjectName,
+          message: `New trial class requested by ${data.studentName} for ${data.subjectName}`
+        });
+      } catch (error) {
+        logger.error('Error handling TRIAL_BOOKED:', error);
+      }
+    });
+
+    this._eventEmitter.on(EVENTS.USER_REGISTERED, async (data) => {
+      try {
+        await this.notifyAdmins('admin_user_registered', {
+          email: data.email,
+          role: data.role,
+          fullName: data.fullName,
+          message: `New ${data.role} registered: ${data.email} (${data.fullName || 'No Name'})`
+        });
+      } catch (error) {
+        logger.error('Error handling USER_REGISTERED:', error);
+      }
+    });
   }
+
+    private async notifyAdmins(
+    type: NotificationType,
+    payload: any
+  ): Promise<void> {
+
+    const admins = await this._adminRepository.findAll();
+
+    if (!admins || admins.length === 0) {
+      logger.warn('No admins found to notify');
+      return;
+    }
+
+    await Promise.all(
+      admins.map((admin) =>
+        this._notificationService.notifyUser(
+          admin._id.toString(),
+          'admin',
+          type,
+          payload
+        )
+      )
+    );
+  }
+
 }

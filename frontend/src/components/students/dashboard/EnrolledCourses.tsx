@@ -29,8 +29,8 @@ const EnrolledCourses: React.FC = () => {
                     <BookOpen size={20} />
                 </div>
                 <div className="flex-1">
-                    <p className="font-semibold text-gray-900 leading-tight">{enrollment.courseId?.subject?.subjectName || 'Subject'}</p>
-                    <p className="text-xs text-gray-700">{enrollment.courseId?.grade?.name || 'Grade'}</p>
+                    <p className="font-semibold text-gray-900 leading-tight">{enrollment.course?.subject?.subjectName || 'Subject'}</p>
+                    <p className="text-xs text-gray-700">{enrollment.course?.grade?.name || 'Grade'}</p>
                 </div>
                  <div className="text-right">
                     <span className="text-xs font-medium text-teal-700 bg-teal-100 px-2 py-1 rounded-full">

@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
-import { useVideoCall } from '../../context/VideoCallContext';
+import { useVideoCall } from '../../context/videoCallContextStore';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Maximize2, Mic, MicOff, Video, VideoOff, PhoneOff, Minus } from 'lucide-react';
+import { Maximize2, Mic, MicOff, Video, VideoOff, PhoneOff } from 'lucide-react';
 
 const FloatingCallOverlay: React.FC = () => {
     const { 
@@ -23,24 +23,28 @@ const FloatingCallOverlay: React.FC = () => {
 
     // Hide if no call is active OR if we are already on the call page
     const isOnCallRoute = location.pathname.includes(`/trial-class/${trialClassId}/call`);
-    if (!trialClassId || isOnCallRoute) return null;
+    const shouldHide = !trialClassId || isOnCallRoute;
 
     useEffect(() => {
+        if (shouldHide) return;
         if (localVideoRef.current && localStream) {
             localVideoRef.current.srcObject = localStream;
         }
-    }, [localStream]);
+    }, [localStream, shouldHide]);
 
     useEffect(() => {
+        if (shouldHide) return;
         if (remoteVideoRef.current && remoteStream) {
             remoteVideoRef.current.srcObject = remoteStream;
             remoteVideoRef.current.play().catch(console.error);
         }
-    }, [remoteStream]);
+    }, [remoteStream, shouldHide]);
 
     const handleMaximize = () => {
         navigate(`/trial-class/${trialClassId}/call`);
     };
+
+    if (shouldHide) return null;
 
     return (
         <div className="fixed bottom-6 right-6 w-80 bg-slate-900 rounded-3xl shadow-2xl border border-white/10 overflow-hidden z-[9999] animate-in slide-in-from-bottom-5 duration-500">

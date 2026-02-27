@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { fetchAllMentorRequestsAdmin, approveMentorRequestAdmin, rejectMentorRequestAdmin } from "../../features/admin/adminThunk";
 import { Sidebar } from "../../components/admin/Sidebar";
@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 
 const MentorRequestsPage = () => {
   const dispatch = useAppDispatch();
-  const {mentorAssignmentRequests, loading, error} = useAppSelector((state) => state.admin);
+  const {mentorAssignmentRequests, loading} = useAppSelector((state) => state.admin);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
@@ -21,7 +21,7 @@ const MentorRequestsPage = () => {
     try {
       await dispatch(approveMentorRequestAdmin(requestId)).unwrap();
       toast.success("Request approved successfully");
-    } catch (err) {
+    } catch {
       toast.error("Failed to approve request");
     } finally {
       setIsProcessing(null);
@@ -36,17 +36,17 @@ const MentorRequestsPage = () => {
     try {
       await dispatch(rejectMentorRequestAdmin({ requestId, reason })).unwrap();
       toast.success("Request rejected successfully");
-    } catch (err) {
+    } catch {
       toast.error("Failed to reject request");
     } finally {
       setIsProcessing(null);
     }
   };
 
-  const pendingRequests = mentorAssignmentRequests.filter((req: any) => req.status === 'pending');
-  const pastRequests = mentorAssignmentRequests.filter((req: any) => req.status !== 'pending');
+  const pendingRequests = mentorAssignmentRequests.filter((req) => req.status === 'pending');
+  const pastRequests = mentorAssignmentRequests.filter((req) => req.status !== 'pending');
 
-  const RequestsTable = ({ requests, title }: { requests: any[], title: string }) => (
+  const RequestsTable = ({ requests, title }: { requests: typeof mentorAssignmentRequests, title: string }) => (
      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
       <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
         <h2 className="font-bold text-lg text-slate-800 flex items-center gap-2">
@@ -79,25 +79,25 @@ const MentorRequestsPage = () => {
                   <td className="px-6 py-4 font-medium text-slate-900">
                     <div className="flex items-center gap-3">
                        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-                          {req.studentId?.fullName?.[0]}
+                          {typeof req.student === 'object' ? req.student.fullName?.[0] : '?'}
                        </div>
-                       {req.studentId?.fullName}
+                       {typeof req.student === 'object' ? req.student.fullName : 'N/A'}
                     </div>
                   </td>
                   <td className="px-6 py-4 text-slate-600 font-medium">
                      <span className="flex items-center gap-2">
-                        <User size={16} /> {req.mentorId?.fullName}
+                        <User size={16} /> {typeof req.mentor === 'object' ? req.mentor.fullName : 'N/A'}
                      </span>
                   </td>
                   <td className="px-6 py-4">
                     <span className="px-2 py-1 rounded-md bg-slate-100 text-slate-600 font-medium text-xs border border-slate-200">
-                      {req.subjectId?.subjectName}
+                      {typeof req.subject === 'object' ? req.subject.subjectName : 'N/A'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-slate-500">
                     <div className="flex items-center gap-1.5">
                        <Clock size={14} />
-                       {new Date(req.requestedAt).toLocaleDateString()}
+                       {new Date(req.createdAt).toLocaleDateString()}
                     </div>
                   </td>
                   <td className="px-6 py-4">

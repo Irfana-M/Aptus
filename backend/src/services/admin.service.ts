@@ -9,9 +9,8 @@ import type { MentorProfile } from "../interfaces/models/mentor.interface";
 import type { IStudentRepository } from "@/interfaces/repositories/IStudentRepository";
 import { AppError } from "../utils/AppError";
 import { HttpStatusCode } from "../constants/httpStatus";
-import mongoose from "mongoose";
-import type { MentorResponseDto } from "@/dto/mentor/MentorResponseDTO";
-import type { StudentBaseResponseDto } from "@/dto/auth/UserResponseDTO";
+import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO";
+import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
 import type { IAdminService } from "@/interfaces/services/IAdminService";
 import { AdminMapper } from "@/mappers/AdminMapper";
 import { MentorMapper } from "@/mappers/MentorMapper";
@@ -20,20 +19,25 @@ import type { IEnrollmentLinkRepository } from "@/interfaces/repositories/IEnrol
 import type {
   AdminLoginResponseDto,
   DashboardDataDto,
-} from "@/dto/admin/AdminLoginResponseDTO";
+} from "@/dtos/admin/AdminLoginResponseDTO";
 import { getSignedFileUrl } from "@/utils/s3Upload";
 import type { IEmailService } from "@/interfaces/services/IEmailService";
 import { StudentMapper } from "@/mappers/StudentMapper";
 import bcrypt from "bcryptjs";
-import type { SubscriptionDetails } from "@/dto/auth/UserResponseDTO";
+import type { SubscriptionDetails } from "@/dtos/auth/UserResponseDTO";
 import { TrialClassMapper } from "@/mappers/trialClassMapper";
 import { type ITrialClassDocument } from "@/models/student/trialClass.model";
 import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
-import type { TrialClassResponseDto } from "@/dto/student/trialClassDTO";
+import type { TrialClassResponseDto } from "@/dtos/student/trialClassDTO";
 import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository";
-import type { MentorPaginationParams, StudentPaginationParams, PaginatedResponse } from "@/dto/shared/paginationTypes";
+import type { MentorPaginationParams, StudentPaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes";
+import { formatPaginatedResult } from "@/utils/pagination.util";
 import { InternalEventEmitter } from "@/utils/InternalEventEmitter";
 import { EVENTS } from "@/utils/InternalEventEmitter";
+import { normalizeTimeTo24h, isSlotMatching } from "../utils/time.util";
+import { ApprovalStatus } from "@/domain/enums/ApprovalStatus";
+import type { IPaymentRepository } from "@/interfaces/repositories/IPaymentRepository";
+import type { FinanceDashboardDataDto } from "@/dtos/admin/AdminLoginResponseDTO";
 
 
 
@@ -53,6 +57,10 @@ export class AdminService implements IAdminService {
     @inject(TYPES.IMentorRequestService) private _mentorRequestService: IMentorRequestService,
     @inject(TYPES.IMentorAssignmentRequestRepository) private _requestRepo: import("../interfaces/repositories/IMentorAssignmentRequestRepository").IMentorAssignmentRequestRepository,
     @inject(TYPES.InternalEventEmitter) private _eventEmitter: InternalEventEmitter,
+    @inject(TYPES.ISessionRepository) private _sessionRepo: import("../interfaces/repositories/ISessionRepository").ISessionRepository,
+    @inject(TYPES.ITimeSlotRepository) private _timeSlotRepo: import("../interfaces/repositories/ITimeSlotRepository").ITimeSlotRepository,
+    @inject(TYPES.INotificationService) private _notificationService: import("../interfaces/services/INotificationService").INotificationService,
+    @inject(TYPES.IPaymentRepository) private _paymentRepo: IPaymentRepository,
   ) {}
 
   async login(email: string, password: string): Promise<AdminLoginResponseDto> {
@@ -81,7 +89,7 @@ export class AdminService implements IAdminService {
       });
 
       return AdminMapper.toLoginResponseDto(admin, accessToken, refreshToken);
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error("Admin login error:", error);
       if (error instanceof AppError) throw error;
       throw new AppError("Login failed", HttpStatusCode.INTERNAL_SERVER_ERROR);
@@ -107,13 +115,19 @@ export class AdminService implements IAdminService {
         recentMentors: recentMentors.length,
       });
 
+      const financeStats = await this.getFinanceStats().catch(err => {
+        logger.error("Error fetching finance stats for dashboard:", err);
+        return undefined;
+      });
+
       return {
         totalStudents: students.length,
         totalMentors: mentors.length,
         recentStudents,
         recentMentors,
+        finance: financeStats,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error("Error fetching dashboard data:", error);
       throw new AppError(
         "Failed to fetch dashboard data",
@@ -128,7 +142,7 @@ export class AdminService implements IAdminService {
       logger.info(`Retrieved ${mentors.length} mentors`);
 
       return MentorMapper.toResponseDtoList(mentors);
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error("Error fetching all mentors:", error);
       throw new AppError(
         "Failed to fetch mentors",
@@ -145,25 +159,12 @@ export class AdminService implements IAdminService {
       logger.info(`Fetching paginated mentors - page: ${page}, limit: ${limit}, search: ${params.search}, status: ${params.status}`);
 
       const result = await this._mentorRepo.findAllMentorsPaginated(params);
-
       const mentorDtos = MentorMapper.toResponseDtoList(result.mentors);
-      const totalPages = Math.ceil(result.total / limit);
 
-      logger.info(`Retrieved ${mentorDtos.length} mentors (page ${page}/${totalPages}, total: ${result.total})`);
+      logger.info(`Retrieved ${mentorDtos.length} mentors (total: ${result.total})`);
 
-      return {
-        success: true,
-        data: mentorDtos,
-        pagination: {
-          currentPage: page,
-          totalPages,
-          totalItems: result.total,
-          itemsPerPage: limit,
-          hasNextPage: page < totalPages,
-          hasPrevPage: page > 1,
-        },
-      };
-    } catch (error) {
+      return formatPaginatedResult(mentorDtos, result.total, { page, limit });
+    } catch (error: unknown) {
       logger.error("Error fetching paginated mentors:", error);
       throw new AppError(
         "Failed to fetch mentors",
@@ -177,7 +178,7 @@ export class AdminService implements IAdminService {
       const students = await this._studentRepo.findAllStudents();
       logger.info(`Retrieved ${students.length} students`);
       return students;
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error("Error fetching all students:", error);
       throw new AppError(
         "Failed to fetch students",
@@ -195,26 +196,24 @@ export class AdminService implements IAdminService {
 
       const result = await this._studentRepo.findAllStudentsPaginated(params);
 
-      const totalPages = Math.ceil(result.total / limit);
+      const studentsRaw = result.students as unknown as Array<{
+        _id?: { toString(): string };
+        id?: string;
+        fullName: string;
+        email: string;
+        phoneNumber?: string;
+        isVerified?: boolean;
+        isProfileComplete?: boolean;
+        subscription?: { status: string };
+        isBlocked?: boolean;
+        isTrialCompleted?: boolean;
+        totalTrialClasses?: number;
+        pendingTrialClasses?: number;
+        createdAt?: Date;
+        updatedAt?: Date;
+      }>;
 
-      // Transform to StudentBaseResponseDto using mapper
-      const studentDtos: StudentBaseResponseDto[] = (result.students as unknown[]).map((student: unknown) => {
-        const s = student as {
-            _id?: { toString(): string };
-            id?: string;
-            fullName: string;
-            email: string;
-            phoneNumber?: string;
-            isVerified?: boolean;
-            isProfileComplete?: boolean;
-            subscription?: { status?: string; plan?: string; startDate?: Date; endDate?: Date };
-            isBlocked?: boolean;
-            totalTrialClasses?: number;
-            pendingTrialClasses?: number;
-            createdAt?: Date;
-            updatedAt?: Date;
-        };
-        return {
+      const studentDtos: StudentBaseResponseDto[] = studentsRaw.map((s) => ({
         id: (s._id?.toString() || s.id || '').toString(),
         fullName: s.fullName,
         email: s.email,
@@ -225,28 +224,17 @@ export class AdminService implements IAdminService {
         isPaid: s.subscription?.status === 'active',
         subscription: s.subscription as SubscriptionDetails | undefined,
         isBlocked: s.isBlocked || false,
+        isTrialCompleted: s.isTrialCompleted || false,
         totalTrialClasses: s.totalTrialClasses || 0,
         pendingTrialClasses: s.pendingTrialClasses || 0,
         createdAt: s.createdAt || new Date(),
         updatedAt: s.updatedAt || new Date()
-      };
-    });
+      }));
 
-      logger.info(`Retrieved ${studentDtos.length} students (page ${page}/${totalPages}, total: ${result.total})`);
+      logger.info(`Retrieved ${studentDtos.length} students (total: ${result.total})`);
 
-      return {
-        success: true,
-        data: studentDtos,
-        pagination: {
-          currentPage: page,
-          totalPages,
-          totalItems: result.total,
-          itemsPerPage: limit,
-          hasNextPage: page < totalPages,
-          hasPrevPage: page > 1,
-        },
-      };
-    } catch (error) {
+      return formatPaginatedResult(studentDtos, result.total, { page, limit });
+    } catch (error: unknown) {
       logger.error("Error fetching paginated students:", error);
       throw new AppError(
         "Failed to fetch students",
@@ -263,30 +251,14 @@ export class AdminService implements IAdminService {
         throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
       }
 
-      console.log("🔍 Backend - Mentor found:", {
-        id: mentor._id,
-        profileImageKey: mentor.profileImageKey,
-        profilePicture: mentor.profilePicture,
-      });
-
       if (mentor.profilePicture) {
-        console.log(
-          "🔍 Backend - Generating signed URL for key:",
-          mentor.profilePicture
-        );
         mentor.profileImageUrl = await getSignedFileUrl(mentor.profilePicture);
-        console.log(
-          "🔍 Backend - Generated signed URL:",
-          mentor.profileImageUrl
-        );
-      } else {
-        console.log("🔍 Backend - No profile picture found");
       }
 
       logger.info(`Fetched mentor profile: ${mentorId}`);
 
       return MentorMapper.toResponseDto(mentor);
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error(`Error fetching mentor profile ${mentorId}:`, error);
       if (error instanceof AppError) throw error;
       throw new AppError(
@@ -344,7 +316,7 @@ export class AdminService implements IAdminService {
       });
 
       return MentorMapper.toResponseDto(updatedMentor);
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error(`Error updating mentor approval status ${mentorId}:`, error);
       if (error instanceof AppError) throw error;
       throw new AppError(
@@ -422,7 +394,7 @@ export class AdminService implements IAdminService {
 
       logger.info(`Mentor blocked successfully: ${mentorId}`);
       return mentorDto;
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error(`Error blocking mentor: ${mentorId}`, error);
       if (error instanceof AppError) throw error;
       throw new AppError(
@@ -453,7 +425,7 @@ export class AdminService implements IAdminService {
 
       logger.info(`Mentor unblocked successfully: ${mentorId}`);
       return mentorDto;
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error(`Error unblocking mentor: ${mentorId}`, error);
       if (error instanceof AppError) throw error;
       throw new AppError(
@@ -469,12 +441,10 @@ async blockStudent(studentId: string): Promise<StudentBaseResponseDto> {
     logger.info(`Blocking student: ${studentId}`);
 
     const blockedStudent = await this._studentRepo.blockStudent(studentId);
-    console.log("🔍 StudentRepository - Blocked student raw:", blockedStudent);
     const studentDto = StudentMapper.toStudentResponseDto(blockedStudent);
-console.log("🔍 StudentRepository - Blocked student mapped:", studentDto);
     logger.info(`Student blocked successfully: ${studentId}`);
     return studentDto;
-  } catch (error) {
+  } catch (error: unknown) {
     logger.error(`Error blocking student: ${studentId}`, error);
     if (error instanceof AppError) throw error;
     throw new AppError(
@@ -489,12 +459,10 @@ async unblockStudent(studentId: string): Promise<StudentBaseResponseDto> {
     logger.info(`Unblocking student: ${studentId}`);
 
     const unblockedStudent = await this._studentRepo.unblockStudent(studentId);
-    console.log("🔍 StudentRepository - Unblocked student raw:", unblockedStudent);
     const studentDto = StudentMapper.toStudentResponseDto(unblockedStudent);
-console.log("🔍 StudentRepository - Unblocked student mapped:", studentDto);
     logger.info(`Student unblocked successfully: ${studentId}`);
     return studentDto;
-  } catch (error) {
+  } catch (error: unknown) {
     logger.error(`Error unblocking student: ${studentId}`, error);
     if (error instanceof AppError) throw error;
     throw new AppError(
@@ -505,7 +473,6 @@ console.log("🔍 StudentRepository - Unblocked student mapped:", studentDto);
 }
 
 
-// AdminService.ts - Fix the type issues in update methods
 async updateMentor(mentorId: string, data: Partial<MentorProfile>): Promise<MentorResponseDto> {
   try {
     logger.info(`Updating mentor: ${mentorId}`, data);
@@ -537,7 +504,6 @@ async updateStudent(studentId: string, data: Partial<StudentBaseResponseDto>): P
   try {
     logger.info(`Updating student: ${studentId}`, data);
 
-    // Use the safe mapper to handle undefined values properly
     const studentUpdateData = StudentMapper.toSafeUpdateData(data);
 
     const updatedStudent = await this._studentRepo.updateById(studentId, studentUpdateData);
@@ -598,13 +564,11 @@ async updateStudent(studentId: string, data: Partial<StudentBaseResponseDto>): P
       };
 
       const newStudent = await this._studentRepo.create(studentAuthData);
-
-
       const studentDto = StudentMapper.toStudentResponseDto(newStudent);
 
       logger.info(`Student added successfully: ${studentData.email}`);
       return studentDto;
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error(`Error adding student: ${studentData.email}`, error);
       if (error instanceof AppError) throw error;
       throw new AppError(
@@ -631,11 +595,9 @@ async updateStudent(studentId: string, data: Partial<StudentBaseResponseDto>): P
       throw new AppError("Mentor with this email already exists", HttpStatusCode.CONFLICT);
     }
 
-    
     const temporaryPassword = Math.random().toString(36).slice(-8);
     const hashedPassword = await bcrypt.hash(temporaryPassword, 12);
 
-    
     const mentorAuthData = {
       fullName: mentorData.fullName,
       email: mentorData.email,
@@ -651,13 +613,12 @@ async updateStudent(studentId: string, data: Partial<StudentBaseResponseDto>): P
       isVerified: true,
       isBlocked: false,
       isProfileComplete: false,
-      approvalStatus: "approved" as any,
+      approvalStatus: ApprovalStatus.APPROVED,
       authProvider: "local" as const,
       createdAt: new Date(),
       updatedAt: new Date()
     };
 
-    
     const newMentor = await this._mentorRepo.create(mentorAuthData);
     
     if (!newMentor) {
@@ -690,7 +651,10 @@ async getStudentsWithTrialStats(page: number, limit: number) {
       return {
         success: true,
         data: {
-          students: result.students,
+          students: (result.students as unknown as import('../interfaces/models/student.interface').StudentProfile[]).map(s => {
+            const authUser = { ...s, role: 'student' as const } as unknown as import('../interfaces/auth/auth.interface').StudentAuthUser;
+            return StudentMapper.toStudentResponseDto(authUser);
+          }),
           pagination: {
             currentPage: page,
             totalPages: Math.ceil(result.totalStudents / limit),
@@ -700,27 +664,19 @@ async getStudentsWithTrialStats(page: number, limit: number) {
           }
         }
       };
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error("AdminService: Error fetching students with trial stats", error);
       throw error; 
     }
   }
 
 
-// AdminService.ts - Fix the getStudentTrialClasses method
 async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialClassResponseDto[]> {
   try {
     logger.info(`AdminService: Fetching trial classes for student - ${studentId}`, { status });
 
-    // Validate student exists
-    // const student = await this._studentRepo.findById(studentId);
-    // if (!student) {
-    //   throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
-    // }
-
     const trialClasses = await this._trialClassRepo.findByStudentId(studentId, status);
     
-    // Use the mapper to transform the data
     const trialClassesDto = trialClasses.map(trialClass => 
       TrialClassMapper.toResponseDto(trialClass)
     );
@@ -754,15 +710,11 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
         scheduledTime,
       });
 
-      // Check if mentor exists using mentor repository
       const mentor = await this._mentorRepo.findById(mentorId);
       if (!mentor) {
-        logger.warn(`AdminService: Mentor not found - ${mentorId}`);
         throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
       }
 
-
-      // Auto-generate meet link for the trial class
       const baseUrl = process.env.FRONTEND_URL || "http://localhost:5173";
       const meetLink = `${baseUrl}/trial-class/${trialClassId}/call`;
 
@@ -775,7 +727,7 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
       const updatedTrialClass = await this._trialClassRepo.assignMentor(
         trialClassId, 
         mentorId, 
-        updates
+        updates as any
       );
 
       if (!updatedTrialClass) {
@@ -786,19 +738,32 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
 
       this._eventEmitter.emit(EVENTS.TRIAL_MENTOR_ASSIGNED, {
         trialClassId,
-        studentId: (updatedTrialClass as any).studentId?.toString(),
+        studentId: (updatedTrialClass as any).student?.toString(),
         mentorId,
         mentorName: mentor.fullName,
-        subjectName: (updatedTrialClass as any).subjectId?.subjectName || "Subject",
+        subjectName: (updatedTrialClass.subject as any).subjectName || "Subject",
         scheduledDate,
         scheduledTime,
         meetLink
       });
 
+      // Send Notification to Student and Mentor
+      const studentId = (updatedTrialClass.student as any)._id?.toString() || (updatedTrialClass.student as any);
+      const studentName = (updatedTrialClass.student as any).fullName || "Student";
+      const subjectName = (updatedTrialClass.subject as any).subjectName || "Subject";
+
+      await this._notificationService.notifyMentorAssigned(
+          studentId,
+          studentName,
+          mentorId,
+          mentor.fullName,
+          subjectName
+      );
+
       logger.info(`AdminService: Successfully assigned mentor to trial class ${trialClassId} with meet link: ${meetLink}`);
       
       return trialClassDto;
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof AppError) throw error;
       logger.error(`AdminService: Error assigning mentor to trial class ${trialClassId}`, error);
       throw new AppError(
@@ -815,7 +780,6 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
       const updatedTrialClass = await this._trialClassRepo.updateStatus(trialClassId, status, reason);
 
       if (!updatedTrialClass) {
-        logger.warn(`AdminService: Trial class not found - ${trialClassId}`);
         throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
       }
 
@@ -824,7 +788,7 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
       logger.info(`AdminService: Successfully updated trial class status for ${trialClassId}`);
       
       return trialClassDto;
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof AppError) throw error;
       logger.error(`AdminService: Error updating trial class status ${trialClassId}`, error);
       throw new AppError(
@@ -840,38 +804,26 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
 
     logger.info("AdminService: Fetching all trial classes", { status, page, limit });
 
-    // Create a clean filters object that handles undefined properly
     const cleanFilters: { status?: string; page?: number; limit?: number } = {
       page,
       limit
     };
 
-    // Only add status if it's defined and not empty
     if (status && status.trim() !== '') {
       cleanFilters.status = status;
     }
 
-    const result = await this._trialClassRepo.findAll(cleanFilters);
+    const result = await this._trialClassRepo.findAllPaginated(cleanFilters);
     
     const trialClassesDto = result.trialClasses.map(trialClass => 
       TrialClassMapper.toResponseDto(trialClass)
     );
 
-    const response = {
-      trialClasses: trialClassesDto,
-      pagination: {
-        currentPage: page,
-        totalPages: Math.ceil(result.total / limit),
-        totalTrialClasses: result.total,
-        hasNextPage: page < Math.ceil(result.total / limit),
-        hasPrevPage: page > 1,
-      },
-    };
-
     logger.info(`AdminService: Successfully fetched ${trialClassesDto.length} trial classes`);
     
-    return response;
-  } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return formatPaginatedResult(trialClassesDto, result.total, { page, limit }) as any;
+  } catch (error: unknown) {
     logger.error("AdminService: Error fetching all trial classes", error);
     if (error instanceof AppError) throw error;
     throw new AppError(
@@ -881,13 +833,10 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
   }
   }
 
-
-  
 async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto> {
   try {
     logger.info(`AdminService: Fetching trial class details - ${trialClassId}`);
 
-    // Validate trialClassId
     if (!trialClassId || trialClassId.trim() === '') {
       throw new AppError("Trial class ID is required", HttpStatusCode.BAD_REQUEST);
     }
@@ -895,17 +844,15 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
     const trialClass = await this._trialClassRepo.findById(trialClassId);
 
     if (!trialClass) {
-      logger.warn(`AdminService: Trial class not found - ${trialClassId}`);
       throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
     }
 
-    // Use the mapper to transform the data
     const trialClassDto = TrialClassMapper.toResponseDto(trialClass);
 
     logger.info(`AdminService: Successfully fetched trial class details for ${trialClassId}`);
     
     return trialClassDto;
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof AppError) throw error;
     logger.error(`AdminService: Error fetching trial class details ${trialClassId}`, error);
     throw new AppError(
@@ -915,8 +862,6 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
   }
 }
 
-// In your AdminService - fix the findBySubjectProficiency method
-  // AdminService.ts - Updated logic for matches/alternates
   async getAvailableMentors(
     subjectId: string, 
     preferredDate?: string,
@@ -927,79 +872,43 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
       logger.info(`AdminService: Fetching available mentors for subject ${subjectId}`, { preferredDate, days, timeSlot });
 
       let subjectName = subjectId;
-
-      // Check if subjectId is a valid ObjectId before trying to findById
-      const isValidId = /^[0-9a-fA-F]{24}$/.test(subjectId);
-
-      if (isValidId) {
-        const subject = await this._subjectRepo.findById(subjectId);
-        if (subject) {
-          subjectName = subject.subjectName;
-        } else {
-           // If ID is valid format but not found, maybe it's just a funny name? 
-           // Or strictly throw error? 
-           // For now, if lookup fails but ID was valid format, it's safer to throw or log.
-           // But let's assume if it fails, we fall back to using it as a name? 
-           // No, best to just log.
-           logger.warn(`Subject with ID ${subjectId} not found, assuming it is a name.`);
+      try {
+        if (/^[0-9a-fA-F]{24}$/.test(subjectId)) {
+          const subject = await this._subjectRepo.findById(subjectId);
+          if (subject) subjectName = subject.subjectName;
         }
+      } catch (_err) {
+        logger.debug(`AdminService: Could not resolve subject name for ${subjectId}, passing as-is`);
       }
 
-      console.log('🔍 Looking for mentors with subject:', subjectName);
-
-      // Find mentors who have this subject in their subjectProficiency
-      // This returns all mentors who teach the subject, regardless of time
-      const allMentors = await this._mentorRepo.findBySubjectProficiency(
-        subjectName
-      );
-
-      console.log('🔍 Found total mentors for subject:', allMentors.length);
+      const allMentors = await this._mentorRepo.findBySubjectProficiency(subjectName);
 
       const matches: MentorResponseDto[] = [];
       const alternates: MentorResponseDto[] = [];
 
-      // Helper to check time overlap
       const checkAvailability = (mentor: MentorProfile): boolean => {
-        // If no constraints provided, everyone is a match
         if ((!days || days.length === 0) && !timeSlot && !preferredDate) return true;
-
         if (!mentor.availability || mentor.availability.length === 0) return false;
 
-        // Normalize requested days
         const requestedDays = days ? days.map(d => d.toLowerCase()) : [];
         if (preferredDate) {
           const dayName = new Date(preferredDate).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
           if (!requestedDays.includes(dayName)) requestedDays.push(dayName);
         }
 
-        // Check if mentor has availability on ALL requested days
-        // (Or at least ONE? Usually strict means ALL for a course schedule)
-        // Let's assume strict: Must be available on all requested days at the requested time.
-        
-        // 1. Check Day Availability
         const mentorAvailableDays = mentor.availability.map(a => a.day.toLowerCase());
         const daysMatch = requestedDays.every(day => mentorAvailableDays.includes(day));
         
         if (!daysMatch) return false;
 
         if (timeSlot) {
-           // Parse requested time "19:30-20:30"
-           const parts = timeSlot.split('-').map(t => t.trim());
-           if (parts.length === 2) {
-             const reqStart = parts[0] || "";
-             const reqEnd = parts[1] || "";
-             
-             // For each requested day, check if they have a slot containing this time
-             for (const day of requestedDays) {
-                const daySlots = mentor.availability?.find(a => a.day.toLowerCase() === day)?.slots || [];
-                
-                const hasSlot = daySlots.some(slot => {
-                   return (slot.startTime <= reqStart) && (slot.endTime >= reqEnd);
-                });
-  
-                if (!hasSlot) return false; 
-             }
-           }
+          const [reqStart, reqEnd] = timeSlot.split('-').map(t => t.trim());
+
+          for (const day of requestedDays) {
+            const daySlots = mentor.availability?.find(a => a.day.toLowerCase() === day)?.slots || [];
+            const hasSlot = daySlots.some(slot => isSlotMatching(slot.startTime, slot.endTime, reqStart || "", reqEnd));
+            if (!hasSlot) return false;
+          }
         }
         
         return true;
@@ -1007,7 +916,6 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
 
       for (const mentor of allMentors) {
         const dto = MentorMapper.toResponseDto(mentor);
-        
         if (checkAvailability(mentor)) {
           matches.push(dto);
         } else {
@@ -1015,10 +923,9 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
         }
       }
 
-      logger.info(`AdminService: Matches: ${matches.length}, Alternates: ${alternates.length}`);
-      
+      logger.info(`AdminService: Search complete. Found ${matches.length} matches and ${alternates.length} alternates for subject: "${subjectName}"`);
       return { matches, alternates };
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error(`AdminService: Error fetching available mentors for subject ${subjectId}`, error);
       if (error instanceof AppError) throw error;
       throw new AppError(
@@ -1027,8 +934,6 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
       );
     }
   }
-
-
 
 
   async assignMentor(
@@ -1042,47 +947,34 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
     }
   ): Promise<void> {
     try {
-      logger.info(`AdminService: Assigning mentor ${mentorId} to student ${studentId} for subject ${subjectId}. Overrides: ${JSON.stringify(overrides)}`);
+      logger.info(`AdminService: Assigning mentor ${mentorId} to student ${studentId} for subject ${subjectId}`);
 
-      // 1. Find or Create MentorAssignmentRequest
-      // We check for any pending request first
       let request = await this._requestRepo.findOne({
-        studentId: new mongoose.Types.ObjectId(studentId),
-        subjectId: new mongoose.Types.ObjectId(subjectId),
+        studentId: studentId as any,
+        subjectId: subjectId as any,
         status: 'pending'
       });
 
       if (!request) {
-        logger.info(`AdminService: No pending request found. Creating a new one for assignment tracking.`);
-        // Note: studentId, subjectId, mentorId are enough to create a request
         request = await this._requestRepo.create({
-          studentId: new mongoose.Types.ObjectId(studentId),
-          subjectId: new mongoose.Types.ObjectId(subjectId),
-          mentorId: new mongoose.Types.ObjectId(mentorId),
-          status: 'pending' // Create as pending so approveRequest can process it
+          studentId: studentId as any,
+          subjectId: subjectId as any,
+          mentorId: mentorId as any,
+          status: 'pending'
         });
       }
 
-      // 2. Delegate to MentorRequestService.approveRequest
-      // This will handle:
-      // - Idempotency (won't error if course exists)
-      // - Creation of Course, EnrollmentLink, Sessions
-      // - Status updates for Request and Student Preferences
-      // - Notifications
-      const requestAny = request as any;
       await this._mentorRequestService.approveRequest(
-        requestAny._id.toString(),
-        adminId || "system", // Use system if adminId not provided
+        (request as unknown as { _id: { toString(): string } })._id.toString(),
+        adminId || "system",
         {
           mentorId,
-          days: overrides?.days,
-          timeSlot: overrides?.timeSlot
+          days: overrides?.days || [],
+          timeSlot: overrides?.timeSlot || ""
         }
       );
 
-      logger.info(`AdminService: Successfully delegated assignment to MentorRequestService for students ${studentId}`);
-
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof AppError) throw error;
       logger.error(`AdminService: Error assigning mentor:`, error);
       throw new AppError(
@@ -1103,46 +995,237 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
     }
   ): Promise<void> {
     try {
-      logger.info(`AdminService: Reassigning student ${studentId} to new mentor ${newMentorId} for subject ${subjectId}. Overrides: ${JSON.stringify(overrides)}`);
+      logger.info(`AdminService: Reassigning student ${studentId} from old mentor to new mentor ${newMentorId}`);
       
-      // 1. Find or Create MentorAssignmentRequest
-      // Check for any existing request for this subject (pending or approved)
-      let request = await this._requestRepo.findOne({
-        studentId: new mongoose.Types.ObjectId(studentId),
-        subjectId: new mongoose.Types.ObjectId(subjectId)
-      });
-
-      if (!request) {
-        logger.info(`AdminService: No existing request found for reassignment. Creating a new one.`);
-        request = await this._requestRepo.create({
-          studentId: new mongoose.Types.ObjectId(studentId),
-          subjectId: new mongoose.Types.ObjectId(subjectId),
-          mentorId: new mongoose.Types.ObjectId(newMentorId),
-          status: 'approved' // Create as approved since it's an active reassignment
-        });
-      }
-
-      // 2. Delegate to MentorRequestService.approveRequest
-      // This will handle the course update and session recovery/regeneration
-      await this._mentorRequestService.approveRequest(
-        (request as any)._id.toString(),
-        adminId || "system",
-        {
-          mentorId: newMentorId,
-          days: overrides?.days,
-          timeSlot: overrides?.timeSlot
-        }
+      // STEP 1: Find existing course for this student and subject
+      const existingCourses = await this._courseRepo.findByStudent(studentId);
+      const course = existingCourses.find((c: import('../models/course.model').ICourse) => 
+        (c.subject.toString() === subjectId) &&
+        c.isActive && c.status !== 'cancelled'
       );
 
-      logger.info(`AdminService: Successfully delegated reassignment to MentorRequestService for student ${studentId}`);
+      if (!course) {
+        throw new AppError("No active course found for this student and subject", HttpStatusCode.NOT_FOUND);
+      }
+      
+      const courseIdStr = (course as unknown as { _id: { toString(): string } })._id.toString();
+      const oldMentorId = course.mentor.toString();
+      logger.info(`AdminService: Found course ${courseIdStr}, old mentor: ${oldMentorId}, new mentor: ${newMentorId}`);
 
-    } catch (error) {
+      // STEP 2: Find all FUTURE scheduled sessions for this course
+      const now = new Date();
+      
+      const futureSessions = await this._sessionRepo.find({
+          studentId: studentId as any,
+          subjectId: subjectId as any,
+          startTime: { $gt: now },
+          status: 'scheduled'
+      });
+  
+      logger.info(`AdminService: Found ${futureSessions.length} future sessions to reassign dynamically`);
+  
+      // STEP 3: Release old mentor's time slots for these sessions
+      for (const session of futureSessions) {
+          const sessionWithTimeSlot = session as unknown as { timeSlotId?: string | { _id: string } };
+          const timeSlotId = typeof sessionWithTimeSlot.timeSlotId === 'object' ? sessionWithTimeSlot.timeSlotId?._id : sessionWithTimeSlot.timeSlotId;
+          
+          if (timeSlotId) {
+              const slot = await this._timeSlotRepo.findById(timeSlotId.toString());
+              if (slot) {
+                  // Decrement count
+                  const newCount = Math.max(0, (slot.currentStudentCount || 1) - 1);
+                  await this._timeSlotRepo.updateById(timeSlotId.toString(), {
+                      currentStudentCount: newCount,
+                      status: newCount === 0 ? 'available' : slot.status
+                  } as Record<string, unknown>);
+              }
+          }
+      }
+  
+      // STEP 4: Delete these future sessions (We will regenerate them)
+      if (futureSessions.length > 0) {
+          const sessionIds = futureSessions.map((s) => s._id);
+          await this._sessionRepo.deleteMany({ _id: { $in: sessionIds } });
+          logger.info(`AdminService: Deleted ${futureSessions.length} old sessions`);
+      }
+  
+      // STEP 5: Prepare for Regeneration
+      // Determine the schedule to use (Overrides OR Course Defaults)
+      const targetDays = (overrides?.days && overrides.days.length > 0) 
+          ? overrides.days 
+          : (course.schedule?.days || []);
+          
+      const targetTimeSlot = overrides?.timeSlot || course.schedule?.timeSlot;
+  
+      if (!targetTimeSlot) {
+          throw new AppError("Cannot determine time slot for reassignment", HttpStatusCode.BAD_REQUEST);
+      }
+  
+      const [rawStart, rawEnd] = targetTimeSlot.split('-').map(s => s.trim());
+      const startTimeStr = normalizeTimeTo24h(rawStart || "00:00");
+      const endTimeStr = normalizeTimeTo24h(rawEnd || "00:00");
+  
+      // Construct slots array
+      const newSlots = targetDays.map((d: string) => ({
+          day: d,
+          startTime: startTimeStr,
+          endTime: endTimeStr
+      }));
+  
+      // Calculate remaining weeks
+      const endDate = new Date(course.endDate);
+      const durationMs = endDate.getTime() - now.getTime();
+      const remainingWeeks = Math.ceil(durationMs / (1000 * 60 * 60 * 24 * 7));
+  
+      logger.info(`AdminService: Regenerating sessions for ${remainingWeeks} weeks using slots:`, newSlots);
+  
+      // Find suitable enrollment ID
+      let enrollmentId = "";
+      if (futureSessions.length > 0) {
+          enrollmentId = (futureSessions[0] as unknown as { enrollmentId?: { toString(): string } }).enrollmentId?.toString() || "";
+      } 
+      
+       if (!enrollmentId) {
+            const enrollment = await this._enrollmentLinkRepo.findOne({ 
+                studentId: studentId as any,
+                courseId: (course._id as string),
+                isActive: true
+            });
+            enrollmentId = (enrollment as any)?._id?.toString() || "";
+       }
+  
+      await this._mentorRequestService.generateSessionsForWeeks(
+          studentId,
+          newMentorId,
+          subjectId,
+          (course as unknown as { _id: { toString(): string } })._id.toString(),
+          enrollmentId,
+          newSlots,
+          Math.max(1, remainingWeeks),
+          (course.courseType as 'one-to-one' | 'group') || 'one-to-one'
+      );
+      
+      logger.info(`AdminService: Successfully regenerated sessions for new mentor`);
+  
+      // STEP 6: Update course with new mentor and potential schedule change
+      const updateData: Record<string, unknown> = {
+        mentor: newMentorId
+      };
+  
+      if (overrides?.timeSlot) {
+        const newSchedule = {
+            ...(course.schedule || {}),
+            timeSlot: overrides.timeSlot,
+            days: overrides.days && overrides.days.length > 0 ? overrides.days : (course.schedule?.days || [])
+        };
+        updateData.schedule = newSchedule;
+      }
+  
+      await this._courseRepo.updateCourse((course as unknown as { _id: { toString(): string } })._id.toString(), updateData);
+      logger.info(`AdminService: Updated course ${course._id} with new mentor ${newMentorId} and schedule`);
+
+      // STEP 5: Update mentor assignment request
+      const request = await this._requestRepo.findOne({
+        studentId: studentId as any,
+        subjectId: subjectId as any
+      });
+
+      if (request) {
+        await this._requestRepo.updateStatus(
+          (request as unknown as { _id: { toString(): string } })._id.toString(),
+          'approved',
+          adminId || 'system'
+        );
+      }
+
+      // STEP 6: Notify student and mentors
+      const student = await this._studentRepo.findById(studentId);
+      const newMentor = await this._mentorRepo.findById(newMentorId);
+      const oldMentor = oldMentorId ? await this._mentorRepo.findById(oldMentorId) : null;
+
+      if (student && newMentor) {
+        // Notify student
+        await this._notificationService.notifyUser(
+          studentId,
+          'student',
+          'mentor_reassigned',
+          { 
+            newMentorName: newMentor.fullName,
+            subjectName: (course as unknown as { subject?: { subjectName?: string } }).subject?.subjectName || 'Subject'
+          },
+          ['web']
+        );
+
+        // Notify new mentor
+        await this._notificationService.notifyUser(
+          newMentorId,
+          'mentor',
+          'mentor_assigned',
+          {
+            studentName: student.fullName,
+            subjectName: (course as unknown as { subject?: { subjectName?: string } }).subject?.subjectName || 'Subject'
+          },
+          ['web']
+        );
+
+        // Notify old mentor (if exists)
+        if (oldMentorId && oldMentor) {
+          await this._notificationService.notifyUser(
+            oldMentorId,
+            'mentor',
+            'session_cancelled',
+            {
+              studentName: student.fullName,
+              subjectName: (course as unknown as { subject?: { subjectName?: string } }).subject?.subjectName || 'Subject',
+              reason: 'Student reassigned to another mentor'
+            },
+            ['web']
+          );
+        }
+      }
+
+      logger.info(`AdminService: Successfully reassigned student ${studentId} to mentor ${newMentorId}`);
+
+    } catch (error: unknown) {
       if (error instanceof AppError) throw error;
       logger.error(`AdminService: Error reassigning mentor`, error);
       throw new AppError(
         `Failed to reassign mentor: ${error instanceof Error ? error.message : "Unknown error"}`, 
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
+    }
+  }
+
+  async searchStudents(query: string): Promise<StudentBaseResponseDto[]> {
+    try {
+      logger.info(`AdminService: Searching students with query: ${query}`);
+      const students = await this._studentRepo.searchStudents(query);
+      return students.map(s => {
+        const authUser = { ...(s as unknown as Record<string, unknown>), role: 'student' as const } as unknown as import('../interfaces/auth/auth.interface').StudentAuthUser;
+        return StudentMapper.toStudentResponseDto(authUser);
+      });
+    } catch (error: unknown) {
+      logger.error(`AdminService: Error searching students:`, error);
+      throw error;
+    }
+  }
+
+  async getFinanceStats(): Promise<FinanceDashboardDataDto> {
+    try {
+      const totalRevenue = await this._paymentRepo.getTotalRevenue();
+      const totalPayments = await this._paymentRepo.countDocuments(); 
+      const monthlyRevenue = await this._paymentRepo.getMonthlyRevenue();
+      const revenuePerStudent = await this._paymentRepo.getRevenuePerStudent();
+
+      return {
+        totalRevenue,
+        monthlyRevenue,
+        totalPayments,
+        revenuePerStudent
+      };
+    } catch (error: unknown) {
+      logger.error('Error calculating finance stats:', error);
+      throw new AppError('Failed to calculate finance statistics', HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 }

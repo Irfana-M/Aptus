@@ -1,4 +1,5 @@
 import { injectable, inject } from "inversify";
+import type { ITrialClassDocument } from "../models/student/trialClass.model";
 import { TYPES } from "@/types";
 import type { IVideoCallService } from "@/interfaces/services/IVideoCallService";
 import type { IVideoCallRepository } from "@/interfaces/repositories/IVideoCallRepository";
@@ -6,12 +7,13 @@ import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClas
 import type {
   JoinCallRequestDto,
   CallEndedDto,
-} from "../dto/webrtcDTO";
+} from "../dtos/webrtcDTO";
 import { logger } from "@/utils/logger";
 import { HttpStatusCode } from "@/constants/httpStatus";
 import { AppError } from "@/utils/AppError";
 import { Types } from "mongoose";
 import type { IUserRoleService } from "@/interfaces/services/IUserRoleSrvice";
+import type { IAttendanceService } from "@/interfaces/services/IAttendanceService";
 
 import { fileLogger } from "@/utils/fileLogger";
 
@@ -22,7 +24,9 @@ export class VideoCallService implements IVideoCallService {
     private videoCallRepo: IVideoCallRepository,
     @inject(TYPES.ITrialClassRepository)
     private trialClassRepo: ITrialClassRepository,
-     @inject(TYPES.IUserRoleService) private userRoleService: IUserRoleService,
+    @inject(TYPES.IUserRoleService) private userRoleService: IUserRoleService,
+    @inject(TYPES.ISessionRepository) private sessionRepo: import("../interfaces/repositories/ISessionRepository").ISessionRepository,
+    @inject(TYPES.IAttendanceService) private attendanceService: IAttendanceService
   ) {}
 
 
@@ -32,9 +36,19 @@ export class VideoCallService implements IVideoCallService {
     userRole: 'mentor' | 'student'
   ): Promise<{ success: boolean; meetLink?: string }> {
     try {
-      const trialClass = await this.trialClassRepo.findById(trialClassId);
+      let trialClass = await this.trialClassRepo.findById(trialClassId);
+      let isSession = false;
+
       if (!trialClass) {
-        throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
+         // Try finding a session
+         const session = await this.sessionRepo.findById(trialClassId);
+         if (session) {
+             isSession = true;
+             // Mock trial class structure
+             trialClass = ({ ...session, meetLink: (session as unknown as { webRTCId?: string }).webRTCId } as unknown as ITrialClassDocument);
+         } else {
+             throw new AppError("Trial class or Session not found", HttpStatusCode.NOT_FOUND);
+         }
       }
 
       let videoCall = await this.videoCallRepo.findByTrialClassId(trialClassId);
@@ -47,7 +61,14 @@ export class VideoCallService implements IVideoCallService {
 
       if (!meetLink) {
         meetLink = this.generateMeetLink(trialClassId);
-        await this.trialClassRepo.update(trialClassId, { meetLink });
+        // Fallback: If not found in Trial Repo (unlikely as we just found it), update it.
+        // But if we modify logic to support Session, we need to handle it.
+        // Only update Trial Class if it is NOT a session
+        if (!isSession) {
+          await this.trialClassRepo.updateById(trialClassId, { meetLink });
+        } else {
+          logger.info(`ℹ️ Session detected in initializeCall, skipping TrialClass update for ${trialClassId}`);
+        }
       }
 
       videoCall = await this.videoCallRepo.create({
@@ -131,8 +152,12 @@ export class VideoCallService implements IVideoCallService {
         
         if (!meetLink) {
           meetLink = this.generateMeetLink(data.trialClassId);
-          // Update trial class with meetLink
-          await this.trialClassRepo.update(data.trialClassId, { meetLink });
+          // Only update Trial Class if it IS a trial class
+          if (!(authCheck as unknown as { isSession?: boolean }).isSession) {
+             await this.trialClassRepo.updateById(data.trialClassId, { meetLink });
+          } else {
+             logger.info(`ℹ️ Session detected, skipping TrialClass update for ${data.trialClassId}`);
+          }
           logger.info(`🔗 Generated meet link: ${meetLink}`);
         }
 
@@ -168,6 +193,18 @@ export class VideoCallService implements IVideoCallService {
       );
       
       logger.info(`✅ Participant added successfully`);
+
+      // ========== NEW: AUTO-MARK ATTENDANCE ==========
+      try {
+          const sessionModel = (authCheck as unknown as { isSession?: boolean }).isSession ? 'Session' : 'TrialClass';
+          // We use data.trialClassId as sessionId here because effectiveId logic treats them same
+          await this.attendanceService.markPresent(data.trialClassId, data.userId, sessionModel);
+          logger.info(`📝 Attendance marked for ${data.userId} in ${sessionModel} ${data.trialClassId}`);
+      } catch (attError) {
+          logger.error(`⚠️ Failed to auto-mark attendance for ${data.trialClassId}: ${attError}`);
+          // Don't fail the join if attendance fails
+      }
+
       return { success: true };
       
     } catch (error) {

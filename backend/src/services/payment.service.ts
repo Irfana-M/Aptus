@@ -1,14 +1,18 @@
 import Stripe from 'stripe';
-import { injectable } from 'inversify';
+import { injectable, inject } from 'inversify';
 import type { IPaymentService } from '../interfaces/services/payment.service.interface';
+import { TYPES } from '../types';
+import type { IPaymentRepository } from '../interfaces/repositories/IPaymentRepository';
 
 @injectable()
 export class PaymentService implements IPaymentService {
   private stripe: Stripe;
 
-  constructor() {
+  constructor(
+    @inject(TYPES.IPaymentRepository) private _paymentRepo: IPaymentRepository
+  ) {
     this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-      apiVersion: '2024-12-18.acacia' as any,
+      apiVersion: '2025-01-27.acacia' as unknown as '2025-11-17.clover', 
     });
   }
 
@@ -24,9 +28,19 @@ export class PaymentService implements IPaymentService {
     return await this.stripe.paymentIntents.retrieve(paymentIntentId);
   }
 
-  async savePaymentRecord(data: Record<string, unknown>): Promise<unknown> {
-    const { PaymentModel } = await import('../models/payment.model'); 
-    
-    return await PaymentModel.create(data);
+  async savePaymentRecord(data: Record<string, unknown>): Promise<any> {
+    return await this._paymentRepo.create(data as any);
+  }
+
+  async getAllPayments(page: number, limit: number, skip: number): Promise<{ payments: any[]; total: number }> {
+    const [payments, total] = await Promise.all([
+      this._paymentRepo.findAll(skip, limit),
+      this._paymentRepo.countDocuments()
+    ]);
+    return { payments, total };
+  }
+
+  async getStudentPayments(studentId: string): Promise<any[]> {
+    return await this._paymentRepo.findByStudentId(studentId);
   }
 }

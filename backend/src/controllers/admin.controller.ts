@@ -7,6 +7,15 @@ import { HttpStatusCode } from "../constants/httpStatus";
 import { generateAccessToken, verifyRefreshToken } from "@/utils/jwt.util";
 import { AppError } from "@/utils/AppError";
 import { config } from "../config/app.config";
+import { getPaginationParams } from "@/utils/pagination.util";
+import type { MentorPaginationParams, StudentPaginationParams } from "@/dtos/shared/paginationTypes";
+
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    role: 'admin' | 'mentor' | 'student';
+  };
+}
 
 @injectable()
 export class AdminController {
@@ -99,7 +108,7 @@ export class AdminController {
         },
         message: "Admin access token refreshed successfully",
       });
-    } catch (error) {
+    } catch (error: unknown) {
       // Clear cookie immediately on any refresh failure to prevent infinite loops
       res.clearCookie("adminRefreshToken", {
         httpOnly: true,
@@ -159,49 +168,26 @@ export class AdminController {
 
   getAllMentors = async (req: Request, res: Response) => {
     try {
-      // Check if pagination params are provided
-      const page = req.query.page ? parseInt(req.query.page as string) : undefined;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const { page, limit, ..._otherParams } = getPaginationParams(req.query);
       const search = req.query.search as string | undefined;
       const status = req.query.status as 'pending' | 'approved' | 'rejected' | '' | undefined;
       const subject = req.query.subject as string | undefined;
 
-      // If any pagination/search params provided, use paginated method
-      if (page !== undefined || limit !== undefined || search || status || subject) {
-        logger.info("Admin: Fetching mentors with pagination/filters", { page, limit, search, status, subject });
-        
-        const paginationParams: {
-          page: number;
-          limit: number;
-          search?: string;
-          status?: 'pending' | 'approved' | 'rejected' | '';
-          subject?: string;
-        } = {
-          page: page || 1,
-          limit: limit || 10,
-        };
-        
-        if (search) paginationParams.search = search;
-        if (status) paginationParams.status = status;
-        if (subject) paginationParams.subject = subject;
+      logger.info("Admin: Fetching mentors with pagination/filters", { page, limit, search, status, subject });
+      
+      const paginationParams: MentorPaginationParams = {
+        page,
+        limit,
+      };
+      if (search) paginationParams.search = search;
+      if (status) paginationParams.status = status;
+      if (subject) paginationParams.subject = subject;
 
-        const result = await this._adminService.getAllMentorsPaginated(paginationParams);
-
-        return res.status(HttpStatusCode.OK).json(result);
-      }
-
-      // Fallback to original behavior for backward compatibility
-      logger.info("Admin: Fetching all mentors (legacy mode)");
-      const mentors = await this._adminService.getAllMentors();
-      logger.info(`Admin: Found ${mentors.length} mentors`);
-      res.status(HttpStatusCode.OK).json({
-        success: true,
-        data: mentors,
-        count: mentors.length,
-      });
+      const result = await this._adminService.getAllMentorsPaginated(paginationParams);
+      return res.status(HttpStatusCode.OK).json(result);
     } catch (error: unknown) {
       const err = error as AppError;
-      logger.error(`Error fetching all mentors: ${err.message}`);
+      logger.error(`Error fetching mentors: ${err.message}`);
       res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: err.message,
@@ -211,51 +197,26 @@ export class AdminController {
 
   getAllStudents = async (req: Request, res: Response) => {
     try {
-      // Check if pagination params are provided
-      const page = req.query.page ? parseInt(req.query.page as string) : undefined;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const { page, limit } = getPaginationParams(req.query);
       const search = req.query.search as string | undefined;
       const status = req.query.status as 'active' | 'blocked' | '' | undefined;
       const verification = req.query.verification as 'verified' | 'pending' | '' | undefined;
 
-      // If any pagination/search params provided, use paginated method
-      if (page !== undefined || limit !== undefined || search || status || verification) {
-        logger.info("Admin: Fetching students with pagination/filters", { page, limit, search, status, verification });
-        
-        const paginationParams: {
-          page: number;
-          limit: number;
-          search?: string;
-          status?: 'active' | 'blocked' | '';
-          verification?: 'verified' | 'pending' | '';
-        } = {
-          page: page || 1,
-          limit: limit || 10,
-        };
-        
-        if (search) paginationParams.search = search;
-        if (status) paginationParams.status = status;
-        if (verification) paginationParams.verification = verification;
+      logger.info("Admin: Fetching students with pagination/filters", { page, limit, search, status, verification });
+      
+      const paginationParams: StudentPaginationParams = {
+        page,
+        limit,
+      };
+      if (search) paginationParams.search = search;
+      if (status) paginationParams.status = status;
+      if (verification) paginationParams.verification = verification;
 
-        const result = await this._adminService.getAllStudentsPaginated(paginationParams);
-
-        return res.status(HttpStatusCode.OK).json(result);
-      }
-
-      // Fallback to original behavior for backward compatibility
-      logger.info("Admin: Fetching all students (legacy mode)");
-      const students = await this._adminService.getAllStudents();
-
-      console.log("Students found", students);
-      logger.info(`Admin: Found ${students.length} students`);
-      res.status(HttpStatusCode.OK).json({
-        success: true,
-        data: students,
-        count: students.length,
-      });
+      const result = await this._adminService.getAllStudentsPaginated(paginationParams);
+      return res.status(HttpStatusCode.OK).json(result);
     } catch (error: unknown) {
       const err = error as AppError;
-      logger.error(`Error fetching all students: ${err.message}`);
+      logger.error(`Error fetching students: ${err.message}`);
       res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: err.message,
@@ -303,7 +264,8 @@ export class AdminController {
         .status(HttpStatusCode.BAD_REQUEST)
         .json({ message: "Mentor ID is required" });
     }
-    const adminId = req.user?.id;
+    const authReq = req as AuthenticatedRequest;
+    const adminId = authReq.user?.id;
     if (!adminId) {
       logger.warn("Admin ID is missing in request");
       return res
@@ -339,7 +301,7 @@ export class AdminController {
         .json({ message: "Mentor ID is required" });
     }
     const { reason } = req.body;
-    const adminId = req.user?.id;
+    const adminId = (req as AuthenticatedRequest).user?.id;
     if (!adminId) {
       logger.warn("Admin ID is missing in request");
       return res
@@ -629,7 +591,7 @@ updateStudent = async (req: Request, res: Response): Promise<void> => {
       logger.info(`AdminController: Successfully fetched students with trial stats`);
 
       res.status(HttpStatusCode.OK).json(result);
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error("AdminController: Error fetching students with trial stats", error);
       next(error);
     }
@@ -673,15 +635,18 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
 
   getAllTrialClasses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { status, page = 1, limit = 10 } = req.query;
+      const { page, limit } = getPaginationParams(req.query);
+      const status = req.query.status as string | undefined;
 
       logger.info("AdminController: Fetching all trial classes", { status, page, limit });
 
-      const result = await this._adminService.getAllTrialClasses({
-        status: status as string,
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
-      });
+      const params: { status?: string; page: number; limit: number } = {
+        page,
+        limit,
+      };
+      if (status) params.status = status;
+
+      const result = await this._adminService.getAllTrialClasses(params);
 
       logger.info(`AdminController: Found ${result.trialClasses.length} trial classes`);
 
@@ -691,7 +656,7 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
         pagination: result.pagination,
         message: "Trial classes fetched successfully",
       });
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error("AdminController: Error fetching all trial classes", error);
       next(error);
     }
@@ -716,7 +681,7 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
         data: trialClass,
         message: "Trial class details fetched successfully",
       });
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error(`AdminController: Error fetching trial class details ${req.params.trialClassId}`, error);
       next(error);
     }
@@ -754,7 +719,7 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
         data: result,
         message: "Mentor assigned successfully",
       });
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error(`AdminController: Error assigning mentor to trial class ${req.params.trialClassId}`, error);
       next(error);
     }
@@ -788,86 +753,86 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
         data: result,
         message: "Trial class status updated successfully",
       });
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error(`AdminController: Error updating trial class status ${req.params.trialClassId}`, error);
       next(error);
     }
   };
 
 
-getAvailableMentors = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const { subjectId, preferredDate, days, timeSlot } = req.query;
+  getAvailableMentors = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { subjectId, preferredDate, days, timeSlot } = req.query;
 
-    logger.info(`AdminController: Fetching available mentors`, { subjectId, preferredDate, days, timeSlot });
+      logger.info(`AdminController: Fetching available mentors`, { subjectId, preferredDate, days, timeSlot });
 
-    if (!subjectId || typeof subjectId !== 'string') {
-      throw new AppError("Subject ID is required", HttpStatusCode.BAD_REQUEST);
+      if (!subjectId || typeof subjectId !== 'string') {
+        throw new AppError("Subject ID is required", HttpStatusCode.BAD_REQUEST);
+      }
+
+      // Parse days if it comes as a string (which query params often do)
+      let daysArray: string[] = [];
+      if (Array.isArray(days)) {
+        daysArray = days as string[];
+      } else if (typeof days === 'string') {
+        daysArray = days.split(',').map(d => d.trim());
+      }
+
+      const result = await this._adminService.getAvailableMentors(
+        subjectId, 
+        preferredDate as string,
+        daysArray,
+        timeSlot as string
+      );
+
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: result,
+        message: "Available mentors fetched successfully",
+      });
+    } catch (error) {
+      logger.error("AdminController: Error fetching available mentors", error);
+      next(error);
     }
+  };
 
-    // Parse days if it comes as a string (which query params often do)
-    // It might be ?days[]=Monday&days[]=Tuesday OR ?days=Monday,Tuesday
-    let daysArray: string[] = [];
-    if (Array.isArray(days)) {
-      daysArray = days as string[];
-    } else if (typeof days === 'string') {
-      daysArray = days.split(',').map(d => d.trim());
+  searchStudents = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { query } = req.query;
+      if (!query || typeof query !== 'string') {
+        throw new AppError("Search query is required", HttpStatusCode.BAD_REQUEST);
+      }
+      const students = await this._adminService.searchStudents(query);
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: students,
+        message: "Students searched successfully"
+      });
+    } catch (error) {
+      next(error);
     }
-
-    const result = await this._adminService.getAvailableMentors(
-      subjectId, 
-      preferredDate as string,
-      daysArray,
-      timeSlot as string
-    );
-
-    console.log('🔍 Controller returning matches:', result.matches.length, 'alternates:', result.alternates.length);
-
-    res.status(HttpStatusCode.OK).json({
-      success: true,
-      data: result, // result is { matches: [], alternates: [] }
-      message: "Available mentors fetched successfully",
-    });
-  } catch (error) {
-    console.error('❌ Controller error:', error);
-    logger.error("AdminController: Error fetching available mentors", error);
-    next(error);
-  }
-};
-
-
-
+  };
 
   assignMentor = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      console.log('🔍 assignMentor controller called');
-      console.log('🔍 Request body:', JSON.stringify(req.body, null, 2));
-      
-      const { studentId, subjectId, mentorId } = req.body;
-      
-      console.log('🔍 Extracted params:', { studentId, subjectId, mentorId });
-      
-      const adminId = (req as any).user?.id;
-      const { days, timeSlot } = req.body;
+      const { studentId, subjectId, mentorId, days, timeSlot } = req.body;
+      const authReq = req as AuthenticatedRequest;
+      const adminId = authReq.user?.id;
       
       if (!studentId || !subjectId || !mentorId) {
-        console.log('❌ Missing required fields');
         throw new AppError("Student ID, Subject ID, and Mentor ID are required", HttpStatusCode.BAD_REQUEST);
       }
 
-      console.log('🔍 Calling adminService.assignMentor...');
       await this._adminService.assignMentor(studentId, subjectId, mentorId, adminId, {
          days,
          timeSlot
       });
-      console.log('✅ assignMentor completed successfully');
 
       res.status(HttpStatusCode.OK).json({
         success: true,
         message: "Mentor assigned successfully",
       });
-    } catch (error) {
-      console.error('❌ assignMentor controller error:', error);
+    } catch (error: unknown) {
       next(error);
     }
   };
@@ -875,7 +840,8 @@ getAvailableMentors = async (req: Request, res: Response, next: NextFunction): P
   reassignMentor = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { studentId, subjectId, newMentorId, days, timeSlot } = req.body;
-      const adminId = (req as any).user?.id;
+      const authReq = req as AuthenticatedRequest;
+      const adminId = authReq.user?.id;
 
       if (!studentId || !subjectId || !newMentorId) {
         throw new AppError("Student ID, Subject ID, and New Mentor ID are required", HttpStatusCode.BAD_REQUEST);
@@ -890,8 +856,8 @@ getAvailableMentors = async (req: Request, res: Response, next: NextFunction): P
         success: true,
         message: "Mentor reassigned successfully",
       });
-    } catch (error) {
+    } catch (error: unknown) {
       next(error);
     }
   };
-} 
+}

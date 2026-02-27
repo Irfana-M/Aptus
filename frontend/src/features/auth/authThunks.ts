@@ -10,13 +10,14 @@ import type {
 import type { User } from "../../types/authTypes";
 import { logout } from "./authSlice";
 import { getApiErrorMessage } from "../../utils/errorUtils";
+import socketService from "../../services/socketService";
 
 export const registerUser = createAsyncThunk<User, RegisterUserDto>(
   "auth/register",
   async (data, { rejectWithValue }) => {
     try {
       const res = await authApi.register(data);
-      return res.data;
+      return res.data.data;
     } catch (err: unknown) {
       return rejectWithValue(
         getApiErrorMessage(err, "Registration failed")
@@ -62,7 +63,8 @@ export const refreshAccessToken = createAsyncThunk<
   }
   try {
     const res = await authApi.refreshToken();
-    const { user, accessToken, isProfileComplete, isPaid, isTrialCompleted } = res.data;
+    // Backend returns flat structure, contradicting ApiResponse type
+    const { user, accessToken, isProfileComplete, isPaid, isTrialCompleted } = res.data as unknown as LoginResponse;
     
     if (accessToken && user.role) {
         localStorage.setItem(`${user.role}_accessToken`, accessToken);
@@ -116,7 +118,8 @@ export const loginUser = createAsyncThunk<
   ): Promise<LoginResponse | ReturnType<typeof rejectWithValue>> => {
     try {
       const res = await authApi.login(data);
-      const { user, accessToken, isProfileComplete, isPaid, isTrialCompleted } = res.data;
+      // Backend returns flat structure, contradicting ApiResponse type
+      const { user, accessToken, isProfileComplete, isPaid, isTrialCompleted } = res.data as unknown as LoginResponse;
       
       if (accessToken && user.role) {
           localStorage.setItem(`${user.role}_accessToken`, accessToken);
@@ -150,6 +153,8 @@ export const logoutUser = createAsyncThunk(
     } catch (err: unknown) {
       console.error("Backend logout failed", err);
     } finally {
+      // Proactively disconnect socket to ensure clean state for next user
+      socketService.disconnect();
 
       
       const state = store.getState() as RootState;

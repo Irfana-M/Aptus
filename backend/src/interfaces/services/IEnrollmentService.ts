@@ -1,3 +1,4 @@
+import type { PaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes";
 import type { IEnrollment } from "../../models/enrollment.model";
 
 export interface IEnrollmentService {
@@ -5,4 +6,5 @@ export interface IEnrollmentService {
   getStudentEnrollments(studentId: string): Promise<IEnrollment[]>;
   updateEnrollmentStatus(enrollmentId: string, status: "pending_payment" | "active" | "cancelled"): Promise<IEnrollment | null>;
   getAllEnrollments(): Promise<IEnrollment[]>;
+  getAllEnrollmentsPaginated(params: PaginationParams): Promise<PaginatedResponse<IEnrollment>>;
 }

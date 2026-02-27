@@ -1,23 +1,21 @@
 import { injectable, inject } from "inversify";
 import mongoose from "mongoose";
 import { TYPES } from "../types";
+
 import { logger } from "../utils/logger";
 import { AppError } from "../utils/AppError";
 import { HttpStatusCode } from "../constants/httpStatus";
-import { getErrorMessage } from "../utils/errorUtils";
+
 
 import type { ISchedulingService } from "../interfaces/services/ISchedulingService";
 import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository";
 import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository";
 import type { IBookingRepository } from "../interfaces/repositories/IBookingRepository";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
 import type { SchedulingOrchestrator } from "./scheduling/SchedulingOrchestrator";
 
-import { TimeSlotModel } from "../models/scheduling/timeSlot.model";
-import { BookingModel } from "../models/scheduling/booking.model";
-import { MentorAvailabilityModel } from "../models/mentor/mentorAvailability.model";
-import { StudentModel } from "../models/student/student.model";
-import { StudentSubjectModel } from "../models/student/studentSubject.model";
-import { StudentSubscriptionModel } from "../models/subscription/studentSubscription.model";
+
+
 
 @injectable()
 export class SchedulingService implements ISchedulingService {
@@ -25,105 +23,52 @@ export class SchedulingService implements ISchedulingService {
     @inject(TYPES.IMentorRepository) private _mentorRepo: IMentorRepository,
     @inject(TYPES.ITimeSlotRepository) private _timeSlotRepo: ITimeSlotRepository,
     @inject(TYPES.IBookingRepository) private _bookingRepo: IBookingRepository,
-    @inject(TYPES.SchedulingOrchestrator) private _orchestrator: SchedulingOrchestrator
+    @inject(TYPES.IStudentRepository) private _studentRepo: IStudentRepository,
+    @inject(TYPES.SchedulingOrchestrator) private _orchestrator: SchedulingOrchestrator,
+    @inject(TYPES.IBookingSyncService) private _bookingSyncService: import("../interfaces/services/IBookingSyncService").IBookingSyncService,
+    @inject(TYPES.ILeaveManagementService) private _leaveManagementService: import("../interfaces/services/ILeaveManagementService").ILeaveManagementService,
+    @inject(TYPES.ITimeSlotQueryService) private _timeSlotQueryService: import("../interfaces/services/ITimeSlotQueryService").ITimeSlotQueryService,
+    @inject(TYPES.ISlotGenerationService) private _slotGenerationService: import("../interfaces/services/ISlotGenerationService").ISlotGenerationService
   ) {}
 
   async generateSlots(projectionDays: number): Promise<void> {
-    try {
-      logger.info(`Generating slots for the next ${projectionDays} days`);
-      
-      const mentors = await this._mentorRepo.getAllMentors();
-      const approvedMentors = mentors.filter(m => m.approvalStatus === 'approved' && m.isActive);
-
-      const startDate = new Date();
-      startDate.setHours(0, 0, 0, 0);
-      
-      const dayNames: ('Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday')[] = 
-        ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-      for (const mentor of approvedMentors) {
-        const availabilities = await MentorAvailabilityModel.find({ mentorId: mentor._id, isActive: true });
-        
-        for (let i = 1; i <= projectionDays; i++) {
-          const currentPathDate = new Date(startDate);
-          currentPathDate.setDate(startDate.getDate() + i);
-          
-          const dayName = dayNames[currentPathDate.getDay()];
-          const dailyAvail = availabilities.find(a => a.dayOfWeek === dayName);
-
-          if (dailyAvail) {
-            for (const slot of dailyAvail.slots) {
-              const startTimes = slot.startTime.split(':').map(Number);
-              const endTimes = slot.endTime.split(':').map(Number);
-              
-              const startH = startTimes[0] ?? 0;
-              const startM = startTimes[1] ?? 0;
-              const endH = endTimes[0] ?? 0;
-              const endM = endTimes[1] ?? 0;
-
-              const slotStart = new Date(currentPathDate);
-              slotStart.setHours(startH, startM, 0, 0);
-
-              const slotEnd = new Date(currentPathDate);
-              slotEnd.setHours(endH, endM, 0, 0);
-
-              // Use upsert to avoid duplicates and handle race conditions during generation
-              await TimeSlotModel.findOneAndUpdate(
-                { 
-                  mentorId: mentor._id as any, 
-                  startTime: slotStart, 
-                  endTime: slotEnd 
-                },
-                { 
-                  $setOnInsert: { 
-                    status: 'available',
-                    sessionType: 'one-to-one', // Default, can be refined based on mentor settings
-                    maxStudents: 1,           // Default for 1-to-1
-                    currentStudentCount: 0
-                  } 
-                },
-                { upsert: true }
-              );
-            }
-          }
-        }
-      }
-      logger.info('Slot generation completed');
-    } catch (error) {
-      logger.error(`Error in generateSlots: ${getErrorMessage(error)}`);
-      throw error;
-    }
+    logger.info(`Delegating generateSlots to SlotGenerationService`);
+    return this._slotGenerationService.generateSlots(projectionDays);
   }
 
-  async bookSlot(studentId: string, slotId: string, studentSubjectId: string): Promise<any> {
+  async generateMentorSlots(mentorId: string, projectionDays: number): Promise<void> {
+    logger.info(`Delegating generateMentorSlots to SlotGenerationService`);
+    return this._slotGenerationService.generateMentorSlots(mentorId, projectionDays);
+  }
+
+   async bookSlot(studentId: string, slotId: string, studentSubjectId: string): Promise<import("../interfaces/models/booking.interface").IBooking> {
     logger.info(`Delegating booking for slot ${slotId} to Orchestrator`);
     return await this._orchestrator.bookSession(studentId, slotId, studentSubjectId);
   }
 
-  async cancelBooking(bookingId: string, reason?: string): Promise<void> {
+  async cancelBooking(bookingId: string, initiator: 'student' | 'mentor' | 'admin', _reason?: string): Promise<void> {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      const booking = await BookingModel.findById(bookingId).session(session);
+      const booking = await this._bookingRepo.findById(bookingId, session);
       if (!booking) throw new AppError("Booking not found", HttpStatusCode.NOT_FOUND);
 
       if (booking.status === 'cancelled') return;
 
-      booking.status = 'cancelled';
-      await booking.save({ session });
+      await this._bookingRepo.updateById(bookingId, { status: 'cancelled' }, session);
+
+      // Increment cancellation count for student if they initiated
+      if (initiator === 'student') {
+        const studentId = typeof booking.studentId === 'string' ? booking.studentId : (booking.studentId as any).toString();
+        await this._studentRepo.incrementCancellationCount(studentId, session);
+      }
 
       // Atomically decrement slot count
-      await TimeSlotModel.findByIdAndUpdate(
-        booking.timeSlotId,
-        { 
-          $inc: { currentStudentCount: -1 },
-          $set: { status: 'available' } // Transition back to available if it was booked
-        },
-        { session }
-      );
+      const timeSlotId = typeof booking.timeSlotId === 'string' ? booking.timeSlotId : (booking.timeSlotId as any).toString();
+      await this._timeSlotRepo.releaseCapacity(timeSlotId, session);
 
       await session.commitTransaction();
-      logger.info(`Booking ${bookingId} cancelled`);
+      logger.info(`Booking ${bookingId} cancelled by ${initiator}`);
     } catch (error) {
       await session.abortTransaction();
       throw error;
@@ -133,46 +78,19 @@ export class SchedulingService implements ISchedulingService {
   }
 
   async handleMentorLeave(mentorId: string, startDate: Date, endDate: Date): Promise<void> {
-    try {
-      logger.info(`Handling leave for mentor ${mentorId} from ${startDate} to ${endDate}`);
-      
-      const affectedSlots = await TimeSlotModel.find({
-        mentorId: mentorId as any,
-        startTime: { $gte: startDate, $lte: endDate },
-        status: { $ne: 'cancelled' }
-      });
-
-      for (const slot of affectedSlots) {
-        slot.status = 'cancelled';
-        await slot.save();
-
-        // Cancel all associated bookings
-        await BookingModel.updateMany(
-          { timeSlotId: slot._id, status: 'scheduled' },
-          { status: 'cancelled' }
-        );
-        
-        logger.info(`Slot ${slot._id} cancelled due to mentor leave`);
-      }
-    } catch (error) {
-      logger.error(`Error handling mentor leave: ${getErrorMessage(error)}`);
-      throw error;
-    }
+    logger.info(`Delegating leave handling for mentor ${mentorId}`);
+    return this._leaveManagementService.handleMentorLeave(mentorId, startDate, endDate);
   }
 
-  async getAvailableSlots(filters: any): Promise<any[]> {
-    const query: any = { status: 'available' };
-    
-    if (filters.subjectId) query.subjectId = filters.subjectId;
-    if (filters.mentorId) query.mentorId = filters.mentorId;
-    if (filters.date) {
-        const startOfDay = new Date(filters.date);
-        startOfDay.setHours(0,0,0,0);
-        const endOfDay = new Date(filters.date);
-        endOfDay.setHours(23,59,59,999);
-        query.startTime = { $gte: startOfDay, $lte: endOfDay };
-    }
+  async getAvailableSlots(filters: Record<string, unknown>): Promise<import("../interfaces/models/timeSlot.interface").ITimeSlot[]> {
+    logger.info(`Delegating slot query to TimeSlotQueryService`);
+    return this._timeSlotQueryService.getAvailableSlots(filters);
+  }
 
-    return await TimeSlotModel.find(query).populate('mentorId', 'fullName profilePicture');
+
+
+  async ensureTimeSlot(mentorId: string, startTime: Date, endTime: Date): Promise<string> {
+    logger.info(`Delegating ensureTimeSlot to SlotGenerationService`);
+    return this._slotGenerationService.ensureTimeSlot(mentorId, startTime, endTime);
   }
 }

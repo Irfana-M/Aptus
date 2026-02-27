@@ -3,6 +3,8 @@ import { TYPES } from "@/types";
 import type { ICourseRequestRepository } from "@/interfaces/repositories/ICourseRequestRepository";
 import type { ICourseRequestService } from "@/interfaces/services/ICourseRequestService";
 import type { CourseRequestDocument } from "@/models/courseRequest.model";
+import type { PaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes";
+import { formatPaginatedResult, getPaginationParams } from "@/utils/pagination.util";
 
 import { InternalEventEmitter, EVENTS } from "@/utils/InternalEventEmitter";
 import { logger } from "@/utils/logger";
@@ -15,12 +17,6 @@ export class CourseRequestService implements ICourseRequestService {
   ) {}
 
   async createRequest(studentId: string, data: Record<string, unknown>) {
-    return await this.repository.create({
-      ...data,
-      student: studentId,
-      status: 'pending'
-    }) as unknown as CourseRequestDocument;
-
     const request = await this.repository.create({
       ...data,
       student: studentId,
@@ -43,6 +39,14 @@ export class CourseRequestService implements ICourseRequestService {
 
   async getAllRequests() {
     return await this.repository.findAll() as unknown as CourseRequestDocument[];
+  }
+
+  async getAllRequestsPaginated(params: PaginationParams): Promise<PaginatedResponse<CourseRequestDocument>> {
+    const { page, limit } = getPaginationParams(params as any);
+    logger.info(`Fetching paginated course requests - Page: ${page}, Limit: ${limit}`);
+    
+    const result = await this.repository.findPaginated({}, page, limit, { createdAt: -1 }, ['student']);
+    return formatPaginatedResult(result.items, result.total, { page, limit });
   }
 
   async getMyRequests(studentId: string) {

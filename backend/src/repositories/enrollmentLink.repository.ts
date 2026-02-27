@@ -2,6 +2,7 @@ import { injectable } from "inversify";
 import { Enrollment, type IEnrollment } from "../models/enrollment.model";
 import type { IEnrollmentLinkRepository } from "../interfaces/repositories/IEnrollmentLinkRepository";
 import { BaseRepository } from "./baseRepository";
+import type { FilterQuery } from "mongoose";
 
 @injectable()
 export class EnrollmentLinkRepository extends BaseRepository<IEnrollment> implements IEnrollmentLinkRepository {
@@ -14,6 +15,10 @@ export class EnrollmentLinkRepository extends BaseRepository<IEnrollment> implem
       student: studentId,
       course: courseId,
     });
+  }
+
+  async findByCourse(courseId: string): Promise<IEnrollment[]> {
+    return await Enrollment.find({ course: courseId, status: "active" }).populate("student").lean();
   }
 
   async findByStudent(studentId: string): Promise<IEnrollment[]> {
@@ -44,9 +49,14 @@ export class EnrollmentLinkRepository extends BaseRepository<IEnrollment> implem
     });
   }
 
+  async deleteByFilter(filter: FilterQuery<IEnrollment>): Promise<boolean> {
+    const result = await Enrollment.deleteMany(filter);
+    return result.deletedCount > 0;
+  }
+
   async findAll(): Promise<IEnrollment[]> {
     return await Enrollment.find()
-      .populate("student", "fullName email profilePicture")
+      .populate("student", "fullName email profileImage")
       .populate({
         path: "course",
         populate: [

@@ -2,14 +2,16 @@ import type { StudentProfile } from "../../interfaces/models/student.interface";
 import type { ITimeSlot } from "../../interfaces/models/timeSlot.interface";
 import type { ISubscriptionPlan, IStudentSubscription } from "../../interfaces/models/subscription.interface";
 import { BookingEligibility, SCHEDULING_CONFIG } from "../../constants/schedulingDecision";
+import type { IBooking } from "../../interfaces/models/booking.interface";
+import type { MentorProfile } from "../../interfaces/models/mentor.interface";
 
 export interface SchedulingContext {
   student: StudentProfile;
   slot: ITimeSlot;
-  mentor: any; 
+  mentor: Partial<MentorProfile>; 
   activeSubscription?: IStudentSubscription;
   plan?: ISubscriptionPlan;
-  studentBookings: any[]; 
+  studentBookings: IBooking[]; 
   mentorDailyCount: number;
 }
 
@@ -38,7 +40,7 @@ export class SchedulingDecisionResolver {
 
     
     const hasOverlap = studentBookings.some(b => {
-      const bookedSlot = b.timeSlotId as any;
+      const bookedSlot = b.timeSlotId as unknown as ITimeSlot;
       if (!bookedSlot) return false;
       return (
         (slot.startTime < bookedSlot.endTime && slot.startTime >= bookedSlot.startTime) ||
@@ -51,8 +53,8 @@ export class SchedulingDecisionResolver {
     }
 
     
-    if (plan && !plan.entitlements.canChooseMentorSlot) {
-       
+    if (plan && !plan.mentorChoice) {
+       // Logic for mentorChoice restriction if any
     }
 
     

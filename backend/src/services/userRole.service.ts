@@ -1,23 +1,25 @@
 import { injectable, inject } from "inversify";
 import { TYPES } from "../types";
-import type { IUserRoleService, VerificationResponse, UserExistenceResponse, UserEmailResponse } from "@/interfaces/services/IUserRoleSrvice";
+import type { IUserRoleService, VerificationResponse, UserExistenceResponse, UserEmailResponse, TrialClassAuthData } from "@/interfaces/services/IUserRoleSrvice";
 import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository";
 import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
-import type {  StudentBaseResponseDto } from "@/dto/auth/UserResponseDTO";
-import type { MentorResponseDto } from "@/dto/mentor/MentorResponseDTO";
+import type {  StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
+import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO";
 import { logger } from "../utils/logger";
 import { MentorMapper } from "@/mappers/MentorMapper";
 import { StudentMapper } from "@/mappers/StudentMapper";
 import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
 import { verifyAccessToken } from "../utils/jwt.util";
 import { Types } from "mongoose";
+import type { ISessionRepository } from "@/interfaces/repositories/ISessionRepository";
 
 @injectable()
 export class UserRoleService implements IUserRoleService {
   constructor(
     @inject(TYPES.IMentorRepository) private mentorRepository: IMentorRepository,
     @inject(TYPES.IStudentRepository) private studentRepository: IStudentRepository,
-    @inject(TYPES.ITrialClassRepository) private trialClassRepository: ITrialClassRepository
+    @inject(TYPES.ITrialClassRepository) private trialClassRepository: ITrialClassRepository,
+    @inject(TYPES.ISessionRepository) private sessionRepository: ISessionRepository
   ) {}
 
   
@@ -84,56 +86,113 @@ export class UserRoleService implements IUserRoleService {
     role: 'mentor' | 'student'
   ): Promise<{
     authorized: boolean;
-    trialClass?: unknown;
+    trialClass?: TrialClassAuthData;
     error?: string;
+    isSession?: boolean;
   }> {
     try {
-      const trialClass = await this.trialClassRepository.findById(trialClassId);
-      
-      if (!trialClass) {
-        return { 
-          authorized: false, 
-          error: 'Trial class not found' 
-        };
+      // 1. Try Trial Class First
+      let trialClass;
+      try {
+        trialClass = await this.trialClassRepository.findById(trialClassId);
+      } catch (_err) {
+        // Not a trial class, continue to check regular session
+        logger.debug(`ID ${trialClassId} not found in trial classes, checking sessions...`);
       }
       
-      let isAuthorized = false;
-      
-      
-      const studentId = (trialClass.student as unknown as { _id?: Types.ObjectId } | null)?._id 
-        ? (trialClass.student as unknown as { _id: Types.ObjectId })._id.toString() 
-        : trialClass.student?.toString();
-        
-      const mentorId = (trialClass.mentor as unknown as { _id?: Types.ObjectId } | null)?._id 
-        ? (trialClass.mentor as unknown as { _id: Types.ObjectId })._id.toString() 
-        : trialClass.mentor?.toString();
-      
-      if (role === 'student') {
-        isAuthorized = studentId === userId;
-      } else if (role === 'mentor') {
-        isAuthorized = mentorId === userId;
+      if (trialClass) {
+          let isAuthorized = false;
+          
+          const studentId = (trialClass.student as unknown as { _id?: Types.ObjectId } | null)?._id 
+            ? (trialClass.student as unknown as { _id: Types.ObjectId })._id.toString() 
+            : trialClass.student?.toString();
+            
+          const mentorId = (trialClass.mentor as unknown as { _id?: Types.ObjectId } | null)?._id 
+            ? (trialClass.mentor as unknown as { _id: Types.ObjectId })._id.toString() 
+            : trialClass.mentor?.toString();
+          
+          if (role === 'student') {
+            isAuthorized = studentId === userId;
+          } else if (role === 'mentor') {
+            isAuthorized = mentorId === userId;
+          }
+          
+          if (isAuthorized) {
+            return {
+              authorized: true,
+              trialClass: {
+                id: (trialClass as any)._id?.toString(),
+                status: (trialClass as any).status,
+                studentId: studentId,
+                mentorId: mentorId,
+                preferredDate: (trialClass as any).preferredDate,
+                meetLink: (trialClass as any).meetLink
+              }
+            };
+          }
+          
+          return { 
+             authorized: false, 
+             error: `User not authorized for trial class.`,
+             trialClass
+          };
+      }
+
+      // 2. Fallback to Session (Regular Class)
+      let session;
+      try {
+        session = await this.sessionRepository.findById(trialClassId);
+      } catch (_err) {
+        logger.debug(`ID ${trialClassId} not found in sessions.`);
       }
       
-      if (isAuthorized) {
-        return { 
-          authorized: true, 
-          trialClass 
-        };
-      } else {
-        const expectedId = role === 'student' ? studentId : mentorId;
-        const errorMsg = `User not authorized. Req: ${userId} (${role}), Exp: ${expectedId}`;
-        logger.warn(`❌ Auth Failed: ${errorMsg}`);
-        return { 
-          authorized: false, 
-          error: errorMsg,
-          trialClass: {
-            _id: trialClass._id.toString(),
-            status: trialClass.status,
-            student: trialClass.student.toString(),
-            mentor: trialClass.mentor?.toString()
-          } as unknown as { _id: string; status: string; student: string; mentor?: string }
-        };
+      if (session) {
+          let isAuthorized = false;
+          
+          // Check participants array first (handles Group & 1:1)
+          const participant = session.participants?.find((p) => 
+              p.userId && p.userId.toString() === userId && p.role === role
+          );
+
+          if (participant) {
+              isAuthorized = true;
+          } else {
+              // Legacy/Fallback check for direct fields (if schema allows, though schema says participants)
+              const studentId = (session as unknown as { studentId?: { toString(): string } }).studentId?.toString();
+              const mentorId = (session as unknown as { mentorId?: { toString(): string } }).mentorId?.toString();
+              
+              if (role === 'student' && studentId === userId) isAuthorized = true;
+              if (role === 'mentor' && mentorId === userId) isAuthorized = true;
+          }
+
+          if (isAuthorized) {
+            return {
+              authorized: true,
+              trialClass: {
+                id: (session as any)._id?.toString(),
+                status: (session as any).status,
+                meetLink: (session as any).webRTCId
+              },
+              isSession: true
+            };
+          }
+          
+           return { 
+             authorized: false, 
+             error: `User not authorized for session.`,
+             trialClass: {
+                id: (session as any)._id?.toString(),
+                status: (session as any).status,
+                meetLink: (session as any).webRTCId
+             }
+          };
       }
+      
+      return { 
+        authorized: false, 
+        error: 'Class/Session not found' 
+      };
+
     } catch (error) {
       logger.error('Error verifying trial class authorization:', error);
       return { authorized: false, error: 'Database error' };

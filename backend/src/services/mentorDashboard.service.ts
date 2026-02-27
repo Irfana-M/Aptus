@@ -1,5 +1,3 @@
-// src/services/mentorDashboard.service.ts
-
 import { injectable, inject } from "inversify";
 import { TYPES } from "@/types";
 import type { IMentorDashboardService } from "@/interfaces/services/IMentorDashboardService";

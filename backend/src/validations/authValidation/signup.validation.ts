@@ -28,6 +28,10 @@ export const studentRegisterSchema = z
       ),
 
     confirmPassword: z.string(),
+
+    role: z.enum(["student", "mentor"] as const),
+
+    referralCode: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     path: ["confirmPassword"],

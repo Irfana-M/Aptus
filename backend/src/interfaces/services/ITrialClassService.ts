@@ -16,6 +16,17 @@ export interface ITrialClassService {
     studentId: string
   ): Promise<TrialClassResponseDto>;
 
+  getAvailableSlots(
+    subjectId: string,
+    date: string
+  ): Promise<Record<string, unknown>>;
+
+  autoAssignMentor(
+    subjectId: string,
+    date: string,
+    timeSlot: string
+  ): Promise<import("../models/mentor.interface").MentorProfile>;
+
   updateTrialClass(
     trialClassId: string,
     studentId: string,

@@ -11,7 +11,4 @@ const chatRoomSchema = new Schema<IChatRoom>(
   { timestamps: true }
 );
 
-// Index for quick lookup by sessionId
-chatRoomSchema.index({ sessionId: 1 });
-
 export const ChatRoomModel = mongoose.model<IChatRoom>("ChatRoom", chatRoomSchema);

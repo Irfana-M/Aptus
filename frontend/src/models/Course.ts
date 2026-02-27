@@ -37,11 +37,15 @@ export class Course {
   }
 
   // Logic: Schedule summary
-  get schedule() {
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const dayName = days[this.data.dayOfWeek];
-    return `${dayName} at ${this.data.timeSlot}`;
-  }
+get schedule() {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  const dayOfWeek = this.data.dayOfWeek;
+  if (dayOfWeek === undefined) return undefined;
+
+  const dayName = days[dayOfWeek];
+  return `${dayName} at ${this.data.timeSlot}`;
+}
 
   // Logic: Subject and Grade info
   get title() {

@@ -7,7 +7,6 @@ import type { IChatMessageRepository } from "../../interfaces/repositories/IChat
 import type { ISessionRepository } from "../../interfaces/repositories/ISessionRepository";
 import type { ISocketService } from "../../interfaces/services/ISocketService";
 import type { IChatRoom, IChatMessage } from "../../interfaces/models/chat.interface";
-import type { ISession, IParticipant } from "../../interfaces/models/session.interface";
 import { AppError } from "../../utils/AppError";
 import { HttpStatusCode } from "../../constants/httpStatus";
 import { logger } from "../../utils/logger";
@@ -34,33 +33,60 @@ export class ChatService implements IChatService {
     try {
         const session = await this._sessionRepo.findById(id);
         if (session) {
-             const s = session as any;
+             const s = session as unknown as { 
+               _id: { toString(): string }, 
+               mentorId?: { toString(): string },
+               mentor?: { toString(): string },
+               participants?: Array<{ studentId: { toString(): string } }>,
+               status: string,
+               title?: string
+             };
              return {
                  _id: s._id.toString(),
                  mentorId: s.mentorId ? s.mentorId.toString() : (s.mentor ? s.mentor.toString() : ''),
-                 participants: s.participants ? s.participants.map((p: any) => ({ studentId: p.studentId.toString() })) : [],
+                 participants: s.participants ? s.participants.map((p) => ({ studentId: p.studentId.toString() })) : [],
                  status: s.status,
                  title: s.title || 'Session'
              };
         }
-    } catch(e) {}
+    } catch(_e) {
+        // Session not found, this is expected in some cases. Proceed to check Trial Class.
+    }
 
     // 2. Try finding a Trial Class
     try {
         const trial = await this._trialClassRepo.findById(id);
+        
         if (trial) {
+            const trialWithIds = trial as unknown as { 
+                _id: { toString(): string }, 
+                mentor: string | { _id: { toString(): string } },
+                student: string | { _id: { toString(): string } },
+                status: string
+            };
+            
+            const mentorId = typeof trialWithIds.mentor === 'object' && trialWithIds.mentor._id 
+                ? trialWithIds.mentor._id.toString() 
+                : trialWithIds.mentor.toString();
+                
+            const studentId = typeof trialWithIds.student === 'object' && trialWithIds.student._id 
+                ? trialWithIds.student._id.toString() 
+                : trialWithIds.student.toString();
+
             return {
-                _id: (trial._id as any).toString(),
-                mentorId: (trial.mentor as any)._id ? (trial.mentor as any)._id.toString() : (trial.mentor as any).toString(),
-                participants: [{ studentId: (trial.student as any)._id ? (trial.student as any)._id.toString() : (trial.student as any).toString() }],
-                status: trial.status === 'assigned' ? 'in_progress' : trial.status, // Map 'assigned'/active to 'in_progress' for chat logic
+                _id: trialWithIds._id.toString(),
+                mentorId,
+                participants: [{ studentId }],
+                status: trialWithIds.status === 'assigned' ? 'in_progress' : trialWithIds.status, 
                 title: 'Trial Class'
             };
         }
-    } catch (e) {
-        // Ignore potential casting errors for IDs if format is wrong
+    } catch (_e) {
+        // Log error if TrialClass find fails
+        logger.error(`Error finding TrialClass ${id}:`, _e);
     }
 
+    logger.warn(`_findSessionOrTrial failed for ID: ${id} (Neither Session nor Trial)`);
     return null;
   }
 
@@ -71,9 +97,9 @@ export class ChatService implements IChatService {
     let room = await this._chatRoomRepo.findBySessionId(sessionId);
     if (!room) {
       room = await this._chatRoomRepo.create({
-        sessionId: session._id as any,
-        mentorId: session.mentorId as any,
-        participantIds: session.participants.map(p => p.studentId) as any,
+        sessionId: session._id as unknown as import('mongoose').Schema.Types.ObjectId,
+        mentorId: session.mentorId as unknown as import('mongoose').Schema.Types.ObjectId,
+        participantIds: session.participants.map(p => p.studentId) as unknown as import('mongoose').Schema.Types.ObjectId[],
         isActive: true
       });
       logger.info(`Chat room created for session: ${sessionId}`);
@@ -114,8 +140,8 @@ export class ChatService implements IChatService {
     }
 
     const message = await this._chatMessageRepo.create({
-      chatRoomId: (room._id as any).toString() as any,
-      senderId: senderId as any,
+      chatRoomId: (room._id as unknown as { toString(): string }).toString() as unknown as import('mongoose').Schema.Types.ObjectId,
+      senderId: senderId as unknown as import('mongoose').Schema.Types.ObjectId,
       senderRole,
       messageType: 'text',
       content
@@ -127,40 +153,39 @@ export class ChatService implements IChatService {
     return message;
   }
 
-  async getChatHistory(sessionId: string, userId: string): Promise<IChatMessage[]> {
+  async getChatHistory(sessionId: string, userId: string, userRole?: string): Promise<IChatMessage[]> {
     const session = await this._findSessionOrTrial(sessionId);
     if (!session) throw new AppError("Session not found", HttpStatusCode.NOT_FOUND);
 
     // Membership check for history access
     const isMentor = session.mentorId.toString() === userId;
     const isEnrolled = session.participants.some(p => p.studentId.toString() === userId);
+    const isAdmin = userRole === 'admin';
     
-    // Admin can also view history
-    if (!isMentor && !isEnrolled) {
-      // Admin check logic could be here or handled in controller via role middleware
-      // Assuming for now requester must be part of session for simple service level check
+    if (!isMentor && !isEnrolled && !isAdmin) {
+      throw new AppError("Access denied to this chat history", HttpStatusCode.FORBIDDEN);
     }
 
-    let room = await this._chatRoomRepo.findBySessionId(sessionId);
+    const room = await this._chatRoomRepo.findBySessionId(sessionId);
     
     // Auto-create room if missing for history (returns empty, but ensures room exists for next time)
     if (!room) {
          try {
             await this.initiateChatRoom(sessionId);
-         } catch (e) { console.error('Failed to auto-init chat room on history fetch', e); }
+         } catch (_e) { console.error('Failed to auto-init chat room on history fetch', _e); }
          return [];
     }
 
-    return await this._chatMessageRepo.findByRoomId((room._id as any).toString());
+    return await this._chatMessageRepo.findByRoomId((room._id as unknown as { toString(): string }).toString());
   }
 
   async sendSystemMessage(sessionId: string, content: string): Promise<IChatMessage> {
-    let room = await this._chatRoomRepo.findBySessionId(sessionId);
+    const room = await this._chatRoomRepo.findBySessionId(sessionId);
     if (!room) throw new AppError("Chat room not found", HttpStatusCode.NOT_FOUND);
 
     const message = await this._chatMessageRepo.create({
-      chatRoomId: (room._id as any).toString() as any,
-      senderId: (room.mentorId as any).toString() as any, // System messages can be tied to mentor or null
+      chatRoomId: (room._id as unknown as { toString(): string }).toString() as unknown as import('mongoose').Schema.Types.ObjectId,
+      senderId: (room.mentorId as unknown as { toString(): string }).toString() as unknown as import('mongoose').Schema.Types.ObjectId, 
       senderRole: 'mentor',
       messageType: 'system',
       content

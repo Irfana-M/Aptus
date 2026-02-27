@@ -5,14 +5,19 @@ import type { IStudentService } from "../interfaces/services/IStudentService";
 import { HttpStatusCode } from "../constants/httpStatus";
 import { AppError } from "../utils/AppError";
 import { logger } from "../utils/logger";
-import type { IWalletService } from "../interfaces/services/IWalletService";
 import type { IMentorRequestService } from "../interfaces/services/IMentorRequestService";
+
+interface AuthenticatedRequest extends Request {
+  user: {
+    id: string;
+    role: 'admin' | 'mentor' | 'student';
+  };
+}
 
 @injectable()
 export class StudentController {
   constructor(
     @inject(TYPES.IStudentService) private studentService: IStudentService,
-    @inject(TYPES.IWalletService) private walletService: IWalletService,
     @inject(TYPES.IMentorRequestService) private mentorRequestService: IMentorRequestService 
   ) {}
 
@@ -21,9 +26,9 @@ export class StudentController {
     res: Response,
     next: NextFunction
   ): Promise<void> {
-
     try {
-      if (!req.user) {
+      const authReq = req as AuthenticatedRequest;
+      if (!authReq.user) {
         throw new AppError("User not authenticated", HttpStatusCode.UNAUTHORIZED);
       }
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
@@ -37,7 +42,7 @@ export class StudentController {
       }
 
       const updatedProfile = await this.studentService.updateProfile(
-        req.user.id,
+        authReq.user.id,
         req.body
       );
 
@@ -46,74 +51,31 @@ export class StudentController {
         message: "Profile updated successfully",
         data: updatedProfile,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       next(error);
     }
   }
 
-  
   async getMyProfile(
     req: Request,
     res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
-      if (!req.user) {
+      const authReq = req as AuthenticatedRequest;
+      if (!authReq.user) {
         throw new AppError("User not authenticated", HttpStatusCode.UNAUTHORIZED);
       }
 
-      const profile = await this.studentService.getStudentProfileById(req.user.id);
+      const profile = await this.studentService.getStudentProfileById(authReq.user.id);
 
       res.status(HttpStatusCode.OK).json({
         success: true,
         message: "Profile retrieved successfully",
         data: profile,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       next(error);
-    }
-  }
-
-  async getWallet(req: Request, res: Response): Promise<void> {
-    try {
-      const studentId = req.user?.id;
-      if (!studentId) {
-        throw new AppError("Unauthorized", HttpStatusCode.UNAUTHORIZED);
-      }
-
-      const wallet = await this.walletService.getWallet(studentId) as { balance?: number } | null;
-      res.status(HttpStatusCode.OK).json({
-        success: true,
-        balance: wallet?.balance || 0,
-        wallet
-      });
-    } catch (error) {
-      logger.error("Error fetching wallet", error);
-      res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "Failed to fetch wallet",
-      });
-    }
-  }
-
-  async getTransactions(req: Request, res: Response): Promise<void> {
-    try {
-      const studentId = req.user?.id;
-      if (!studentId) {
-        throw new AppError("Unauthorized", HttpStatusCode.UNAUTHORIZED);
-      }
-
-      const transactions = await this.walletService.getTransactions(studentId);
-      res.status(HttpStatusCode.OK).json({
-        success: true,
-        data: transactions
-      });
-    } catch (error) {
-      logger.error("Error fetching transactions", error);
-      res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "Failed to fetch transactions",
-      });
     }
   }
 
@@ -136,7 +98,7 @@ export class StudentController {
         message: "Student profile retrieved successfully",
         data: profile,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       next(error);
     }
   }
@@ -147,13 +109,14 @@ export class StudentController {
     next: NextFunction
   ): Promise<void> {
     try {
-      if (!req.user) {
+      const authReq = req as AuthenticatedRequest;
+      if (!authReq.user) {
         throw new AppError("User not authenticated", HttpStatusCode.UNAUTHORIZED);
       }
 
       const { preferences } = req.body;
       const updatedProfile = await this.studentService.updatePreferences(
-        req.user.id,
+        authReq.user.id,
         preferences
       );
 
@@ -162,7 +125,34 @@ export class StudentController {
         message: "Preferences updated successfully",
         data: updatedProfile,
       });
-    } catch (error) {
+    } catch (error: unknown) {
+      next(error);
+    }
+  }
+
+  async updateBasicPreferences(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      if (!authReq.user) {
+        throw new AppError("User not authenticated", HttpStatusCode.UNAUTHORIZED);
+      }
+
+      const { subjectIds } = req.body;
+      const updatedProfile = await this.studentService.updateBasicPreferences(
+        authReq.user.id,
+        subjectIds
+      );
+
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        message: "Basic preferences updated successfully",
+        data: updatedProfile,
+      });
+    } catch (error: unknown) {
       next(error);
     }
   }
@@ -173,18 +163,19 @@ export class StudentController {
     next: NextFunction
   ): Promise<void> {
     try {
-      if (!req.user) {
+      const authReq = req as AuthenticatedRequest;
+      if (!authReq.user) {
         throw new AppError("User not authenticated", HttpStatusCode.UNAUTHORIZED);
       }
 
       const { subjectId, mentorId } = req.body;
-      await this.studentService.requestMentor(req.user.id, subjectId, mentorId);
+      await this.studentService.requestMentor(authReq.user.id, subjectId, mentorId);
 
       res.status(HttpStatusCode.OK).json({
         success: true,
         message: "Mentor request submitted successfully",
       });
-    } catch (error) {
+    } catch (error: unknown) {
       next(error);
     }
   }
@@ -195,17 +186,18 @@ export class StudentController {
     next: NextFunction
   ): Promise<void> {
     try {
-      if (!req.user) {
+      const authReq = req as AuthenticatedRequest;
+      if (!authReq.user) {
         throw new AppError("User not authenticated", HttpStatusCode.UNAUTHORIZED);
       }
 
-      const requests = await this.mentorRequestService.getRequestsByStudent(req.user.id);
+      const requests = await this.mentorRequestService.getRequestsByStudent(authReq.user.id);
       
       res.status(HttpStatusCode.OK).json({
         success: true,
         data: requests,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       next(error);
     }
   }

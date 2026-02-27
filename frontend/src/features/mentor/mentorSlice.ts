@@ -10,6 +10,7 @@ import {
   fetchMentorCourses,
 } from "./mentorThunk";
 import type { TrialClass } from "../../types/studentTypes";
+import type { Course } from "../../types/courseTypes";
 
 export interface MentorProfile {
   _id: string;
@@ -21,12 +22,16 @@ export interface MentorProfile {
 
   academicQualifications: {
     institutionName: string;
+    institution?: string;
     degree: string;
     graduationYear: string;
+    year?: string | number;
   }[];
   experiences: {
-    institution: string;
+    institution?: string;
+    company?: string;
     jobTitle: string;
+    role?: string;
     duration: string;
   }[];
   certification: {
@@ -38,7 +43,7 @@ export interface MentorProfile {
     level: "basic" | "intermediate" | "expert";
   }[];
   profilePicture?: string;
-  profileImageUrl?: string | null;
+  profileImageUrl?: string;
   profileImageKey?: string;
   availability?: {
     day: string;
@@ -66,7 +71,7 @@ interface MentorState {
   profile: MentorProfile | null;
   pendingMentors: MentorProfile[];
   trialClasses: TrialClass[];
-  courses: any[]; 
+  courses: Course[]; 
   loading: boolean;
   error: string | null;
 }
@@ -83,7 +88,16 @@ const initialState: MentorState = {
 export const mentorSlice = createSlice({
   name: "mentor",
   initialState,
-  reducers: {},
+  reducers: {
+    clearMentorState: (state) => {
+      state.profile = null;
+      state.pendingMentors = [];
+      state.trialClasses = [];
+      state.courses = [];
+      state.loading = false;
+      state.error = null;
+    }
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchMentorProfile.pending, (state) => {
@@ -188,6 +202,22 @@ export const mentorSlice = createSlice({
         state.loading = false;
         state.error = action.error.message || "Failed to fetch courses";
       });
+
+    // Automatically clear mentor state on auth logout
+    builder.addMatcher(
+      (action) =>
+        action.type === "auth/logout" ||
+        action.type === "auth/logoutUser/fulfilled" ||
+        action.type === "auth/adminLogin/fulfilled",
+      (state) => {
+        state.profile = null;
+        state.pendingMentors = [];
+        state.trialClasses = [];
+        state.courses = [];
+        state.loading = false;
+        state.error = null;
+      }
+    );
   },
 });
 

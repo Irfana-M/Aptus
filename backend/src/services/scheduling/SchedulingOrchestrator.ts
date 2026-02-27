@@ -11,6 +11,7 @@ import { HttpStatusCode } from '../../constants/httpStatus';
 import { logger } from '../../utils/logger';
 import { EVENTS, type InternalEventEmitter } from '../../utils/InternalEventEmitter';
 import type { IChatService } from '../../interfaces/services/IChatService';
+import type { IPricingService } from '../../interfaces/services/IPricingService';
 
 @injectable()
 export class SchedulingOrchestrator {
@@ -21,10 +22,11 @@ export class SchedulingOrchestrator {
     @inject(TYPES.IStudentRepository) private _studentRepo: IStudentRepository,
     @inject(TYPES.SchedulingPolicy) private _policy: SchedulingPolicy,
     @inject(TYPES.InternalEventEmitter) private _eventEmitter: InternalEventEmitter,
-    @inject(TYPES.IChatService) private _chatService: IChatService
+    @inject(TYPES.IChatService) private _chatService: IChatService,
+    @inject(TYPES.IPricingService) private _pricingService: IPricingService
   ) {}
 
-  async bookSession(studentId: string, slotId: string, subjectId: string): Promise<any> {
+  async bookSession(studentId: string, slotId: string, subjectId: string): Promise<import('../../interfaces/models/booking.interface').IBooking> {
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -44,10 +46,13 @@ export class SchedulingOrchestrator {
         session
       );
 
-      const policyCheck = this._policy.canStudentBook(student as any, slot, studentBookings);
+      const policyCheck = this._policy.canStudentBook(student as unknown as import('../../interfaces/models/student.interface').StudentProfile, slot, studentBookings);
       if (!policyCheck.allowed) {
         throw new AppError(policyCheck.reason || "Booking rejected by policy", HttpStatusCode.CONFLICT);
       }
+
+      // 2.5 Calculate Session Cost
+      const { cost, currency } = await this._pricingService.calculateSessionCost(studentId);
 
       // 3. Mentor Limit Check
       const mentor = await this._mentorRepo.findById(slot.mentorId.toString());
@@ -69,10 +74,12 @@ export class SchedulingOrchestrator {
       }
 
       const booking = await this._bookingRepo.create({
-        studentId: studentId as any,
-        studentSubjectId: subjectId as any, // Use the correct ID from student's enrolled subjects
-        timeSlotId: slotId as any,
-        status: 'scheduled'
+        studentId: new mongoose.Types.ObjectId(studentId) as unknown as import('mongoose').Schema.Types.ObjectId,
+        studentSubjectId: new mongoose.Types.ObjectId(subjectId) as unknown as import('mongoose').Schema.Types.ObjectId,
+        timeSlotId: new mongoose.Types.ObjectId(slotId) as unknown as import('mongoose').Schema.Types.ObjectId,
+        status: 'scheduled',
+        cost,
+        currency
       }, session);
 
       await session.commitTransaction();
@@ -80,8 +87,8 @@ export class SchedulingOrchestrator {
 
       // Emit events for notifications (decoupled)
       this._eventEmitter.emit(EVENTS.SESSION_SCHEDULED, {
-        sessionId: (booking as any)._id.toString(),
-        studentId: (student as any)._id.toString(),
+        sessionId: (booking as unknown as { _id: { toString(): string } })._id.toString(),
+        studentId: (student as unknown as { _id: { toString(): string } })._id.toString(),
         mentorId: slot.mentorId.toString(),
         subjectName: "Your Subject", // Should be fetched properly in full impl
         startTime: slot.startTime,
@@ -90,8 +97,8 @@ export class SchedulingOrchestrator {
 
       // Legacy support
       this._eventEmitter.emit(EVENTS.BOOKING_CREATED, {
-        studentId: (student as any)._id.toString(),
-        studentEmail: (student as any).email,
+        studentId: (student as unknown as { _id: { toString(): string } })._id.toString(),
+        studentEmail: (student as unknown as { email: string }).email,
         subjectName: "Your Subject",
         startTime: slot.startTime.toISOString(),
       });

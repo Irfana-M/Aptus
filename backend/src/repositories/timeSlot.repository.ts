@@ -1,5 +1,6 @@
 import { injectable } from 'inversify';
-import type { ClientSession, FilterQuery } from 'mongoose';
+import { Types } from 'mongoose';
+import type { ClientSession, FilterQuery, QueryOptions } from 'mongoose';
 import { BaseRepository } from './baseRepository';
 import type { ITimeSlotRepository } from '../interfaces/repositories/ITimeSlotRepository';
 import type { ITimeSlot } from '../interfaces/models/timeSlot.interface';
@@ -12,7 +13,7 @@ export class TimeSlotRepository extends BaseRepository<ITimeSlot> implements ITi
   }
 
   async reserveCapacity(slotId: string, session?: ClientSession): Promise<ITimeSlot | null> {
-    const options: any = { new: true };
+    const options: QueryOptions = { new: true };
     if (session) options.session = session;
     return await this.model.findOneAndUpdate(
       {
@@ -39,7 +40,7 @@ export class TimeSlotRepository extends BaseRepository<ITimeSlot> implements ITi
   }
 
   async releaseCapacity(slotId: string, session?: ClientSession): Promise<ITimeSlot | null> {
-    const options: any = { new: true };
+    const options: QueryOptions = { new: true };
     if (session) options.session = session;
     return await this.model.findOneAndUpdate(
       { _id: slotId },
@@ -58,7 +59,7 @@ export class TimeSlotRepository extends BaseRepository<ITimeSlot> implements ITi
   }
 
   async reserveSlot(slotId: string, session?: ClientSession): Promise<ITimeSlot | null> {
-    const options: any = { new: true };
+    const options: QueryOptions = { new: true };
     if (session) options.session = session;
     return await this.model.findOneAndUpdate(
       { _id: slotId, status: 'available' },
@@ -68,7 +69,7 @@ export class TimeSlotRepository extends BaseRepository<ITimeSlot> implements ITi
   }
 
   async confirmBooking(slotId: string, session?: ClientSession): Promise<ITimeSlot | null> {
-    const options: any = { new: true };
+    const options: QueryOptions = { new: true };
     if (session) options.session = session;
     return await this.model.findOneAndUpdate(
       { _id: slotId, status: 'reserved' },
@@ -78,5 +79,77 @@ export class TimeSlotRepository extends BaseRepository<ITimeSlot> implements ITi
       },
       options
     ).lean() as unknown as ITimeSlot | null;
+  }
+
+  async countByMentorAndDate(mentorId: string, date: Date): Promise<number> {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    return await this.model.countDocuments({
+      mentorId,
+      startTime: { $gte: start, $lte: end },
+      status: { $in: ['booked', 'reserved'] }
+    });
+  }
+
+  async countByMentorAndWeek(mentorId: string, inputDate: Date): Promise<number> {
+    const date = new Date(inputDate);
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+    
+    const start = new Date(date.setDate(diff));
+    start.setHours(0, 0, 0, 0);
+    
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+
+    return await this.model.countDocuments({
+      mentorId,
+    });
+  }
+
+  async createOrUpdate(filter: FilterQuery<ITimeSlot>, data: Partial<ITimeSlot>): Promise<ITimeSlot | null> {
+    return await this.model.findOneAndUpdate(
+      filter,
+      { $set: data },
+      { upsert: true, new: true }
+    ).lean() as unknown as ITimeSlot | null;
+  }
+
+  async ensureSlot(filter: FilterQuery<ITimeSlot>): Promise<ITimeSlot | null> {
+    return await this.model.findOneAndUpdate(
+      filter,
+      { $setOnInsert: { status: 'available', maxStudents: 1, currentStudentCount: 0 } },
+      { upsert: true, new: true }
+    ).lean() as unknown as ITimeSlot | null;
+  }
+
+  async findAvailableSlotsWithMentor(filter: FilterQuery<ITimeSlot>): Promise<ITimeSlot[]> {
+     return await this.model.find({ ...filter, status: 'available' })
+       .populate('mentorId', 'fullName profilePicture')
+       .lean() as unknown as ITimeSlot[];
+  }
+
+  async findActiveSlotsByMentorAndDateRange(mentorId: string, startDate: Date, endDate: Date): Promise<ITimeSlot[]> {
+    return await this.model.find({
+      mentorId: new Types.ObjectId(mentorId),
+      startTime: { $gte: startDate, $lte: endDate },
+      status: { $ne: 'cancelled' }
+    }).lean() as unknown as ITimeSlot[];
+  }
+
+  async updateMany(filter: FilterQuery<ITimeSlot>, update: any, session?: ClientSession): Promise<any> {
+    return await this.model.updateMany(filter, update).session(session || null).exec();
+  }
+
+  async deleteMany(filter: FilterQuery<ITimeSlot>, session?: ClientSession): Promise<any> {
+    return await this.model.deleteMany(filter).session(session || null).exec();
+  }
+
+  async insertMany(docs: any[], session?: ClientSession): Promise<ITimeSlot[]> {
+    return await this.model.insertMany(docs, { session: session || null }) as unknown as ITimeSlot[];
   }
 }

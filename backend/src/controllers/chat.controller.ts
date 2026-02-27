@@ -6,6 +6,13 @@ import { AppError } from "../utils/AppError";
 import { HttpStatusCode } from "../constants/httpStatus";
 import { logger } from "../utils/logger";
 
+interface AuthenticatedRequest extends Request {
+  user: {
+    id: string;
+    role: 'mentor' | 'student' | 'admin';
+  };
+}
+
 @injectable()
 export class ChatController {
   constructor(
@@ -16,8 +23,9 @@ export class ChatController {
     try {
       const { sessionId } = req.params;
       const { content } = req.body;
-      const userId = (req as any).user.id;
-      const role = (req as any).user.role;
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.user.id;
+      const role = authReq.user.role;
 
       if (!sessionId) throw new AppError("Session ID is required", HttpStatusCode.BAD_REQUEST);
 
@@ -27,11 +35,12 @@ export class ChatController {
         success: true,
         data: message
       });
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error("Error in ChatController.sendMessage:", error);
-      res.status((error as any).statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR).json({
+      const appError = error as { statusCode?: number; message?: string };
+      res.status(appError.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: (error as any).message || "Failed to send message"
+        message: appError.message || "Failed to send message"
       });
     }
   }
@@ -39,21 +48,24 @@ export class ChatController {
   async getChatHistory(req: Request, res: Response): Promise<void> {
     try {
       const { sessionId } = req.params;
-      const userId = (req as any).user.id;
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.user.id;
+      const role = authReq.user.role;
 
       if (!sessionId) throw new AppError("Session ID is required", HttpStatusCode.BAD_REQUEST);
 
-      const history = await this._chatService.getChatHistory(sessionId, userId);
+      const history = await this._chatService.getChatHistory(sessionId, userId, role);
 
       res.status(HttpStatusCode.OK).json({
         success: true,
         data: history
       });
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error("Error in ChatController.getChatHistory:", error);
-      res.status((error as any).statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR).json({
+      const appError = error as { statusCode?: number; message?: string };
+      res.status(appError.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: (error as any).message || "Failed to fetch chat history"
+        message: appError.message || "Failed to fetch chat history"
       });
     }
   }
@@ -69,11 +81,12 @@ export class ChatController {
               success: true,
               data: room
           });
-      } catch (error) {
+      } catch (error: unknown) {
           logger.error("Error in ChatController.initiateChat:", error);
-          res.status((error as any).statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR).json({
+          const appError = error as { statusCode?: number; message?: string };
+          res.status(appError.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR).json({
               success: false,
-              message: (error as any).message || "Failed to initiate chat"
+              message: appError.message || "Failed to initiate chat"
           });
       }
   }

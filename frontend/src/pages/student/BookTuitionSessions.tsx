@@ -59,6 +59,8 @@ const BookTuitionSessions = () => {
 
   const dummySubjects = ['Mathematics', 'Science', 'English', 'History', 'Physics', 'Chemistry']; 
 
+  const gradeDisplay = typeof studentGrade === 'object' ? studentGrade.name : studentGrade;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -68,7 +70,7 @@ const BookTuitionSessions = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">One-on-One Tuition</h1>
             <p className="mt-2 text-gray-600">
-                Book your personalized session for {studentGrade ? `Grade ${studentGrade}` : ''} {studentSyllabus}
+                Book your personalized session for {gradeDisplay ? `Grade ${gradeDisplay}` : ''} {studentSyllabus}
             </p>
           </div>
           {/* <button
@@ -174,16 +176,14 @@ const BookTuitionSessions = () => {
               </div>
             ))}
             
-             {/* Always show "Can't find?" option at the end or bottom if list is small, 
-                 or purely if empty? User said "if not available time slot is there". 
-                 Usually implies empty list OR just an option. I'll put it below the grid too. */}
+             
           </div>
         ) : (
              <div className="text-center py-12 bg-white rounded-xl shadow-sm">
                  <BookOpen size={48} className="mx-auto text-gray-300 mb-4" />
                  <h3 className="text-lg font-medium text-gray-900">No sessions found for your grade</h3>
                  <p className="text-gray-500 mt-2 mb-6">
-                    We couldn't find any available slots for Grade {studentGrade} {studentSyllabus}.
+                    We couldn't find any available slots for Grade {gradeDisplay} {studentSyllabus}.
                  </p>
                  <button
                     onClick={() => setIsModalOpen(true)}

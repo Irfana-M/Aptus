@@ -11,7 +11,7 @@ import type {
   ExperienceDto,
   SubjectProficiencyDto,
   CertificationDto,
-} from "../dto/mentor/MentorResponseDTO";
+} from "../dtos/mentor/MentorResponseDTO";
 export class MentorMapper {
   static toResponseDto(mentor: MentorProfile): MentorResponseDto {
     const mentorData = (mentor && 'toObject' in mentor && typeof mentor.toObject === 'function') 

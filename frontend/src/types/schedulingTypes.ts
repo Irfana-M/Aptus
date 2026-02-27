@@ -33,9 +33,9 @@ export interface AttendanceSummaryDto {
 
 export interface Session {
     id: string;
-    studentId: string | any; // Populated or ID
-    mentorId: string | any;   // Populated or ID
-    subjectId: string | any;  // Populated or ID
+    studentId: string | unknown; // Populated or ID
+    mentorId: string | unknown;   // Populated or ID
+    subjectId: string | unknown;  // Populated or ID
     startTime: string; // ISO Date string
     endTime: string;   // ISO Date string
     status: 'scheduled' | 'completed' | 'cancelled' | 'live';

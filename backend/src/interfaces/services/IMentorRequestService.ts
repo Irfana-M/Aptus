@@ -21,4 +21,15 @@ export interface IMentorRequestService {
     adminId: string,
     reason?: string
   ): Promise<void>;
+  
+  generateSessionsForWeeks(
+    studentId: string,
+    mentorId: string,
+    subjectId: string,
+    courseId: string,
+    enrollmentId: string,
+    slots: { day: string; startTime: string; endTime: string }[],
+    weeks: number,
+    courseType?: 'one-to-one' | 'group'
+  ): Promise<void>;
 }

@@ -3,8 +3,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch } from '../../app/store';
 import { fetchAvailableMentors, assignMentorToTrialClass } from '../../features/admin/adminThunk';
 import { selectAvailableMentors, selectMentorAssignmentLoading } from '../../features/admin/adminSelectors';
-import { User, Calendar, Clock } from 'lucide-react';
+import { User, Calendar, Clock, Search } from 'lucide-react';
 import { showToast } from '../../utils/toast';
+import { createDefaultTimeRange } from '../../utils/timeUtils';
 
 import type { TrialClassResponse as TrialClass } from '../../types/trialTypes';
 
@@ -27,16 +28,36 @@ export const MentorAssignmentModal: React.FC<MentorAssignmentModalProps> = ({
   const [scheduledDate, setScheduledDate] = useState<string>('');
   const [scheduledTime, setScheduledTime] = useState<string>('');
 
+  const [minDate, setMinDate] = useState<string>('');
+  
+  useEffect(() => {
+    // Set min date to today
+    const today = new Date();
+    const formattedToday = today.toISOString().split('T')[0];
+    setMinDate(formattedToday);
+  }, []);
+
   useEffect(() => {
     if (isOpen && trialClass) {
       dispatch(fetchAvailableMentors({
         subjectId: trialClass.subject.id,
         preferredDate: trialClass.preferredDate, // optional, but safe to send
       }));
-      // Reset form
+      // Pre-fill form with student preferences
+      // Format preferredDate to YYYY-MM-DD
+      const date = new Date(trialClass.preferredDate);
+      const formattedDate = !isNaN(date.getTime()) 
+        ? date.toISOString().split('T')[0] 
+        : '';
+        
+      // Extract start time from range (e.g. "09:00-10:00" -> "09:00")
+      const startTime = trialClass.preferredTime 
+        ? trialClass.preferredTime.split('-')[0] 
+        : '';
+
       setSelectedMentorId('');
-      setScheduledDate('');
-      setScheduledTime('');
+      setScheduledDate(formattedDate);
+      setScheduledTime(startTime);
     }
   }, [isOpen, trialClass, dispatch]);
 
@@ -87,25 +108,31 @@ export const MentorAssignmentModal: React.FC<MentorAssignmentModalProps> = ({
                   <div
                     key={mentor._id}
                     onClick={() => setSelectedMentorId(mentor._id)}
-                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all relative overflow-hidden ${
                       selectedMentorId === mentor._id
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-blue-600 bg-blue-50 shadow-sm ring-1 ring-blue-600'
+                        : 'border-gray-200 hover:border-blue-300 hover:shadow-sm'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between relative z-10">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm ${
+                           selectedMentorId === mentor._id 
+                            ? 'bg-blue-600' 
+                            : 'bg-gradient-to-br from-blue-500 to-indigo-600'
+                        }`}>
                           {mentor.fullName.charAt(0)}
                         </div>
-                        <div className="ml-4">
-                          <p className="font-semibold">{mentor.fullName}</p>
-                          <p className="text-sm text-gray-600">{mentor.email}</p>
-                          <div className="flex gap-2 mt-2">
+                        <div className="ml-2">
+                          <p className={`font-bold text-base ${selectedMentorId === mentor._id ? 'text-blue-900' : 'text-gray-900'}`}>
+                            {mentor.fullName}
+                          </p>
+                          <p className="text-sm text-gray-500">{mentor.email}</p>
+                          <div className="flex flex-wrap gap-2 mt-2">
                             {mentor.subjectProficiency?.map((sp, i) => (
                               <span
                                 key={i}
-                                className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded"
+                                className="text-xs font-medium bg-white border border-gray-200 text-gray-700 px-2 py-1 rounded-md"
                               >
                                 {sp.subject} • Level {sp.level}
                               </span>
@@ -113,8 +140,13 @@ export const MentorAssignmentModal: React.FC<MentorAssignmentModalProps> = ({
                           </div>
                         </div>
                       </div>
+                      
                       {selectedMentorId === mentor._id && (
-                        <span className="text-blue-600 font-medium">Selected</span>
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white shadow-sm">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -130,26 +162,56 @@ export const MentorAssignmentModal: React.FC<MentorAssignmentModalProps> = ({
               <input
                 type="date"
                 value={scheduledDate}
+                min={minDate}
                 onChange={(e) => setScheduledDate(e.target.value)}
                 className="w-full px-3 py-2 border rounded-lg"
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Scheduled Time</label>
-              <input
-                type="time"
-                value={scheduledTime}
-                onChange={(e) => setScheduledTime(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg"
-                required
-              />
+            <div className="flex items-end gap-2">
+               <div className="flex-grow">
+                <label className="block text-sm font-medium mb-1">Scheduled Time</label>
+                <input
+                  type="time"
+                  value={scheduledTime}
+                  min={scheduledDate === minDate ? new Date().toTimeString().slice(0, 5) : undefined}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg"
+                  required
+                />
+               </div>
+               <button
+                  type="button"
+                  onClick={() => {
+                     if (!trialClass?.subject?.id || !scheduledDate) {
+                        showToast.error("Please select a date first");
+                        return;
+                     }
+                     
+                     // Construct time slot assuming 1 hour duration if time is present
+                     let timeSlotRange: string | undefined = undefined;
+                     if (scheduledTime) {
+                         timeSlotRange = createDefaultTimeRange(scheduledTime);
+                     }
+
+                     dispatch(fetchAvailableMentors({
+                        subjectId: trialClass.subject.id,
+                        preferredDate: scheduledDate,
+                        timeSlot: timeSlotRange
+                     }));
+                     setSelectedMentorId(''); // Reset selection
+                  }}
+                  className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors flex items-center justify-center mb-[1px]"
+                  title="Search for mentors available at this time"
+               >
+                  <Search size={18} />
+               </button>
             </div>
           </div>
 
-          {/* Summary */}
+          {/* Assignment Summary */}
           {selectedMentorId && scheduledDate && scheduledTime && (
-            <div className="bg-blue-50 border border border-blue-200 rounded-lg p-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="font-medium text-blue-900">Assignment Ready</p>
               <div className="flex items-center gap-6 mt-2 text-sm">
                 <div className="flex items-center gap-2">
@@ -182,11 +244,7 @@ export const MentorAssignmentModal: React.FC<MentorAssignmentModalProps> = ({
             disabled={!selectedMentorId || !scheduledDate || !scheduledTime || loading}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
           >
-            {loading ? (
-              <>Assigning...</>
-            ) : (
-              <>Assign Mentor</>
-            )}
+            {loading ? 'Assigning...' : 'Assign Mentor'}
           </button>
         </div>
       </div>

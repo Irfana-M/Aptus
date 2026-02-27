@@ -13,14 +13,11 @@ import { logger } from "@/utils/logger";
 import { injectable } from "inversify";
 import { getSignedFileUrl } from "@/utils/s3Upload";
 import type { FilterQuery, PipelineStage } from "mongoose";
-import type { StudentBaseResponseDto } from "@/dto/auth/UserResponseDTO";
-import type { StudentPaginationParams } from "@/dto/shared/paginationTypes";
-
-export interface DetailedStudentProfile extends Partial<StudentAuthUser> {
-  trialClasses: unknown[];
-  enrollments: unknown[];
-  profileImageUrl: string | null;
-}
+import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
+import { BaseRepository } from "./baseRepository";
+import { getPaginationParams } from "@/utils/pagination.util";
+import type { Document, ClientSession, Model } from "mongoose";
+import type { StudentPaginationParams } from "@/dtos/shared/paginationTypes";
 
 export interface DetailedStudentProfile extends Partial<StudentAuthUser> {
   trialClasses: unknown[];
@@ -30,24 +27,11 @@ export interface DetailedStudentProfile extends Partial<StudentAuthUser> {
 
 @injectable()
 export class StudentRepository
+  extends BaseRepository<StudentAuthUser & Document>
   implements IStudentRepository
 {
-  private model = StudentModel;
-
   constructor() {
-    // constructor body empty
-  }
-
-  protected removeUndefinedProperties<T extends object>(
-    obj: Partial<T>
-  ): Partial<T> {
-    const cleanObj: Partial<T> = {};
-    for (const [key, value] of Object.entries(obj)) {
-      if (value !== undefined) {
-        (cleanObj as Record<string, unknown>)[key] = value;
-      }
-    }
-    return cleanObj;
+    super(StudentModel as unknown as Model<StudentAuthUser & Document>);
   }
 
   async findByEmail(email: string): Promise<StudentAuthUser | null> {
@@ -90,10 +74,10 @@ export class StudentRepository
     }
   }
 
-  async findById(id: string): Promise<StudentAuthUser | null> {
+  async findById(id: string, session?: ClientSession): Promise<(StudentAuthUser & Document) | null> {
     try {
       logger.debug(`Finding student by ID: ${id}`);
-      const student = await this.model.findById(id).lean().exec();
+      const student = await this.model.findById(id).session(session || null).lean().exec();
 
       if (!student) {
         logger.debug(`Student not found with ID: ${id}`);
@@ -116,7 +100,7 @@ export class StudentRepository
       }
 
       logger.info(`Student found with ID: ${id}`);
-      return StudentMapper.toStudentAuthUser({ ...student, role: "student" } as StudentAuthUser); 
+      return StudentMapper.toStudentAuthUser({ ...student, role: "student" } as StudentAuthUser) as unknown as (StudentAuthUser & Document); 
     } catch (error) {
       logger.error("Error finding student by ID:", error);
       throw new AppError(
@@ -247,13 +231,14 @@ async unblockStudent(id: string): Promise<StudentAuthUser> {
     }
   }
 
-  async create(data: Partial<StudentAuthUser>): Promise<StudentAuthUser> {
+  async create(data: Partial<StudentAuthUser>, session?: ClientSession): Promise<StudentAuthUser & Document> {
     try {
       logger.debug(`Creating new student`, { email: data.email });
-      const result = await this.model.create(data);
-      if (!result) throw new AppError("Failed to create student", HttpStatusCode.BAD_REQUEST);
-      logger.info(`Student created successfully: ${result._id}`);
-      return result as unknown as StudentAuthUser;
+      const result = await this.model.create([data], { session });
+      const student = result[0];
+      if (!student) throw new AppError("Failed to create student", HttpStatusCode.BAD_REQUEST);
+      logger.info(`Student created successfully: ${student._id}`);
+      return student as unknown as StudentAuthUser & Document;
     } catch (error) {
       logger.error(`Error creating student:`, error);
       if (error instanceof AppError) throw error;
@@ -261,14 +246,14 @@ async unblockStudent(id: string): Promise<StudentAuthUser> {
     }
   }
 
-  async updateById(id: string, data: Partial<StudentAuthUser>): Promise<StudentAuthUser> {
+  async updateById(id: string, data: Partial<StudentAuthUser>, session?: ClientSession): Promise<StudentAuthUser & Document> {
     try {
       logger.debug(`Updating student with ID: ${id}`);
       const cleanData = this.removeUndefinedProperties(data);
-      const result = await this.model.findByIdAndUpdate(id, cleanData, { new: true, runValidators: true }).lean().exec();
+      const result = await this.model.findByIdAndUpdate(id, cleanData, { new: true, runValidators: true, session: session || null }).lean().exec();
       if (!result) throw new AppError(`Student update failed: ${id}`, HttpStatusCode.NOT_FOUND);
       logger.info(`Student updated successfully: ${id}`);
-      return result as unknown as StudentAuthUser;
+      return result as unknown as StudentAuthUser & Document;
     } catch (error) {
       logger.error(`Error updating student with ID ${id}:`, error);
       if (error instanceof AppError) throw error;
@@ -290,23 +275,23 @@ async unblockStudent(id: string): Promise<StudentAuthUser> {
     }
   }
 
-  async findAll(): Promise<StudentAuthUser[]> {
+  async findAll(): Promise<(StudentAuthUser & Document)[]> {
     try {
       logger.debug(`Finding all students`);
       const results = await this.model.find({}).lean().exec();
       logger.info(`Found ${results.length} students`);
-      return results as unknown as StudentAuthUser[];
+      return results as unknown as (StudentAuthUser & Document)[];
     } catch (error) {
       logger.error(`Error finding all students:`, error);
       throw new AppError("Failed to retrieve students", HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async findOne(filter: FilterQuery<StudentAuthUser>): Promise<StudentAuthUser | null> {
+  async findOne(filter: FilterQuery<StudentAuthUser & Document>, session?: ClientSession): Promise<(StudentAuthUser & Document) | null> {
     try {
       logger.debug(`Finding one student with filter:`, filter);
-      const result = await this.model.findOne(filter).lean().exec();
-      return result as unknown as StudentAuthUser || null;
+      const result = await this.model.findOne(filter).session(session || null).lean().exec();
+      return result as unknown as (StudentAuthUser & Document) || null;
     } catch (error) {
       logger.error(`Error finding student with filter:`, error);
       throw new AppError("Failed to find student", HttpStatusCode.INTERNAL_SERVER_ERROR);
@@ -323,12 +308,12 @@ async unblockStudent(id: string): Promise<StudentAuthUser> {
     }
   }
 
-  async block(id: string): Promise<StudentAuthUser> {
-    return this.blockStudent(id);
+  async block(id: string): Promise<StudentAuthUser & Document> {
+    return this.blockStudent(id) as unknown as (StudentAuthUser & Document);
   }
 
-  async unblock(id: string): Promise<StudentAuthUser> {
-    return this.unblockStudent(id);
+  async unblock(id: string): Promise<StudentAuthUser & Document> {
+    return this.unblockStudent(id) as unknown as (StudentAuthUser & Document);
   }
 
   async isBlocked(id: string): Promise<boolean> {
@@ -468,17 +453,15 @@ async findAllWithTrialStats(page: number, limit: number) {
 
   async findAllStudentsPaginated(params: StudentPaginationParams): Promise<StudentPaginatedResult> {
     try {
-      const page = params.page || 1;
-      const limit = params.limit || 10;
-      const skip = (page - 1) * limit;
+      const { page, limit, skip } = getPaginationParams(params as any);
       const search = params.search?.trim() || '';
       const status = params.status || '';
       const verification = params.verification || '';
 
-      // Build match stage for aggregation
+     
       const matchStage: FilterQuery<StudentAuthUser> = {};
 
-      // Search filter (fullName, email, phoneNumber)
+      
       if (search) {
         matchStage.$or = [
           { fullName: { $regex: search, $options: 'i' } },
@@ -487,14 +470,14 @@ async findAllWithTrialStats(page: number, limit: number) {
         ];
       }
 
-      // Status filter (active/blocked)
+      
       if (status === 'active') {
         matchStage.isBlocked = { $ne: true };
       } else if (status === 'blocked') {
         matchStage.isBlocked = true;
       }
 
-      // Verification filter
+      
       if (verification === 'verified') {
         matchStage.isVerified = true;
       } else if (verification === 'pending') {
@@ -503,10 +486,10 @@ async findAllWithTrialStats(page: number, limit: number) {
 
       logger.info(`findAllStudentsPaginated: Query=${JSON.stringify(matchStage)}, page=${page}, limit=${limit}`);
 
-      // Use aggregation to include trial class stats
+      
       const pipeline: PipelineStage[] = [];
       
-      // Add match stage only if there are filters
+      
       if (Object.keys(matchStage).length > 0) {
         pipeline.push({ $match: matchStage });
       }
@@ -547,7 +530,10 @@ async findAllWithTrialStats(page: number, limit: number) {
         { $limit: limit }
       );
 
-      const students = await StudentModel.aggregate(pipeline);
+      const [students, total] = await Promise.all([
+        this.model.aggregate(pipeline),
+        this.model.countDocuments(matchStage)
+      ]);
 
       // Add signed URLs for profile pictures
       const studentsWithImages = await Promise.all(
@@ -558,7 +544,6 @@ async findAllWithTrialStats(page: number, limit: number) {
               if (s.profileImage.startsWith('http')) {
                   s.profileImageUrl = s.profileImage;
               } else {
-                  // Assuming profileImage stores the Key
                   s.profileImageUrl = await getSignedFileUrl(s.profileImage);
               }
             } catch (error) {
@@ -569,9 +554,6 @@ async findAllWithTrialStats(page: number, limit: number) {
           return s;
         })
       );
-
-      // Count with same match conditions
-      const total = await StudentModel.countDocuments(matchStage);
 
       logger.info(`findAllStudentsPaginated: Found ${studentsWithImages.length} students, total=${total}`);
 
@@ -606,7 +588,7 @@ async findAllWithTrialStats(page: number, limit: number) {
         })
         .populate({
           path: 'preferredTimeSlots.subjectId',
-          select: 'subjectName'
+          select: 'subjectName syllabus'
         })
         .populate({
           path: 'preferredTimeSlots.assignedMentorId',
@@ -699,7 +681,10 @@ async findAllWithTrialStats(page: number, limit: number) {
     try {
       logger.debug(`Updating time slot status for student ${studentId}, subject ${subjectId} to ${status}`);
       
-      const updateQuery: any = {
+      const updateQuery: {
+        $set: Record<string, unknown>;
+        $unset?: Record<string, string>;
+      } = {
         $set: {
           "preferredTimeSlots.$[elem].status": status
         }
@@ -726,5 +711,55 @@ async findAllWithTrialStats(page: number, limit: number) {
       logger.error(`Error updating time slot status:`, error);
       throw new AppError("Failed to update time slot status", HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  async searchStudents(query: string): Promise<unknown[]> {
+    try {
+      logger.debug(`Searching students with query: ${query}`);
+      const searchRegex = new RegExp(query, 'i');
+      const students = await this.model
+        .find({
+          role: 'student',
+          $or: [
+            { fullName: searchRegex },
+            { email: searchRegex }
+          ]
+        })
+        .select('_id fullName email profileImage')
+        .limit(10)
+        .lean()
+        .exec();
+
+      const studentsWithImages = await Promise.all(
+        students.map(async (s) => {
+          const student = s as Record<string, unknown>;
+          if (student.profileImage && typeof student.profileImage === 'string') {
+            try {
+              if (student.profileImage.startsWith('http')) {
+                student.profileImageUrl = student.profileImage;
+              } else {
+                student.profileImageUrl = await getSignedFileUrl(student.profileImage);
+              }
+            } catch (error) {
+              logger.error(`Error generating signed URL for student: ${student._id}`, error);
+            }
+          }
+          return student;
+        })
+      );
+
+      return studentsWithImages;
+    } catch (error) {
+      logger.error("Error searching students:", error);
+      throw new AppError("Failed to search students", HttpStatusCode.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async incrementCancellationCount(studentId: string, session?: ClientSession): Promise<void> {
+    await this.model.findByIdAndUpdate(
+      studentId,
+      { $inc: { cancellationCount: 1 } },
+      { session: session || null }
+    ).exec();
   }
 }

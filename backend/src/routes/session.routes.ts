@@ -3,8 +3,9 @@ import { container } from "../inversify.config";
 import { TYPES } from "../types";
 import { SessionController } from "../controllers/session.controller";
 import type { ISessionService } from "../interfaces/services/ISessionService";
-import { AuthMiddleware } from "../middleware/authMiddleware";
-import { ROLES } from "../constants/roles";
+import { requireAuth } from "../middlewares/authMiddleware";
+import { requireRole } from "@/middlewares/role.middleware";
+
 
 const router = Router();
 const sessionService = container.get<ISessionService>(TYPES.ISessionService);
@@ -12,23 +13,51 @@ const sessionController = new SessionController(sessionService);
 
 router.get(
     "/student/upcoming",
-    AuthMiddleware.verifyToken,
-    AuthMiddleware.authorizeRole([ROLES.STUDENT]),
+    requireAuth,
+    requireRole(['student']),
     (req, res, next) => sessionController.getStudentUpcomingSessions(req, res, next)
 );
 
 router.get(
     "/mentor/upcoming",
-    AuthMiddleware.verifyToken,
-    AuthMiddleware.authorizeRole([ROLES.MENTOR]),
+    requireAuth,
+    requireRole(['mentor']),
     (req, res, next) => sessionController.getMentorUpcomingSessions(req, res, next)
 );
 
 router.get(
     "/mentor/today",
-    AuthMiddleware.verifyToken,
-    AuthMiddleware.authorizeRole([ROLES.MENTOR]),
+    requireAuth,
+    requireRole(['mentor']),
     (req, res, next) => sessionController.getMentorTodaySessions(req, res, next)
+);
+
+router.post(
+    "/:sessionId/report-absence",
+    requireAuth,
+    requireRole(['student']),
+    (req, res, next) => sessionController.reportAbsence(req, res, next)
+);
+
+router.post(
+    "/:sessionId/cancel",
+    requireAuth,
+    requireRole(['mentor']),
+    (req, res, next) => sessionController.cancelSession(req, res, next)
+);
+
+router.post(
+    "/:sessionId/resolve-rescheduling",
+    requireAuth,
+    requireRole(['student']),
+    (req, res, next) => sessionController.resolveRescheduling(req, res, next)
+);
+
+router.post(
+    "/:sessionId/complete",
+    requireAuth,
+    requireRole(['mentor']),
+    (req, res, next) => sessionController.completeSession(req, res, next)
 );
 
 export default router;

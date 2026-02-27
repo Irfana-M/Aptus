@@ -4,7 +4,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import { connectDB } from "./config/db.config";
-import { errorHandler } from "./middleware/error.middleware";
+import { errorHandler } from "./middlewares/error.middleware";
 import router from "./routes/auth.routes";
 import adminRouter from "./routes/admin.routes";
 import passport from "./config/passport.config";
@@ -23,6 +23,9 @@ import trialClassRouter from "./routes/trialClassRoutes";
 import chatRouter from "./routes/chat.routes";
 import notificationRouter from "./routes/notification.routes";
 import sessionRouter from "./routes/session.routes";
+import subscriptionRouter from "./routes/subscription.routes";
+import { attendanceRouter } from "./routes/attendance.routes";
+import examRouter from "./routes/exam.routes";
 
 dotenv.config();
 const app = express();
@@ -62,6 +65,9 @@ app.use('/api/trial-classes', trialClassRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/notifications', notificationRouter);
 app.use('/api/sessions', sessionRouter);
+app.use('/api/subscription', subscriptionRouter);
+app.use('/api/attendance', attendanceRouter);
+app.use('/api/exams', examRouter);
 
 app.use(errorHandler);
 

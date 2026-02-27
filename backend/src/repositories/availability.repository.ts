@@ -19,8 +19,8 @@ export class AvailabilityRepository extends BaseRepository<ITimeSlot> implements
     ).lean();
   }
 
-  async findAvailableForSubject(subjectId: string, filters?: any): Promise<ITimeSlot[]> {
-     const query: any = {
+  async findAvailableForSubject(subjectId: string, filters?: Record<string, unknown>): Promise<ITimeSlot[]> {
+     const query: Record<string, unknown> = {
        subjectId,
        status: 'available',
        ...filters

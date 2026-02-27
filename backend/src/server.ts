@@ -17,7 +17,7 @@ dotenv.config();
 
 import app from "./app";
 import { container } from "./inversify.config";
-(global as any).container = container;
+(global as unknown as { container: typeof container }).container = container;
 import { SocketService } from "./services/SocketService";
 import { CronService } from "./services/CronService";
 import { NotificationManager } from "./services/NotificationManager";
@@ -29,9 +29,9 @@ const httpServer = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
 
-SocketService.attach(httpServer);  // ← This line
+SocketService.attach(httpServer);
 const socketService = container.get<SocketService>(TYPES.ISocketService);
-socketService.initialize();       // ← This line
+socketService.initialize();
 
 console.log("✅ HTTP Server running on port:", PORT);
 console.log("✅ SocketService attached to HTTP server");

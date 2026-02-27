@@ -1,7 +1,9 @@
 import type { ITrialClassDocument } from "@/models/student/trialClass.model";
+import type { IBaseRepository } from "./IBaseRepository";
+import type { FilterQuery } from "mongoose";
 
-export interface ITrialClassRepository {
-  create(trialClass: {
+export interface ITrialClassRepository extends IBaseRepository<ITrialClassDocument> {
+  createTrialRequest(trialClass: {
     student: string;
     subject: string;
     preferredDate: Date;
@@ -9,23 +11,13 @@ export interface ITrialClassRepository {
     status?: "requested" | "assigned" | "completed" | "cancelled";
   }): Promise<ITrialClassDocument>;
 
-  findById(id: string): Promise<ITrialClassDocument | null>;
-
-  update(
-    id: string,
-    updates: Partial<ITrialClassDocument>
-  ): Promise<ITrialClassDocument | null>;
-
-  delete(id: string): Promise<boolean>;
-
   findByStudentId(studentId: string, status?: string): Promise<ITrialClassDocument[]>;
 
   findByMentorId(mentorId: string): Promise<ITrialClassDocument[]>;
 
-  // THIS LINE WAS MISSING IN THE REAL INTERFACE FILE
   findTodayTrialClasses(mentorId: string): Promise<ITrialClassDocument[]>;
 
-  findAll(filters: {
+  findAllPaginated(filters: {
     status?: string;
     page?: number;
     limit?: number;
@@ -49,5 +41,12 @@ export interface ITrialClassRepository {
     reason?: string
   ): Promise<ITrialClassDocument | null>;
 
+  updateTrial(id: string, updates: Partial<ITrialClassDocument>): Promise<ITrialClassDocument | null>;
+
   getStudentTrialStats(studentId: string): Promise<{ total: number; pending: number }>;
+  
+  findCompletedByMentorAndDateRange(mentorId: string, startDate: Date, endDate: Date): Promise<ITrialClassDocument[]>;
+  
+  aggregate(pipeline: any[]): Promise<any[]>;
+  countDocuments(filter: FilterQuery<ITrialClassDocument>): Promise<number>;
 }

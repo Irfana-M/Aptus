@@ -1,6 +1,6 @@
 import type { IAuthRepository } from "../interfaces/auth/IAuthRepository";
 import type { AuthUser } from "../interfaces/auth/auth.interface";
-import type { RegisterUserDto } from "../dto/auth/RegisteruserDTO";
+import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO";
 import { logger } from "../utils/logger"; 
 import { HttpStatusCode } from "../constants/httpStatus"; 
 

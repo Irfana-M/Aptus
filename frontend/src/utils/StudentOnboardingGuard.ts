@@ -17,7 +17,7 @@ class StudentOnboardingPolicy {
     [StudentOnboardingStatus.REGISTERED]: '/student/profile-setup',
     [StudentOnboardingStatus.PROFILE_COMPLETE]: '/student/book-free-trial', 
     [StudentOnboardingStatus.TRIAL_BOOKED]: '/student/dashboard', // No dedicated pending page yet, use dashboard
-    [StudentOnboardingStatus.TRIAL_ATTENDED]: '/student/subscription-plans', 
+    [StudentOnboardingStatus.TRIAL_ATTENDED]: '/student/trial-feedback', 
     [StudentOnboardingStatus.FEEDBACK_SUBMITTED]: '/student/subscription-plans',
     [StudentOnboardingStatus.SUBSCRIBED]: '/student/preferences/subjects',
     [StudentOnboardingStatus.PREFERENCES_COMPLETED]: '/student/dashboard',
@@ -80,6 +80,17 @@ export function getStudentRedirect(user: User): string | null {
   if (statusOrder.indexOf(status) >= statusOrder.indexOf(StudentOnboardingStatus.SUBSCRIBED) && 
       currentPath === '/student/subscription-plans') {
       return requiredPath;
+  }
+
+  // 🔓 EXCEPTION: Allow classroom and attendance for TRIAL_BOOKED and above
+  if (statusOrder.indexOf(status) >= statusOrder.indexOf(StudentOnboardingStatus.TRIAL_BOOKED) && 
+      (currentPath.startsWith('/student/classroom') || currentPath.startsWith('/student/attendance'))) {
+    return null;
+  }
+
+  // 🔓 EXCEPTION: Allow flow navigation for SUBSCRIBED users (Subjects -> Time Slots -> Mentors)
+  if (status === StudentOnboardingStatus.SUBSCRIBED && currentPath.startsWith('/student/preferences/')) {
+    return null;
   }
 
   // Otherwise, strict enforcement for other states

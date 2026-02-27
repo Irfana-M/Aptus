@@ -1,5 +1,14 @@
-import type {  StudentBaseResponseDto } from "@/dto/auth/UserResponseDTO";
-import type { MentorResponseDto } from "@/dto/mentor/MentorResponseDTO";
+import type {  StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
+import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO";
+
+export interface TrialClassAuthData {
+  id?: string | undefined;
+  status?: string;
+  studentId?: string | undefined;
+  mentorId?: string | undefined;
+  preferredDate?: Date | string;
+  meetLink?: string;
+}
 
 export interface VerificationResponse {
   success: boolean;
@@ -31,8 +40,9 @@ export interface IUserRoleService {
     role: 'mentor' | 'student'
   ): Promise<{
     authorized: boolean;
-    trialClass?: unknown;
+    trialClass?: TrialClassAuthData;
     error?: string;
+    isSession?: boolean;
   }>;
   
   userExists(userId: string): Promise<UserExistenceResponse>;

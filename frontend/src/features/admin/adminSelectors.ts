@@ -149,7 +149,20 @@ export const selectStudentTrialClasses = createSelector(
 export const selectAvailableMentors = createSelector(
   [(state: RootState) => state.admin.availableMentors],
   (availableMentors) => {
+    if (availableMentors && 'matches' in availableMentors) {
+      return availableMentors.matches || [];
+    }
     return Array.isArray(availableMentors) ? availableMentors : [];
+  }
+);
+
+export const selectAlternateMentors = createSelector(
+  [(state: RootState) => state.admin.availableMentors],
+  (availableMentors) => {
+    if (availableMentors && 'alternates' in availableMentors) {
+      return availableMentors.alternates || [];
+    }
+    return [];
   }
 );
 

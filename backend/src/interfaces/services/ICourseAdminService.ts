@@ -1,8 +1,7 @@
-import { AvailableMentorDto } from "@/dto/mentor/AvailableMentorDTO";
-import type { GradeResponseDto } from "@/dto/student/grade.dto";
-import type { SubjectResponseDto } from "@/dto/student/subject.dto";
-import type { CoursePaginationParams, PaginatedResponse } from "@/dto/shared/paginationTypes";
-
+import { AvailableMentorDto } from "@/dtos/mentor/AvailableMentorDTO";
+import type { GradeResponseDto } from "@/dtos/student/grade.dto";
+import type { SubjectResponseDto } from "@/dtos/student/subject.dto";
+import type { CoursePaginationParams,PaginatedResponse } from "@/dtos/shared/paginationTypes";
 export interface CreateCourseParams {
     gradeId: string;
     subjectId: string;
@@ -14,6 +13,8 @@ export interface CreateCourseParams {
     startDate: string | Date;
     endDate: string | Date;
     fee?: number | undefined;
+    courseType?: "one-to-one" | "group";
+    maxStudents?: number;
 }
 
 export interface ICourseAdminService {
@@ -35,4 +36,7 @@ export interface ICourseAdminService {
   getAllGrades(): Promise<GradeResponseDto[]>;
 
   getSubjectsByGrade(gradeId: string): Promise<SubjectResponseDto[]>;
+
+  enrollStudentToCourse(courseId: string, studentId: string): Promise<unknown>;
+  unenrollStudentFromCourse(courseId: string, studentId: string): Promise<unknown>;
 }

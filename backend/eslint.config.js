@@ -31,6 +31,15 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ["dist/", "node_modules/"],
+    ignores: [
+      "dist/",
+      "node_modules/",
+      "scripts/",
+      "src/scripts/",
+      "debug_*.ts",
+      "src/debug_*.ts",
+      "src/debug_*.js",
+      "*.log"
+    ],
   }
 );

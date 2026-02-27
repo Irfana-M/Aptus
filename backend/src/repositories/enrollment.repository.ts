@@ -3,12 +3,9 @@ import { type ClientSession } from "mongoose";
 import { Course, type ICourse } from "../models/course.model";
 import type { IEnrollmentRepository, CreateEnrollmentDto } from "../interfaces/repositories/IEnrollmentRepository";
 import { BaseRepository } from "./baseRepository";
-import type { CoursePaginationParams, CoursePaginatedResult } from "@/dto/shared/paginationTypes";
-import { logger } from "@/utils/logger";
-import { getSignedFileUrl } from "@/utils/s3Upload";
-import { type FilterQuery, type UpdateQuery } from "mongoose";
+import type { CoursePaginationParams, CoursePaginatedResult } from "@/dtos/shared/paginationTypes";
 import { TYPES } from "../types";
-import type { ICourseRepository } from "../interfaces/repositories/ICourseRepository";
+import type { ICourseRepository, CreateOneToOneCourseDto } from "../interfaces/repositories/ICourseRepository";
 
 @injectable()
 export class EnrollmentRepository extends BaseRepository<ICourse> implements IEnrollmentRepository {
@@ -18,8 +15,8 @@ export class EnrollmentRepository extends BaseRepository<ICourse> implements IEn
     super(Course);
   }
 
-  async create(data: Partial<ICourse>, session?: ClientSession): Promise<ICourse> {
-    const course = await this.courseRepository.createEnrollment(data as unknown as any); // Cast slightly unsafe but data shape aligns
+  async create(data: Partial<ICourse>, _session?: ClientSession): Promise<ICourse> {
+    const course = await this.courseRepository.createEnrollment(data as unknown as CreateOneToOneCourseDto);
     if (!course) throw new Error("Failed to create enrollment");
     return course;
   }
@@ -49,7 +46,7 @@ export class EnrollmentRepository extends BaseRepository<ICourse> implements IEn
   }
 
   async update(id: string, data: Partial<CreateEnrollmentDto>): Promise<ICourse | null> {
-    return this.courseRepository.updateCourse(id, data as any);
+    return this.courseRepository.updateCourse(id, data as unknown as Partial<CreateOneToOneCourseDto>);
   }
 
   async countActiveByStudent(studentId: string): Promise<number> {

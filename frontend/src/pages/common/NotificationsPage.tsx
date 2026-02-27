@@ -1,43 +1,32 @@
-
 import React, { useEffect, useState } from "react";
 import { getUserNotifications, markNotificationAsRead } from "../../api/userApi";
 import { Bell, CheckCircle, Clock } from "lucide-react";
-import { DashboardTopbar } from "../../components/layout/DashboardTopbar";
 import { useNavigate } from "react-router-dom";
-
-interface Notification {
-  _id: string;
-  title: string;
-  message: string;
-  status: 'pending' | 'sent' | 'read' | 'failed';
-  createdAt: string;
-  type: string;
-}
+import {type  NotificationDTO,type NotificationUI, mapNotificationDTOToUI } from "../../types/notificationTypes";
 
 const NotificationsPage: React.FC = () => {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<NotificationUI[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Mock user for topbar - in real app should come from context/redux
-  const user = {
-      name: localStorage.getItem('userName') || 'User',
-      email: localStorage.getItem('userEmail') || '',
-      role: localStorage.getItem('userRole') || ''
-  };
+const fetchNotifications = async () => {
+  try {
+    setLoading(true);
+    const res = await getUserNotifications();
 
-  const fetchNotifications = async () => {
-    try {
-      setLoading(true);
-      const res = await getUserNotifications();
-      constlist = Array.isArray(res) ? res : res.data || [];
-      setNotifications(constlist);
-    } catch (error) {
-      console.error("Failed to fetch notifications", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const rawList: NotificationDTO[] =
+      Array.isArray(res) ? res : res.data || [];
+
+    const list = rawList.map(mapNotificationDTOToUI);
+
+    setNotifications(list);
+
+  } catch (error) {
+    console.error("Failed to fetch notifications", error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchNotifications();
@@ -53,9 +42,9 @@ const NotificationsPage: React.FC = () => {
   };
 
   const handleMarkAllRead = async () => {
-     // Optimistic update
+     
      setNotifications(prev => prev.map(n => ({ ...n, status: 'read' })));
-     // In real implementation, we would call an API for bulk update
+     
      for (const n of notifications) {
          if (n.status !== 'read') await markNotificationAsRead(n._id);
      }

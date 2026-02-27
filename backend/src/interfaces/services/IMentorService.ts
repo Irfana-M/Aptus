@@ -1,6 +1,6 @@
-import type { RegisterUserDto } from "@/dto/auth/RegisteruserDTO";
+import type { RegisterUserDto } from "@/dtos/auth/RegisteruserDTO";
 import type { MentorProfile } from "../models/mentor.interface";
-import type { MentorResponseDto } from "@/dto/mentor/MentorResponseDTO";
+import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO";
 
 export interface IMentorService {
   registerMentor(data: RegisterUserDto): Promise<unknown>;
@@ -23,4 +23,13 @@ export interface IMentorService {
   getById(id: string): Promise<MentorResponseDto | null>;
   getMentorProfile(mentorId: string): Promise<MentorProfile | null>;
   normalizeMentorAvailability(mentorId: string): Promise<void>;
+  getMentorAvailableSlots(mentorId: string): Promise<{
+    day: string;
+    slots: { startTime: string; endTime: string; remainingCapacity: number }[];
+  }[]>;
+  requestLeave(mentorId: string, startDate: Date, endDate: Date, reason?: string): Promise<void>;
+  approveLeave(mentorId: string, leaveId: string, adminId: string): Promise<void>;
+  getMentorDailySessions(mentorId: string, date: Date): Promise<unknown[]>;
+  getOneToOneStudents(mentorId: string): Promise<unknown[]>;
+  getGroupBatches(mentorId: string): Promise<unknown[]>;
 }

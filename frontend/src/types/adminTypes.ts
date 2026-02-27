@@ -1,5 +1,6 @@
 import type { MentorProfile } from "../features/mentor/mentorSlice";
 import type { StudentBaseResponseDto } from "./studentTypes";
+import type { Course } from "./courseTypes";
 
 export interface AddStudentRequestDto {
   fullName: string;
@@ -93,3 +94,34 @@ export interface AvailableMentorsRequest {
   subjectId: string;
   preferredDate: string;
 }
+
+export interface Subject {
+  _id: string;
+  id: string;
+  name: string;
+  subjectName: string;
+  gradeId?: string;
+  syllabus?: string;
+}
+
+export interface Enrollment {
+  _id: string;
+  id: string;
+  student: StudentBaseResponseDto | string;
+  course: Course | string;
+  status: 'active' | 'completed' | 'cancelled';
+  enrolledAt: string;
+}
+
+export interface MentorRequestListItem {
+  _id: string;
+  id: string;
+  student: StudentBaseResponseDto | string;
+  mentor?: MentorProfile | string;
+  subject?: { _id: string; subjectName: string } | string;
+  status: 'pending' | 'approved' | 'rejected';
+  reason?: string;
+  createdAt: string;
+}
+
+export { type CourseRequest } from "./studentTypes";

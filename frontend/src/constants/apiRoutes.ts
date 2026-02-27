@@ -28,6 +28,7 @@ export const API_ROUTES = {
     STUDENT_UPDATE: "/admin/students/:studentId",
     STUDENT_BLOCK: "/admin/students/:studentId/block",
     STUDENT_UNBLOCK: "/admin/students/:studentId/unblock",
+    STUDENT_SEARCH: "/admin/students/search",
     STUDENT_TRIAL_CLASSES: "/admin/students/:studentId/trial-classes",
     STUDENT_PROFILE: "/admin/students/:studentId/profile",
     TRIAL_CLASSES: "/admin/trial-classes",
@@ -37,6 +38,8 @@ export const API_ROUTES = {
     AVAILABLE_MENTORS: "/admin/available-mentors",
     MENTORS_AVAILABLE_FOR_COURSE: "/admin/mentors/available-for-course",
     ONE_TO_ONE_COURSES: "/admin/courses/one-to-one",
+    COURSE_ENROLL: "/admin/courses/:courseId/enroll",
+    COURSE_UNENROLL: "/admin/courses/:courseId/unenroll/:studentId",
     ALL_COURSES: "/admin/courses/getAllCourses",
     GRADES: "/admin/grades",
     SUBJECTS: "/admin/subjects",
@@ -61,6 +64,7 @@ export const API_ROUTES = {
     ADMIN_PENDING: "/mentor/admin/pending",
     ADMIN_APPROVE: "/mentor/admin/:mentorId/approve",
     ADMIN_REJECT: "/mentor/admin/:mentorId/reject",
+    SESSIONS: "/mentor/sessions",
   },
   STUDENT: {
     PROFILE: "/student/profile",
@@ -69,6 +73,7 @@ export const API_ROUTES = {
     TRIAL_CLASS_DETAILS: "/student/trial-classes/:id",
     TRIAL_CLASS_FEEDBACK: "/student/trial-classes/:trialClassId/feedback",
     TRIAL_CLASS_CANCEL: "/student/trial-classes/:trialClassId/cancel",
+    TRIAL_CLASSES_AVAILABLE_SLOTS: "/student/trial-classes/available-slots", // Added this
     MY_COURSES: "/student/courses",
     PAYMENT_HISTORY: "/student/payments",
 
@@ -103,5 +108,28 @@ export const API_ROUTES = {
   },
   TRIAL_CLASSES: {
     COMPLETE: "/trial-classes/:id/complete",
+  },
+  SESSIONS: {
+    COMPLETE: "/sessions/:sessionId/complete",
+    DETAILS: "/sessions/:sessionId",
+    STUDENT_UPCOMING: "/sessions/student/upcoming",
+    MENTOR_UPCOMING: "/sessions/mentor/upcoming",
+    MENTOR_TODAY: "/sessions/mentor/today",
+  },
+  CLASSROOM: {
+    // Mentor routes
+    MENTOR_MATERIALS: "/mentor/classroom/materials",
+    CREATE_ASSIGNMENT: "/mentor/assignments",
+    ASSIGNMENT_SUBMISSIONS: "/mentor/assignments/:assignmentId/submissions",
+    PROVIDE_FEEDBACK: "/mentor/submissions/:submissionId/feedback",
+    MENTOR_DOWNLOAD: "/mentor/download/:fileKey",
+    UPLOAD_MATERIAL: "/mentor/sessions/:sessionId/study-materials",
+    
+    // Student routes
+    STUDENT_MATERIALS: "/student/study-materials",
+    STUDENT_ASSIGNMENTS: "/student/assignments",
+    SUBMIT_ASSIGNMENT: "/student/assignments/:assignmentId/submit",
+    MY_SUBMISSION: "/student/assignments/:assignmentId/my-submission",
+    STUDENT_DOWNLOAD: "/student/download/:fileKey",
   },
 };

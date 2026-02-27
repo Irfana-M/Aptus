@@ -2,6 +2,7 @@ import { injectable } from 'inversify';
 import type { ITimeSlot } from '../../interfaces/models/timeSlot.interface';
 import type { IBooking } from '../../interfaces/models/booking.interface';
 import type { StudentProfile } from '../../interfaces/models/student.interface';
+import type { MentorProfile } from '../../interfaces/models/mentor.interface';
 
 export interface PolicyResult {
   allowed: boolean;
@@ -14,7 +15,7 @@ export class SchedulingPolicy {
   canStudentBook(student: StudentProfile, slot: ITimeSlot, studentBookings: IBooking[]): PolicyResult {
     
     const overlap = studentBookings.some(b => {
-        const bookedSlot = b.timeSlotId as any; 
+        const bookedSlot = b.timeSlotId as unknown as ITimeSlot; 
         if (!bookedSlot) return false;
         
         return (
@@ -36,7 +37,7 @@ export class SchedulingPolicy {
   }
 
   
-  isMentorWithinLimits(mentor: any, dailyCount: number, weeklyCount: number): PolicyResult {
+  isMentorWithinLimits(mentor: Partial<MentorProfile>, dailyCount: number, weeklyCount: number): PolicyResult {
     if (mentor.maxSessionsPerDay && dailyCount >= mentor.maxSessionsPerDay) {
       return { allowed: false, reason: "Mentor daily session limit reached." };
     }

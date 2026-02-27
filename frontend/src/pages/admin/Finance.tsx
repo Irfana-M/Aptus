@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Sidebar } from '../../components/admin/Sidebar';
 import { Topbar } from '../../components/admin/Topbar';
-// import { adminAxios } from '../../api/axiosConfig'; // No longer needed directly
-import { Download, Search } from 'lucide-react';
-// import toast from 'react-hot-toast'; // Handled by slice if needed or generic error UI
+import { Download, Search, CheckCircle, XCircle, Info, Landmark, Users, RefreshCw } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../../app/store';
 import { fetchFinanceData } from '../../features/admin/financeThunk';
+import toast from 'react-hot-toast';
+import { AxiosError } from 'axios';
 
 
 
@@ -19,11 +19,6 @@ export default function Finance() {
   useEffect(() => {
     dispatch(fetchFinanceData());
   }, [dispatch]);
-
-  /* 
-  // Old Fetch Logic Removed
-  // const fetchPayments = ...
-  */
 
   const filteredPayments = payments.filter(p => 
     p.invoiceId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -40,7 +35,7 @@ export default function Finance() {
       <Sidebar
         isOpen={sidebarOpen}
         activeItem="Finance"
-        onItemClick={() => { /* Handle navigation if needed, typically managed by Sidebar internal state or location */ }}
+        onItemClick={() => {}}
         onClose={() => setSidebarOpen(false)}
       />
 
@@ -68,25 +63,30 @@ export default function Finance() {
             </div>
           </div>
 
-          {/* Filters & Actions */}
+          {/* Filters */}
           <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-            <div className="relative w-full md:w-96">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                placeholder="Search by invoice, student name..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+            <div className="flex-1 w-full md:max-w-md">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search transactions..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
             </div>
-            <button className="flex items-center space-x-2 bg-white border border-gray-300 px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-50">
-              <Download size={20} />
-              <span>Export Report</span>
-            </button>
+
+            <div className="flex items-center gap-4 w-full md:w-auto">
+              <button className="flex items-center space-x-2 bg-white border border-gray-300 px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-50 text-sm w-full md:w-auto justify-center">
+                <Download size={18} />
+                <span>Export Report</span>
+              </button>
+            </div>
           </div>
 
-          {/* Table */}
+          {/* Transactions Table */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm text-gray-500">
@@ -125,7 +125,6 @@ export default function Finance() {
                             'bg-red-100 text-red-800'}`}>
                           {payment.status}
                         </span>
-                        <div className="text-xs text-gray-400 mt-1 uppercase">{payment.method}</div>
                       </td>
                       <td className="px-6 py-4">
                         {new Date(payment.createdAt).toLocaleDateString()}

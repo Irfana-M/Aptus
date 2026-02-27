@@ -2,7 +2,7 @@ import express from "express";
 import { container } from "../inversify.config";
 import { TYPES } from "../types";
 import { ChatController } from "../controllers/chat.controller";
-import { requireAuth } from "../middleware/authMiddleware";
+import { requireAuth } from "../middlewares/authMiddleware";
 
 const chatRouter = express.Router();
 const chatController = container.get<ChatController>(TYPES.ChatController);
@@ -18,11 +18,11 @@ chatRouter.use(requireAuth);
 chatRouter.get("/:sessionId/history", (req, res) => chatController.getChatHistory(req, res));
 
 /**
- * @route   POST /api/chat/:sessionId/message
+ * @route   POST /api/chat/:sessionId/send
  * @desc    Send a message to a session chat
  * @access  Enrolled Student, Assigned Mentor
  */
-chatRouter.post("/:sessionId/message", (req, res) => chatController.sendMessage(req, res));
+chatRouter.post("/:sessionId/send", (req, res) => chatController.sendMessage(req, res));
 
 /**
  * @route   POST /api/chat/:sessionId/initiate

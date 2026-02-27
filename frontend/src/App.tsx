@@ -33,8 +33,8 @@ import StudentProfile from "./pages/student/StudentProfile";
 import StudentDashboard from "./pages/student/dashboard";
 import BookTuitionSessions from "./pages/student/BookTuitionSessions";
 import SubscriptionPlans from "./pages/student/SubscriptionPlans";
-import PaymentPage from "./pages/student/PaymentPage";
-import WalletPage from "./pages/student/WalletPage";
+// Lazy load PaymentPage to prevent early Stripe initialization crash
+const PaymentPage = React.lazy(() => import("./pages/student/PaymentPage"));
 import PaymentHistory from "./pages/student/PaymentHistory";
 import MyCourses from "./pages/student/MyCourses";
 import MentorDashboard from "./pages/mentor/MentorDashboard";
@@ -45,11 +45,21 @@ import MentorClassroom from "./pages/mentor/Classroom";
 import StudentAttendance from "./pages/student/Attendance";
 import StudentClassroom from "./pages/student/Classroom";
 import AdminAttendance from "./pages/admin/Attendance";
-import AdminClassroom from "./pages/admin/Classroom";
-import CompletedTrialClasses from "./pages/mentor/CompletedTrialClasses";
+import ClassHistory from "./pages/mentor/ClassHistory";
 import SubjectsSelectionPage from "./pages/student/preferences/SubjectsSelectionPage";
 import TimeSlotsSelectionPage from "./pages/student/preferences/TimeSlotsSelectionPage";
 import MentorSelectionPage from "./pages/student/preferences/MentorSelectionPage";
+import MentorStudyMaterials from "./pages/mentor/MentorStudyMaterials";
+import MentorExamList from "./pages/mentor/exams/MentorExamList";
+import CreateExam from "./pages/mentor/exams/CreateExam";
+import StudentExamList from "./pages/student/exams/StudentExamList";
+import TakeExam from "./pages/student/exams/TakeExam";
+import ExamResultPage from "./pages/student/exams/ExamResult";
+import StudentStudyMaterials from "./pages/student/StudentStudyMaterials";
+import MentorExamResults from "./pages/mentor/exams/MentorExamResults";
+import ExamGrading from "./pages/mentor/exams/ExamGrading";
+import StudentExamAnalysis from "./pages/student/exams/StudentExamAnalysis";
+import SessionJoin from "./pages/scheduling/SessionJoin";
 
 
 import { VideoCallProvider } from "./context/VideoCallContext";
@@ -97,6 +107,12 @@ const AppContent: React.FC = () => {
     
     useEffect(() => {
         const path = window.location.pathname;
+        
+        // Sync AuthContext with current path to ensure interceptors have correct role
+        import("./utils/authContext").then(({ AuthContext }) => {
+            AuthContext.getInstance().setRoleFromPath(path);
+        });
+
         //const userRole = localStorage.getItem("userRole");
         const studentToken = localStorage.getItem("student_accessToken");
         const mentorToken = localStorage.getItem("mentor_accessToken");
@@ -152,8 +168,9 @@ const AppContent: React.FC = () => {
             </ProtectedRoute>
           }
         />
+
         <Route
-          path="/admin/mentor/:mentorId"
+          path="/admin/mentors/:mentorId"
           element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
               <MentorProfilePage />
@@ -220,6 +237,24 @@ const AppContent: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        
+        <Route
+          path="/session/:sessionId/call"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.MENTOR, ROLES.STUDENT]}>
+              <VideoCallRoom />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/classroom/:token"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.MENTOR, ROLES.STUDENT]}>
+              <SessionJoin />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/trial-class/:trialClassId/feedback"
@@ -261,7 +296,9 @@ const AppContent: React.FC = () => {
           path="/student/payment"
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <PaymentPage />
+              <React.Suspense fallback={<div className="flex justify-center p-8">Loading Payment Gateway...</div>}>
+                <PaymentPage />
+              </React.Suspense>
             </ProtectedRoute>
           }
         />
@@ -293,14 +330,6 @@ const AppContent: React.FC = () => {
           }
         />
 
-        <Route
-          path="/student/wallet"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <WalletPage />
-            </ProtectedRoute>
-          }
-        />
 
         <Route
           path="/student/profile"
@@ -363,6 +392,46 @@ const AppContent: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/student/study-materials"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+              <StudentStudyMaterials />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/exams"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+               <StudentExamList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+            path="/student/exam/:examId/take"
+            element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+                <TakeExam />
+            </ProtectedRoute>
+            }
+        />
+        <Route
+            path="/student/results"
+            element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+                <ExamResultPage />
+            </ProtectedRoute>
+            }
+        />
+        <Route
+            path="/student/results/:resultId"
+            element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+                <StudentExamAnalysis />
+            </ProtectedRoute>
+            }
+        />
 
         <Route
           path="/mentor/profile-setup"
@@ -423,10 +492,54 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-          path="/mentor/completed-trial-classes"
+          path="/mentor/class-history"
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
-              <CompletedTrialClasses />
+              <ClassHistory />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mentor/exams"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+              <MentorExamList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mentor/exams/create"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+              <CreateExam />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mentor/exams/:examId/results"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+              <React.Suspense fallback={<div>Loading...</div>}>
+                  <MentorExamResults />
+              </React.Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mentor/exams/:examId/results/:resultId/grade"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+               <React.Suspense fallback={<div>Loading...</div>}>
+                  <ExamGrading />
+               </React.Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mentor/study-materials"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+              <MentorStudyMaterials />
             </ProtectedRoute>
           }
         />
@@ -473,14 +586,6 @@ const AppContent: React.FC = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
               <AdminAttendance />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/classroom"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-              <AdminClassroom />
             </ProtectedRoute>
           }
         />

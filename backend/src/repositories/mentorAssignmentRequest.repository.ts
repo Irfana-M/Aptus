@@ -4,7 +4,7 @@ import { type IMentorAssignmentRequestRepository } from "../interfaces/repositor
 import { AppError } from "@/utils/AppError";
 import { HttpStatusCode } from "@/constants/httpStatus";
 import { logger } from "@/utils/logger";
-import mongoose from "mongoose";
+import mongoose, { type FilterQuery } from "mongoose";
 
 @injectable()
 export class MentorAssignmentRequestRepository implements IMentorAssignmentRequestRepository {
@@ -21,7 +21,7 @@ export class MentorAssignmentRequestRepository implements IMentorAssignmentReque
 
   async findOne(filter: Partial<IMentorAssignmentRequest>, session?: mongoose.ClientSession): Promise<IMentorAssignmentRequest | null> {
     try {
-      const query = MentorAssignmentRequest.findOne(filter as any);
+      const query = MentorAssignmentRequest.findOne(filter as FilterQuery<IMentorAssignmentRequest>);
       if (session) query.session(session);
       return await query.exec();
     } catch (error) {
@@ -38,7 +38,17 @@ export class MentorAssignmentRequestRepository implements IMentorAssignmentReque
         .populate('subjectId', 'subjectName');
       
       if (session) query.session(session);
-      return await query.exec();
+      const result = await query.exec();
+      if (result) {
+        const obj = result.toObject();
+        return {
+          ...obj,
+          student: obj.studentId,
+          mentor: obj.mentorId,
+          subject: obj.subjectId
+        } as unknown as IMentorAssignmentRequest;
+      }
+      return null;
     } catch (error) {
       logger.error(`Error finding mentor assignment request by ID ${id}:`, error);
       throw new AppError("Failed to find mentor request", HttpStatusCode.INTERNAL_SERVER_ERROR);
@@ -47,13 +57,20 @@ export class MentorAssignmentRequestRepository implements IMentorAssignmentReque
 
   async findPending(): Promise<IMentorAssignmentRequest[]> {
      try {
-      return await MentorAssignmentRequest.find({ status: 'pending' })
+      const requests = await MentorAssignmentRequest.find({ status: 'pending' })
         .populate('studentId', 'fullName email')
         .populate('mentorId', 'fullName profileImageUrl')
         .populate('subjectId', 'subjectName')
         .sort({ requestedAt: -1 })
         .lean()
         .exec();
+
+      return requests.map(req => ({
+        ...req,
+        student: req.studentId,
+        mentor: req.mentorId,
+        subject: req.subjectId
+      })) as unknown as IMentorAssignmentRequest[];
     } catch (error) {
       logger.error("Error finding pending mentor requests:", error);
       throw new AppError("Failed to fetch pending requests", HttpStatusCode.INTERNAL_SERVER_ERROR);
@@ -62,12 +79,18 @@ export class MentorAssignmentRequestRepository implements IMentorAssignmentReque
   
   async findByStudent(studentId: string): Promise<IMentorAssignmentRequest[]> {
     try {
-      return await MentorAssignmentRequest.find({ studentId })
+      const requests = await MentorAssignmentRequest.find({ studentId })
         .populate('mentorId', 'fullName profileImageUrl')
         .populate('subjectId', 'subjectName')
         .sort({ requestedAt: -1 })
         .lean()
         .exec();
+
+      return requests.map(req => ({
+        ...req,
+        mentor: req.mentorId,
+        subject: req.subjectId
+      })) as unknown as IMentorAssignmentRequest[];
     } catch (error) {
       logger.error(`Error finding requests for student ${studentId}:`, error);
       throw new AppError("Failed to fetch student requests", HttpStatusCode.INTERNAL_SERVER_ERROR);
@@ -76,7 +99,7 @@ export class MentorAssignmentRequestRepository implements IMentorAssignmentReque
 
   async updateStatus(id: string, status: 'approved' | 'rejected', adminId: string, reason?: string): Promise<IMentorAssignmentRequest | null> {
     try {
-        const updateData: any = {
+        const updateData: Partial<IMentorAssignmentRequest> & { processedAt: Date; processedBy: mongoose.Types.ObjectId } = {
             status,
             processedAt: new Date(),
             processedBy: new mongoose.Types.ObjectId(adminId)

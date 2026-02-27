@@ -10,6 +10,8 @@ import studentReducer from "../features/student/studentSlice";
 import financeReducer from "../features/admin/financeSlice";
 import paymentReducer from "../features/payment/paymentSlice";
 import chatReducer from "../features/classroom/chatSlice";
+import attendanceReducer from "../features/attendance/attendanceSlice";
+import examReducer from "../features/exam/examSlice";
 
 export const store = configureStore({
   reducer: {
@@ -24,6 +26,8 @@ export const store = configureStore({
     finance: financeReducer,
     payment: paymentReducer,
     chat: chatReducer,
+    attendance: attendanceReducer,
+    exam: examReducer,
   },
 
   middleware: (getDefaultMiddleware) =>

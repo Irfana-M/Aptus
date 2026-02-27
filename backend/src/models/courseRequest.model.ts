@@ -19,13 +19,27 @@ const CourseRequestSchema: Schema = new Schema(
       type: String,
       required: true,
     },
+    subjectId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Subject",
+      required: false,
+    },
     grade: {
       type: String,
       required: true,
     },
+    gradeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Grade",
+      required: false,
+    },
+    syllabus: {
+      type: String,
+      required: false,
+    },
     mentoringMode: {
       type: String,
-      enum: ["one-to-one", "one-to-many"],
+      enum: ["one-to-one", "group"],
       required: true,
     },
     preferredDays: [{
@@ -35,7 +49,7 @@ const CourseRequestSchema: Schema = new Schema(
     }],
     timeSlot: {
       type: String, // "17:00-18:00"
-      required: true,
+      required: false,
     },
     timezone: {
       type: String,

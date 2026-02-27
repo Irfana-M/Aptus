@@ -10,13 +10,19 @@ export class NotificationController {
 
   async getNotifications(req: Request, res: Response, next: NextFunction) {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       if (!user) throw new AppError('Unauthorized', HttpStatusCode.UNAUTHORIZED);
 
       const notifications = await this._notificationService.getUserNotifications(user.id, user.role);
+      const mappedNotifications = notifications.map(n => ({
+        
+        ...(n as any)._doc || n,
+        isRead: n.status === 'read'
+      }));
+
       res.status(HttpStatusCode.OK).json({
         success: true,
-        data: notifications
+        data: mappedNotifications
       });
     } catch (error) {
         next(error);

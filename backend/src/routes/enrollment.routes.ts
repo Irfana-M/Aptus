@@ -2,8 +2,8 @@ import { Router } from "express";
 import { EnrollmentController } from "../controllers/enrollment.controller";
 import { TYPES } from "../types";
 import { container } from "../inversify.config";
-import { requireAuth } from "../middleware/authMiddleware";
-import { requireRole } from "../middleware/role.middleware";
+import { requireAuth } from "../middlewares/authMiddleware";
+import { requireRole } from "../middlewares/role.middleware";
 
 const enrollmentRouter = Router();
 

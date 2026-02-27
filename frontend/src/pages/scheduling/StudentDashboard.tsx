@@ -14,10 +14,8 @@ const StudentDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!profile && user) {
-        // Safe access to ID - user typically has 'id' in frontend interface, but check for _id fallback
-        const userId = (user as any).id || (user as any)._id;
-        if (userId) dispatch(fetchStudentProfile(userId));
+    if (!profile && user?._id) {
+        dispatch(fetchStudentProfile(user._id));
     }
     
     getStudentUpcomingSessions()
@@ -26,14 +24,13 @@ const StudentDashboard: React.FC = () => {
   }, [dispatch, profile, user]);
 
   // Compute assigned mentor from profile
-  const assignedMentorSlot = (profile as any)?.preferredTimeSlots?.find((slot: any) => slot.status === 'mentor_assigned');
+  const assignedMentorSlot = profile?.preferredTimeSlots?.find(slot => slot.status === 'mentor_assigned');
 
   const handleJoinSession = (session: Session) => {
       if (session.meetingLink && (session.meetingLink.startsWith('http') || session.meetingLink.startsWith('https'))) {
           window.open(session.meetingLink, '_blank');
       } else {
           // Placeholder for internal video call or missing link
-          // toast.error("Classroom not available yet"); // Uncomment if toast is imported
           console.log("Join session clicked:", session.id);
           alert("Classroom feature for regular sessions is coming soon!");
       }

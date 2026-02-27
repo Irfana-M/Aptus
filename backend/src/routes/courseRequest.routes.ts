@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { CourseRequestController } from '../controllers/courseRequest.controller';
-import { requireAuth } from '../middleware/authMiddleware';
-import { requireRole } from '../middleware/role.middleware';
+import { requireAuth } from '../middlewares/authMiddleware';
+import { requireRole } from '../middlewares/role.middleware';
 
 import { TYPES } from '../types';
 import { container } from '../inversify.config';

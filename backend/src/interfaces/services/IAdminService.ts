@@ -1,10 +1,10 @@
-import type { AdminLoginResponseDto } from "@/dto/admin/AdminLoginResponseDTO";
-import type { DashboardDataDto } from "@/dto/admin/AdminLoginResponseDTO";
-import type { MentorResponseDto } from "@/dto/mentor/MentorResponseDTO";
-import type { StudentBaseResponseDto } from "@/dto/auth/UserResponseDTO";
+import type { AdminLoginResponseDto } from "@/dtos/admin/AdminLoginResponseDTO";
+import type { DashboardDataDto } from "@/dtos/admin/AdminLoginResponseDTO";
+import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO";
+import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
 import type { MentorProfile } from "../models/mentor.interface";
-import type { TrialClassResponseDto } from "@/dto/student/trialClassDTO";
-import type { MentorPaginationParams, StudentPaginationParams, PaginatedResponse } from "@/dto/shared/paginationTypes";
+import type { TrialClassResponseDto } from "@/dtos/student/trialClassDTO";
+import type { MentorPaginationParams, StudentPaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes";
 
 export interface IAdminService {
   unblockStudent(studentId: string): unknown;
@@ -99,5 +99,7 @@ export interface IAdminService {
       timeSlot?: string;
     }
   ): Promise<void>;
+  searchStudents(query: string): Promise<StudentBaseResponseDto[]>;
+  getFinanceStats(): Promise<import("@/dtos/admin/AdminLoginResponseDTO").FinanceDashboardDataDto>;
 }
 

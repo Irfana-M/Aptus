@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import type { AppDispatch, RootState } from "../../app/store";
 import {
-  createOneToOneCourse,
+  createCourseThunk,
   fetchCoursesPaginated,
   updateCourseAdmin,
 } from "../../features/admin/adminThunk";
@@ -28,7 +28,6 @@ import {
   Edit2,
   Eye,
   BookOpen,
-  DollarSign,
   Users,
   CheckCircle,
   XCircle,
@@ -97,7 +96,7 @@ export const CreateOneToOneCourse: React.FC = () => {
   }>({ status: "", grade: "" });
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [selectedCourseForEdit, setSelectedCourseForEdit] = useState<Course | null>(null);
-  const [initialCourseValues, setInitialCourseValues] = useState<Partial<Parameters<typeof createOneToOneCourse>[0]> | null>(null);
+  const [initialCourseValues, setInitialCourseValues] = useState<Partial<Parameters<typeof createCourseThunk>[0]> | null>(null);
   
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedCourseForDetails, setSelectedCourseForDetails] = useState<Course | null>(null);
@@ -206,13 +205,13 @@ export const CreateOneToOneCourse: React.FC = () => {
     setSelectedCourseForEdit(null);
   }, []);
 
-  const handleSaveCourse = useCallback(async (courseData: any) => {
+  const handleSaveCourse = useCallback(async (courseData: Parameters<typeof createCourseThunk>[0]) => {
     try {
       if (selectedCourseForEdit) {
         await dispatch(updateCourseAdmin({ courseId: selectedCourseForEdit._id, data: courseData })).unwrap();
         showToast.success("Course updated successfully!");
       } else {
-        await dispatch(createOneToOneCourse(courseData)).unwrap();
+        await dispatch(createCourseThunk(courseData)).unwrap();
         showToast.success("Course created successfully!");
       }
       handleCloseCourseModal();
@@ -241,7 +240,16 @@ export const CreateOneToOneCourse: React.FC = () => {
           </div>
           <div>
             <p className="font-medium text-gray-900">{row.subject.subjectName}</p>
-            <p className="text-sm text-gray-500">{row.grade.name}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-sm text-gray-500">{row.grade.name}</p>
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                row.courseType === 'group' 
+                  ? "bg-indigo-100 text-indigo-700" 
+                  : "bg-blue-100 text-blue-700"
+              }`}>
+                {row.courseType === 'group' ? 'Group' : '1:1'}
+              </span>
+            </div>
           </div>
         </div>
       ),
@@ -302,12 +310,6 @@ export const CreateOneToOneCourse: React.FC = () => {
       ),
     },
     {
-      header: "Fee",
-      accessor: (row: Course) => (
-        <span className="font-medium">₹{row.fee.toLocaleString()}</span>
-      ),
-    },
-    {
       header: "Actions",
       accessor: (row: Course) => (
         <div className="flex items-center space-x-2">
@@ -345,7 +347,7 @@ export const CreateOneToOneCourse: React.FC = () => {
   }, []);
 
   const handleCreateCourseFromRequest = useCallback((request: CourseRequest) => {
-    // 1. Build maps for Name -> ID
+    // 1. Build maps for Name -> ID (Fallback for legacy data)
     const gradeMap = new Map<string, string>();
     const subjectMap = new Map<string, string>();
     
@@ -354,24 +356,24 @@ export const CreateOneToOneCourse: React.FC = () => {
        if (c.subject?._id && c.subject?.subjectName) subjectMap.set(c.subject.subjectName, c.subject._id);
     });
 
-    const dayMap: {[key: string]: number} = {
-      "Sunday": 0, "Monday": 1, "Tuesday": 2, "Wednesday": 3, "Thursday": 4, "Friday": 5, "Saturday": 6
-    };
-    
     const foundGradeId = gradeMap.get(request.grade) || "";
     const foundSubjectId = subjectMap.get(request.subject) || "";
 
     const prefilledValues = {
-       gradeId: foundGradeId,
-       subjectId: foundSubjectId,
-       dayOfWeek: dayMap[request.preferredDays?.[0]] ?? "",
+       gradeId: request.gradeId || foundGradeId,
+       subjectId: request.subjectId || foundSubjectId,
+       subjectName: request.subject || "",
+       syllabus: request.syllabus || "",
+       selectedDays: request.preferredDays || [],
        timeSlot: request.timeSlot || "",
+       courseType: request.mentoringMode,
+       studentId: typeof request.student === 'object' ? request.student.id : request.student,
     };
     
     setInitialCourseValues(prefilledValues);
     setSelectedCourseForEdit(null); // Ensure creation mode
     setShowCourseModal(true);
-  }, [courses]); // Dep on courses to rebuild maps
+  }, [courses, setShowCourseModal, setInitialCourseValues, setSelectedCourseForEdit]); 
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -385,13 +387,13 @@ export const CreateOneToOneCourse: React.FC = () => {
       <main className="flex-1 flex flex-col overflow-hidden">
         <Topbar
           onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-          title="1:1 Courses Management"
+          title="Courses Management"
           user={{ name: "Admin User", email: "admin@mentora.com" }}
         />
 
         <div className="flex-1 overflow-y-auto p-6">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
@@ -431,20 +433,6 @@ export const CreateOneToOneCourse: React.FC = () => {
                 </div>
               </div>
             </div>
-
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm font-medium">Revenue</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
-                    ₹{courses.reduce((sum: number, c: Course) => sum + c.fee, 0).toLocaleString()}
-                  </p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center">
-                  <DollarSign className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </div>
           </div>
 
           
@@ -480,7 +468,7 @@ export const CreateOneToOneCourse: React.FC = () => {
               <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm mb-6">
                 <div className="flex justify-between items-center">
                   <div>
-                    <h2 className="text-xl font-semibold">All 1:1 Courses</h2>
+                    <h2 className="text-xl font-semibold">All Courses</h2>
                     <p className="text-sm text-gray-500 mt-1">
                       Showing {courses.length} of {coursesPagination.totalStudents} courses
                       {(searchTerm || filters.status || filters.grade) && ` (filtered)`}
@@ -491,7 +479,7 @@ export const CreateOneToOneCourse: React.FC = () => {
                     className="flex items-center gap-2 px-6 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 font-medium"
                   >
                     <Plus size={20} />
-                    Add 1:1 Course
+                    Add Course
                   </button>
                 </div>
               </div>

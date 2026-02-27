@@ -1,4 +1,4 @@
-
+import { AuthContext } from './authContext';
 
 // src/utils/videoCallPrep.ts
 export const prepareForVideoCall = (expectedRole?: string) => {
@@ -50,6 +50,13 @@ export const prepareForVideoCall = (expectedRole?: string) => {
     // Always sync shared keys
     localStorage.setItem('userRole', actualRole);
     localStorage.setItem('userId', userId);
+    
+    // NEW: Sync AuthContext for global API interceptors
+    try {
+        AuthContext.getInstance().setRole(actualRole as 'admin' | 'student' | 'mentor');
+    } catch (e) {
+        console.warn('⚠️ Failed to sync AuthContext in videoCallPrep', e);
+    }
     
     console.log('✅ LocalStorage synchronized:', {
       role: actualRole,

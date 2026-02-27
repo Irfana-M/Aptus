@@ -131,8 +131,14 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
       })
       .addCase(logoutUser.fulfilled, (state) => {
+        state.user = null;
         state.accessToken = null;
         state.isAuthenticated = false;
+        state.isVerified = false;
+        state.isProfileComplete = undefined;
+        state.hasPaid = undefined;
+        state.isTrialCompleted = undefined;
+        state.error = null;
       })
       .addCase(adminLoginThunk.fulfilled, (state) => {
         state.user = null;

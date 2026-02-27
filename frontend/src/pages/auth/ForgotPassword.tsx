@@ -32,7 +32,7 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       const response = await fetch(
-        "http://localhost:5000/api/auth/forgot-password/send-otp",
+        `${import.meta.env.VITE_API_URL}/auth/forgot-password/send-otp`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

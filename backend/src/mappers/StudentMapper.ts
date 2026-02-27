@@ -3,12 +3,15 @@ import type {
   StudentProfile,
   StudentRegisterInput,
   SubscriptionDetails,
+  ParentInfo,
+  contactInfo,
+  AcademicDetails
 } from "@/interfaces/models/student.interface";
 import type {
   StudentAuthUser,
   AuthUser,
 } from "@/interfaces/auth/auth.interface";
-import type { StudentBaseResponseDto } from "@/dto/auth/UserResponseDTO";
+import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
 
 export class StudentMapper {
 
@@ -92,40 +95,39 @@ export class StudentMapper {
         data.parentName !== undefined || data.parentEmail !== undefined || data.parentPhone !== undefined || 
         data.relationship !== undefined || data.contactInfo !== undefined) {
       
-      const existingContact = (updateData.contactInfo as any) || {};
-      const existingParent = existingContact.parentInfo || {};
+      const existingContact = (updateData.contactInfo as contactInfo | undefined) || {} as contactInfo;
+      const existingParent = existingContact.parentInfo || {} as ParentInfo;
 
       // We need to be careful not to overwrite with undefined/empty if not provided in a partial update
       // But we don't have the "existing" DB record here, only the input "data".
       // So we should only set keys that are defined in "data".
       
-      const newParentInfo: any = { ...existingParent };
-      if (data.parentName !== undefined) newParentInfo.name = data.parentName;
-      if (data.parentEmail !== undefined) newParentInfo.email = data.parentEmail;
-      if (data.parentPhone !== undefined) newParentInfo.phoneNumber = data.parentPhone;
-      if (data.relationship !== undefined) newParentInfo.relationship = data.relationship;
+      const newParentInfo: Partial<ParentInfo> = { ...existingParent };
+      if (data.parentName !== undefined) newParentInfo.name = data.parentName as string;
+      if (data.parentEmail !== undefined) newParentInfo.email = data.parentEmail as string;
+      if (data.parentPhone !== undefined) newParentInfo.phoneNumber = data.parentPhone as string;
+      if (data.relationship !== undefined) newParentInfo.relationship = data.relationship as string;
       
       // If data.contactInfo.parentInfo exists, merge it too
       if (data.contactInfo?.parentInfo) {
           Object.assign(newParentInfo, data.contactInfo.parentInfo);
       }
 
-      const newContactInfo: any = { ...existingContact };
-      if (data.address !== undefined) newContactInfo.address = data.address;
-      if (data.country !== undefined) newContactInfo.country = data.country;
-      if (data.postalCode !== undefined) newContactInfo.postalCode = data.postalCode;
+      const newContactInfo: Partial<contactInfo> = { ...existingContact };
+      if (data.address !== undefined) newContactInfo.address = data.address as string;
+      if (data.country !== undefined) newContactInfo.country = data.country as string;
+      if (data.postalCode !== undefined) newContactInfo.postalCode = data.postalCode as string;
       
-      if (Object.keys(newParentInfo).length > 0) {
-          newContactInfo.parentInfo = newParentInfo;
-      }
+      newContactInfo.parentInfo = newParentInfo as ParentInfo;
+      updateData.contactInfo = newContactInfo as contactInfo;
       
       // If data.contactInfo exists (non-flattened), merge it
       if (data.contactInfo) {
-           const { parentInfo, ...rest } = data.contactInfo;
+           const { parentInfo: _parentInfo, ...rest } = data.contactInfo;
            Object.assign(newContactInfo, rest);
       }
 
-      updateData.contactInfo = newContactInfo;
+      updateData.contactInfo = newContactInfo as contactInfo;
     }
 
     // 2. Academic Details
@@ -134,18 +136,18 @@ export class StudentMapper {
         data.academicDetails !== undefined) {
         
         const existingAcademic = updateData.academicDetails || {};
-        const newAcademic: any = { ...existingAcademic };
+        const newAcademic: Partial<AcademicDetails> = { ...existingAcademic };
 
-        if (data.institution !== undefined) newAcademic.institutionName = data.institution;
-        if (data.institutionName !== undefined) newAcademic.institutionName = data.institutionName;
-        if (data.grade !== undefined) newAcademic.grade = data.grade;
-        if (data.syllabus !== undefined) newAcademic.syllabus = data.syllabus;
+        if (data.institution !== undefined) newAcademic.institutionName = data.institution as string;
+        if (data.institutionName !== undefined) newAcademic.institutionName = data.institutionName as string;
+        if (data.grade !== undefined) newAcademic.grade = data.grade as string;
+        if (data.syllabus !== undefined) newAcademic.syllabus = data.syllabus as string;
         
         if (data.academicDetails) {
             Object.assign(newAcademic, data.academicDetails);
         }
         
-        updateData.academicDetails = newAcademic;
+        updateData.academicDetails = newAcademic as AcademicDetails;
     }
 
     // 3. Learning Goal
@@ -236,6 +238,10 @@ export class StudentMapper {
       parentName: s.contactInfo?.parentInfo?.name || s.parentName || "",
       parentPhone: s.contactInfo?.parentInfo?.phoneNumber || s.parentPhone || "",
       relationship: s.contactInfo?.parentInfo?.relationship || s.relationship || "",
+      isTrialCompleted: s.isTrialCompleted || false,
+      totalTrialClasses: (s as unknown as { totalTrialClasses: number }).totalTrialClasses || 0,
+      pendingTrialClasses: (s as unknown as { pendingTrialClasses: number }).pendingTrialClasses || 0,
+      createdAt: s.createdAt,
     };
   }
 

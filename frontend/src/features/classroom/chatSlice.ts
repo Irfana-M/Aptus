@@ -1,5 +1,6 @@
 import { createSlice, type PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { chatApi, type ChatMessage } from '@/api/chatApi';
+import { getErrorMessage } from '../../utils/errorUtils';
 
 export interface ChatState {
   messages: ChatMessage[];
@@ -21,8 +22,8 @@ export const fetchChatHistory = createAsyncThunk(
     try {
       const response = await chatApi.getHistory(sessionId);
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch history');
+    } catch (error: unknown) {
+      return rejectWithValue(getErrorMessage(error) || 'Failed to fetch history');
     }
   }
 );
@@ -33,8 +34,8 @@ export const sendChatMessage = createAsyncThunk(
     try {
       const response = await chatApi.sendMessage(sessionId, content);
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to send message');
+    } catch (error: unknown) {
+      return rejectWithValue(getErrorMessage(error) || 'Failed to send message');
     }
   }
 );

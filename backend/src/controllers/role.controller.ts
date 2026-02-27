@@ -6,9 +6,8 @@ import {
   verifyAccessToken 
 } from '../utils/jwt.util'; 
 import { logger } from '@/utils/logger';
-import type { MentorResponseDto } from '@/dto/mentor/MentorResponseDTO';
-import type { StudentBaseResponseDto } from '@/dto/auth/UserResponseDTO';
-import type { ITrialClassDocument } from '@/models/student/trialClass.model';
+import type { MentorResponseDto } from '@/dtos/mentor/MentorResponseDTO';
+import type { StudentBaseResponseDto } from '@/dtos/auth/UserResponseDTO';
 
 @injectable()
 export class RoleController {
@@ -327,14 +326,7 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
             email: decoded.email,
             role: decoded.role
           },
-          trialClass: {
-            id: (authCheck.trialClass as ITrialClassDocument)?._id?.toString(),
-            status: (authCheck.trialClass as ITrialClassDocument)?.status,
-            studentId: (authCheck.trialClass as ITrialClassDocument)?.student?.toString(),
-            mentorId: (authCheck.trialClass as ITrialClassDocument)?.mentor?.toString(),
-            preferredDate: (authCheck.trialClass as ITrialClassDocument)?.preferredDate,
-            meetLink: (authCheck.trialClass as ITrialClassDocument)?.meetLink
-          },
+          trialClass: authCheck.trialClass,
           verifiedAt: new Date().toISOString()
         });
 

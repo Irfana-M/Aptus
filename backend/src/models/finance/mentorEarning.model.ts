@@ -7,7 +7,7 @@ const mentorEarningSchema = new Schema<IMentorEarning>(
       type: Schema.Types.ObjectId, 
       ref: 'Session', 
       required: true,
-      unique: true // One earning per session
+      unique: true 
     },
     attendanceId: { 
       type: Schema.Types.ObjectId, 

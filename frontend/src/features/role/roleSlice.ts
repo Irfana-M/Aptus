@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
-import userApi from "../../api/userApi"; 
+import api from "../../api/api";
 import { getApiErrorMessage } from "../../utils/errorUtils";
 
 
@@ -34,18 +34,18 @@ export interface RoleOnlyResponse {
 export const roleApi = {
   
   verifyRoleWithToken: (expectedRole?: string) => {
-    return userApi.get<VerifyRoleResponse>('/role/verify', {
+    return api.get<VerifyRoleResponse>('/role/verify', {
       headers: expectedRole ? { 'x-expected-role': expectedRole } : {}
     });
   },
 
   getRoleOnly: () => {
-    return userApi.get<RoleOnlyResponse>('/role-only');
+    return api.get<RoleOnlyResponse>('/role-only');
   },
 
   
   getUserRoleById: (userId: string) => {
-    return userApi.get<RoleOnlyResponse>(`/role/${userId}`);
+    return api.get<RoleOnlyResponse>(`/role/${userId}`);
   },
 };
 

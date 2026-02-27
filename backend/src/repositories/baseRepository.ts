@@ -136,6 +136,21 @@ export abstract class BaseRepository<T extends Document> implements IBaseReposit
     }
   }
 
+  async find(filter: FilterQuery<T>, session?: ClientSession): Promise<T[]> {
+    try {
+      logger.debug(`Finding ${this.model.modelName} with filter:`, filter);
+      const results = await this.model.find(filter).session(session || null).lean().exec();
+      logger.info(`Found ${results.length} ${this.model.modelName} records with filter`);
+      return results as unknown as T[];
+    } catch (error) {
+      logger.error(`Error finding ${this.model.modelName} with filter:`, error);
+      throw new AppError(
+        `Failed to find ${this.model.modelName} records`,
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   async findOne(filter: FilterQuery<T>, session?: ClientSession): Promise<T | null> {
     try {
       logger.debug(`Finding one ${this.model.modelName} with filter:`, filter);
@@ -265,6 +280,52 @@ async unblock(id: string): Promise<T> {
       if (error instanceof AppError) throw error;
       throw new AppError(
         `Failed to check blocked status`,
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async findPaginated(
+    filter: Record<string, unknown>,
+    page: number,
+    limit: number,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    sort: any = { createdAt: -1 },
+    populate?: string[] | any
+  ): Promise<{ items: T[], total: number }> {
+    try {
+      const skip = (page - 1) * limit;
+      
+      logger.debug(`Finding paginated ${this.model.modelName} records`, { filter, page, limit, sort });
+      
+      const query = this.model.find(filter as FilterQuery<T>)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit);
+
+      if (populate) {
+        if (Array.isArray(populate)) {
+          populate.forEach(p => query.populate(p));
+        } else {
+          query.populate(populate);
+        }
+      }
+
+      const [items, total] = await Promise.all([
+        query.lean().exec(),
+        this.model.countDocuments(filter as FilterQuery<T>)
+      ]);
+
+      logger.info(`Found ${items.length} paginated ${this.model.modelName} records, total=${total}`);
+      
+      return {
+        items: items as unknown as T[],
+        total
+      };
+    } catch (error) {
+      logger.error(`Error finding paginated ${this.model.modelName} records:`, error);
+      throw new AppError(
+        `Failed to retrieve paginated ${this.model.modelName} records`,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }

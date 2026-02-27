@@ -1,19 +1,20 @@
 import { injectable, inject } from "inversify";
 import { TYPES } from "../types";
 import { type IMentorAssignmentRequest } from "../models/mentorAssignmentRequest.model";
-import { StudentModel } from "../models/student/student.model";
 import { NotificationService } from "./NotificationService";
 import { InternalEventEmitter } from "../utils/InternalEventEmitter";
 import { EVENTS } from "../utils/InternalEventEmitter";
 import { AppError } from "../utils/AppError";
 import { HttpStatusCode } from "../constants/httpStatus";
 import { logger } from "../utils/logger";
-import mongoose from "mongoose";
+import { Types } from "mongoose";
 
 import { v4 as uuidv4 } from 'uuid';
 
 import type { IMentorRequestService } from "../interfaces/services/IMentorRequestService";
 import type { SchedulingPolicy } from "../domain/scheduling/SchedulingPolicy";
+import type { ISubscriptionRepository } from "../interfaces/repositories/ISubscriptionRepository";
+import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository";
 
 @injectable()
 export class MentorRequestService implements IMentorRequestService {
@@ -27,6 +28,8 @@ export class MentorRequestService implements IMentorRequestService {
     @inject(TYPES.IGradeRepository) private gradeRepo: import("../interfaces/repositories/IGradeRepository").IGradeRepository,
     @inject(TYPES.ITimeSlotRepository) private timeSlotRepo: import("../interfaces/repositories/ITimeSlotRepository").ITimeSlotRepository,
     @inject(TYPES.IMentorRepository) private mentorRepo: import("../interfaces/repositories/IMentorRepository").IMentorRepository,
+    @inject(TYPES.ISubscriptionRepository) private subscriptionRepo: ISubscriptionRepository,
+    @inject(TYPES.ITrialClassRepository) private trialClassRepo: ITrialClassRepository,
     @inject(TYPES.SchedulingPolicy) private schedulingPolicy: SchedulingPolicy,
     @inject(TYPES.InternalEventEmitter) private eventEmitter: InternalEventEmitter
   ) {}
@@ -61,7 +64,10 @@ export class MentorRequestService implements IMentorRequestService {
         throw new AppError("Request not found", HttpStatusCode.NOT_FOUND);
       }
 
-      const getDetails = (field: any) => field?._id ? field._id.toString() : field?.toString();
+      const getDetails = (field: unknown) => {
+        const f = field as { _id?: { toString(): string } };
+        return f?._id ? f._id.toString() : (field as { toString(): string })?.toString();
+      };
       const requestStudentIdStr = getDetails(request.studentId);
       const requestSubjectIdStr = getDetails(request.subjectId);
       const effectiveMentorIdStr = overrides?.mentorId || getDetails(request.mentorId);
@@ -71,7 +77,7 @@ export class MentorRequestService implements IMentorRequestService {
       }
 
       // STEP 2: Fetch Student
-      const studentProfile: any = await this.studentRepo.findStudentProfileById(requestStudentIdStr);
+      const studentProfile = await this.studentRepo.findStudentProfileById(requestStudentIdStr);
       if (!studentProfile) {
         throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
       }
@@ -81,64 +87,109 @@ export class MentorRequestService implements IMentorRequestService {
 
       // STEP 3: Idempotency Check
       const existingCourses = await this.courseRepo.findByStudent(requestStudentIdStr);
-      let course: any = existingCourses.find((c: any) => 
-          (c.subject?._id?.toString() === requestSubjectIdStr || c.subject?.toString() === requestSubjectIdStr) &&
-          c.isActive && c.status !== 'cancelled'
-      );
+      let course = existingCourses.find((c) => {
+          const typed = c as unknown as { subject?: { _id?: { toString(): string }, toString(): string }, isActive: boolean, status: string };
+          return (typed.subject?._id?.toString() === requestSubjectIdStr || typed.subject?.toString() === requestSubjectIdStr) &&
+          typed.isActive && typed.status !== 'cancelled';
+      });
 
       // Prepare Schedule
-      let schedule: any = undefined;
+      let schedule: { days: string[], timeSlot: string, slots?: { day: string, startTime: string, endTime: string }[] } | undefined = undefined;
+      let slots: { day: string, startTime: string, endTime: string }[] = [];
+
       if (overrides?.days && overrides.days.length > 0) {
+          // Manual Override (Legacy/Admin force) - assumes strict TimeSlot string
+          // This path flattens to a single time for all days
           schedule = {
             days: overrides.days.map(d => d.charAt(0).toUpperCase() + d.slice(1).toLowerCase()),
             timeSlot: overrides.timeSlot || "TBD"
           };
       } else {
-          const matchedSlot = studentProfile.preferredTimeSlots?.find(
-            (slot: any) => {
-              const slotSubjectId = slot.subjectId?._id ? slot.subjectId._id.toString() : slot.subjectId?.toString();
+          // Automatic from Student Preferences
+          const matchedSlot = (studentProfile as unknown as import('../interfaces/models/student.interface').StudentProfile).preferredTimeSlots?.find(
+            (slot) => {
+              const s = slot as unknown as { subjectId?: { _id?: { toString(): string }, toString(): string } };
+              const slotSubjectId = s.subjectId?._id ? s.subjectId._id.toString() : s.subjectId?.toString();
               return slotSubjectId === requestSubjectIdStr;
             }
           );
+          
           if (matchedSlot?.slots && matchedSlot.slots.length > 0) {
+              // Extract FULL slots (Day + Time)
+              slots = (matchedSlot as unknown as { slots: { day: string, startTime: string, endTime: string }[] }).slots.map((s) => ({
+                  day: s.day.charAt(0).toUpperCase() + s.day.slice(1).toLowerCase(),
+                  startTime: s.startTime,
+                  endTime: s.endTime
+              }));
+
+              // Construct Helper Schedule Object for Legacy Code compatibility
+              const firstSlot = slots[0];
+              const timeSlotSummary = slots.length > 1 ? "Multiple Times" : (firstSlot ? `${firstSlot.startTime}-${firstSlot.endTime}` : "Multiple Times");
+
               schedule = {
-                days: matchedSlot.slots.map((s: any) => s.day.charAt(0).toUpperCase() + s.day.slice(1).toLowerCase()),
-                timeSlot: `${matchedSlot.slots[0].startTime} - ${matchedSlot.slots[0].endTime}`
+                days: slots.map(s => s.day),
+                timeSlot: timeSlotSummary,
+                slots: slots
               };
           }
       }
 
-      if (!schedule || !schedule.days || schedule.days.length === 0) {
+      if (!schedule || (!schedule.days?.length && !slots.length)) {
          throw new AppError("Schedule not resolved. Please provide days and timeSlot.", HttpStatusCode.BAD_REQUEST);
       }
 
       // STEP 3: Validate Subscription
-      const subscription = studentProfile.subscription;
+      const studentWithType = studentProfile as unknown as import('../interfaces/models/student.interface').StudentProfile;
+      const subscription = studentWithType.subscription;
       if (!subscription || subscription.status !== 'active') {
           throw new AppError("Student does not have an active subscription.", HttpStatusCode.FORBIDDEN);
       }
 
-      const plan = (subscription.plan || 'monthly').toLowerCase();
-      // Enforce strict mapping: Basic/Monthly -> Group, Premium/Yearly -> One-to-One
-      const isPremium = plan === 'premium' || plan === 'yearly';
-      const courseType: 'one-to-one' | 'group' = isPremium ? 'one-to-one' : 'group';
-      const maxSessions = plan === 'yearly' ? 3 : 2;
+      const planStr = (subscription.plan || 'monthly').toLowerCase();
+      const planCode = (subscription.planCode || '').toUpperCase();
+      const planType = (subscription.planType || '').toLowerCase();
       
-      logger.info(`[ApproveRequest] Student ${requestStudentIdStr} has ${plan} plan. Model: ${courseType}. Max sessions: ${maxSessions}`);
+      const isPremium = planStr === 'premium' || planStr === 'yearly' || planCode === 'PREMIUM' || planType === 'premium';
+      const courseType: 'one-to-one' | 'group' = isPremium ? 'one-to-one' : 'group';
+      
+      // Fetch Plan Details dynamically
+      const searchCode = isPremium ? 'PREMIUM' : 'BASIC';
+      const planDoc = await this.subscriptionRepo.findPlanByCode(searchCode);
+      
+      // sessionsPerSubjectPerWeek: 1:1 = 2 (usually), Group = 2 (usually)
+      const maxSessions = planDoc ? planDoc.sessionsPerSubjectPerWeek : (isPremium ? 2 : 2);
+      
+      logger.info(`[ApproveRequest] Student ${requestStudentIdStr} has ${planStr} plan. Max sessions allowed: ${maxSessions}`);
 
-      // SLICING LOGIC
-      if (schedule.days.length > maxSessions && courseType === 'one-to-one') {
-          logger.info(`[ApproveRequest] Slicing ${schedule.days.length} selected days to ${maxSessions} for 1:1.`);
+      // SLICING LOGIC: Limit the number of slots based on plan
+      if (slots.length > 0) {
+          if (slots.length > maxSessions) {
+              logger.info(`[ApproveRequest] Truncating ${slots.length} selected slots to ${maxSessions} based on plan limits.`);
+              slots = slots.slice(0, maxSessions);
+              // Sync redundant schedule object
+              schedule.slots = slots;
+              schedule.days = slots.map((s: { day: string }) => s.day);
+          }
+      } else if (schedule.days.length > maxSessions) {
+          // Fallback for legacy generic days array
+          logger.info(`[ApproveRequest] Truncating ${schedule.days.length} selected days to ${maxSessions} based on plan limits.`);
           schedule.days = schedule.days.slice(0, maxSessions);
       }
 
       // GRADE RESOLUTION
-      let finalGradeId = (studentProfile.gradeId && (studentProfile.gradeId as any)._id) 
-        ? (studentProfile.gradeId as any)._id.toString() 
-        : (studentProfile.gradeId ? studentProfile.gradeId.toString() : null);
+      const finalGradeId = (studentProfile as unknown as { gradeId?: { _id?: { toString(): string } } | { toString(): string } }).gradeId;
+      let finalGradeIdStr: string | null = null;
+      
+      if (finalGradeId) {
+          if (typeof finalGradeId === 'object' && '_id' in finalGradeId && finalGradeId._id) {
+              finalGradeIdStr = finalGradeId._id.toString();
+          } else {
+              finalGradeIdStr = finalGradeId.toString();
+          }
+      }
 
-      if (!finalGradeId && studentProfile.academicDetails?.grade) {
-          const gradeStr = studentProfile.academicDetails.grade;
+      if (!finalGradeIdStr && (studentProfile as unknown as import('../interfaces/models/student.interface').StudentProfile).academicDetails?.grade) {
+          const gradeStr = (studentProfile as unknown as import('../interfaces/models/student.interface').StudentProfile).academicDetails!.grade;
           // Try to lookup Grade by name or number
           const gradeNum = parseInt(gradeStr.replace(/\D/g, ''));
           const foundGrade = await this.gradeRepo.findOne({ 
@@ -149,22 +200,17 @@ export class MentorRequestService implements IMentorRequestService {
           });
           
           if (foundGrade) {
-              finalGradeId = (foundGrade as any)._id.toString();
-              logger.info(`Resolved Grade ID ${finalGradeId} for string "${gradeStr}"`);
-          }
-          if (foundGrade) {
-              finalGradeId = (foundGrade as any)._id.toString();
-              logger.info(`Resolved Grade ID ${finalGradeId} for string "${gradeStr}"`);
+              finalGradeIdStr = (foundGrade as unknown as { _id: { toString(): string } })._id.toString();
+              logger.info(`Resolved Grade ID ${finalGradeIdStr} for string "${gradeStr}"`);
           }
       }
 
-      if (!finalGradeId) {
-         throw new AppError(`Could not resolve Grade ID for student. Grade: ${studentProfile.academicDetails?.grade}`, HttpStatusCode.BAD_REQUEST);
+      if (!finalGradeIdStr) {
+         throw new AppError(`Could not resolve Grade ID for student. Grade: ${(studentProfile as unknown as import('../interfaces/models/student.interface').StudentProfile).academicDetails?.grade}`, HttpStatusCode.BAD_REQUEST);
       }
 
       // --- VALIDATION START ---
       // 1. Validate Mentor Availability
-      const startSlot = schedule.timeSlot.split('-')[0].trim();
       const mentor = await this.mentorRepo.findById(effectiveMentorIdStr);
       if (!mentor) {
          throw new AppError("Mentor selected for approval not found.", HttpStatusCode.NOT_FOUND);
@@ -172,25 +218,52 @@ export class MentorRequestService implements IMentorRequestService {
 
       // Check if mentor slot exists for ALL days
       const mentorAvailability = mentor.availability || [];
-      const missingDays = schedule.days.filter((day: string) => {
-          const daySched = mentorAvailability.find((d: any) => d.day === day && d.slots && d.slots.length > 0);
-          if (!daySched) return true;
-          // Check if specific time slot is available
-          const hasTime = daySched.slots.some((s: any) => s.startTime === startSlot);
-          return !hasTime;
-      });
+      const missingDays: string[] = [];
 
-      if (missingDays.length > 0) {
-          throw new AppError(`Mentor is NOT available on ${missingDays.join(', ')} at ${startSlot}. Forced assignment blocked.`, HttpStatusCode.BAD_REQUEST);
+      if (slots.length > 0) {
+          // Validate specific slots
+          for (const slotItem of slots) {
+             const daySched = mentorAvailability.find((d: { day: string, slots?: { startTime: string }[] }) => d.day === slotItem.day && d.slots && d.slots.length > 0);
+             if (!daySched) {
+                 missingDays.push(slotItem.day);
+                 continue;
+             }
+             const hasTime = daySched.slots?.some((s: { startTime: string }) => s.startTime === slotItem.startTime);
+             if (!hasTime) {
+                 missingDays.push(`${slotItem.day} (${slotItem.startTime})`);
+             }
+          }
+          
+          if (missingDays.length > 0) {
+              throw new AppError(`Mentor is NOT available on: ${missingDays.join(', ')}. forced assignment blocked.`, HttpStatusCode.BAD_REQUEST);
+          }
+      } else if (schedule) {
+        // Fallback Validation (Legacy)
+          const startSlot = schedule.timeSlot.split('-')[0].trim();
+          for (const day of schedule.days) {
+              const daySched = mentorAvailability.find((d: { day: string, slots?: { startTime: string }[] }) => d.day === day && d.slots && d.slots.length > 0);
+              if (!daySched) {
+                  missingDays.push(day);
+                  continue;
+              }
+              const hasTime = daySched.slots?.some((s: { startTime: string }) => s.startTime === startSlot);
+              if (!hasTime) {
+                  missingDays.push(day);
+              }
+          }
+
+          if (missingDays.length > 0) {
+              throw new AppError(`Mentor is NOT available on ${missingDays.join(', ')} at ${startSlot}. Forced assignment blocked.`, HttpStatusCode.BAD_REQUEST);
+          }
       }
 
       // 2. Enforce Subscription Rules
-      // Basic/Monthly -> Group Only
-      // Premium/Yearly -> 1:1 Only
-      if ((plan === 'basic' || plan === 'monthly') && courseType === 'one-to-one') {
-          throw new AppError("Basic/Monthly plan students cannot be assigned 1:1 mentorship. Please upgrade or select Group.", HttpStatusCode.FORBIDDEN);
+      // Basic -> Group Only
+      // Premium -> 1:1 Only
+      if (!isPremium && courseType === 'one-to-one') {
+          throw new AppError("Basic plan students cannot be assigned 1:1 mentorship. Please upgrade to Premium.", HttpStatusCode.FORBIDDEN);
       }
-      if ((plan === 'premium' || plan === 'yearly') && courseType === 'group' && request.mentoringMode === 'one-to-one') {
+      if ((planStr === 'premium' || planStr === 'yearly') && courseType === 'group' && request.mentoringMode === 'one-to-one') {
            // Allow Premium to join Group if they explicitly asked for it? 
            // Usually Premium implies 1:1 entitlement. If they want group, it's fine, but 
            // usually we enforce what they paid for.
@@ -201,10 +274,10 @@ export class MentorRequestService implements IMentorRequestService {
            // Actually, let's strictly enforce the derivation:
       }
       // Re-derive courseType strictly based on plan to ensure compliance
-      const enforcedCourseType = (plan === 'premium' || plan === 'yearly') ? 'one-to-one' : 'group';
+      const enforcedCourseType = (planStr === 'premium' || planStr === 'yearly') ? 'one-to-one' : 'group';
       
       if (courseType !== enforcedCourseType) {
-          logger.warn(`[ApproveRequest] Mismatch in course type. Enforcing ${enforcedCourseType} based on plan ${plan}.`);
+          logger.warn(`[ApproveRequest] Mismatch in course type. Enforcing ${enforcedCourseType} based on plan ${planStr}.`);
           // We can't simply reassign 'courseType' because it's a const. 
           // Let's rely on the variable `courseType` which IS defined as `const` above. 
           // We should just check if the logic above was correct.
@@ -219,64 +292,65 @@ export class MentorRequestService implements IMentorRequestService {
       if (courseType === 'group') {
           // FIND EXISTING GROUP COURSE WITH CAPACITY
           const existingGroupCourses = await this.courseRepo.findOne({
-              subject: new mongoose.Types.ObjectId(requestSubjectIdStr),
-              grade: new mongoose.Types.ObjectId(finalGradeId),
-              courseType: 'group',
-              status: 'booked',
-              isActive: true,
-              enrolledStudents: { $lt: 10 }
-          } as any);
-
-          if (existingGroupCourses) {
-              course = existingGroupCourses;
-              logger.info(`[ApproveRequest] Joining existing group course ${course._id}`);
+            subject: new Types.ObjectId(requestSubjectIdStr),
+            grade: new Types.ObjectId(finalGradeIdStr || ""),
+            courseType: 'group',
+            status: 'booked',
+            isActive: true,
+            enrolledStudents: { $lt: 10 } as unknown as number
+          } as Record<string, unknown>);
+           
+           if (existingGroupCourses) {
+               course = existingGroupCourses as unknown as import('../models/course.model').ICourse;
+               logger.info(`[ApproveRequest] Joining existing group course ${course._id}`);
               
-              // Increment enrolled count
-              await this.courseRepo.updateCourse(course._id.toString(), {
-                  $inc: { enrolledStudents: 1 }
-              } as any);
-              recoveredRecords.push('joined_existing_group');
-          }
+               // Increment enrolled count
+               await this.courseRepo.updateCourse((course as unknown as { _id: { toString(): string } })._id.toString(), {
+                  $inc: { enrolledStudents: 1 } as unknown as number
+               } as Partial<import("../interfaces/repositories/ICourseRepository").CreateOneToOneCourseDto>);
+               recoveredRecords.push('joined_existing_group');
+           }
       }
 
       if (!course) {
           const startDate = new Date();
           const endDate = subscription.endDate ? new Date(subscription.endDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-          course = await this.courseRepo.createEnrollment({
+          course = (await this.courseRepo.createEnrollment({
             student: courseType === 'one-to-one' ? requestStudentIdStr : undefined,
             mentor: effectiveMentorIdStr,
             subject: requestSubjectIdStr,
-            grade: finalGradeId,
+            grade: finalGradeIdStr || "",
             startDate,
             endDate,
             status: 'booked',
-            schedule: schedule,
+            schedule: schedule as { days: string[], timeSlot: string },
             courseType,
             maxStudents: courseType === 'group' ? 10 : 1,
             enrolledStudents: courseType === 'group' ? 1 : 0
-          } as any);
+          } as unknown as import("../interfaces/repositories/ICourseRepository").CreateOneToOneCourseDto)) as import("../models/course.model").ICourse;
           recoveredRecords.push(courseType === 'group' ? 'group_course_created' : 'course_created');
       }
 
       // STEP 5: EnrollmentLink
       let enrollmentId = "";
-      const existingLink = await this.enrollmentLinkRepo.findByStudentAndCourse(requestStudentIdStr, course._id.toString());
+      const courseIdForLink = (course as unknown as { _id: { toString(): string } })._id.toString();
+      const existingLink = await this.enrollmentLinkRepo.findByStudentAndCourse(requestStudentIdStr, courseIdForLink);
       if (!existingLink) {
           const newLink = await this.enrollmentLinkRepo.create({
-              student: new mongoose.Types.ObjectId(requestStudentIdStr),
-              course: course._id as any,
-              status: 'active'
-          });
-          enrollmentId = (newLink as any)._id.toString();
+              student: new Types.ObjectId(requestStudentIdStr) as unknown as import('mongoose').Schema.Types.ObjectId,
+              course: new Types.ObjectId(courseIdForLink) as unknown as import('mongoose').Schema.Types.ObjectId,
+              status: 'active' as 'active' | 'pending_payment' | 'cancelled',
+          } as unknown as Partial<import('../models/enrollment.model').IEnrollment>);
+          enrollmentId = (newLink as unknown as { _id: { toString(): string } })._id.toString();
           recoveredRecords.push('enrollment_link_created');
       } else {
-          enrollmentId = (existingLink as any)._id.toString();
+          enrollmentId = (existingLink as unknown as { _id: { toString(): string } })._id.toString();
       }
 
       // STEP 6: Sessions
       const existingSessions = await this.sessionRepo.findByStudentAndSubject(requestStudentIdStr, requestSubjectIdStr);
-      const activeSessions = existingSessions.filter((s: any) => s.status === 'scheduled');
+      const activeSessions = existingSessions.filter((s) => (s as unknown as { status: string }).status === 'scheduled');
 
       if (activeSessions.length === 0) {
           if (courseType === 'group') {
@@ -287,51 +361,56 @@ export class MentorRequestService implements IMentorRequestService {
                   new Date(Date.now() + 4 * 7 * 24 * 60 * 60 * 1000)
               );
               
-              const relevantSessions = groupSessions.filter((s: any) => 
-                  getDetails(s.courseId) === course._id.toString() && s.status === 'scheduled'
-              );
+              const relevantSessions = groupSessions.filter((s) => {
+                  const typed = s as unknown as { courseId?: { toString(): string } | string, status: string };
+                  return getDetails(typed.courseId) === courseIdForLink && typed.status === 'scheduled';
+              });
 
               if (relevantSessions.length > 0) {
                   logger.info(`[ApproveRequest] Adding student to ${relevantSessions.length} existing group sessions`);
-                  for (const s of relevantSessions) {
-                      await this.sessionRepo.updateById((s as any)._id.toString(), {
+                  for (const sItem of relevantSessions) {
+                      await this.sessionRepo.updateById((sItem as unknown as { _id: { toString(): string } })._id.toString(), {
                           $push: { 
-                              participants: { userId: new mongoose.Types.ObjectId(requestStudentIdStr), role: 'student', status: 'scheduled' }
+                              participants: { userId: new Types.ObjectId(requestStudentIdStr), role: 'student', status: 'scheduled' } as unknown as Record<string, unknown>
                           }
-                      } as any);
+                      } as Record<string, unknown>);
                   }
                   recoveredRecords.push('added_to_existing_group_sessions');
               } else {
                   // Generate sessions for new group
+                  const groupSlots = slots.length > 0 ? slots : schedule.days.map((day: string) => ({
+                      day,
+                      startTime: schedule.timeSlot.split(' - ')[0]?.trim() || "10:00",
+                      endTime: schedule.timeSlot.split(' - ')[1]?.trim() || "11:00"
+                  }));
+
                   await this.generateSessionsForWeeks(
                       requestStudentIdStr,
                       effectiveMentorIdStr,
                       requestSubjectIdStr,
-                      course._id.toString(),
+                      courseIdForLink,
                       enrollmentId,
-                      schedule.days.map((day: string) => ({
-                          day,
-                          startTime: schedule.timeSlot.split(' - ')[0]?.trim() || "10:00",
-                          endTime: schedule.timeSlot.split(' - ')[1]?.trim() || "11:00"
-                      })),
+                      groupSlots,
                       4,
                       courseType
                   );
                   recoveredRecords.push('group_sessions_generated');
               }
           } else {
-              // 1:1 Session Generation
-              const slotsForSessions = schedule.days.map((day: string) => ({
-                  day,
-                  startTime: schedule.timeSlot.split(' - ')[0]?.trim() || "10:00",
-                  endTime: schedule.timeSlot.split(' - ')[1]?.trim() || "11:00"
-              }));
+                  // 1:1 Session Generation
+              const slotsForSessions = slots.length > 0 
+                ? slots 
+                : schedule.days.map((day: string) => ({
+                    day,
+                    startTime: schedule.timeSlot.split(' - ')[0]?.trim() || "10:00",
+                    endTime: schedule.timeSlot.split(' - ')[1]?.trim() || "11:00"
+                }));
 
               await this.generateSessionsForWeeks(
                   requestStudentIdStr,
                   effectiveMentorIdStr,
                   requestSubjectIdStr,
-                  course._id.toString(),
+                  courseIdForLink,
                   enrollmentId,
                   slotsForSessions,
                   4,
@@ -346,21 +425,21 @@ export class MentorRequestService implements IMentorRequestService {
           await this.studentRepo.updatePreferredTimeSlotStatus(requestStudentIdStr, requestSubjectIdStr, 'mentor_assigned', effectiveMentorIdStr);
           await this.requestRepo.updateStatus(requestId, 'approved', adminId);
           
-          const studentName = studentProfile.fullName || "Student";
+          const studentName = (studentProfile as unknown as { fullName?: string }).fullName || "Student";
           
           this.eventEmitter.emit(EVENTS.MENTOR_ASSIGNED, {
             studentId: requestStudentIdStr,
             studentName,
             mentorId: effectiveMentorIdStr,
             mentorName: "Mentor",
-            subjectName: (request as any).subjectId?.subjectName || "Subject"
+            subjectName: (request as unknown as { subjectId?: { subjectName?: string } }).subjectId?.subjectName || "Subject"
           });
       }
 
       logger.info(`[ApproveRequest] Approval completed for request ${requestId}`);
 
       return {
-        courseId: course._id.toString(),
+        courseId: courseIdForLink,
         isFreshApproval,
         recoveredRecords
       };
@@ -385,7 +464,10 @@ export class MentorRequestService implements IMentorRequestService {
         throw new AppError("Request has already been processed", HttpStatusCode.BAD_REQUEST);
       }
 
-      const getDetails = (field: any) => field?._id ? field._id.toString() : field?.toString();
+      const getDetails = (field: unknown) => {
+        const f = field as { _id?: { toString(): string } };
+        return f?._id ? f._id.toString() : (field as { toString(): string })?.toString();
+      };
 
       const requestStudentIdStr = getDetails(request.studentId);
       const requestSubjectIdStr = getDetails(request.subjectId);
@@ -405,14 +487,14 @@ export class MentorRequestService implements IMentorRequestService {
       // 3. Notify Student
       // Fetch details for notification if needed, or rely on IDs/Placeholders
       // Ideally fetch names.
-      const studentName = "Student"; // Placeholder
-      const mentorName = "Mentor"; // Placeholder
-      
+      const _studentName = "Student"; // Placeholder
+      const _mentorName = "Mentor"; // Placeholder
+
       logger.info(`[RejectRequest] Sending rejection notification via event...`);
       this.eventEmitter.emit(EVENTS.MENTOR_REQUEST_REJECTED, {
         studentId: requestStudentIdStr,
         mentorName: "Mentor",
-        subjectName: (request as any).subjectId?.subjectName || "Subject",
+        subjectName: (request as unknown as { subjectId?: { subjectName?: string } }).subjectId?.subjectName || "Subject",
         reason
       });
 
@@ -424,7 +506,7 @@ export class MentorRequestService implements IMentorRequestService {
     }
   }
 
-    private async generateSessionsForWeeks(
+    public async generateSessionsForWeeks(
     studentId: string,
     mentorId: string,
     subjectId: string,
@@ -438,6 +520,10 @@ export class MentorRequestService implements IMentorRequestService {
     const dayMap: Record<string, number> = {
         'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6
     };
+
+    // Fetch mentor profile for limits (optimize: fetch once outside loops)
+    const sessionMentorIdx = await this.mentorRepo.findById(mentorId);
+    if (!sessionMentorIdx) throw new AppError(`Mentor ${mentorId} not found during generation`, HttpStatusCode.NOT_FOUND);
 
     for (let i = 0; i < weeks; i++) {
         for (const slot of slots) {
@@ -459,19 +545,50 @@ export class MentorRequestService implements IMentorRequestService {
             endDateTime.setHours(eHour || 11, eMin || 0, 0, 0);
 
             // --- ENFORCE LIMITS START ---
-            const dailyCount = await this.timeSlotRepo.countByMentorAndDate(mentorId, startDateTime);
-            const weeklyCount = await this.timeSlotRepo.countByMentorAndWeek(mentorId, startDateTime);
+            // --- ENFORCE LIMITS START ---
+            let dailyCount = await this.timeSlotRepo.countByMentorAndDate(mentorId, startDateTime);
+            let weeklyCount = await this.timeSlotRepo.countByMentorAndWeek(mentorId, startDateTime);
 
-            // Fetch mentor profile for limits (optimize: fetch once outside if efficient, but here we need latest limits)
-            // Ideally should be cached, but for strict enforcement we fetch or pass. 
-            // We can re-use 'mentor' from approveRequest if passed down, but this method takes ID.
-            // Let's assume default unless we fetch. For correctness, let's fetch.
-            const sessionMentorIdx = await this.mentorRepo.findById(mentorId);
-            if (!sessionMentorIdx) throw new AppError(`Mentor ${mentorId} not found during generation`, HttpStatusCode.NOT_FOUND);
+            // Include Trial Classes in counts
+            try {
+                // Daily Trial Count
+                const dailyStart = new Date(startDateTime);
+                dailyStart.setHours(0, 0, 0, 0);
+                const dailyEnd = new Date(startDateTime);
+                dailyEnd.setHours(23, 59, 59, 999);
+
+                const dailyTrials = await this.trialClassRepo.countDocuments({
+                    mentor: mentorId,
+                    preferredDate: { $gte: dailyStart, $lte: dailyEnd },
+                    status: 'assigned'
+                });
+                dailyCount += dailyTrials;
+
+                // Weekly Trial Count
+                const weeklyDate = new Date(startDateTime);
+                const day = weeklyDate.getDay();
+                const diff = weeklyDate.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+                const weeklyStart = new Date(weeklyDate.setDate(diff));
+                weeklyStart.setHours(0, 0, 0, 0);
+
+                const weeklyEnd = new Date(weeklyStart);
+                weeklyEnd.setDate(weeklyStart.getDate() + 6);
+                weeklyEnd.setHours(23, 59, 59, 999);
+
+                const weeklyTrials = await this.trialClassRepo.countDocuments({
+                    mentor: mentorId,
+                    preferredDate: { $gte: weeklyStart, $lte: weeklyEnd },
+                    status: 'assigned'
+                });
+                weeklyCount += weeklyTrials;
+
+            } catch (_err) {
+                 logger.warn(`Failed to include trial classes in limit check: ${_err}`);
+            }
 
             const limitResult = this.schedulingPolicy.isMentorWithinLimits(sessionMentorIdx, dailyCount, weeklyCount);
             if (!limitResult.allowed) {
-                const reason = `Mentor limit exceeded for ${startDateTime.toISOString()}: ${limitResult.reason || 'Unknown Limit'}`;
+                const reason = `Mentor limit exceeded for ${startDateTime.toISOString()}: ${limitResult.reason || 'Unknown Limit'} (Daily: ${dailyCount}, Weekly: ${weeklyCount})`;
                 logger.error(reason);
                 throw new AppError(reason, HttpStatusCode.CONFLICT);
             }
@@ -479,7 +596,7 @@ export class MentorRequestService implements IMentorRequestService {
 
             // 1. Find or Create Slot
             let slotDoc = await this.timeSlotRepo.findOne({
-                mentorId: new mongoose.Types.ObjectId(mentorId),
+                mentorId: new Types.ObjectId(mentorId),
                 startTime: startDateTime,
                 endTime: endDateTime
             });
@@ -487,18 +604,19 @@ export class MentorRequestService implements IMentorRequestService {
             if (!slotDoc) {
                 try {
                     slotDoc = await this.timeSlotRepo.create({
-                        mentorId: new mongoose.Types.ObjectId(mentorId),
-                        subjectId: new mongoose.Types.ObjectId(subjectId),
+                        mentorId: new Types.ObjectId(mentorId) as unknown as import('mongoose').Schema.Types.ObjectId,
+                        subjectId: new Types.ObjectId(subjectId) as unknown as import('mongoose').Schema.Types.ObjectId,
                         startTime: startDateTime,
                         endTime: endDateTime,
                         status: 'available',
                         maxStudents: courseType === 'group' ? 10 : 1,
                         currentStudentCount: 0
-                    } as any);
-                } catch (e: any) {
-                    if (e.code === 11000) {
+                    } as unknown as import('../interfaces/models/timeSlot.interface').ITimeSlot);
+                } catch (e) {
+                    const err = e as { code?: number };
+                    if (err.code === 11000) {
                         slotDoc = await this.timeSlotRepo.findOne({
-                            mentorId: new mongoose.Types.ObjectId(mentorId),
+                            mentorId: new Types.ObjectId(mentorId),
                             startTime: startDateTime,
                             endTime: endDateTime
                         });
@@ -509,36 +627,36 @@ export class MentorRequestService implements IMentorRequestService {
             if (!slotDoc) throw new AppError("Failed to resolve time slot", HttpStatusCode.INTERNAL_SERVER_ERROR);
 
             // 2. Reserve Slot (LOCKED state)
-            const reserved = await this.timeSlotRepo.reserveSlot((slotDoc as any)._id.toString());
+            const reserved = await this.timeSlotRepo.reserveSlot((slotDoc as unknown as { _id: { toString(): string } })._id.toString());
             if (!reserved) {
-                logger.warn(`[GenerateSessions] Slot ${(slotDoc as any)._id} already taken. Attempting to rollback and failing...`);
+                logger.warn(`[GenerateSessions] Slot ${(slotDoc as unknown as { _id: { toString(): string } })._id} already taken. Attempting to rollback and failing...`);
                 throw new AppError(`Conflict: Slot at ${startDateTime.toISOString()} is already booked.`, HttpStatusCode.CONFLICT);
             }
 
             // 3. Create Session with full links
             const sessionData = {
-                timeSlotId: (slotDoc as any)._id,
-                mentorId: new mongoose.Types.ObjectId(mentorId),
-                studentId: new mongoose.Types.ObjectId(studentId),
-                courseId: new mongoose.Types.ObjectId(courseId),
-                enrollmentId: new mongoose.Types.ObjectId(enrollmentId),
-                subjectId: new mongoose.Types.ObjectId(subjectId),
+                timeSlotId: (slotDoc as unknown as { _id: unknown })._id as import('mongoose').Schema.Types.ObjectId,
+                mentorId: new Types.ObjectId(mentorId) as unknown as import('mongoose').Schema.Types.ObjectId,
+                studentId: new Types.ObjectId(studentId) as unknown as import('mongoose').Schema.Types.ObjectId,
+                courseId: new Types.ObjectId(courseId) as unknown as import('mongoose').Schema.Types.ObjectId,
+                enrollmentId: new Types.ObjectId(enrollmentId) as unknown as import('mongoose').Schema.Types.ObjectId,
+                subjectId: new Types.ObjectId(subjectId) as unknown as import('mongoose').Schema.Types.ObjectId,
                 startTime: startDateTime,
                 endTime: endDateTime,
-                status: 'scheduled',
-                sessionType: courseType, // Use courseType parameter
+                status: 'scheduled' as const,
+                sessionType: courseType, 
                 webRTCId: uuidv4(),
                 participants: [
-                    { userId: new mongoose.Types.ObjectId(mentorId), role: 'mentor', status: 'scheduled' },
-                    { userId: new mongoose.Types.ObjectId(studentId), role: 'student', status: 'scheduled' }
+                    { userId: new Types.ObjectId(mentorId) as unknown as import('mongoose').Schema.Types.ObjectId, role: 'mentor', status: 'scheduled' },
+                    { userId: new Types.ObjectId(studentId) as unknown as import('mongoose').Schema.Types.ObjectId, role: 'student', status: 'scheduled' }
                 ],
-                mentorStatus: 'scheduled'
+                mentorStatus: 'scheduled' as const
             };
 
-            await this.sessionRepo.create(sessionData as any);
+            await this.sessionRepo.create(sessionData as unknown as import('../interfaces/models/session.interface').ISession);
 
             // 4. Confirm Booking (BOOKED state)
-            await this.timeSlotRepo.confirmBooking((slotDoc as any)._id.toString());
+            await this.timeSlotRepo.confirmBooking((slotDoc as unknown as { _id: { toString(): string } })._id.toString());
         }
     }
   }

@@ -3,17 +3,27 @@ import { Schema, Document } from "mongoose";
 export interface IEntitlements {
   maxSubjects: number;
   sessionsPerSubjectPerWeek: number;
-  totalSessionsPerWeek: number; // New: Global weekly limit
+  totalSessionsPerWeek: number; 
   canChooseMentorSlot: boolean;
-  allowedSessionTypes: ('group' | 'one-to-one')[]; // New: Supports hybrid
+  allowedSessionTypes: ('group' | 'one-to-one')[]; 
 }
 
 export interface ISubscriptionPlan extends Document {
+  planCode: string;
   name: string;
-  type: 'monthly' | 'yearly';
-  price: number;
+  maxSubjects: number;
+  sessionsPerSubjectPerWeek: number;
+  totalSessionsPerWeek: number;
+  maxStudentsAllowed: number;
+  sessionType: 'GROUP' | 'ONE_TO_ONE';
+  attendanceRequired: boolean;
+  rescheduleAllowed: boolean;
+  mentorChoice: boolean;
+  hasStudyMaterials: boolean;
+  hasExams: boolean;
+  allowedDays: string[];
+  pricePerSession: number;
   currency: string;
-  entitlements: IEntitlements;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -25,10 +35,10 @@ export interface IEnrolledSubject {
 }
 
 export interface ISubscriptionUsage {
-  enrolledSubjects: IEnrolledSubject[]; // New: Structured metadata
-  weeklySessionUsage: Map<string, number>; // key: subjectId, value: count
-  totalWeeklyUsage: number; // New: Tracks global consumption
-  currentWeekStartDate: Date; // New: Monday 00:00 alignment
+  enrolledSubjects: IEnrolledSubject[]; 
+  weeklySessionUsage: Map<string, number>; 
+  totalWeeklyUsage: number; 
+  currentWeekStartDate: Date; 
 }
 
 export interface IStudentSubscription extends Document {

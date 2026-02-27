@@ -6,6 +6,13 @@ import { HttpStatusCode } from "@/constants/httpStatus";
 import { logger } from "@/utils/logger";
 import { AppError } from "@/utils/AppError";
 
+interface ExtendedRequest extends Request {
+  user?: {
+    id: string;
+    role: 'admin' | 'mentor' | 'student';
+  };
+}
+
 @injectable()
 export class TrialClassController {
   constructor(
@@ -16,7 +23,7 @@ export class TrialClassController {
   async createTrialRequest(req: Request, res: Response): Promise<void> {
     try {
       const { subject, preferredDate, preferredTime } = req.body;
-      const studentId = req.user?.id;
+      const studentId = (req as ExtendedRequest).user?.id;
 
       if (!studentId) {
         res.status(HttpStatusCode.UNAUTHORIZED).json({
@@ -36,14 +43,14 @@ export class TrialClassController {
         message: "Trial class requested successfully",
         data: trialClass, 
       });
-    } catch (error) {
+    } catch (error: unknown) {
       this.handleError(res, error, "Failed to create trial class request");
     }
   }
 
   async getStudentTrialClasses(req: Request, res: Response): Promise<void> {
     try {
-      const studentId = req.user?.id;
+      const studentId = (req as ExtendedRequest).user?.id;
       
       if (!studentId) {
         res.status(HttpStatusCode.UNAUTHORIZED).json({
@@ -60,7 +67,7 @@ export class TrialClassController {
         message: "Trial classes fetched successfully",
         data: trialClasses,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       this.handleError(res, error, "Failed to fetch trial classes");
     }
   }
@@ -68,7 +75,7 @@ export class TrialClassController {
   async getTrialClassById(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const studentId = req.user?.id;
+      const studentId = (req as ExtendedRequest).user?.id;
 
       if (!id) {
         res.status(HttpStatusCode.BAD_REQUEST).json({
@@ -93,8 +100,38 @@ export class TrialClassController {
         message: "Trial class fetched successfully",
         data: trialClass,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       this.handleError(res, error, "Failed to fetch trial class");
+    }
+  }
+
+  // New endpoint: Get available time slots for trial classes
+  async getAvailableSlots(req: Request, res: Response): Promise<void> {
+    try {
+      const { subject, date } = req.query;
+
+      if (!subject || !date) {
+        res.status(HttpStatusCode.BAD_REQUEST).json({
+          success: false,
+          message: "Subject ID and date are required",
+        });
+        return;
+      }
+
+      const availableSlots = await this.trialService.getAvailableSlots(
+        subject as string,
+        date as string
+      );
+
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        message: availableSlots.hasAvailability 
+          ? "Available slots fetched successfully"
+          : "No slots available on this date",
+        data: availableSlots,
+      });
+    } catch (error: unknown) {
+      this.handleError(res, error, "Failed to fetch available slots");
     }
   }
 
@@ -119,7 +156,7 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
     const { subject, preferredDate, preferredTime, notes } = req.body;
-    const studentId = req.user?.id;
+    const studentId = (req as ExtendedRequest).user?.id;
 
     if (!studentId) {
       res.status(HttpStatusCode.UNAUTHORIZED).json({
@@ -148,7 +185,7 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
       message: "Trial class updated successfully",
       data: trialClass,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     this.handleError(res, error, "Failed to update trial class");
   }
   }
@@ -157,7 +194,7 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { rating, comment } = req.body;
-      const studentId = req.user?.id;
+      const studentId = (req as ExtendedRequest).user?.id;
 
       if (!studentId) {
         res.status(HttpStatusCode.UNAUTHORIZED).json({
@@ -194,7 +231,7 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
         message: "Feedback submitted successfully",
         data: trialClass,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       this.handleError(res, error, "Failed to submit feedback");
     }
   }
@@ -202,12 +239,12 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
   async completeTrialClass(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const mentorId = req.user?.id;
+      const userId = (req as ExtendedRequest).user?.id;
 
-      if (!mentorId) {
+      if (!userId) {
         res.status(HttpStatusCode.UNAUTHORIZED).json({
           success: false,
-          message: "Unauthorized: Mentor not logged in",
+          message: "Unauthorized: User not logged in",
         });
         return;
       }
@@ -220,6 +257,9 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
         return;
       }
 
+      // Verify user has access to this trial class (throws if denied)
+      await this.trialService.getTrialClassById(id, userId);
+
       const trialClass = await this.trialService.updateTrialClassStatus(id, "completed");
 
       res.status(HttpStatusCode.OK).json({
@@ -227,7 +267,7 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
         message: "Trial class marked as completed",
         data: trialClass,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       this.handleError(res, error, "Failed to complete trial class");
     }
   }

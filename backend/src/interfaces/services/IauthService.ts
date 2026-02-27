@@ -1,7 +1,7 @@
-import type { LoginUserDto } from "../../dto/auth/LoginUserDTO";
-import type { SendOtpDto } from "../../dto/auth/OtpDTO";
-import type { RegisterUserDto } from "../../dto/auth/RegisteruserDTO";
-import type { VerifyOtpDto } from "../../dto/auth/VerifyOtpDTO";
+import type { LoginUserDto } from "@/dtos/auth/LoginUserDTO";
+import type { SendOtpDto } from "@/dtos/auth/OtpDTO";
+import type { RegisterUserDto } from "@/dtos/auth/RegisteruserDTO";
+import type { VerifyOtpDto } from "@/dtos/auth/VerifyOtpDTO";
 import type { AuthUser } from "../auth/auth.interface";
 
 export interface UserContextResponse {

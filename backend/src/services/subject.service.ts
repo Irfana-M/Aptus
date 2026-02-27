@@ -1,7 +1,7 @@
 import { inject, injectable } from "inversify";
 import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository";
 import type { IGradeRepository } from "@/interfaces/repositories/IGradeRepository";
-import type { SubjectResponseDto } from "@/dto/student/subject.dto";
+import type { SubjectResponseDto } from "@/dtos/student/subject.dto";
 import { TYPES } from "@/types";
 import { logger } from "@/utils/logger";
 import { AppError } from "@/utils/AppError";

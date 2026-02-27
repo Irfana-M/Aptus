@@ -2,7 +2,7 @@ import type { IAdmin } from "../interfaces/models/admin.interface";
 import type {
   AdminLoginResponseDto,
   AdminResponseDto,
-} from "@/dto/admin/AdminLoginResponseDTO";
+} from "@/dtos/admin/AdminLoginResponseDTO";
 
 export class AdminMapper {
   static toResponseDto(admin: IAdmin): AdminResponseDto {

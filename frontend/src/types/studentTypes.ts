@@ -1,11 +1,14 @@
 export interface BaseUserResponseDto {
   id: string;
+  _id?: string;
   fullName: string;
   email: string;
   phoneNumber: string;
   role: "student" | "mentor";
   isVerified: boolean;
   isProfileComplete?: boolean;
+  profileImageUrl?: string;
+  profilePicture?: string;
 }
 
 export interface MentorBaseResponseDto extends BaseUserResponseDto {
@@ -39,12 +42,13 @@ export interface StudentBaseResponseDto extends BaseUserResponseDto {
   trialClasses?: TrialClassSummary[];
   pendingTrialClasses?: number;
   totalTrialClasses?: number;
+  isTrialCompleted?: boolean;
   subscription?: SubscriptionDetails;
 }
 
 export interface TrialClassSummary {
   id: string;
-  status: 'requested' | 'assigned' | 'completed' | 'cancelled';
+  status: 'requested' | 'assigned' | 'completed' | 'cancelled' | 'approved';
   subject: string;
   preferredDate: string;
   preferredTime: string;
@@ -93,8 +97,11 @@ export interface CourseRequest {
     email: string;
   };
   subject: string;
+  subjectId?: string;
   grade: string;
-  mentoringMode: "one-to-one" | "one-to-many";
+  gradeId?: string;
+  syllabus?: string;
+  mentoringMode: "one-to-one" | "group";
   preferredDays: string[];
   timeSlot: string;
   timezone?: string;

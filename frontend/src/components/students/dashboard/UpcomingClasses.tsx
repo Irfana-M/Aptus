@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchStudentTrialClasses } from '../../../features/trial/student/studentTrialThunk';
 import { fetchMyEnrollments } from '../../../features/student/studentThunk';
 import type { RootState, AppDispatch } from '../../../app/store';
 import { format, isAfter, startOfDay, addDays } from 'date-fns';
+import type { Course } from '../../../types/courseTypes';
 
 const UpcomingClasses: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
+    const navigate = useNavigate();
     
     const { trialClasses } = useSelector((state: RootState) => state.studentTrial);
     const { enrollments } = useSelector((state: RootState) => state.student);
@@ -14,11 +17,6 @@ const UpcomingClasses: React.FC = () => {
 
     useEffect(() => {
         if (user?._id) {
-             // Dispatch if not already loaded (optional optimization, but safe to call)
-             // We rely on ScheduleList's dispatch or just ensure it's called here too.
-             // It is better to ensure data availability on this component too.
-             // However, to avoid duplicate calls if mounted together, we can check basic state length or just rely on Redux deduping if handled (it's not usually automatic).
-             // For simplicity, we dispatch.
              dispatch(fetchStudentTrialClasses());
              dispatch(fetchMyEnrollments());
         }
@@ -38,10 +36,8 @@ const UpcomingClasses: React.FC = () => {
         trialClasses.forEach(trial => {
             if (trial.preferredDate && trial.status !== 'completed' && trial.status !== 'cancelled') {
                 const trialDate = new Date(trial.preferredDate);
-                // If it has time, we should parse it to get exact time comparison
-                // But simplified: check if date is today or future.
                 if (isAfter(trialDate, startOfDay(now))) {
-                     const subjectName = typeof trial.subject === 'object' && trial.subject ? (trial.subject as { subjectName: string }).subjectName : String(trial.subject);
+                     const subjectName = typeof trial.subject === 'object' && trial.subject ? trial.subject.subjectName : String(trial.subject);
                      allEvents.push({
                         id: trial.id,
                         title: `Trial: ${subjectName}`,
@@ -53,21 +49,38 @@ const UpcomingClasses: React.FC = () => {
             }
         });
 
-        // 2. Enrollments (Simplified look ahead for next 7 days for demo)
-        // Finding the "Next" class in a recurring schedule is complex.
-        // We will check the next 7 days for any match.
+        const getTimeForDay = (course: Course, day: string) => {
+            const schedule = course?.schedule;
+            if (schedule?.slots && schedule.slots.length > 0) {
+                const matched = schedule.slots.find((s) => s.day === day);
+                if (matched) return `${matched.startTime} - ${matched.endTime}`;
+            }
+
+            const timeSlot = schedule?.timeSlot || (course as unknown as Record<string, unknown>).timeSlot as string;
+            if (!timeSlot) return 'TBD';
+            if (!timeSlot.includes('|')) return timeSlot;
+            const parts = timeSlot.split('|');
+            if (day === 'Saturday') return parts[0];
+            if (day === 'Sunday') return parts[1];
+            return timeSlot;
+        };
+
+        // 2. Enrollments (Simplified look ahead for next 7 days)
         enrollments.forEach(enrollment => {
-             const course = enrollment.courseId;
+             const course = enrollment.course;
              if (course?.status === 'ongoing' || course?.status === 'booked') {
                  for (let i = 0; i < 7; i++) {
                      const checkDate = addDays(now, i);
-                     const dayNum = checkDate.getDay();
-                     if (course.dayOfWeek === dayNum) {
+                     const dayName = format(checkDate, 'EEEE');
+                     
+                     const isCourseDay = course.schedule?.days?.includes(dayName) || (course as unknown as Record<string, unknown>).dayOfWeek === checkDate.getDay();
+
+                     if (isCourseDay) {
                          allEvents.push({
                              id: `${enrollment._id}-${i}`,
                              title: course.subject?.subjectName || 'Course Class',
                              date: checkDate,
-                             time: course.timeSlot,
+                              time: getTimeForDay(course, dayName),
                              icon: '📚'
                          });
                      }
@@ -75,7 +88,6 @@ const UpcomingClasses: React.FC = () => {
              }
         });
 
-        // Sort by date/time
         allEvents.sort((a, b) => a.date.getTime() - b.date.getTime());
 
         return allEvents.length > 0 ? allEvents[0] : null;
@@ -88,7 +100,11 @@ const UpcomingClasses: React.FC = () => {
         <h2 className="text-lg font-bold mb-4">Upcoming Class</h2>
         <div className="space-y-3">
         {upcomingClass ? (
-            <div key={upcomingClass.id} className="bg-blue-50 rounded-lg p-4 flex items-center gap-3">
+            <div 
+                key={upcomingClass.id} 
+                onClick={() => navigate(upcomingClass.title.startsWith('Trial') ? `/trial-class/${upcomingClass.id.split('-')[0]}/call` : '/student/classroom')}
+                className="bg-blue-50 rounded-lg p-4 flex items-center gap-3 cursor-pointer hover:bg-blue-100 transition-colors border border-transparent hover:border-blue-200"
+            >
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-xl shadow-sm">
                 {upcomingClass.icon}
             </div>

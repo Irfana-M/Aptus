@@ -1,6 +1,3 @@
-/**
- * Student Onboarding Status - FSM States
- */
 export enum StudentOnboardingStatus {
   REGISTERED = 'registered',
   PROFILE_COMPLETE = 'profile_complete',
@@ -11,9 +8,7 @@ export enum StudentOnboardingStatus {
   PREFERENCES_COMPLETED = 'preferences_completed',
 }
 
-/**
- * Typed onboarding events (no strings)
- */
+
 export type OnboardingEvent =
   | 'PROFILE_COMPLETED'
   | 'TRIAL_BOOKED'

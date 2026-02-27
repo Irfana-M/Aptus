@@ -6,7 +6,25 @@ import { env } from "../utils/env";
 import type { Request, Response, NextFunction } from "express";
 import { container } from "@/inversify.config";
 import { TYPES } from "@/types";
+import rateLimit from "express-rate-limit";
 
+// Rate limiter for login and forgot-password (brute-force protection)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  message: { success: false, message: "Too many login attempts. Please try again after 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Stricter limiter for registration and OTP routes (spam protection)
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,
+  message: { success: false, message: "Too many requests. Please try again after 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 import type { AuthController } from "../controllers/auth.controller";
 import type { OtpController } from "../controllers/otp.controller";
@@ -136,12 +154,12 @@ router.get(
   }
 );
 
-router.post(AUTH_ROUTES.SIGNUP, (req, res) => authController.registerUser(req, res));
-router.post(AUTH_ROUTES.SIGNUP_VERIFY_OTP, (req, res) => otpController.verifySignupOtp(req, res));
-router.post(AUTH_ROUTES.SIGNUP_RESEND_OTP, (req, res) => otpController.resendOtp(req, res));
-router.post(AUTH_ROUTES.LOGIN, (req, res) => authController.login(req, res));
-router.post(AUTH_ROUTES.FORGOT_PASSWORD_SEND_OTP, (req, res) => authController.sendForgotPasswordOtp(req, res));
-import { requireAuth } from "@/middleware/authMiddleware";
+router.post(AUTH_ROUTES.SIGNUP, registerLimiter, (req, res) => authController.registerUser(req, res));
+router.post(AUTH_ROUTES.SIGNUP_VERIFY_OTP, registerLimiter, (req, res) => otpController.verifySignupOtp(req, res));
+router.post(AUTH_ROUTES.SIGNUP_RESEND_OTP, registerLimiter, (req, res) => otpController.resendOtp(req, res));
+router.post(AUTH_ROUTES.LOGIN, loginLimiter, (req, res) => authController.login(req, res));
+router.post(AUTH_ROUTES.FORGOT_PASSWORD_SEND_OTP, loginLimiter, (req, res) => authController.sendForgotPasswordOtp(req, res));
+import { requireAuth } from "@/middlewares/authMiddleware";
 
 router.post(AUTH_ROUTES.REFRESH, (req, res, next) => authController.refreshAccessToken(req, res, next));
 router.get(AUTH_ROUTES.ME, requireAuth, (req, res) => authController.getMe(req, res));

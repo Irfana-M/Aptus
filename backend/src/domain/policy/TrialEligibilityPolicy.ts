@@ -1,7 +1,7 @@
 import { injectable } from "inversify";
 import { AppError } from "@/utils/AppError";
 import { HttpStatusCode } from "@/constants/httpStatus";
-import type { TrialClassRequestDto } from "@/dto/student/trialClassDTO";
+import type { TrialClassRequestDto } from "@/dtos/student/trialClassDTO";
 import type { ITrialClassDocument } from "@/models/student/trialClass.model";
 import { Types } from "mongoose";
 
@@ -47,7 +47,10 @@ export class TrialEligibilityPolicy {
 
   private isStudent(trial: ITrialClassDocument, actorId: string): boolean {
       if (!trial.student) return false;
-      const studentId = trial.student instanceof Types.ObjectId ? trial.student.toString() : (trial.student as any)._id?.toString() || String(trial.student);
+      const studentId = trial.student instanceof Types.ObjectId 
+        ? trial.student.toString() 
+        : (trial.student as unknown as { _id?: { toString(): string } })._id?.toString() || 
+          (typeof trial.student === 'string' ? trial.student : String(trial.student));
       return studentId === actorId;
   }
 }

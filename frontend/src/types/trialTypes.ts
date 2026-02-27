@@ -30,6 +30,7 @@ export interface TrialClassSubject {
 export interface TrialClassMentor {
   id: string;
   name: string;
+  fullName?: string;
   email: string;
 }
 
@@ -46,7 +47,7 @@ export interface TrialClass {
   subject: TrialClassSubject;
   preferredDate: string;
   preferredTime: string;
-  status: "requested" | "assigned" | "completed" | "cancelled" | "pending" | "scheduled";
+  status: "requested" | "assigned" | "completed" | "cancelled" | "pending" | "scheduled" | "approved";
   assignedMentor?: TrialClassMentor;
   mentor?: TrialClassMentor; 
   meetLink?: string;

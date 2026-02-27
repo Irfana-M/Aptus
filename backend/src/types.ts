@@ -1,4 +1,7 @@
 const TYPES = {
+  IExampleRepository: Symbol.for("IExampleRepository"),
+  IExampleService: Symbol.for("IExampleService"),
+  IExampleController: Symbol.for("IExampleController"),
   // Repositories
   IAuthRepository: Symbol.for("IAuthRepository"),
   IAdminRepository: Symbol.for("IAdminRepository"),
@@ -25,6 +28,12 @@ const TYPES = {
   IAvailabilityRepository: Symbol.for("IAvailabilityRepository"),
   IEnrollmentLinkRepository: Symbol.for("IEnrollmentLinkRepository"),
   IMentorAssignmentRequestRepository: Symbol.for("IMentorAssignmentRequestRepository"),
+  IAttendanceRepository: Symbol.for("IAttendanceRepository"),
+  IStudyMaterialRepository: Symbol.for("IStudyMaterialRepository"),
+  IExamRepository: Symbol.for("IExamRepository"),
+  IPaymentRepository: Symbol.for("IPaymentRepository"),
+  ISubscriptionRepository: Symbol.for("ISubscriptionRepository"),
+  IAssignmentSubmissionRepository: Symbol.for("IAssignmentSubmissionRepository"),
 
 
   // Services
@@ -50,12 +59,24 @@ const TYPES = {
   ISessionService: Symbol.for("ISessionService"), // New Session Domain Service
   IAttendanceService: Symbol.for("IAttendanceService"),
   IMentorDashboardService: Symbol.for("IMentorDashboardService"),
-  IWalletService: Symbol.for("IWalletService"),
   INotificationService: Symbol.for("INotificationService"),
   INotificationManager: Symbol.for("INotificationManager"),
   ISessionAccessService: Symbol.for("ISessionAccessService"),
   IChatService: Symbol.for("IChatService"),
   ISubscriptionService: Symbol.for("ISubscriptionService"),
+  IPricingService: Symbol.for("IPricingService"),
+  IStudyMaterialService: Symbol.for("IStudyMaterialService"),
+  IExamService: Symbol.for("IExamService"),
+  IBookingSyncService: Symbol.for("IBookingSyncService"),
+  ILeaveManagementService: Symbol.for("ILeaveManagementService"),
+  ITimeSlotQueryService: Symbol.for("ITimeSlotQueryService"),
+  ISlotGenerationService: Symbol.for("ISlotGenerationService"),
+  ExamAccessPolicyService: Symbol.for("ExamAccessPolicyService"),
+  ExamScoringService: Symbol.for("ExamScoringService"),
+  ExamResultEnricher: Symbol.for("ExamResultEnricher"),
+  IStudentSubjectRepository: Symbol.for("IStudentSubjectRepository"),
+  IMentorAvailabilityRepository: Symbol.for("IMentorAvailabilityRepository"),
+  IStudentEnrollmentRepository: Symbol.for("IStudentEnrollmentRepository"),
 
   // Controllers
   AuthController: Symbol.for("AuthController"),
@@ -75,6 +96,10 @@ const TYPES = {
   EnrollmentController: Symbol.for("EnrollmentController"),
   MentorDashboardController: Symbol.for("MentorDashboardController"),
   ChatController: Symbol.for("ChatController"),
+  SubscriptionController: Symbol.for("SubscriptionController"),
+  AttendanceController: Symbol.for("AttendanceController"),
+  StudyMaterialController: Symbol.for("StudyMaterialController"),
+  ExamController: Symbol.for("ExamController"),
 
   // Middleware
   AuthMiddleware: Symbol.for("AuthMiddleware"),

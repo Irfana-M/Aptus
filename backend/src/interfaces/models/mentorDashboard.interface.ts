@@ -1,4 +1,3 @@
-
 export interface DashboardStats {
   totalClasses: number;
   upcomingToday: number;

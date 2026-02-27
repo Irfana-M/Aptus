@@ -19,18 +19,21 @@ const s3 = new S3Client({
 });
 
 export const uploadFileToS3 = async (
-  file: Express.Multer.File
+  file: Express.Multer.File,
+  prefix: string = "profile"
 ): Promise<string> => {
   const fileExtension = path.extname(file.originalname);
-  const randomName = `profile-${crypto
+  const randomName = `${prefix}-${crypto
     .randomBytes(16)
     .toString("hex")}${fileExtension}`;
 
+  // Note: By default, objects are private. We do not set ACL 'public-read' here.
   const uploadParams = {
     Bucket: process.env.AWS_S3_BUCKET || process.env.S3_BUCKET_NAME!,
     Key: randomName,
     Body: file.buffer,
     ContentType: file.mimetype,
+    ACL: "private" as const, // Ensure object is private even if bucket defaults change
   };
 
   await s3.send(new PutObjectCommand(uploadParams));

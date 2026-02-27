@@ -1,4 +1,4 @@
-import type { Schema } from "mongoose";
+import type { Types } from "mongoose";
 
 export interface Availability {
   day: string;
@@ -7,7 +7,9 @@ export interface Availability {
 }
 
 export interface SubscriptionDetails {
-  plan: 'monthly' | 'yearly'; // Deprecated
+  plan: 'monthly' | 'yearly'; 
+  planCode?: string;
+  planType?: 'basic' | 'premium';
   startDate: Date;
   endDate: Date;
   renewalDate?: Date;
@@ -15,6 +17,7 @@ export interface SubscriptionDetails {
   status: 'active' | 'expired' | 'cancelled';
   sessionId?: string;
   paymentIntentId?: string;
+  paymentId?: import('mongoose').Types.ObjectId;
   subjectCount?: number;
   availability?: Availability[];
 }
@@ -63,10 +66,10 @@ export interface AcademicDetails {
 }
 
 export interface SubjectPreference {
-  subjectId: Schema.Types.ObjectId;
+  subjectId: Types.ObjectId;
   slots: Availability[];
   status?: 'preferences_submitted' | 'mentor_requested' | 'mentor_assigned' | 'active' | 'reassigned';
-  assignedMentorId?: Schema.Types.ObjectId;
+  assignedMentorId?: Types.ObjectId;
 }
 
 export interface StudentProfile {
@@ -94,12 +97,13 @@ export interface StudentProfile {
   isProfileCompleted?: boolean;
   authProvider?: "local" | "google" | undefined;
   googleId?: string | undefined;
-  gradeId?: Schema.Types.ObjectId | undefined;
-  activeSubscriptionId?: Schema.Types.ObjectId | undefined;
+  gradeId?: Types.ObjectId | undefined;
+  activeSubscriptionId?: Types.ObjectId | undefined;
   referralCode?: string | undefined;
   referredBy?: string | undefined;
   onboardingStatus?: string | undefined;
   preferencesCompleted?: boolean | undefined;
-  preferredSubjects?: Schema.Types.ObjectId[] | undefined;
+  preferredSubjects?: Types.ObjectId[] | undefined;
   preferredTimeSlots?: SubjectPreference[] | undefined;
+  cancellationCount?: number;
 }

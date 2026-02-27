@@ -2,7 +2,8 @@ import { Router, type Request, type Response } from "express";
 import { container } from "@/inversify.config";
 import { TYPES } from "@/types";
 import { TrialClassController } from "../controllers/trialClass.controller";
-import { requireAuth } from "../middleware/authMiddleware";
+import { requireAuth } from "../middlewares/authMiddleware";
+
 import { TrialClass } from "../models/student/trialClass.model";
 
 const trialController = container.get<TrialClassController>(TYPES.TrialClassController);

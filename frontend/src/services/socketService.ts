@@ -1,35 +1,51 @@
 import { io, Socket } from 'socket.io-client';
+import { AuthContext } from '../utils/authContext';
 
 class SocketService {
   private socket: Socket | null = null;
+  private currentToken: string | null = null;
 
   connect(role?: string): Socket {
+
+    let token = null;
+
+    if (role === 'admin') {
+      token = localStorage.getItem('admin_accessToken') || localStorage.getItem('adminAccessToken');
+    } else {
+
+      const auth = AuthContext.getInstance();
+      token = auth.getTokenForCurrentRole();
+
+
+      if (!token && role && role !== 'video') {
+        token = localStorage.getItem(`${role}_accessToken`);
+      }
+
+
+      if (!token) {
+        token = localStorage.getItem('accessToken') ||
+          localStorage.getItem('student_accessToken') ||
+          localStorage.getItem('mentor_accessToken') ||
+          localStorage.getItem('admin_accessToken');
+      }
+    }
+
+
+    if (this.socket && this.currentToken !== token) {
+      this.disconnect();
+    }
+
     if (this.socket?.connected) {
-      console.log('⚡ Using existing socket connection');
       return this.socket;
     }
 
-    // Get correct token from localStorage
-    let token = null;
-    
-    if (role === 'admin') {
-      token = localStorage.getItem('admin_accessToken') || localStorage.getItem('adminAccessToken');
-    } else if (role) {
-      token = localStorage.getItem(`${role}_accessToken`) || localStorage.getItem('accessToken');
-    } else {
-      // Smart discovery
-      token = localStorage.getItem('student_accessToken') || 
-              localStorage.getItem('mentor_accessToken') || 
-              localStorage.getItem('accessToken');
-    }
-    
-    console.log('🔌 Connecting to WebSocket...');
-    console.log('📝 Token exists:', !!token);
+    this.currentToken = token;
 
-    // Use VITE_API_URL if available, otherwise default to localhost:5000
-    // We want the ORIGIN of the API URL.
-    // e.g. http://localhost:5000/api/v1 -> http://localhost:5000
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+    const apiUrl = import.meta.env.VITE_API_URL;
+    if (!apiUrl) {
+      throw new Error('VITE_API_URL is not defined');
+    }
     let socketUrl = apiUrl;
     try {
       socketUrl = new URL(apiUrl).origin;
@@ -37,32 +53,36 @@ class SocketService {
       console.warn('Invalid VITE_API_URL, using as is:', apiUrl);
     }
 
-    console.log('🌐 Connecting to Socket URL:', socketUrl);
-    
+
     this.socket = io(socketUrl, {
       auth: { token },
-      transports: ['websocket', 'polling'], // Try websocket first, then polling
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       withCredentials: true,
     });
 
-    // Add connection event listeners
+
     this.socket.on('connect', () => {
-      console.log('✅ WebSocket connected! Socket ID:', this.socket?.id);
+
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('❌ WebSocket connection error:', error.message);
-      // Helpful for debugging namespacing issues
+      console.error('❌ WebSocket connection error details:', {
+        message: error.message,
+        url: socketUrl,
+        tokenPresent: !!token,
+        transport: this.socket?.io?.opts?.transports
+      });
+
       if (error.message === 'Invalid namespace') {
         console.error('⚠️ Check if server is running on a different namespace or path.');
       }
     });
 
-    this.socket.on('disconnect', (reason) => {
-      console.log('🔌 WebSocket disconnected:', reason);
+    this.socket.on('disconnect', () => {
+
     });
 
     return this.socket;
@@ -70,10 +90,10 @@ class SocketService {
 
   disconnect() {
     if (this.socket) {
-      console.log('🔌 Disconnecting WebSocket...');
-      this.socket.removeAllListeners(); // Clean up listeners to prevent memory leaks on reconnect
+      this.socket.removeAllListeners();
       this.socket.disconnect();
       this.socket = null;
+      this.currentToken = null;
     }
   }
 

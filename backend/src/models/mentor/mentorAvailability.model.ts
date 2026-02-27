@@ -4,6 +4,8 @@ import type { IMentorAvailability } from '../../interfaces/models/mentorAvailabi
 const recurringSlotSchema = new Schema({
   startTime: { type: String, required: true },
   endTime: { type: String, required: true },
+  isBooked: { type: Boolean, default: false },
+  maxStudents: { type: Number, default: 10 },
 }, { _id: false });
 
 const mentorAvailabilitySchema = new Schema<IMentorAvailability>(

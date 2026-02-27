@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Home, User, Users, Calendar, BookOpen, FileText, ClipboardList, Bell, Clock, MessageSquare } from 'lucide-react';
+import { Home, User, Users, Calendar, BookOpen, FileText, ClipboardList, Bell, Clock } from 'lucide-react';
 import { DashboardLayout } from '../layout/DashboardLayout';
 import type { NavItem } from '../layout/DashboardSidebar';
 import { MentorSidebarProfile } from '../../pages/mentor/MentorSidebarProfile';
+import { fetchMentorProfile } from '../../features/mentor/mentorThunk';
 import { logoutUser } from '../../features/auth/authThunks';
 import type { AppDispatch, RootState } from '../../app/store';
 
@@ -19,6 +20,12 @@ export const MentorLayout: React.FC<MentorLayoutProps> = ({ children, title }) =
   const { profile } = useSelector((state: RootState) => state.mentor);
   const { user } = useSelector((state: RootState) => state.auth);
 
+  useEffect(() => {
+    if (!profile) {
+      dispatch(fetchMentorProfile());
+    }
+  }, [dispatch, profile]);
+
   const handleLogout = async () => {
     await dispatch(logoutUser());
     navigate('/login');
@@ -30,12 +37,10 @@ export const MentorLayout: React.FC<MentorLayoutProps> = ({ children, title }) =
     { icon: <Users size={20} />, label: 'Students/Batches', path: '/mentor/students' },
     { icon: <Calendar size={20} />, label: 'Attendance', path: '/mentor/attendance' },
     { icon: <BookOpen size={20} />, label: 'Classroom', path: '/mentor/classroom' },
-    { icon: <FileText size={20} />, label: 'Study Materials', path: '/mentor/materials' },
-    { icon: <ClipboardList size={20} />, label: 'Assignments', path: '/mentor/assignments' },
-    { icon: <ClipboardList size={20} />, label: 'Completed Classes', path: '/mentor/completed-trial-classes' },
-    { icon: <Bell size={20} />, label: 'Notifications', path: '/mentor/notifications' },
+    { icon: <FileText size={20} />, label: 'Study & Assignments', path: '/mentor/study-materials' },
+    { icon: <ClipboardList size={20} />, label: 'Class History', path: '/mentor/class-history' },
     { icon: <Clock size={20} />, label: 'Availability', path: '/mentor/availability' },
-    { icon: <MessageSquare size={20} />, label: 'Chats', path: '/mentor/chats' },
+    { icon: <Bell size={20} />, label: 'Notifications', path: '/notifications' },
   ];
 
   const dashboardUser = {
@@ -51,7 +56,7 @@ export const MentorLayout: React.FC<MentorLayoutProps> = ({ children, title }) =
       profile={profile ? {
         fullName: profile.fullName,
         email: profile.email,
-        profileImageUrl: profile.profilePicture as string, 
+        profileImageUrl: profile.profileImageUrl as string, 
         bio: profile.bio
       } : null} 
     />

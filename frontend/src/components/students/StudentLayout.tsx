@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../layout/DashboardLayout';
 import type { NavItem } from '../layout/DashboardSidebar';
-import { Home, User, MessageSquare, Bell, Users, FileText, BookOpen, CreditCard } from 'lucide-react';
+import { Home, User, Bell, Users, FileText, BookOpen, CreditCard } from 'lucide-react';
 import type { RootState, AppDispatch } from '../../app/store';
 import { logoutUser } from '../../features/auth/authThunks';
 import { fetchStudentProfile } from '../../features/student/studentThunk';
@@ -32,30 +32,18 @@ const StudentLayout: React.FC<StudentLayoutProps> = ({ children, title }) => {
   
   const isLocked = !!(!hasPaid && isTrialCompleted);
   
-  // Debug logging
-  React.useEffect(() => {
-    console.log('🔍 StudentLayout - Lock Status:', {
-      hasPaid,
-      isTrialCompleted,
-      isLocked,
-      profileHasPaid: profile?.hasPaid,
-      userHasPaid: user?.hasPaid,
-      profileLoaded: !!profile
-    });
-  }, [hasPaid, isTrialCompleted, isLocked, profile, user]);
+
   
   const studentNavItems: NavItem[] = [
     { icon: <Home size={20} />, label: 'Dashboard', path: '/student/dashboard' },
-    { icon: <BookOpen size={20} />, label: 'My Courses', path: '/student/my-courses' }, // New Status Page
+    { icon: <BookOpen size={20} />, label: 'My Courses', path: '/student/my-courses' },
     { icon: <User size={20} />, label: 'Profile', path: '/student/profile' },
-    { icon: <MessageSquare size={20} />, label: 'Chats', path: '/student/chats' },
-    { icon: <Bell size={20} />, label: 'Notifications', path: '/student/notifications' },
     { icon: <Users size={20} />, label: 'Classroom', path: '/student/classroom' },
-    { icon: <FileText size={20} />, label: 'Assignments', path: '/student/assignments' },
-    { icon: <BookOpen size={20} />, label: 'Study Materials', path: '/student/materials' },
+    { icon: <FileText size={20} />, label: 'Study & Assignments', path: '/student/study-materials' },
     { icon: <FileText size={20} />, label: 'Attendance', path: '/student/attendance' },
     { icon: <BookOpen size={20} />, label: 'Exams', path: '/student/exams' },
     { icon: <CreditCard size={20} />, label: 'Payments', path: '/student/payments' },
+    { icon: <Bell size={20} />, label: 'Notifications', path: '/notifications' },
   ].map(item => ({
     ...item,
     disabled: isLocked && item.path !== '/student/dashboard' && item.path !== '/student/payments' && item.path !== '/student/my-courses' && item.path !== '/student/profile'

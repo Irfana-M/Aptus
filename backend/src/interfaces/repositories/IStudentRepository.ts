@@ -1,8 +1,9 @@
+import type { ClientSession } from "mongoose";
 import type { IBaseRepository } from "./IBaseRepository";
 import type { AuthUser, StudentAuthUser } from "../auth/auth.interface";
 import type { StudentProfile } from "../models/student.interface";
-import type { StudentBaseResponseDto } from "@/dto/auth/UserResponseDTO";
-import type { StudentPaginationParams } from "@/dto/shared/paginationTypes";
+import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
+import type { StudentPaginationParams } from "@/dtos/shared/paginationTypes";
 
 export interface StudentPaginatedResult {
   students: unknown[];
@@ -33,4 +34,6 @@ export interface IStudentRepository extends IBaseRepository<StudentAuthUser> {
     status: 'mentor_assigned' | 'mentor_requested' | 'preferences_submitted',
     mentorId?: string
   ): Promise<void>;
+  searchStudents(query: string): Promise<unknown[]>;
+  incrementCancellationCount(studentId: string, session?: ClientSession): Promise<void>;
 }

@@ -1,25 +1,23 @@
 {
   "compilerOptions": {
-    "ignoreDeprecations": "6.0",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     // File Layout
     "rootDir": "./src",
     "outDir": "./dist",
-    "baseUrl": "./src",
     "paths": {
       "@/*": [
-        "*"
+        "./src/*"
       ],
       "@services/*": [
-        "interfaces/services/*"
+        "./src/interfaces/services/*"
       ],
       "@utils/*": [
-        "utils/*"
+        "./src/utils/*"
       ],
       "@constants/*": [
-        "constants/*"
-      ],
+        "./src/constants/*"
+      ]
     },
     // Environment Settings
     "module": "ESNext",
@@ -45,7 +43,7 @@
     "exactOptionalPropertyTypes": true,
     // Recommended Options
     "strict": true,
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,

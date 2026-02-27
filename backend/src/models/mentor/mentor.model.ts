@@ -59,8 +59,8 @@ const mentorSchema = new Schema<MentorProfile>(
     totalRatings: { type: Number, default: 0 },
     expertise: [{ type: String }], 
     maxStudentsPerWeek: { type: Number, default: 20 },
-    maxSessionsPerDay: { type: Number, default: 4 },
-    maxSessionsPerWeek: { type: Number, default: 20 },
+    maxSessionsPerDay: { type: Number, default: 5 },
+    maxSessionsPerWeek: { type: Number, default: 25 },
     currentWeeklyBookings: { type: Number, default: 0 },
     isActive: { type: Boolean, default: true },
     isVerified: { type: Boolean, default: false },
@@ -79,6 +79,13 @@ const mentorSchema = new Schema<MentorProfile>(
     googleId: { type: String },
     submittedForApprovalAt: { type: Date },
     rejectionReason: { type: String },
+    leaves: [{
+      startDate: { type: Date, required: true },
+      endDate: { type: Date, required: true },
+      reason: { type: String },
+      approved: { type: Boolean, default: false }
+    }],
+    commissionPercentage: { type: Number, default: 60 }
   },
 
   { timestamps: true }
@@ -88,3 +95,10 @@ export const MentorModel = mongoose.model<MentorProfile>(
   "Mentor",
   mentorSchema
 );
+
+// Register alias "mentor" for refPath compatibility
+try {
+  mongoose.model("mentor");
+} catch {
+  mongoose.model("mentor", mentorSchema);
+}

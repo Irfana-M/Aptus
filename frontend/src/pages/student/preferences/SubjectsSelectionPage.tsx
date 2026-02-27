@@ -7,20 +7,25 @@ import StudentLayout from '../../../components/students/StudentLayout';
 import { Book, Check, ChevronRight, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../../components/ui/Button';
+import type { Subject } from '../../../types/adminTypes';
 
 const SubjectsSelectionPage: React.FC = () => {
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const { profile, loading } = useAppSelector((state) => state.student);
     
-    const [subjects, setSubjects] = useState<any[]>([]);
+    const [subjects, setSubjects] = useState<Subject[]>([]);
     const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
     const [fetchingSubjects, setFetchingSubjects] = useState(false);
 
+    const [saving] = useState(false);
     const maxSubjects = profile?.subscription?.subjectCount || 1;
-    const gradeField = profile?.gradeId || (profile?.academicDetails as any)?.grade;
-    const gradeId = typeof gradeField === 'object' && gradeField !== null ? (gradeField as any)._id || (gradeField as any).id : gradeField;
-    const syllabus = (profile?.academicDetails as any)?.syllabus;
+    const isBasicPlan = 
+        profile?.subscription?.planType === 'basic' || 
+        profile?.subscription?.planCode === 'BASIC'; 
+    const gradeField = profile?.gradeId || (profile?.academicDetails as { grade?: string | { _id?: string, id?: string } })?.grade;
+    const gradeId = typeof gradeField === 'object' && gradeField !== null ? (gradeField as { _id?: string, id?: string })._id || (gradeField as { _id?: string, id?: string }).id : gradeField;
+    const syllabus = (profile?.academicDetails as { syllabus?: string })?.syllabus;
 
     useEffect(() => {
         if (!profile && !loading) {
@@ -66,11 +71,19 @@ const SubjectsSelectionPage: React.FC = () => {
             toast.error('Please select at least one subject.');
             return;
         }
+
         const selectedSubjectDetails = subjects.filter(s => selectedSubjects.includes(s.id));
-        navigate('/student/preferences/time-slots', { state: { selectedSubjects: selectedSubjectDetails } });
+        
+        // Premium Flow: Subjects -> Mentors -> Time Slots
+        if (!isBasicPlan) {
+            navigate('/student/preferences/mentors', { state: { selectedSubjects: selectedSubjectDetails } });
+        } else {
+            // Basic Flow: Subjects -> Time Slots (Shifts)
+            navigate('/student/preferences/time-slots', { state: { selectedSubjects: selectedSubjectDetails } });
+        }
     };
 
-    if (loading || fetchingSubjects) {
+    if (loading || fetchingSubjects || saving) {
         return (
             <StudentLayout title="Choose Subjects">
                 <div className="min-h-[60vh] flex items-center justify-center">
@@ -140,10 +153,10 @@ const SubjectsSelectionPage: React.FC = () => {
                         </div>
                         <Button
                             onClick={handleNext}
-                            disabled={selectedSubjects.length === 0}
+                            disabled={selectedSubjects.length === 0 || saving}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white px-12 py-4 rounded-2xl font-black flex items-center gap-3 shadow-xl shadow-indigo-100 transform transition-all active:scale-95 disabled:opacity-30 disabled:grayscale"
                         >
-                            NEXT: CHOOSE TIME SLOTS
+                            {isBasicPlan ? "CONTINUE TO SHIFTS" : "NEXT: SELECT MENTORS"}
                             <ChevronRight size={20} strokeWidth={3} />
                         </Button>
                     </div>

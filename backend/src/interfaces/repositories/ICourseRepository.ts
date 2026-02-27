@@ -1,11 +1,11 @@
-import type { CoursePaginationParams } from "@/dto/shared/paginationTypes";
+import type { CoursePaginationParams } from "@/dtos/shared/paginationTypes";
 import type { ICourse } from "@/models/course.model";
 
 export interface CreateOneToOneCourseDto {
   grade: string;
   subject: string;
   mentor: string;
-  student?: string | undefined; // Optional if course is just "available" initially, but here we seem to set it
+  student?: string | undefined; 
   dayOfWeek?: number | undefined;
   timeSlot?: string | undefined;
   schedule?: {
@@ -16,6 +16,9 @@ export interface CreateOneToOneCourseDto {
   endDate: Date;
   fee?: number | undefined;
   status?: string | undefined;
+  courseType?: "one-to-one" | "group";
+  maxStudents?: number;
+  enrolledStudents?: number;
 }
 
 export interface CoursePaginatedResult {
@@ -24,6 +27,7 @@ export interface CoursePaginatedResult {
 }
 
 import type { IBaseRepository } from "./IBaseRepository";
+import type { ClientSession } from "mongoose";
 
 export interface ICourseRepository extends IBaseRepository<ICourse> {
   /**
@@ -32,13 +36,23 @@ export interface ICourseRepository extends IBaseRepository<ICourse> {
   /**
    * Create a new enrollment (legacy course)
    */
-  createEnrollment(data: CreateOneToOneCourseDto): Promise<ICourse | null>;
+  createEnrollment(data: CreateOneToOneCourseDto, session?: ClientSession): Promise<ICourse | null>;
   getAllOneToOneCourses(): Promise<ICourse[]>;
   findAllCoursesPaginated(params: CoursePaginationParams): Promise<CoursePaginatedResult>;
   findAvailableCourses(filters: Record<string, unknown>): Promise<ICourse[]>;
-  findById(id: string): Promise<ICourse | null>;
+  findById(id: string, session?: ClientSession): Promise<ICourse | null>;
   findByStudent(studentId: string): Promise<ICourse[]>;
-  findByMentor(mentorId: string): Promise<ICourse[]>;
+  findByMentor(mentorId: string): Promise<unknown[]>;
+  findOneToOneByMentor(mentorId: string): Promise<unknown[]>;
+  findGroupBatchesByMentor(mentorId: string): Promise<unknown[]>;
+  findActiveCoursesByMentor(mentorId: string): Promise<ICourse[]>;
   updateCourseStatus(id: string, status: string, studentId?: string | null): Promise<void>;
   updateCourse(id: string, data: Partial<CreateOneToOneCourseDto>): Promise<ICourse | null>;
+  findMatchingGroupCourse(params: {
+    mentorId: string;
+    subjectId: string;
+    gradeId: string;
+    days: string[];
+    timeSlot: string;
+  }): Promise<ICourse | null>;
 }

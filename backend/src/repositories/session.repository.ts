@@ -4,6 +4,7 @@ import { BaseRepository } from "./baseRepository";
 import type { ISession } from "../interfaces/models/session.interface";
 import { SessionModel } from "../models/scheduling/session.model";
 import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository";
+import type { FilterQuery } from "mongoose";
 
 @injectable()
 export class SessionRepository extends BaseRepository<ISession> implements ISessionRepository {
@@ -18,8 +19,8 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
         { 'participants.studentId': studentId },
         { 'participants.userId': studentId }
       ],
-      status: 'scheduled',
-      startTime: { $gte: new Date() }
+      status: { $in: ['scheduled', 'in_progress', 'rescheduling'] },
+      endTime: { $gte: new Date() }
     })
     .sort({ startTime: 1 })
     .populate('subjectId')
@@ -30,8 +31,8 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
   async findUpcomingByMentor(mentorId: string): Promise<ISession[]> {
     return this.model.find({
       mentorId: mentorId,
-      status: 'scheduled',
-      startTime: { $gte: new Date() }
+      status: { $in: ['scheduled', 'in_progress'] },
+      endTime: { $gte: new Date() }
     })
     .sort({ startTime: 1 })
     .populate('subjectId')
@@ -65,5 +66,38 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
     })
     .sort({ startTime: 1 })
     .exec();
+  }
+
+  async findByTimeSlot(timeSlotId: string): Promise<ISession | null> {
+    return this.model.findOne({ timeSlotId }).exec();
+  }
+
+  async updateStatus(id: string, status: string): Promise<ISession | null> {
+    return this.model.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    ).exec();
+  }
+
+  async deleteMany(filter: FilterQuery<ISession>): Promise<void> {
+    await this.model.deleteMany(filter).exec();
+  }
+
+  async findTodayByMentor(mentorId: string, date: Date): Promise<ISession[]> {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    return this.model.find({
+      mentorId,
+      startTime: { $gte: start, $lte: end },
+      status: { $ne: 'cancelled' }
+    }).exec();
+  }
+
+  async existsByTimeSlot(timeSlotId: string): Promise<ISession | null> {
+    return this.model.findOne({ timeSlotId }).exec();
   }
 }

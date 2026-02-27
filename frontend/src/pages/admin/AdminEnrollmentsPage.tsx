@@ -69,10 +69,10 @@ const AdminEnrollmentsPage: React.FC = () => {
       header: "Student",
       accessor: (row: Enrollment) => (
         <div className="flex items-center gap-3">
-          {row.student?.profilePicture ? (
+          {(row.student?.profilePicture || (row.student as any)?.profileImage) ? (
             <img
-              src={row.student.profilePicture}
-              alt={row.student.fullName}
+              src={row.student?.profilePicture || (row.student as any)?.profileImage}
+              alt={row.student?.fullName}
               className="w-8 h-8 rounded-full object-cover"
             />
           ) : (

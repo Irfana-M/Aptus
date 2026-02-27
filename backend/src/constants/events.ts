@@ -25,6 +25,7 @@ export enum DomainEvent {
 
   // Profile/Onboarding
   PREFERENCES_SUBMITTED = 'preferences.submitted',
+  USER_REGISTERED = 'user.registered',
 
   // Legacy/Internal
   BOOKING_CREATED = 'booking.created',
@@ -32,4 +33,5 @@ export enum DomainEvent {
   BOOKING_RESCHEDULED = 'booking.rescheduled',
   // Course related
   COURSE_REQUEST_SUBMITTED = 'course.request_submitted',
+  MENTOR_STUDENT_ASSIGNED = 'mentor.student_assigned',
 }

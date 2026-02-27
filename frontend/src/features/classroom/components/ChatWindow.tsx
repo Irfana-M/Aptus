@@ -33,17 +33,25 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, currentUserId
     console.log('💬 [ChatWindow] Socket connected, attaching listeners');
 
     const handleNewMessage = (message: ChatMessage) => {
+      console.log('📩 [ChatWindow] Received new_message socket event:', message);
       dispatch(addMessage(message));
     };
 
     socket.on('new_message', handleNewMessage);
     socket.on('system_message', handleNewMessage);
 
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`📡 [ChatWindow] Listeners active for session: ${sessionId}`);
+    }
+
     return () => {
       socket.off('new_message', handleNewMessage);
       socket.off('system_message', handleNewMessage);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔇 [ChatWindow] Listeners removed for session: ${sessionId}`);
+      }
     };
-  }, [dispatch, isSocketConnected]); // Re-run when connection status changes
+  }, [dispatch, isSocketConnected, sessionId]); // Re-run when connection status changes
 
   useEffect(() => {
     scrollToBottom();
@@ -58,6 +66,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, currentUserId
     if (!inputText.trim()) return;
 
     const content = inputText.trim();
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📤 [ChatWindow] Sending message:', content);
+    }
     setInputText('');
     
     await dispatch(sendChatMessage({ sessionId, content }));

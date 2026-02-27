@@ -3,6 +3,8 @@ import { TYPES } from "../types";
 import type { Request, Response } from "express";
 import type { ICourseService } from "../interfaces/services/ICourseService";
 import { HttpStatusCode } from "../constants/httpStatus";
+import { getPaginationParams } from "@/utils/pagination.util";
+import type { CoursePaginationParams } from "@/dtos/shared/paginationTypes";
 
 @injectable()
 export class CourseController {
@@ -15,23 +17,22 @@ export class CourseController {
     res: Response
   ): Promise<void> => {
     try {
+      const { page, limit } = getPaginationParams(req.query);
       const { gradeId, subjectId, dayOfWeek, timeSlot, syllabus } = req.query;
 
-      const filters = {
-        gradeId,
-        subjectId,
-        dayOfWeek,
-        timeSlot,
-        syllabus
+      const params: CoursePaginationParams = {
+        page,
+        limit,
       };
+      if (gradeId) params.gradeId = gradeId as string;
+      if (subjectId) params.subjectId = subjectId as string;
+      if (dayOfWeek) params.dayOfWeek = parseInt(dayOfWeek as string);
+      if (timeSlot) params.timeSlot = timeSlot as string;
+      if (syllabus) params.syllabus = syllabus as string;
 
-      const courses = await this._courseService.getAvailableCourses(filters);
+      const result = await this._courseService.getAvailableCourses(params);
 
-      res.status(HttpStatusCode.OK).json({
-        success: true,
-        message: "Available courses fetched successfully",
-        data: courses,
-      });
+      res.status(HttpStatusCode.OK).json(result);
     } catch (error: unknown) {
       console.error("Error fetching available courses:", error);
       const err = error as Error;

@@ -4,8 +4,9 @@ import type { ICourseAdminService } from "../interfaces/services/ICourseAdminSer
 import {TYPES} from "@/types";
 import { HttpStatusCode } from "@/constants/httpStatus";
 import { logger } from "@/utils/logger";
-import type { SubjectResponseDto } from "@/dto/student/subject.dto";
+import type { SubjectResponseDto } from "@/dtos/student/subject.dto";
 import { AppError } from "@/utils/AppError";
+import { getPaginationParams } from "@/utils/pagination.util";
 
 @injectable()
 export class CourseAdminController {
@@ -72,108 +73,86 @@ export class CourseAdminController {
     }
   };
 
-// In your CourseAdminController.ts → getAllOneToOneCourses
 getAllOneToOneCourses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    console.log('ADMIN ROUTE HIT: /api/admin/courses/getAllCourses');
-    console.log('Authenticated user:', req.user);
-
-    // Check if pagination params are provided
-    const page = req.query.page ? parseInt(req.query.page as string) : undefined;
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+    const { page, limit } = getPaginationParams(req.query);
     const search = req.query.search as string | undefined;
     const status = req.query.status as 'available' | 'booked' | 'ongoing' | 'completed' | 'cancelled' | '' | undefined;
     const gradeId = req.query.gradeId as string | undefined;
 
-    // If any pagination/search params provided, use paginated method
-    if (page !== undefined || limit !== undefined || search || status || gradeId) {
-      logger.info("Admin: Fetching courses with pagination/filters", { page, limit, search, status, gradeId });
-      
-      const paginationParams: {
-        page: number;
-        limit: number;
-        search?: string;
-        status?: 'available' | 'booked' | 'ongoing' | 'completed' | 'cancelled' | '';
-        gradeId?: string;
-      } = {
-        page: page || 1,
-        limit: limit || 10,
-      };
-      
-      if (search) paginationParams.search = search;
-      if (status) paginationParams.status = status;
-      if (gradeId) paginationParams.gradeId = gradeId;
+    logger.info("Admin: Fetching courses with pagination/filters", { page, limit, search, status, gradeId });
+    
+    const paginationParams = {
+      page,
+      limit,
+      search,
+      status,
+      gradeId,
+    };
 
-      const result = await this.courseService.getAllCoursesPaginated(paginationParams);
-
-      res.status(HttpStatusCode.OK).json(result);
-      return;
-    }
-
-    // Fallback to original behavior for backward compatibility
-    const courses = await this.courseService.getAllOneToOneCourses();
-
-    console.log(`Found ${courses.length} courses in DB`);
-
-    res.status(HttpStatusCode.OK).json({
-      success: true,
-      data: courses,
-      message: "Courses fetched successfully",
-      count: courses.length,
-    });
+    const result = await this.courseService.getAllCoursesPaginated(paginationParams);
+    res.status(HttpStatusCode.OK).json(result);
   } catch (error: unknown) {
-    const err = error as Error;
-    console.error("ERROR in getAllOneToOneCourses:", err);
-    console.error("Error stack:", err.stack);
-    next(err);
-  }
-};
-getAllGrades = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const grades = await this.courseService.getAllGrades();
-    
-    console.log(`Backend: Found ${grades.length} grades`);
-    
-    res.status(HttpStatusCode.OK).json({
-      success: true,
-      data: grades, // MUST be an array
-      message: "Grades fetched successfully",
-    });
-  } catch (error) {
-    console.error("Backend error fetching grades:", error);
     next(error);
   }
 };
+
+getAllGrades = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const grades = await this.courseService.getAllGrades();
+    res.status(HttpStatusCode.OK).json({
+      success: true,
+      data: grades,
+      message: "Grades fetched successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 getSubjectsByGrade = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { gradeId } = req.query;
-    
-    logger.info(`AdminController: Fetching subjects for grade - ${gradeId}`);
-    
     if (!gradeId || typeof gradeId !== 'string') {
       throw new AppError("Grade ID is required", HttpStatusCode.BAD_REQUEST);
     }
-    
     const subjects = await this.courseService.getSubjectsByGrade(gradeId);
-    
-    // Transform to the expected DTO format
     const subjectDtos: SubjectResponseDto[] = subjects.map(subject => ({
       id: subject.id.toString(),
       subjectName: subject.subjectName,
       syllabus: subject.syllabus,
       grade: subject.grade,
     }));
-
-    logger.info(`AdminController: Found ${subjects.length} subjects for grade ${gradeId}`);
-    
     res.status(HttpStatusCode.OK).json({
       success: true,
       message: "Subjects fetched successfully",
-      data: subjectDtos, // Ensure this is the array in "data" field
+      data: subjectDtos,
     });
   } catch (error) {
-    logger.error(`AdminController: Error fetching subjects for grade ${req.query.gradeId}`, error);
     next(error);
   }
 };
+
+  enrollStudentToCourse = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { courseId } = req.params;
+      const { studentId } = req.body;
+      if (!courseId || !studentId) throw new AppError("Course ID and Student ID are required", HttpStatusCode.BAD_REQUEST);
+      const result = await this.courseService.enrollStudentToCourse(courseId, studentId);
+      res.status(HttpStatusCode.OK).json({ success: true, data: result, message: "Student enrolled successfully" });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  unenrollStudentFromCourse = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { courseId, studentId } = req.params;
+      if (!courseId || !studentId) throw new AppError("Course ID and Student ID are required", HttpStatusCode.BAD_REQUEST);
+      const result = await this.courseService.unenrollStudentFromCourse(courseId, studentId);
+      res.status(HttpStatusCode.OK).json({ success: true, data: result, message: "Student unenrolled successfully" });
+    } catch (err) {
+      next(err);
+    }
+  };
 }

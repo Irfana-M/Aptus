@@ -1,5 +1,6 @@
 import React from "react";
-import { Menu, Search, Bell, MessageSquare, ChevronDown } from "lucide-react";
+import { Menu, Search, MessageSquare, ChevronDown } from "lucide-react";
+import { NotificationBell } from "../common/NotificationBell";
 
 interface TopbarProps {
   onMenuToggle: () => void;
@@ -49,10 +50,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           />
         </div>
 
-        <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 group">
-          <Bell size={20} className="text-gray-600 group-hover:text-cyan-600" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
+        <NotificationBell />
 
         <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 group">
           <MessageSquare

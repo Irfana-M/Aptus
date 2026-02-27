@@ -5,10 +5,15 @@ import { fetchAllCourseRequestsAdmin, updateCourseRequestStatusAdmin } from '../
 import type { CourseRequest } from "../../types/studentTypes";
 import { Check, X, Clock, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { formatTo12Hour } from '../../utils/timeFormat';
 
 import FindMatchModal from './components/FindMatchModal';
 
-const AdminCourseRequestsPage: React.FC = () => {
+interface AdminCourseRequestsPageProps {
+    onCreateCourse?: (request: CourseRequest) => void;
+}
+
+const AdminCourseRequestsPage: React.FC<AdminCourseRequestsPageProps> = ({ onCreateCourse }) => {
     const dispatch = useDispatch<AppDispatch>();
     const { courseRequests, courseRequestsLoading, courseRequestsError } = useSelector((state: RootState) => state.admin);
     const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
@@ -119,10 +124,14 @@ const AdminCourseRequestsPage: React.FC = () => {
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-1.5 text-slate-700 font-medium">
                                                     <Clock size={14} className="text-indigo-500" />
-                                                    {request.timeSlot}
+                                                    {request.timeSlot === "MORNING" ? "Morning Batch (9AM - 1PM)" : 
+                                                     request.timeSlot === "AFTERNOON" ? "Afternoon Batch (2PM - 6PM)" :
+                                                     request.timeSlot && request.timeSlot !== "FLEXIBLE" 
+                                                        ? request.timeSlot.split('-').map(t => formatTo12Hour(t.trim())).join(' - ') 
+                                                        : 'Flexible'}
                                                 </div>
                                                 <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                                                    <span className="font-semibold bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
+                                                    <span className="font-semibold bg-indigo-50 px-1.5 py-0.5 rounded text-indigo-600">
                                                         {request.preferredDays?.join(', ')}
                                                     </span>
                                                 </div>
@@ -158,7 +167,7 @@ const AdminCourseRequestsPage: React.FC = () => {
                                                 <div className='flex gap-2'>
                                                      <button 
                                                         className="text-teal-600 hover:text-teal-900 text-xs bg-teal-50 px-3 py-1 rounded-full transition-colors font-semibold"
-                                                        onClick={() => handleOpenMatchModal(request)}
+                                                        onClick={() => onCreateCourse ? onCreateCourse(request) : handleOpenMatchModal(request)}
                                                     >
                                                         Find Match
                                                     </button>

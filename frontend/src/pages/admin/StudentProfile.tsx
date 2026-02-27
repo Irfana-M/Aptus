@@ -1,8 +1,9 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../../app/store";
 import { fetchStudentProfile, fetchAllEnrollmentsAdmin, assignMentorToStudent, reassignMentorToStudent } from "../../features/admin/adminThunk";
+import type { SubjectPreference } from "../../types/student.types";
 import { Sidebar } from "../../components/admin/Sidebar";
 import { Topbar } from "../../components/admin/Topbar";
 import FindMatchModal from "./components/FindMatchModal";
@@ -31,34 +32,55 @@ export const StudentProfilePage: React.FC = () => {
     (state: RootState) => state.admin
   );
 
-  const [sidebarOpen, setSidebarOpen] = React.useState(false);
-  const [activeNav, setActiveNav] = React.useState("Students");
-  const [isMatchModalOpen, setIsMatchModalOpen] = React.useState(false);
-  const [matchRequest, setMatchRequest] = React.useState<any>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeNav, setActiveNav] = useState("Students");
+  const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
 
-  const handleOpenMatchModal = (pref: any) => {
+  interface MatchRequest {
+    id: string;
+    _id: string;
+    subject: string;
+    subjectName: string;
+    grade: string;
+    preferredDays: string[];
+    timeSlot: string;
+    student: {
+      id: string;
+      _id: string;
+      fullName: string;
+      email: string;
+    };
+    plan?: string;
+    status: string;
+  }
+  const [matchRequest, setMatchRequest] = useState<MatchRequest | null>(null);
+
+  const handleOpenMatchModal = (pref: SubjectPreference) => {
     if (!profile) return;
     const subjectId = typeof pref.subjectId === 'object' ? pref.subjectId._id : pref.subjectId;
     const subjectName = typeof pref.subjectId === 'object' ? pref.subjectId.subjectName : `Subject ID: ${pref.subjectId}`;
     
-      const isReassign = pref.status === 'mentor_assigned' || profile.enrollments?.some((e: any) => 
-      (e.course?.subject?._id === subjectId || e.course?.subject === subjectId) && 
+      const isReassign = pref.status === 'mentor_assigned' || profile.enrollments?.some((e) => 
+      ((typeof e.course?.subject === 'object' ? e.course?.subject?._id : e.course?.subject) === subjectId) && 
       e.status === 'active'
     );
 
     setMatchRequest({
+      id: `pref-${subjectId}`,
       _id: `pref-${subjectId}`,
       subject: subjectId,
       subjectName: subjectName,
-      grade: typeof profile.gradeId === 'object' ? (profile.gradeId as any)._id : profile.gradeId,
-      preferredDays: pref.slots.map((s: any) => s.day),
+      grade: typeof profile.gradeId === 'object' ? profile.gradeId._id : (profile.gradeId || ""),
+      preferredDays: pref.slots.map((s) => s.day),
       timeSlot: pref.slots.length > 0 ? `${pref.slots[0].startTime} - ${pref.slots[0].endTime}` : "",
       student: {
+        id: profile._id,
         _id: profile._id,
-        fullName: profile.fullName
+        fullName: profile.fullName,
+        email: profile.email
       },
-      plan: profile.subscription?.plan,
-      status: isReassign ? 'active' : pref.status
+      plan: profile.subscription?.plan || "basic",
+      status: isReassign ? 'active' : (pref.status || 'preferences_submitted')
     });
     setIsMatchModalOpen(true);
   };
@@ -183,7 +205,7 @@ export const StudentProfilePage: React.FC = () => {
                     <span className="text-white font-bold text-3xl">
                       {profile.fullName
                         ?.split(" ")
-                        .map((n: string) => n[0])
+                        .map((n) => n[0])
                         .join("") || "U"}
                     </span>
                   </div>
@@ -346,7 +368,7 @@ export const StudentProfilePage: React.FC = () => {
                     Grade
                   </label>
                   <p className="text-gray-900">
-                    {typeof profile.gradeId === 'object' ? (profile.gradeId as any).name : (profile.academicDetails?.grade || "N/A")}
+                    {typeof profile.gradeId === 'object' ? profile.gradeId.name : (profile.academicDetails?.grade || "N/A")}
                   </p>
                 </div>
                 <div>
@@ -481,44 +503,111 @@ export const StudentProfilePage: React.FC = () => {
                   // Skip if it doesn't have slots (legacy format)
                   if (!pref.slots) return null;
                   
+                  const subjectIdStr = typeof pref.subjectId === 'object' && pref.subjectId !== null
+                      ? (pref.subjectId as { _id: string })._id 
+                      : pref.subjectId as string;
+                  
+                  // Find active enrollment for this subject
+                  const activeEnrollment = profile.enrollments?.find((e) => {
+                      const subj = e.course?.subject;
+                      const enrollmentSubjectId = typeof subj === 'object' && subj !== null ? (subj as { _id: string })._id : subj;
+                      return enrollmentSubjectId === subjectIdStr && e.status === 'active';
+                  });
+
+                  // Determine display data: Use Course Schedule if active, else Use Preferences
+                  const displayDays = activeEnrollment?.course?.schedule?.days || pref.slots.map((s) => s.day).sort();
+                  
+                  // Priority for displayTimeSlot:
+                  // 1. Detailed slots from course schedule (new format)
+                  // 2. timeSlot from course schedule (summarized)
+                  // 3. First preference slot (fallback)
+                  let displayTimeSlot = "";
+                  const schedule = activeEnrollment?.course?.schedule;
+                  
+                  if (schedule?.slots && schedule.slots.length > 0) {
+                      // If we have detailed slots, use them. If they all match, show one. 
+                      // Otherwise it's already "Multiple Times" or summarized in timeSlot.
+                      displayTimeSlot = schedule.timeSlot;
+                  } else if (schedule?.timeSlot) {
+                      displayTimeSlot = schedule.timeSlot;
+                  } else {
+                      displayTimeSlot = (pref.slots.length > 0 ? `${pref.slots[0].startTime} - ${pref.slots[0].endTime}` : "");
+                  }
+
+                  // Group class specific formatting for piped slots if still in timeSlot
+                  if (displayTimeSlot.includes('|')) {
+                      const slotsArr = displayTimeSlot.split('|').map(s => s.trim());
+                      displayTimeSlot = slotsArr.join(' / ');
+                  }
+                  
+                  const isEnrolled = !!activeEnrollment;
+
                   return (
-                    <div key={idx} className="border border-gray-100 rounded-lg p-4 bg-gray-50/50">
+                    <div key={idx} className={`border rounded-lg p-4 ${isEnrolled ? 'bg-indigo-50/50 border-indigo-100' : 'bg-gray-50/50 border-gray-100'}`}>
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="font-bold text-gray-900">
                           {typeof pref.subjectId === 'object' ? pref.subjectId.subjectName : `Subject ID: ${pref.subjectId}`}
                         </h3>
-                        <span className="px-2 py-1 bg-purple-100 text-purple-700 text-[10px] font-bold uppercase rounded">
-                          {pref.slots.length} Slots
-                        </span>
+                        {isEnrolled ? (
+                             <span className="px-2 py-1 bg-green-100 text-green-700 text-[10px] font-bold uppercase rounded flex items-center gap-1">
+                                <CheckCircle size={10} /> Enrolled
+                             </span>
+                        ) : (
+                             <span className="px-2 py-1 bg-purple-100 text-purple-700 text-[10px] font-bold uppercase rounded">
+                               {pref.slots.length} Slots Requested
+                             </span>
+                        )}
                       </div>
                       
                       <div className="flex flex-col gap-3">
                         <div className="space-y-2">
                           <div className="flex justify-between items-center">
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                                  (pref as any).status === 'mentor_requested' ? 'bg-yellow-100 text-yellow-800' :
-                                  (pref as any).status === 'mentor_assigned' ? 'bg-green-100 text-green-800' :
-                                  (pref as any).status === 'active' ? 'bg-indigo-100 text-indigo-800' :
+                                  isEnrolled ? 'bg-indigo-100 text-indigo-800' :
+                                  pref.status === 'mentor_requested' ? 'bg-yellow-100 text-yellow-800' :
+                                  pref.status === 'mentor_assigned' ? 'bg-green-100 text-green-800' :
                                   'bg-gray-100 text-gray-800'
                               }`}>
-                                  {(pref as any).status ? (pref as any).status.replace('_', ' ') : 'Preferences Submitted'}
+                                  {isEnrolled ? 'Course Scheduled' : (pref.status ? pref.status.replace('_', ' ') : 'Preferences Submitted')}
                               </span>
                           </div>
-                          {pref.slots.map((slot, sIdx) => (
-                            <div key={sIdx} className="flex items-center justify-between text-sm bg-white p-2 rounded border border-gray-100 shadow-sm">
-                              <span className="font-medium text-gray-700">{slot.day}</span>
-                              <span className="text-gray-500">{slot.startTime} - {slot.endTime}</span>
-                            </div>
-                          ))}
+                          
+                          {/* Display Schedule (Either Course or Preferences) */}
+                          {displayDays && displayDays.length > 0 ? (
+                              <div className="flex flex-col gap-1">
+                                  {isEnrolled ? (
+                                      <div className="text-sm bg-white p-2 rounded border border-indigo-100 shadow-sm">
+                                          <div className="flex items-center gap-2 mb-1">
+                                              <Calendar size={14} className="text-indigo-500"/>
+                                              <span className="font-semibold text-gray-900">{Array.isArray(displayDays) ? displayDays.join(', ') : displayDays}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                              <Clock size={14} className="text-indigo-500"/>
+                                              <span className="text-gray-600">{displayTimeSlot}</span>
+                                          </div>
+                                      </div>
+                                  ) : (
+                                       pref.slots.map((slot, sIdx) => (
+                                        <div key={sIdx} className="flex items-center justify-between text-sm bg-white p-2 rounded border border-gray-100 shadow-sm">
+                                          <span className="font-medium text-gray-700">{slot.day}</span>
+                                          <span className="text-gray-500">{slot.startTime} - {slot.endTime}</span>
+                                        </div>
+                                      ))
+                                  )}
+                              </div>
+                          ) : (
+                              <p className="text-sm text-gray-500 italic">No schedule details available</p>
+                          )}
                           
                           {/* Display Assigned Mentor if available */}
-                          {(pref as any).assignedMentorId && (
+                          {((pref as { assignedMentorId?: unknown }).assignedMentorId || activeEnrollment?.course?.mentor) && (
                             <div className="mt-2 p-2 bg-purple-50 rounded border border-purple-100">
                                 <span className="text-xs text-purple-600 font-bold block mb-1">ASSIGNED MENTOR</span>
                                 <div className="text-sm font-medium text-gray-800">
-                                    {typeof (pref as any).assignedMentorId === 'object' 
-                                        ? (pref as any).assignedMentorId.fullName 
-                                        : 'Mentor Assigned'}
+                                    {activeEnrollment?.course?.mentor?.fullName || 
+                                     (typeof (pref as { assignedMentorId?: unknown }).assignedMentorId === 'object' && (pref as { assignedMentorId?: { fullName?: string } }).assignedMentorId 
+                                        ? (pref as { assignedMentorId: { fullName: string } }).assignedMentorId.fullName 
+                                        : 'Mentor Assigned')}
                                 </div>
                             </div>
                           )}
@@ -526,34 +615,28 @@ export const StudentProfilePage: React.FC = () => {
 
                         {/* Improved State Display */}
                         {(() => {
-                           const subjectIdStr = typeof (pref as any).subjectId === 'object' 
-                               ? (pref as any).subjectId._id 
-                               : (pref as any).subjectId;
-                           
-                           const hasActiveEnrollment = profile.enrollments?.some((e: any) => 
-                               (e.course?.subject?._id === subjectIdStr || e.course?.subject === subjectIdStr) && 
-                               e.status === 'active'
-                           );
-
+                           // Logic for button display
                            const isMentorAssigned = 
-                               (pref as any).status === 'mentor_assigned' || 
-                               hasActiveEnrollment || 
+                               (pref as { status?: string }).status === 'mentor_assigned' || 
+                               isEnrolled || 
                                profile.onboardingStatus === 'mentor_assigned';
 
                            if (isMentorAssigned) {
                                return (
                                  <div className="space-y-3">
-                                   <div className="flex items-center gap-2 px-3 py-2 bg-green-50 text-green-700 rounded-lg border border-green-100 text-xs font-bold shadow-sm">
-                                      <CheckCircle size={14} />
-                                      MENTOR ASSIGNED
-                                   </div>
+                                   {!isEnrolled && (
+                                       <div className="flex items-center gap-2 px-3 py-2 bg-green-50 text-green-700 rounded-lg border border-green-100 text-xs font-bold shadow-sm">
+                                          <CheckCircle size={14} />
+                                          MENTOR ASSIGNED
+                                       </div>
+                                   )}
                                    
                                    <button
                                       onClick={() => handleOpenMatchModal(pref)}
                                       className="w-full py-2 bg-white text-indigo-600 border border-indigo-200 text-xs font-bold rounded-lg hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2"
                                    >
                                       <Clock size={14} />
-                                      Reassign Mentor
+                                      {isEnrolled ? "Edit / Reassign" : "Reassign Mentor"}
                                    </button>
                                  </div>
                                );
@@ -562,13 +645,14 @@ export const StudentProfilePage: React.FC = () => {
                            return (
                              <button
                                onClick={() => handleOpenMatchModal(pref)}
-                               className={`w-full py-2 text-white text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-2 ${
-                                   (pref as any).status === 'mentor_requested' ? 'bg-green-600 hover:bg-green-700' :
-                                   'bg-slate-900 hover:bg-slate-800'
+                               className={`flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg text-xs font-bold transition-all duration-200 ${
+                                 pref.status === 'mentor_requested'
+                                   ? "bg-amber-600 text-white hover:bg-amber-700 shadow-sm hover:shadow"
+                                   : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow"
                                }`}
                              >
                                <BookOpen size={14} />
-                               {(pref as any).status === 'mentor_requested' ? 'Assign Mentor' : 'Find Mentor & Book'}
+                               {pref.status === 'mentor_requested' ? 'Assign Mentor' : 'Find Mentor & Book'}
                              </button>
                            );
                         })()}
@@ -612,7 +696,17 @@ export const StudentProfilePage: React.FC = () => {
                           {(typeof trial.subject === 'object' ? trial.subject.subjectName : trial.subject) || "N/A"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {(typeof trial.mentor === 'object' ? trial.mentor.fullName : trial.assignedMentor) || "Not Assigned"}
+                          {(() => {
+                            if (typeof trial.mentor === 'object' && trial.mentor !== null) {
+                              const mentorObj = trial.mentor as { fullName?: string; name?: string };
+                              return mentorObj.fullName || mentorObj.name || "Mentor";
+                            }
+                            if (typeof trial.assignedMentor === 'object' && trial.assignedMentor !== null) {
+                                const assignedMentorObj = trial.assignedMentor as { fullName?: string; name?: string };
+                                return assignedMentorObj.fullName || assignedMentorObj.name || "Mentor";
+                            }
+                            return trial.assignedMentor || "Not Assigned";
+                          })()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span

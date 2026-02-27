@@ -1,5 +1,10 @@
+import type { Enrollment } from "./enrollmentTypes";
+import type { TrialClass } from "./trialTypes";
+
 export interface SubscriptionDetails {
   plan: 'monthly' | 'yearly';
+  planCode?: string;
+  planType?: 'basic' | 'premium';
   startDate: Date | string;
   endDate: Date | string;
   status: 'active' | 'expired' | 'cancelled';
@@ -63,12 +68,12 @@ export interface StudentProfile {
   isTrialCompleted?: boolean;
   isProfileCompleted?: boolean;
   authProvider?: "local" | "google";
-  gradeId?: string;
+  gradeId?: string | { _id: string; name: string };
   onboardingStatus?: string;
   preferencesCompleted?: boolean;
   preferredSubjects?: string[];
   preferredTimeSlots?: SubjectPreference[];
   isPaid?: boolean;
-  trialClasses?: any[];
-  enrollments?: any[];
+  trialClasses?: TrialClass[];
+  enrollments?: Enrollment[];
 }

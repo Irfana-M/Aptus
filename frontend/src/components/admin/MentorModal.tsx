@@ -1,5 +1,3 @@
-// src/components/admin/MentorModal.tsx
-
 import React from "react";
 import { AlertCircle, CheckCircle } from "lucide-react";
 import { useZodForm } from "../../hooks/useZodForm";
@@ -14,7 +12,7 @@ type FormField = "fullName" | "email" | "phoneNumber" | "location" | "bio";
 interface MentorModalProps {
   mentor?: MentorProfile | null;
   onClose: () => void;
-  onSave: (data: unknown) => void;
+  onSave: (data: Partial<MentorProfile>) => void;
   isOpen: boolean;
   loading?: boolean;
 }
@@ -55,7 +53,7 @@ export const MentorModal: React.FC<MentorModalProps> = ({
     setFieldTouched,
     validateForm,
     isFormValid,
-  } = useZodForm(schema, initialValues);
+  } = useZodForm<Partial<MentorProfile>>(schema, initialValues);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

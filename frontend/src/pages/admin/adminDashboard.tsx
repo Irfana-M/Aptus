@@ -243,62 +243,7 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Platform Overview */}
-          {/* <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Platform Overview
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Users className="text-blue-600" size={24} />
-                </div>
-                <h3 className="font-semibold text-gray-900">User Growth</h3>
-                <p className="text-gray-600 text-sm mt-1">
-                  {((totalStudents || 0) + (totalMentors || 0))} total users
-                </p>
-              </div>
-              
-              <div className="text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <BookOpen className="text-green-600" size={24} />
-                </div>
-                <h3 className="font-semibold text-gray-900">Learning Activity</h3>
-                <p className="text-gray-600 text-sm mt-1">
-                  {activeCourses} active courses running
-                </p>
-              </div>
-              
-              <div className="text-center">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <TrendingUp className="text-purple-600" size={24} />
-                </div>
-                <h3 className="font-semibold text-gray-900">Performance</h3>
-                <p className="text-gray-600 text-sm mt-1">
-                  Platform running smoothly
-                </p>
-              </div>
-            </div>
-          </div> */}
 
-          {/* Quick Actions */}
-          {/* <div className="mt-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <button className="bg-cyan-600 text-white py-3 px-4 rounded-lg hover:bg-cyan-700 transition-colors duration-200 font-medium">
-                Manage Students
-              </button>
-              <button className="bg-orange-600 text-white py-3 px-4 rounded-lg hover:bg-orange-700 transition-colors duration-200 font-medium">
-                Review Mentors
-              </button>
-              <button className="bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium">
-                View Reports
-              </button>
-              <button className="bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors duration-200 font-medium">
-                System Settings
-              </button>
-            </div>
-          </div> */}
         </div>
       </main>
     </div>

@@ -4,7 +4,7 @@ import type { StudentProfile } from "../interfaces/models/student.interface";
 import type { IVerificationRepository } from "../interfaces/repositories/IVerificationRepository";
 
 import type { IStudentAuthRepository } from "../interfaces/repositories/IStudentAuthRepository";
-import type { RegisterUserDto } from "../dto/auth/RegisteruserDTO";
+import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO";
 import type { AuthUser, StudentAuthUser } from "../interfaces/auth/auth.interface";
 // Unused BaseRepository import removed
 
@@ -31,7 +31,7 @@ export class StudentAuthRepository
         return null;
       }
       logger.info(`Student found with email: ${email}`);
-      return StudentMapper.toStudentAuthUser({ ...student, role: "student" } as StudentAuthUser);
+      return StudentMapper.toStudentAuthUser({ ...student, role: "student" } as unknown as StudentAuthUser);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       logger.error(`Error finding student by email ${email}: ${errorMessage}`);
@@ -50,7 +50,7 @@ export class StudentAuthRepository
         return null;
       }
       logger.info(`Student found with ID: ${id}`);
-      return StudentMapper.toStudentAuthUser({ ...student, role: "student" } as StudentAuthUser);
+      return StudentMapper.toStudentAuthUser({ ...student, role: "student" } as unknown as StudentAuthUser);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       logger.error(`Error finding student by ID ${id}: ${errorMessage}`);
@@ -74,7 +74,7 @@ export class StudentAuthRepository
 
       const createdStudent = await this.model.create(studentData);
       logger.info(`Student created: ${createdStudent.email}`);
-      return StudentMapper.toStudentAuthUser({ ...createdStudent.toObject(), role: "student" } as StudentAuthUser);
+      return StudentMapper.toStudentAuthUser({ ...createdStudent.toObject(), role: "student" } as unknown as StudentAuthUser);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       logger.error(`Failed to create student ${data.email}: ${errorMessage}`);
@@ -126,7 +126,7 @@ export class StudentAuthRepository
         throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
       }
       logger.info(`Student blocked successfully: ${id}`);
-      return StudentMapper.toStudentAuthUser({ ...blockedStudent, role: "student" } as StudentAuthUser);
+      return StudentMapper.toStudentAuthUser({ ...blockedStudent, role: "student" } as unknown as StudentAuthUser);
     } catch (error) {
       logger.error(`Error blocking student: ${id}`, error);
       if (error instanceof AppError) throw error;
@@ -157,7 +157,7 @@ export class StudentAuthRepository
         throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
       }
       logger.info(`Student unblocked successfully: ${id}`);
-      return StudentMapper.toStudentAuthUser({ ...unblockedStudent, role: "student" } as StudentAuthUser);
+      return StudentMapper.toStudentAuthUser({ ...unblockedStudent, role: "student" } as unknown as StudentAuthUser);
     } catch (error) {
       logger.error(`Error unblocking student: ${id}`, error);
       if (error instanceof AppError) throw error;
@@ -215,7 +215,7 @@ export class StudentAuthRepository
   ): Promise<StudentProfile | null> {
     try {
       const updateData = StudentMapper.toProfileUpdate(data);
-      const updated = await this.updateById(id, updateData as Partial<StudentAuthUser>);
+      const updated = await this.updateById(id, updateData as unknown as Partial<StudentAuthUser>);
       if (!updated) {
         logger.warn(`Student not found for profile update: ${id}`);
         return null;
@@ -283,7 +283,7 @@ export class StudentAuthRepository
  
   async create(data: Partial<StudentAuthUser>): Promise<StudentAuthUser> {
     const result = await this.model.create(data);
-    return StudentMapper.toStudentAuthUser({ ...result.toObject(), role: "student" } as StudentAuthUser);
+    return StudentMapper.toStudentAuthUser({ ...result.toObject(), role: "student" } as unknown as StudentAuthUser);
   }
 
   async updateById(id: string, data: Partial<StudentAuthUser>): Promise<StudentAuthUser> {
@@ -296,19 +296,19 @@ export class StudentAuthRepository
       throw new AppError("Student not found for update", HttpStatusCode.NOT_FOUND);
     }
     
-    return StudentMapper.toStudentAuthUser({ ...result, role: "student" } as StudentAuthUser);
+    return StudentMapper.toStudentAuthUser({ ...result, role: "student" } as unknown as StudentAuthUser);
   }
 
   async findAll(): Promise<StudentAuthUser[]> {
     const students = await this.model.find({}).lean().exec();
-    return students.map(student => StudentMapper.toStudentAuthUser({ ...student, role: "student" } as StudentAuthUser));
+    return students.map(student => StudentMapper.toStudentAuthUser({ ...student, role: "student" } as unknown as StudentAuthUser));
   }
 
   async findByReferralCode(code: string): Promise<StudentAuthUser | null> {
     try {
       const student = await this.model.findOne({ referralCode: code });
       if (!student) return null;
-      return StudentMapper.toStudentAuthUser({ ...student.toObject(), role: "student" } as StudentAuthUser);
+      return StudentMapper.toStudentAuthUser({ ...student.toObject(), role: "student" } as unknown as StudentAuthUser);
     } catch (error) {
        logger.error(`Error finding student by referral code: ${error}`);
        throw error;

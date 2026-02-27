@@ -7,11 +7,9 @@ import {
   BookOpen,
   DollarSign,
   Calendar,
-  HelpCircle,
   Bell,
   LogOut,
   LayoutDashboard,
-  FileText,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -39,21 +37,12 @@ const navItems: NavItem[] = [
   { icon: <Users size={20} />, label: "Mentor Requests", path: "/admin/mentor-requests" },
   { icon: <BookOpen size={20} />, label: "Courses", path: "/admin/courses" },
   { icon: <DollarSign size={20} />, label: "Finance", path: "/admin/finance" },
-  {
-    icon: <Calendar size={20} />,
-    label: "Statistics",
-    path: "/admin/statistics",
-  },
-  { icon: <FileText size={20} />, label: "Reports", path: "/admin/reports" },
-  { icon: <HelpCircle size={20} />, label: "Support", path: "/admin/support" },
+  { icon: <Calendar size={20} />, label: "Attendance", path: "/admin/attendance" },
   {
     icon: <Bell size={20} />,
     label: "Notifications",
-    path: "/admin/notifications",
-    badge: 3,
+    path: "/notifications",
   },
-  { icon: <Calendar size={20} />, label: "Attendance", path: "/admin/attendance" },
-  { icon: <BookOpen size={20} />, label: "Classroom", path: "/admin/classroom" },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -92,7 +81,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const handleLogout = () => {
-    console.log("Logging out...");
     adminLogout(); // Use adminLogout from the hook
 
     if (window.innerWidth < 1024) {

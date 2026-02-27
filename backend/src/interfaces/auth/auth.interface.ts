@@ -1,3 +1,4 @@
+import type { StudentOnboardingStatus } from "@/enums/studentOnboarding.enum";
 import type { SubscriptionDetails } from "../models/student.interface";
 
 export interface BaseUser {
@@ -15,14 +16,14 @@ export interface AuthUser extends BaseUser {
   fullName: string;
   phoneNumber: string;
   isProfileComplete?: boolean | undefined;
-  approvalStatus?: "pending" | "approved" | "rejected" | undefined;
+  approvalStatus?: "pending" | "approved" | "rejected" | "not_submitted" | undefined;
   id?: string | undefined;
   subscription?: SubscriptionDetails | undefined;
   isPaid?: boolean | undefined;
   hasPaid?: boolean | undefined;
   isTrialCompleted?: boolean | undefined;
   profileImageUrl?: string | null | undefined;
-  onboardingStatus?: string | undefined;
+  onboardingStatus?: StudentOnboardingStatus;
   preferencesCompleted?: boolean | undefined;
 }
 
@@ -57,10 +58,11 @@ export interface StudentAuthUser extends Omit<AuthUser, 'role'> {
   profileImage?: string;
   profileImageKey?: string;
   subscription?: SubscriptionDetails | undefined;
+  activeSubscriptionId?: string | import('mongoose').Types.ObjectId;
   preferencesCompleted?: boolean | undefined;
   
   // Profile fields
-  onboardingStatus?: 'registered' | 'profile_complete' | 'trial_booked' | 'trial_attended' | 'feedback_submitted' | 'subscribed' | 'preferences_completed' | undefined;
+  onboardingStatus?: StudentOnboardingStatus;
   age?: number | undefined;
   gender?: string | undefined;
   dateOfBirth?: Date | undefined;
@@ -83,10 +85,10 @@ export interface StudentAuthUser extends Omit<AuthUser, 'role'> {
   goal?: string | undefined;
   authProvider?: "local" | "google" | undefined;
   googleId?: string | undefined;
-  gradeId?: any | undefined;
-  preferredSubjects?: any[] | undefined;
+  gradeId?: string | undefined;
+  preferredSubjects?: string[] | undefined;
   preferredTimeSlots?: {
-    subjectId: any;
+    subjectId: string;
     slots: import("../models/student.interface").Availability[];
   }[] | undefined;
 }

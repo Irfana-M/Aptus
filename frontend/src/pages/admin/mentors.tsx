@@ -315,7 +315,7 @@ export const MentorsManagement: React.FC = () => {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              navigate(`/admin/mentor/${row._id}`);
+              navigate(`/admin/mentors/${row._id}`);
             }}
             className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors duration-200"
             title="View Profile"
@@ -511,7 +511,7 @@ export const MentorsManagement: React.FC = () => {
               data={mentors}
               loading={loading}
               onSort={handleSort}
-              onRowClick={(mentor) => navigate(`/admin/mentor/${mentor._id}`)}
+              onRowClick={(mentor) => navigate(`/admin/mentors/${mentor._id}`)}
               variant="bordered"
               emptyMessage={
                 searchTerm || Object.values(filters).some((f) => f !== "")

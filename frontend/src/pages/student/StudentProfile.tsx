@@ -10,7 +10,7 @@ import { fetchGrades } from '../../features/trial/student/studentTrialThunk';
 import { selectGrades, selectGradesLoading } from '../../features/trial/student/studentTrialSelectors';
 import { updateProfileStatus } from '../../features/auth/authSlice';
 
-// Reusable FormField Component
+
 interface FormFieldProps {
   label: string;
   type: string;
@@ -294,7 +294,10 @@ const StudentProfile: React.FC = () => {
                 {!isEditing && (
                     <button 
                         onClick={() => {
-                            const hasLockedPreferences = profile?.preferredTimeSlots?.some((p: any) => p.status && p.status !== 'preferences_submitted');
+                            const hasLockedPreferences = profile?.preferredTimeSlots?.some((p: unknown) => {
+                                const group = p as { status?: string };
+                                return group.status && group.status !== 'preferences_submitted';
+                            });
                             if (hasLockedPreferences) {
                                 toast.error("Preferences are locked because a mentor request is pending or active.");
                                 return;
@@ -302,11 +305,11 @@ const StudentProfile: React.FC = () => {
                             navigate('/student/preferences/subjects');
                         }}
                         className={`flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-colors font-medium ml-2 ${
-                             profile?.preferredTimeSlots?.some((p: any) => p.status && p.status !== 'preferences_submitted')
+                             profile?.preferredTimeSlots?.some((p: unknown) => (p as { status?: string }).status && (p as { status?: string }).status !== 'preferences_submitted')
                              ? "bg-gray-400 cursor-not-allowed" 
                              : "bg-teal-600 hover:bg-teal-700"
                         }`}
-                        title={profile?.preferredTimeSlots?.some((p: any) => p.status && p.status !== 'preferences_submitted') ? "Preferences are locked" : "Update Preferences"}
+                        title={profile?.preferredTimeSlots?.some((p: unknown) => (p as { status?: string }).status && (p as { status?: string }).status !== 'preferences_submitted') ? "Preferences are locked" : "Update Preferences"}
                     >
                         Update Preferences <ArrowRight size={16} />
                     </button>
@@ -441,11 +444,14 @@ const StudentProfile: React.FC = () => {
                                    <label className="text-xs text-gray-500 font-medium">Selected Subjects</label>
                                    <div className="flex flex-wrap gap-2 mt-2">
                                        {profile?.preferredSubjects && profile.preferredSubjects.length > 0 ? (
-                                           profile.preferredSubjects.map((subject: any, idx: number) => (
-                                               <span key={idx} className="px-3 py-1 bg-white border border-gray-100 rounded-lg text-sm text-gray-700 shadow-sm">
-                                                   {typeof subject === 'string' ? subject : subject.subjectName || 'Subject'}
-                                               </span>
-                                           ))
+                                           profile.preferredSubjects.map((subject: unknown, idx: number) => {
+                                                const subj = subject as { subjectName?: string } | string;
+                                                return (
+                                                    <span key={idx} className="px-3 py-1 bg-white border border-gray-100 rounded-lg text-sm text-gray-700 shadow-sm">
+                                                        {typeof subj === 'string' ? subj : subj.subjectName || 'Subject'}
+                                                    </span>
+                                                );
+                                            })
                                        ) : (
                                            <span className="text-sm text-gray-400 italic font-medium">No subjects selected</span>
                                        )}
@@ -455,7 +461,8 @@ const StudentProfile: React.FC = () => {
                                    <label className="text-xs text-gray-500 font-medium">Preferred Time Slots</label>
                                    <div className="space-y-2 mt-2 font-medium">
                                        {profile?.preferredTimeSlots && profile.preferredTimeSlots.length > 0 ? (
-                                           profile.preferredTimeSlots.map((group: any, gIdx: number) => {
+                                           profile.preferredTimeSlots.map((groupVal: unknown, gIdx: number) => {
+                                               const group = groupVal as { subjectId?: { subjectName?: string } | string; status?: string; slots?: { day: string; startTime: string; endTime: string }[] };
                                                // Handle both populated object and flat ID cases for subject
                                                const subjectName = typeof group.subjectId === 'object' 
                                                     ? group.subjectId?.subjectName 
@@ -475,7 +482,7 @@ const StudentProfile: React.FC = () => {
                                                    }
                                                };
 
-                                               return Array.isArray(group.slots) ? group.slots.map((slot: any, sIdx: number) => (
+                                               return Array.isArray(group.slots) ? group.slots.map((slot, sIdx: number) => (
                                                    <div key={`${gIdx}-${sIdx}`} className="flex items-center gap-2 text-sm text-gray-700 bg-white p-2 rounded-lg border border-gray-100 shadow-sm relative overflow-hidden">
                                                        {isLocked && <div className="absolute left-0 top-0 bottom-0 w-1 bg-gray-300"></div>}
                                                        <span className="text-teal-600 font-bold text-xs uppercase w-24 truncate" title={subjectName}>

@@ -50,11 +50,19 @@ export interface Certification {
 export interface TimeSlot {
   startTime: string;
   endTime: string;
+  isBooked?: boolean;
 }
 
 export interface Availability {
   day: string; 
   slots: TimeSlot[];
+}
+
+export interface LeaveEntry {
+  startDate: Date;
+  endDate: Date;
+  reason?: string;
+  approved: boolean;
 }
 
 export interface MentorProfile {
@@ -94,5 +102,7 @@ export interface MentorProfile {
   rejectionReason?: string;
   authProvider?: "local" | "google";
   googleId?: string;
-  conflictingBookings?: any[];
+  conflictingBookings?: unknown[];
+  leaves?: LeaveEntry[];
+  commissionPercentage?: number;
 }

@@ -8,7 +8,7 @@ import {
 } from "../../features/admin/adminThunk";
 import {
   selectMentorProfile,
-  selectAdminLoading,
+  selectMentorProfileLoading,
   selectAdminError,
 } from "../../features/admin/adminSelectors";
 import { clearMentorProfile } from "../../features/admin/adminSlice";
@@ -30,7 +30,7 @@ const MentorProfilePage: React.FC = () => {
   const { mentorId } = useParams<{ mentorId: string }>();
   const dispatch = useDispatch<AppDispatch>();
   const profile = useSelector(selectMentorProfile);
-  const loading = useSelector(selectAdminLoading);
+  const loading = useSelector(selectMentorProfileLoading);
   const error = useSelector(selectAdminError);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -38,8 +38,6 @@ const MentorProfilePage: React.FC = () => {
   const [imageLoading, setImageLoading] = useState(true);
 
   useEffect(() => {
-    console.log("🔄 MentorProfilePage mounted with mentorId:", mentorId);
-
     if (mentorId) {
       dispatch(fetchMentorProfileAdmin(mentorId));
     }
@@ -48,14 +46,6 @@ const MentorProfilePage: React.FC = () => {
       dispatch(clearMentorProfile());
     };
   }, [mentorId, dispatch]);
-
-  useEffect(() => {
-    if (profile) {
-      console.log("Profile data received:", profile);
-      console.log("Profile image URL:", profile.profileImageUrl);
-      console.log("Profile image key:", profile.profileImageKey);
-    }
-  }, [profile]);
 
   const handleApprove = () => {
     if (profile?._id) dispatch(approveMentorAdmin(profile._id));

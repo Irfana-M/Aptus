@@ -39,22 +39,48 @@ export class Student {
     return "bg-yellow-100 text-yellow-800";
   }
 
+  get isTrialCompleted() { return this.data.isTrialCompleted; }
+
   // Logic: Trial Class Summary
   get trialSummary() {
     const total = this.data.totalTrialClasses || 0;
     const pending = this.data.pendingTrialClasses || 0;
+    const isCompleted = this.data.isTrialCompleted;
     
-    if (total === 0) return null;
+    if (isCompleted) {
+      return {
+        text: "Trial Completed",
+        status: "completed",
+        color: "bg-green-100 text-green-800",
+        icon: "CheckCircle",
+        total,
+        pending
+      };
+    }
+
+    if (pending > 0) {
+      return {
+        text: `${pending} Trial Pending`,
+        status: "pending",
+        color: "bg-yellow-100 text-yellow-800",
+        icon: "Clock",
+        total,
+        pending
+      };
+    }
+
+    if (total > 0 && !isCompleted) {
+      return {
+        text: "Trial Scheduled",
+        status: "scheduled",
+        color: "bg-blue-100 text-blue-800",
+        icon: "Calendar",
+        total,
+        pending
+      };
+    }
     
-    let text = `${total} trial ${total === 1 ? 'class' : 'classes'}`;
-    if (pending > 0) text += ` (${pending} pending)`;
-    
-    return {
-      text,
-      hasPending: pending > 0,
-      total,
-      pending
-    };
+    return null;
   }
 
   // Subscription info

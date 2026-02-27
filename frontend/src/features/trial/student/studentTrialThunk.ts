@@ -180,3 +180,20 @@ export const updateTrialClass = createAsyncThunk<
     }
   }
 );
+
+export const fetchAvailableTrialSlots = createAsyncThunk<
+  { slots: unknown[]; hasAvailability: boolean },
+  { subjectId: string; date: string },
+  { rejectValue: string }
+>(
+  "studentTrial/fetchAvailableTrialSlots",
+  async ({ subjectId, date }, { rejectWithValue }) => {
+    try {
+      return await studentTrialApi.getAvailableTrialSlots(subjectId, date);
+    } catch (error: unknown) {
+      return rejectWithValue(
+        getApiErrorMessage(error, "Failed to fetch available slots")
+      );
+    }
+  }
+);

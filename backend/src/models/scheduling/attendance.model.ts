@@ -5,41 +5,45 @@ const attendanceSchema = new Schema<IAttendance>(
   {
     sessionId: { 
       type: Schema.Types.ObjectId, 
-      ref: 'Session', 
-      required: true 
+      required: true,
+      refPath: 'sessionModel'
+    },
+    sessionModel: {
+      type: String,
+      required: true,
+      enum: ['Session', 'TrialClass'],
+      default: 'Session'
     },
     userId: { 
       type: Schema.Types.ObjectId, 
+      refPath: 'userRole',
       required: true 
     },
     userRole: { 
       type: String, 
-      enum: ['student', 'mentor'], 
+      enum: ['Student', 'Mentor'], 
       required: true 
     },
     status: { 
       type: String, 
-      enum: ['present', 'absent', 'late', 'excused', 'half-day'], 
+      enum: ['present', 'absent'], 
       default: 'absent',
       required: true 
     },
-    durationMinutes: { type: Number, default: 0 },
-    percentageAttended: { type: Number, default: 0 },
-    isLate: { type: Boolean, default: false },
-    leftEarly: { type: Boolean, default: false },
-    metadata: {
-      firstJoinedAt: Date,
-      lastLeftAt: Date,
-      totalStays: { type: Number, default: 0 }
-    },
     isFinalized: { type: Boolean, default: false },
-    auditedBy: { type: Schema.Types.ObjectId, ref: 'User' }
+    source: {
+      type: String,
+      enum: ['manual', 'trial_derived', 'automated'],
+      default: 'manual',
+      required: true
+    },
+    auditedBy: { type: Schema.Types.ObjectId, ref: 'Admin' }
   },
   { timestamps: true, collection: 'attendance_records' }
 );
 
 // Indexes
-attendanceSchema.index({ sessionId: 1, userId: 1 }, { unique: true });
+attendanceSchema.index({ sessionId: 1, userId: 1, sessionModel: 1 }, { unique: true });
 attendanceSchema.index({ userId: 1, status: 1 });
 attendanceSchema.index({ createdAt: 1 }); // For date-range reports
 

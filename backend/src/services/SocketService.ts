@@ -11,7 +11,7 @@ import type {
   WebRTCAnswerDto, 
   WebRTCIceCandidateDto, 
   CallEndedDto 
-} from "../dto/webrtcDTO";
+} from "../dtos/webrtcDTO";
 import fs from "fs";
 import jwt from 'jsonwebtoken';
 import type { IUserRoleService } from "@/interfaces/services/IUserRoleSrvice";
@@ -19,7 +19,7 @@ import type { IUserRoleService } from "@/interfaces/services/IUserRoleSrvice";
 interface JwtPayload {
   id: string;
   email: string;
-  role: 'mentor' | 'student';
+  role: 'mentor' | 'student' | 'admin';
   iat?: number;
   exp?: number;
 }
@@ -84,7 +84,7 @@ export class SocketService implements ISocketService {
           role: decoded.role
         });
         
-        if (!['student', 'mentor'].includes(decoded.role)) {
+        if (!['student', 'mentor', 'admin'].includes(decoded.role)) {
           console.error('[SOCKET AUTH] Invalid role:', decoded.role);
           return next(new Error('Invalid role'));
         }
@@ -158,7 +158,10 @@ export class SocketService implements ISocketService {
           await socket.join(chatRoomName);
 
           const clientsInRoom = Array.from(this.io.sockets.adapter.rooms.get(roomName) || []);
-          console.log(`[JOIN-CALL] User ${socketUser.email} joined rooms: ${roomName}, ${chatRoomName}. Current clients:`, clientsInRoom);
+          const clientsInChatRoom = Array.from(this.io.sockets.adapter.rooms.get(chatRoomName) || []);
+          console.log(`[JOIN-CALL] User ${socketUser.email} joined rooms: ${roomName}, ${chatRoomName}.`);
+          console.log(`[JOIN-CALL] Clients in Video Room:`, clientsInRoom);
+          console.log(`[JOIN-CALL] Clients in Chat Room:`, clientsInChatRoom);
 
           // Call video service to join call
           const result = await this.videoCallService.joinCall({
@@ -171,9 +174,9 @@ export class SocketService implements ISocketService {
             return;
           }
 
-          // Notify everyone in the room (including sender)
-          console.log(`[JOIN-CALL] Broadcasting user-joined to room: ${roomName}`);
-          this.io.to(roomName).emit('user-joined', {
+          // Notify OTHERS in the room (exclude sender)
+          console.log(`[JOIN-CALL] Broadcasting user-joined to room: ${roomName} (excluding sender)`);
+          socket.to(roomName).emit('user-joined', {
             userId: data.userId,
             userType: data.userType,
             socketId: socket.id,

@@ -2,10 +2,13 @@ import * as React from "react";
 import Logo from "./logo";
 import { NAV_ITEMS } from "../../config/nav";
 import { Button } from "../ui/Button";
-import { Menu, X, Bell, User, LogOut, Settings } from "lucide-react";
+import { Menu, X, User, LogOut, Settings } from "lucide-react";
+import { NotificationBell } from "../common/NotificationBell";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import type { RootState, AppDispatch } from "../../app/store";
+import { fetchMentorProfile } from "../../features/mentor/mentorThunk";
+import { fetchStudentProfile } from "../../features/student/studentThunk";
 import { logoutUser } from "../../features/auth/authThunks";
 
 interface HeaderProps {
@@ -28,13 +31,24 @@ export default function Header({
   const { profile: mentorProfile } = useSelector((state: RootState) => state.mentor);
   const { profile: studentProfile } = useSelector((state: RootState) => state.student);
 
+  // Fetch profile if authenticated but profile missing
+  React.useEffect(() => {
+    if (user) {
+      if (user.role === 'mentor' && !mentorProfile) {
+        dispatch(fetchMentorProfile());
+      } else if (user.role === 'student' && !studentProfile) {
+        dispatch(fetchStudentProfile());
+      }
+    }
+  }, [user, mentorProfile, studentProfile, dispatch]);
+
   // Determine the correct profile image based on role and available data
   const getProfileImage = () => {
     if (user?.role === "mentor") {
-      return mentorProfile?.profilePicture || user?.profileImageUrl;
+      return mentorProfile?.profileImageUrl || (user?.profilePicture?.startsWith('http') ? user.profilePicture : undefined);
     }
     if (user?.role === "student") {
-      return studentProfile?.profileImageUrl || user?.profileImageUrl;
+      return studentProfile?.profileImageUrl || (user?.profilePicture?.startsWith('http') ? user.profilePicture : undefined);
     }
     return null;
   };
@@ -88,14 +102,16 @@ export default function Header({
   const handleProfileClick = () => {
     setIsUserMenuOpen(false);
     if (user?.role === "mentor") {
-      navigate("/mentor/profile-setup");
+      navigate("/mentor/dashboard");
+    } else if (user?.role === "student") {
+      navigate("/student/dashboard");
     } else {
-      navigate("/student/profile");
+      navigate("/login");
     }
   };
 
   const userNavigation = [
-    { name: "Your Profile", onClick: handleProfileClick, icon: User },
+    { name: "Your Dashboard", onClick: handleProfileClick, icon: User },
     { name: "Settings", onClick: () => navigate("/settings"), icon: Settings },
     { name: "Sign out", onClick: handleLogout, icon: LogOut },
   ];
@@ -163,12 +179,7 @@ export default function Header({
           {user ? (
             <>
               {/* Notification Bell */}
-              <button className="p-2 hover:bg-slate-100 rounded-full relative transition-colors">
-                <Bell className="w-5 h-5 text-slate-600" />
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                  3
-                </span>
-              </button>
+              <NotificationBell />
 
               {/* User Menu */}
               <div className="relative user-menu">

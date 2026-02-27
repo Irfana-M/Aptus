@@ -58,6 +58,7 @@ interface ValidationErrors {
 }
 
 const TIME_SLOTS = [
+  "08:00-09:00",
   "09:00-10:00",
   "10:00-11:00",
   "11:00-12:00",
@@ -69,6 +70,7 @@ const TIME_SLOTS = [
   "17:00-18:00",
   "18:00-19:00",
   "19:00-20:00",
+  "20:00-21:00",
 ];
 
 const DAYS_OF_WEEK = [

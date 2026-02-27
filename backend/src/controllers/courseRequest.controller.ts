@@ -2,6 +2,8 @@ import { injectable, inject } from "inversify";
 import { TYPES } from "../types";
 import type { Request, Response, NextFunction } from 'express';
 import type { ICourseRequestService } from '../interfaces/services/ICourseRequestService';
+import { getPaginationParams } from "@/utils/pagination.util";
+import { logger } from "@/utils/logger";
 
 interface AuthRequest extends Request {
   user?: {
@@ -82,16 +84,16 @@ export class CourseRequestController {
   
   public getAllRequests = async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
     try {
-      const requests = await this._service.getAllRequests();
+      const { page, limit } = getPaginationParams(req.query);
+      logger.info(`Fetching paginated course requests - Page: ${page}, Limit: ${limit}`);
 
-      res.status(200).json({
-        message: 'Course requests fetched successfully',
-        data: requests
-      });
+      const result = await this._service.getAllRequestsPaginated({ page, limit });
+
+      res.status(200).json(result);
     } catch (error: unknown) {
       console.error('Error fetching course requests:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
-      res.status(500).json({ message: 'Internal server error', error: message });
+      res.status(500).json({ success: false, message: 'Internal server error', error: message });
     }
   }
 

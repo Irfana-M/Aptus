@@ -28,7 +28,7 @@ import {
   fetchAllTrialClassesAdmin,
   updateTrialClassStatus,
   fetchAvailableMentorsForCourse,
-  createOneToOneCourse,
+  createCourseThunk,
   updateCourseAdmin,
   type AvailableMentorDto,
   fetchAllCoursesAdmin,
@@ -44,11 +44,11 @@ import {
 } from "./adminThunk";
 import { loginUser, refreshAccessToken } from "../auth/authThunks";
 import type { AdminLoginResponse } from "../../types/dtoTypes";
-import type { StudentBaseResponseDto, CourseRequest } from "../../types/studentTypes";
+import type { StudentBaseResponseDto } from "../../types/studentTypes";
 import type { StudentProfile } from "../../types/student.types";
 import type { TrialClass } from "../../types/trialTypes";
 import type { AddStudentResponseDto } from "./adminApi";
-import type { AvailableMentor } from "../../types/adminTypes";
+import type { MentorRequestListItem, CourseRequest } from "../../types/adminTypes";
 import type { Course } from "../../types/courseTypes";
 import type { Enrollment } from "../../types/enrollmentTypes";
 
@@ -91,7 +91,7 @@ interface AdminState {
   studentsList: StudentBaseResponseDto[];
   selectedStudent: StudentBaseResponseDto | null;
   trialClasses: TrialClass[];
-  availableMentors: AvailableMentor[];
+  availableMentors: { matches: AvailableMentorDto[]; alternates: AvailableMentorDto[] };
   studentsPagination: PaginationState;
   trialClassDetails: TrialClass | null;
   availableMentorsForCourse: { matches: AvailableMentorDto[]; alternates: AvailableMentorDto[] };
@@ -122,7 +122,7 @@ interface AdminState {
   trialClassesLoading: boolean;
   trialClassDetailsLoading: boolean;
   coursesLoading: boolean;
-  mentorAssignmentRequests: any[]; // using any for now, ideally strictly typed
+  mentorAssignmentRequests: MentorRequestListItem[]; // strictly typed
 }
 
 const hasToken = !!(localStorage.getItem("admin_accessToken") || localStorage.getItem("adminAccessToken"));
@@ -147,7 +147,7 @@ const initialState: AdminState = {
   error: null,
   success: null,
   trialClasses: [],
-  availableMentors: [],
+  availableMentors: { matches: [], alternates: [] },
   studentsPagination: {
     currentPage: 1,
     totalPages: 0,
@@ -237,7 +237,7 @@ const adminSlice = createSlice({
       state.success = null;
     },
     clearAvailableMentors: (state) => {
-      state.availableMentors = [];
+      state.availableMentors = { matches: [], alternates: [] };
     },
     setStudentsPagination(state, action: PayloadAction<Partial<PaginationState>>) {
       state.studentsPagination = { ...state.studentsPagination, ...action.payload };
@@ -536,9 +536,13 @@ const adminSlice = createSlice({
         state.mentorsLoading = true;
         state.error = null;
       })
-      .addCase(fetchAvailableMentors.fulfilled, (state, action: PayloadAction<AvailableMentor[]>) => {
+      .addCase(fetchAvailableMentors.fulfilled, (state, action: PayloadAction<{ matches: AvailableMentorDto[]; alternates: AvailableMentorDto[] } | AvailableMentorDto[]>) => {
         state.mentorsLoading = false;
-        state.availableMentors = action.payload;
+        if (Array.isArray(action.payload)) {
+          state.availableMentors = { matches: action.payload, alternates: [] };
+        } else {
+          state.availableMentors = action.payload;
+        }
       })
       .addCase(fetchAvailableMentors.rejected, (state, action) => {
         state.mentorsLoading = false;
@@ -553,7 +557,7 @@ const adminSlice = createSlice({
       })
       .addCase(assignMentorToTrialClass.fulfilled, (state) => {
         state.loading = false;
-        state.availableMentors = []; 
+        state.availableMentors = { matches: [], alternates: [] }; 
       })
       .addCase(assignMentorToTrialClass.rejected, (state, action) => {
         state.loading = false;
@@ -646,18 +650,18 @@ builder
   state.courseCreationError = action.payload as string;
 })
 
-// Create 1:1 course
-.addCase(createOneToOneCourse.pending, (state) => {
+// Create course
+.addCase(createCourseThunk.pending, (state) => {
   state.courseCreationLoading = true;
   state.courseCreationError = null;
   state.courseCreationSuccess = false;
 })
-.addCase(createOneToOneCourse.fulfilled, (state) => {
+.addCase(createCourseThunk.fulfilled, (state) => {
   state.courseCreationLoading = false;
   state.courseCreationSuccess = true;
   state.availableMentorsForCourse = { matches: [], alternates: [] }; // reset
 })
-.addCase(createOneToOneCourse.rejected, (state, action) => {
+.addCase(createCourseThunk.rejected, (state, action) => {
   state.courseCreationLoading = false;
   state.courseCreationError = action.payload as string;
   state.courseCreationSuccess = false;

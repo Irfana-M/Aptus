@@ -1,55 +1,61 @@
-import type { NotificationType, NotificationChannel } from '../models/notification.interface';
+import type { NotificationType, NotificationChannel, INotification } from '../models/notification.interface';
 
 export interface INotificationService {
   notifyUser(
-    userId: string | any, 
+    userId: string, 
     userRole: 'student' | 'mentor' | 'admin', 
     type: NotificationType, 
-    payload: any,
+    payload: Record<string, unknown>,
     channels?: NotificationChannel[]
   ): Promise<void>;
   
   processQueue(): Promise<void>;
 
   createNotification(
-    userId: string | any,
+    userId: string,
     userRole: 'student' | 'mentor' | 'admin',
     type: NotificationType,
     title: string,
     message: string,
-    metadata?: any
-  ): Promise<any>;
+    metadata?: Record<string, unknown>
+  ): Promise<INotification>;
 
   notifyPreferencesSubmitted(
-    studentId: string | any,
+    studentId: string,
     studentName: string,
     subjectName: string,
-    adminId: string | any
+    adminId: string
   ): Promise<void>;
 
   notifyMentorRequestSubmitted(
-    studentId: string | any,
+    studentId: string,
     studentName: string,
     mentorName: string,
     subjectName: string,
-    adminId: string | any
+    adminId: string
   ): Promise<void>;
 
   notifyMentorAssigned(
-    studentId: string | any,
+    studentId: string,
     studentName: string,
-    mentorId: string | any,
+    mentorId: string,
     mentorName: string,
     subjectName: string
   ): Promise<void>;
 
   notifyMentorRequestRejected(
-    studentId: string | any,
+    studentId: string,
     mentorName: string,
     subjectName: string,
     reason?: string
   ): Promise<void>;
 
-  getUserNotifications(userId: string, role: string): Promise<any[]>;
+  notifyTrialCompleted(
+    studentId: string,
+    studentName: string,
+    subjectName: string
+  ): Promise<void>;
+
+  getUserNotifications(userId: string, role: string): Promise<INotification[]>;
   markAsRead(notificationId: string): Promise<void>;
 }

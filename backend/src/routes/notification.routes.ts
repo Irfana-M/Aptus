@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { container } from '../inversify.config';
 import { TYPES } from '../types';
 import { NotificationController } from '../controllers/notification.controller';
-import { AuthMiddleware } from '../middleware/authMiddleware';
+import { AuthMiddleware } from '../middlewares/authMiddleware';
 
 const router = Router();
 const notificationService = container.get<INotificationService>(TYPES.INotificationService);

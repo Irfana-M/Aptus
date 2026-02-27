@@ -210,4 +210,122 @@ export class MentorController {
         .json({ success: false, message: error.message });
     }
   };
+
+  getAvailableSlots = async (req: Request, res: Response) => {
+    try {
+      const mentorId = req.params.mentorId;
+      if (!mentorId) {
+        logger.error("getAvailableSlots: Missing mentorId");
+        return res
+          .status(HttpStatusCode.BAD_REQUEST)
+          .json({ success: false, message: "Mentor ID is required" });
+      }
+
+      const slots = await this._mentorService.getMentorAvailableSlots(mentorId);
+      logger.info(`Fetched available slots for mentor ${mentorId}`);
+      return res.status(HttpStatusCode.OK).json({ success: true, data: slots });
+    } catch (err: unknown) {
+      const error = err as Error;
+      logger.error(`Error in getAvailableSlots: ${error.message}`);
+      return res
+        .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
+        .json({ success: false, message: error.message });
+    }
+  };
+
+  requestLeave = async (req: Request, res: Response) => {
+    try {
+      const mentorId = req.user?.id;
+      if (!mentorId) {
+        return res.status(HttpStatusCode.UNAUTHORIZED).json({ success: false, message: "Unauthorized" });
+      }
+
+      const { startDate, endDate, reason } = req.body;
+      if (!startDate || !endDate) {
+        return res.status(HttpStatusCode.BAD_REQUEST).json({ success: false, message: "Dates are required" });
+      }
+
+      await this._mentorService.requestLeave(mentorId, new Date(startDate), new Date(endDate), reason);
+      return res.status(HttpStatusCode.OK).json({ success: true, message: "Leave requested successfully" });
+    } catch (err: unknown) {
+      const error = err as Error;
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: error.message });
+    }
+  };
+
+  approveLeave = async (req: Request, res: Response) => {
+    try {
+      const adminId = req.user?.id;
+      const { mentorId, leaveId } = req.params;
+
+      if (!adminId || !mentorId || !leaveId) {
+        return res.status(HttpStatusCode.BAD_REQUEST).json({ success: false, message: "Missing required params" });
+      }
+
+      await this._mentorService.approveLeave(mentorId, leaveId, adminId);
+      return res.status(HttpStatusCode.OK).json({ success: true, message: "Leave approved successfully" });
+    } catch (err: unknown) {
+      const error = err as Error;
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: error.message });
+    }
+  };
+
+  getDailySessions = async (req: Request, res: Response) => {
+    try {
+      const mentorId = req.user?.id;
+      if (!mentorId) {
+        return res.status(HttpStatusCode.UNAUTHORIZED).json({ success: false, message: "Unauthorized" });
+      }
+
+      // Default to today if no date provided
+      const dateParam = req.query.date as string | undefined;
+      const date = dateParam ? new Date(dateParam) : new Date();
+
+      if (isNaN(date.getTime())) {
+          return res.status(HttpStatusCode.BAD_REQUEST).json({ success: false, message: "Invalid date format" });
+      }
+
+      const sessions = await this._mentorService.getMentorDailySessions(mentorId, date);
+      
+      return res.status(HttpStatusCode.OK).json({ success: true, data: sessions });
+    } catch (err: unknown) {
+      const error = err as Error;
+      logger.error(`Error in getDailySessions: ${error.message}`);
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: error.message });
+    }
+  };
+
+  // Get only one-to-one students
+  getOneToOneStudents = async (req: Request, res: Response) => {
+    try {
+      const mentorId = req.user?.id;
+      if (!mentorId) {
+        return res.status(HttpStatusCode.UNAUTHORIZED).json({ success: false, message: "Unauthorized" });
+      }
+
+      const students = await this._mentorService.getOneToOneStudents(mentorId);
+      return res.status(HttpStatusCode.OK).json({ success: true, data: students });
+    } catch (err: unknown) {
+      const error = err as Error;
+      logger.error(`Error in getOneToOneStudents: ${error.message}`);
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: error.message });
+    }
+  };
+
+  // Get only group batches
+  getGroupBatches = async (req: Request, res: Response) => {
+    try {
+      const mentorId = req.user?.id;
+      if (!mentorId) {
+        return res.status(HttpStatusCode.UNAUTHORIZED).json({ success: false, message: "Unauthorized" });
+      }
+
+      const batches = await this._mentorService.getGroupBatches(mentorId);
+      return res.status(HttpStatusCode.OK).json({ success: true, data: batches });
+    } catch (err: unknown) {
+      const error = err as Error;
+      logger.error(`Error in getGroupBatches: ${error.message}`);
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: error.message });
+    }
+  };
 }

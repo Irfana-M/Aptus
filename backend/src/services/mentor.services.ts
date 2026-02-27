@@ -8,16 +8,21 @@ import type { AuthUser } from "../interfaces/auth/auth.interface";
 import type { IEmailService } from "../interfaces/services/IEmailService";
 import type { MentorProfile } from "../interfaces/models/mentor.interface";
 import type { IMentorService } from "../interfaces/services/IMentorService";
+import type { ISessionRepository } from '../interfaces/repositories/ISessionRepository';
+import type { ISchedulingService } from '../interfaces/services/ISchedulingService';
+import type { ICourseRepository } from '../interfaces/repositories/ICourseRepository';
+import type { IMentorAvailabilityRepository } from '../interfaces/repositories/IMentorAvailabilityRepository';
+import type { ITimeSlotRepository } from '../interfaces/repositories/ITimeSlotRepository';
 import { logger } from "../utils/logger";
 import { getErrorMessage } from "../utils/errorUtils";
 import { uploadFileToS3 } from "../utils/s3Upload";
 import { TYPES } from '../types';
-import type { RegisterUserDto } from '@/dto/auth/RegisteruserDTO';
-import type { MentorResponseDto } from '@/dto/mentor/MentorResponseDTO';
+import { Types } from 'mongoose';
+import type { RegisterUserDto } from '@/dtos/auth/RegisteruserDTO';
+import type { MentorResponseDto } from '@/dtos/mentor/MentorResponseDTO';
 import { MentorMapper } from '@/mappers/MentorMapper';
 import { TrialClassMapper } from '@/mappers/trialClassMapper';
-import type { TrialClassResponseDto } from "@/dto/student/trialClassDTO";
-import { MentorAvailabilityModel } from '../models/mentor/mentorAvailability.model';
+import type { TrialClassResponseDto } from "@/dtos/student/trialClassDTO";
 
 @injectable()
 export class MentorService implements IMentorService {
@@ -25,7 +30,12 @@ export class MentorService implements IMentorService {
     @inject(TYPES.IMentorAuthRepository) private _mentorAuthRepo: IMentorAuthRepository,
     @inject(TYPES.IMentorRepository) private _mentorRepo: IMentorRepository,
     @inject(TYPES.ITrialClassRepository) private _trialClassRepo: ITrialClassRepository,
-    @inject(TYPES.IEmailService) private _emailService: IEmailService
+    @inject(TYPES.IEmailService) private _emailService: IEmailService,
+    @inject(TYPES.ISchedulingService) private _schedulingService: ISchedulingService,
+    @inject(TYPES.ISessionRepository) private _sessionRepo: ISessionRepository,
+    @inject(TYPES.ICourseRepository) private _courseRepo: ICourseRepository,
+    @inject(TYPES.IMentorAvailabilityRepository) private _mentorAvailabilityRepo: IMentorAvailabilityRepository,
+    @inject(TYPES.ITimeSlotRepository) private _timeSlotRepo: ITimeSlotRepository
   ) {}
 
 
@@ -55,8 +65,7 @@ export class MentorService implements IMentorService {
 
   async updateMentorProfile(
     mentorId: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    data: any
+    data: Record<string, unknown> & Partial<MentorProfile>
   ): Promise<MentorProfile> {
     try {
       logger.info(`Starting profile update for mentor: ${mentorId}`);
@@ -67,17 +76,21 @@ export class MentorService implements IMentorService {
         throw new Error("Mentor not found");
       }
 
-      const updateData: Partial<MentorProfile> = {
-        fullName: data.fullName || mentor.fullName,
-        email: data.email || mentor.email,
-        phoneNumber: data.phoneNumber || mentor.phoneNumber,
-        location: data.location || mentor.location,
-        bio: data.bio || mentor.bio,
-        isProfileComplete:
-          data.isProfileComplete !== undefined
-            ? data.isProfileComplete === "true"
-            : mentor.isProfileComplete ?? false,
-      };
+      const updateData: Partial<MentorProfile> = {} as Partial<MentorProfile>;
+      
+      if (data.fullName !== undefined) updateData.fullName = data.fullName as string;
+      if (data.email !== undefined) updateData.email = data.email as string;
+      if (data.phoneNumber !== undefined) updateData.phoneNumber = data.phoneNumber as string;
+      if (data.location !== undefined) updateData.location = data.location as string;
+      if (data.bio !== undefined) updateData.bio = data.bio as string;
+      
+      if (data.isProfileComplete !== undefined) {
+          updateData.isProfileComplete = typeof data.isProfileComplete === "string" 
+            ? data.isProfileComplete === "true" 
+            : !!data.isProfileComplete;
+      } else if (mentor.isProfileComplete !== undefined) {
+          updateData.isProfileComplete = mentor.isProfileComplete;
+      }
 
       logger.debug(`Processing update data for mentor: ${mentorId}`, {
         updateData,
@@ -163,7 +176,7 @@ export class MentorService implements IMentorService {
       if (data.profilePicture) {
         try {
           updateData.profilePicture = await this.handleProfilePictureUpload(
-            data.profilePicture
+            data.profilePicture as unknown as { originalname: string; mimetype: string; size: number }
           );
           logger.debug(`Processed profile picture for mentor: ${mentorId}`);
         } catch (uploadError: unknown) {
@@ -319,8 +332,7 @@ export class MentorService implements IMentorService {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async handleProfilePictureUpload(file: any): Promise<string> {
+  private async handleProfilePictureUpload(file: { originalname: string; mimetype: string; size: number }): Promise<string> {
     try {
       logger.debug("Handling profile picture upload:", {
         originalname: file.originalname,
@@ -343,7 +355,7 @@ export class MentorService implements IMentorService {
       const maxSize = 5 * 1024 * 1024;
       if (file.size > maxSize) throw new Error("File too large (max 5MB)");
 
-      const imageUrl = await uploadFileToS3(file);
+      const imageUrl = await uploadFileToS3(file as unknown as Express.Multer.File);
 
       logger.info(`Profile picture uploaded successfully to S3: ${imageUrl}`);
       return imageUrl;
@@ -362,6 +374,76 @@ export class MentorService implements IMentorService {
       logger.error(`Error in getMentorTrialClasses for mentor ${mentorId}: ${getErrorMessage(error)}`);
       throw error;
     }
+  }
+
+  async getMentorDailySessions(mentorId: string, date: Date): Promise<unknown[]> {
+    try {
+      logger.info(`Fetching daily sessions for mentor: ${mentorId} on ${date}`);
+      
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const [sessions, trialClasses] = await Promise.all([
+        this._sessionRepo.findTodayByMentor(mentorId, date),
+        this._trialClassRepo.findTodayTrialClasses(mentorId)
+      ]);
+
+      const formattedSessions = sessions.map(s => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        id: (s as any)._id.toString(),
+        type: 'regular',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        subject: (s.subjectId as any).subjectName || 'Subject',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        studentName: (s.studentId as any)?.fullName || ((s.participants && s.participants.find((p: any) => p.role === 'student')?.userId) as any)?.fullName || 'Student',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        studentImage: (s.studentId as any)?.profileImage || ((s.participants && s.participants.find((p: any) => p.role === 'student')?.userId) as any)?.profileImage || '',
+        startTime: s.startTime,
+        endTime: s.endTime,
+        status: s.status,
+        meetLink: s.webRTCId ? `/meet/${s.webRTCId}` : undefined // Assuming webRTCId is used for link
+      }));
+
+      const formattedTrials = trialClasses.map(t => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        id: (t as any)._id.toString(),
+        type: 'trial',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        subject: (t.subject as any).subjectName || 'Trial Subject',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        studentName: (t.student as any).fullName || 'Trial Student',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        studentImage: (t.student as any).profilePicture || '',
+        // Trial classes store preferredTime as string "HH:MM", construct Date
+        startTime: this._combineDateAndTime(t.preferredDate, t.preferredTime),
+        endTime: this._combineDateAndTime(t.preferredDate, t.preferredTime, 60), // Assume 1 hour for trial
+        status: t.status,
+        meetLink: t.meetLink
+      }));
+
+      const combined = [...formattedSessions, ...formattedTrials].sort((a, b) => 
+        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+      );
+
+      return combined;
+    } catch (error: unknown) {
+      logger.error(`Error in getMentorDailySessions for mentor ${mentorId}: ${getErrorMessage(error)}`);
+      throw error;
+    }
+  }
+
+  private _combineDateAndTime(date: Date, timeStr: string, durationMinutes: number = 0): Date {
+      const d = new Date(date);
+      const timeParts = timeStr.split(':').map(Number);
+      const hours = timeParts[0] ?? 0;
+      const minutes = timeParts[1] ?? 0;
+      d.setHours(hours, minutes, 0, 0);
+      if (durationMinutes > 0) {
+          d.setMinutes(d.getMinutes() + durationMinutes);
+      }
+      return d;
   }
 
    async getById(id: string): Promise<MentorResponseDto | null> {
@@ -416,8 +498,8 @@ export class MentorService implements IMentorService {
           endTime: s.endTime
         }));
 
-        await MentorAvailabilityModel.findOneAndUpdate(
-          { mentorId: mentorId as any, dayOfWeek },
+        await this._mentorAvailabilityRepo.findOneAndUpdate(
+          { mentorId: new Types.ObjectId(mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId, dayOfWeek },
           { slots, isActive: true },
           { upsert: true, new: true }
         );
@@ -432,4 +514,260 @@ export class MentorService implements IMentorService {
       throw error;
     }
   }
+
+
+  /**
+   * Helper: Get start and end of week (Monday to Sunday) for a given date
+   */
+  private getWeekRange(date: Date): { startOfWeek: Date; endOfWeek: Date } {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+    const startOfWeek = new Date(d.setDate(diff));
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    return { startOfWeek, endOfWeek };
+  }
+
+  /**
+   * Get mentor's available time slots filtered by:
+   * 1. Their configured availability
+   * 2. 5 sessions/day limit (maxSessionsPerDay)
+   * 3. 25 sessions/week limit (maxSessionsPerWeek)
+   * 4. Existing booked slots (TimeSlot checks)
+   * 5. Existing assigned trial classes (TrialClass checks)
+   */
+  async getMentorAvailableSlots(mentorId: string): Promise<{
+    day: string;
+    slots: { startTime: string; endTime: string; remainingCapacity: number }[];
+  }[]> {
+    try {
+      logger.info(`Fetching available slots for mentor: ${mentorId}`);
+      
+      const mentor = await this._mentorRepo.findById(mentorId);
+      if (!mentor) throw new Error("Mentor not found");
+
+      const maxSessionsPerDay = mentor.maxSessionsPerDay || 5;
+      const maxSessionsPerWeek = mentor.maxSessionsPerWeek || 25;
+
+      // Get mentor's availability from MentorAvailabilityModel
+      const availabilityRecords = await this._mentorAvailabilityRepo.find({
+        mentorId: new Types.ObjectId(mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
+        isActive: true
+      });
+
+      const availabilityData = availabilityRecords.length > 0 
+        ? availabilityRecords.map(r => ({ day: r.dayOfWeek, slots: r.slots }))
+        : (mentor.availability || []);
+
+      const result: { day: string; slots: { startTime: string; endTime: string; remainingCapacity: number }[] }[] = [];
+
+      for (const dayAvail of availabilityData) {
+        const dayName = dayAvail.day;
+        const daySlots: { _id?: string; startTime: string; endTime: string; remainingCapacity: number }[] = [];
+
+        // 1. Determine the specific date for this upcoming day
+        const nextDate = this.getNextDayOccurrence(dayName);
+        
+        // 2. Daily Usage Check (TimeSlots + TrialClasses)
+        const startOfDay = new Date(nextDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(nextDate);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        // Fetch ALL TimeSlots for the day (Booked OR Available) to map IDs
+        const allTimeSlotsDaily = await this._timeSlotRepo.find({
+          mentorId: mentorId,
+          startTime: { $gte: startOfDay, $lte: endOfDay }
+        } as any);
+
+        // a) Booked Regular Slots count
+        const bookedTimeSlotsDaily = allTimeSlotsDaily.filter(ts => ['booked', 'reserved'].includes(ts.status as string));
+
+        // b) Assigned Trial Classes count
+        const assignedTrialsDaily = await this._trialClassRepo.find({
+           mentor: mentorId,
+           preferredDate: { $gte: startOfDay, $lte: endOfDay },
+           status: 'assigned'
+        } as any);
+
+        const dailyUsage = bookedTimeSlotsDaily.length + assignedTrialsDaily.length;
+        const remainingDailyCapacity = Math.max(0, maxSessionsPerDay - dailyUsage);
+
+        // 3. Weekly Usage Check (TimeSlots + TrialClasses)
+        const { startOfWeek, endOfWeek } = this.getWeekRange(nextDate);
+
+        const bookedTimeSlotsWeekly = await this._timeSlotRepo.count({
+          mentorId: mentorId,
+          startTime: { $gte: startOfWeek, $lte: endOfWeek },
+          status: { $in: ['booked', 'reserved'] }
+        } as any);
+
+        const assignedTrialsWeekly = await this._trialClassRepo.countDocuments({
+           mentor: mentorId,
+           preferredDate: { $gte: startOfWeek, $lte: endOfWeek },
+           status: 'assigned'
+        } as any);
+
+        const weeklyUsage = bookedTimeSlotsWeekly + assignedTrialsWeekly;
+        const remainingWeeklyCapacity = Math.max(0, maxSessionsPerWeek - weeklyUsage);
+
+        // 4. Effective Capacity Limit
+        const effectiveCapacity = Math.min(remainingDailyCapacity, remainingWeeklyCapacity);
+
+        // If no capacity left, skip
+        if (effectiveCapacity <= 0) {
+          logger.info(`Mentor ${mentorId} has no capacity for ${dayName}`);
+          continue;
+        }
+
+        // 5. Filter Specific Slots
+        const occupiedRanges = new Set<string>();
+
+        // Add regular booked slots to occupied set
+        for (const slot of bookedTimeSlotsDaily) {
+             const s = slot as unknown as { startTime: Date, endTime: Date };
+             if (s && s.startTime && s.endTime) {
+                  const startTimeStr = new Date(s.startTime).toTimeString().substring(0, 5); 
+                  const endTimeStr = new Date(s.endTime).toTimeString().substring(0, 5);
+                  const range = `${startTimeStr}-${endTimeStr}`;
+                  occupiedRanges.add(range);
+             }
+        }
+
+        // Add trial class slots to occupied set
+        assignedTrialsDaily.forEach(trial => {
+             if(trial && trial.preferredTime) {
+                 occupiedRanges.add(trial.preferredTime);
+             }
+        });
+
+        for (const slot of dayAvail.slots || []) {
+          const slotRange = `${slot.startTime}-${slot.endTime}`;
+          
+          if (occupiedRanges.has(slotRange)) {
+              continue; // Skip occupied
+          }
+
+          // Find matching TimeSlot document ID
+          // matchedDoc type is inferred from Mongoose query result
+          const matchingDoc = allTimeSlotsDaily.find(ts => {
+             const tsStart = new Date(ts.startTime).toTimeString().substring(0, 5); // HH:MM
+             return tsStart === slot.startTime && ts.status === 'available';
+          });
+          
+          const matchingDocTyped = matchingDoc as unknown as { _id: { toString(): string } } | undefined;
+          const matchingId = matchingDocTyped?._id?.toString();
+          
+          const slotItem: { _id?: string; startTime: string; endTime: string; remainingCapacity: number } = {
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            remainingCapacity: effectiveCapacity
+          };
+          
+          if (matchingId) {
+            slotItem._id = matchingId;
+          }
+
+          daySlots.push(slotItem);
+        }
+
+        if (daySlots.length > 0) {
+          result.push({ 
+              day: dayName, 
+              slots: daySlots 
+          });
+        }
+      }
+
+      logger.info(`Found ${result.length} days with available slots for mentor ${mentorId}`);
+      return result;
+    } catch (error: unknown) {
+      logger.error(`Error in getMentorAvailableSlots for ${mentorId}: ${getErrorMessage(error)}`);
+      throw error;
+    }
+  }
+
+  async requestLeave(mentorId: string, startDate: Date, endDate: Date, reason?: string): Promise<void> {
+    try {
+      logger.info(`Mentor ${mentorId} requesting leave from ${startDate} to ${endDate}`);
+      const leaveData: { startDate: Date; endDate: Date; approved: boolean; reason?: string } = {
+        startDate,
+        endDate,
+        approved: false
+      };
+      if (reason) leaveData.reason = reason;
+
+      await this._mentorRepo.addLeave(mentorId, leaveData);
+    } catch (error: unknown) {
+      logger.error(`Error in requestLeave: ${getErrorMessage(error)}`);
+      throw error;
+    }
+  }
+
+  async approveLeave(mentorId: string, leaveId: string, adminId: string): Promise<void> {
+    try {
+      logger.info(`Admin ${adminId} approving leave ${leaveId} for mentor ${mentorId}`);
+      await this._mentorRepo.updateLeaveStatus(mentorId, leaveId, true);
+
+      // Get the mentor to find the specific leave dates
+      const mentor = await this._mentorRepo.findById(mentorId);
+      if (!mentor || !mentor.leaves) throw new Error("Mentor or leaves not found");
+
+      const leave = mentor.leaves.find(l => (l as unknown as { _id: Types.ObjectId })._id.toString() === leaveId);
+      if (!leave) throw new Error("Leave entry not found");
+
+      // Delegate cancellation of affected slots to SchedulingService
+      await this._schedulingService.handleMentorLeave(mentorId, leave.startDate, leave.endDate);
+      
+      logger.info(`Leave ${leaveId} approved and slots handled for mentor ${mentorId}`);
+    } catch (error: unknown) {
+      logger.error(`Error in approveLeave: ${getErrorMessage(error)}`);
+      throw error;
+    }
+  }
+
+  private getNextDayOccurrence(dayName: string): Date {
+    const dayMap: Record<string, number> = {
+      'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
+      'Thursday': 4, 'Friday': 5, 'Saturday': 6
+    };
+    const targetDay = dayMap[dayName] ?? 1; // Default to Monday if not found
+    const today = new Date();
+    const currentDay = today.getDay();
+    let daysUntil = targetDay - currentDay;
+    if (daysUntil <= 0) daysUntil += 7;
+    const nextDate = new Date(today);
+    nextDate.setDate(today.getDate() + daysUntil);
+    return nextDate;
+  }
+
+  // Get only one-to-one students for a mentor
+  async getOneToOneStudents(mentorId: string): Promise<unknown[]> {
+    try {
+      logger.info(`Fetching one-to-one students for mentor: ${mentorId}`);
+      const students = await this._courseRepo.findOneToOneByMentor(mentorId);
+      return students;
+    } catch (error: unknown) {
+      logger.error(`Error in getOneToOneStudents for mentor ${mentorId}: ${getErrorMessage(error)}`);
+      throw error;
+    }
+  }
+
+  // Get only group batches for a mentor
+  async getGroupBatches(mentorId: string): Promise<unknown[]> {
+    try {
+      logger.info(`Fetching group batches for mentor: ${mentorId}`);
+      const batches = await this._courseRepo.findGroupBatchesByMentor(mentorId);
+      return batches;
+    } catch (error: unknown) {
+      logger.error(`Error in getGroupBatches for mentor ${mentorId}: ${getErrorMessage(error)}`);
+      throw error;
+    }
+  }
 }
+

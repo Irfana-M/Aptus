@@ -16,6 +16,7 @@ export const STUDENT_ROUTES = {
   TRIAL_CLASSES: "/trial-classes",
   TRIAL_CLASS_BY_ID: "/trial-classes/:id",
   TRIAL_CLASS_FEEDBACK: "/trial-classes/:id/feedback",
+  AVAILABLE_SLOTS: "/trial-classes/available-slots", // Added this
   GRADES: "/grades",
   GRADES_SYLLABUS: "/grades/syllabus",
   SUBJECTS: "/subjects",
@@ -27,6 +28,7 @@ export const STUDENT_ROUTES = {
   PAYMENTS: "/payments",
   PROFILE: "/profile",
   PREFERENCES: "/preferences",
+  STUDY_MATERIALS: "/study-materials",
 };
 
 export const ADMIN_ROUTES = {
@@ -59,6 +61,7 @@ export const ADMIN_ROUTES = {
   COURSE_REQUEST_STATUS: "/course-requests/:id/status",
   ENROLLMENTS: "/enrollments",
   MENTOR_REQUESTS: "/mentor-requests",
+  MENTOR_LEAVE_APPROVE: "/mentors/:mentorId/leave/:leaveId/approve",
 };
 
 export const MENTOR_ROUTES = {
@@ -68,4 +71,11 @@ export const MENTOR_ROUTES = {
   TRIAL_CLASS_STATUS: "/me/trial-classes/:id/status",
   PROFILE: "/me/profile",
   COURSES: "/me/courses",
+  AVAILABLE_SLOTS: "/:mentorId/available-slots",
+  STUDY_MATERIALS: "/sessions/:sessionId/study-materials",
+  STUDY_MATERIAL_DELETE: "/study-materials/:materialId",
+  LEAVE_REQUEST: "/me/leave",
+  SESSIONS: "/sessions",
+  STUDENTS_ONE_TO_ONE: "/students/one-to-one",
+  BATCHES: "/batches",
 };

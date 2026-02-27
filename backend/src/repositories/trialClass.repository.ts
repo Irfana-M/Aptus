@@ -1,4 +1,3 @@
-// src/repositories/trialClass.repository.ts
 import { injectable } from "inversify";
 import { TrialClass, type ITrialClassDocument } from "@/models/student/trialClass.model";
 import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
@@ -6,11 +5,18 @@ import { logger } from "@/utils/logger";
 import { Types, type FilterQuery, type UpdateQuery } from "mongoose";
 import { HttpStatusCode } from "@/constants/httpStatus";
 import { AppError } from "@/utils/AppError";
+import { getPaginationParams } from "@/utils/pagination.util";
+
+import { BaseRepository } from "./baseRepository";
 
 @injectable()
-export class TrialClassRepository implements ITrialClassRepository {
-  // CREATE
-  async create(data: {
+export class TrialClassRepository extends BaseRepository<ITrialClassDocument> implements ITrialClassRepository {
+  constructor() {
+    super(TrialClass);
+  }
+
+  
+  async createTrialRequest(data: {
     student: string;
     subject: string;
     preferredDate: Date;
@@ -35,7 +41,14 @@ export class TrialClassRepository implements ITrialClassRepository {
   async findById(id: string): Promise<ITrialClassDocument | null> {
     return await TrialClass.findById(id)
       .populate("student", "fullName email phoneNumber profilePicture")
-      .populate("subject", "subjectName syllabus grade")
+      .populate({
+        path: "subject",
+        select: "subjectName syllabus grade",
+        populate: {
+          path: "grade",
+          select: "name grade syllabus"
+        }
+      })
       .populate("mentor", "fullName email")
       .exec();
   }
@@ -47,7 +60,14 @@ export class TrialClassRepository implements ITrialClassRepository {
 
     return await TrialClass.find(query)
       .populate("student", "fullName email phoneNumber")
-      .populate("subject", "subjectName syllabus grade")
+      .populate({
+        path: "subject",
+        select: "subjectName syllabus grade",
+        populate: {
+          path: "grade",
+          select: "name grade syllabus"
+        }
+      })
       .populate("mentor", "fullName email")
       .sort({ createdAt: -1 })
       .exec();
@@ -57,7 +77,14 @@ export class TrialClassRepository implements ITrialClassRepository {
   async findByMentorId(mentorId: string): Promise<ITrialClassDocument[]> {
     return await TrialClass.find({ mentor: new Types.ObjectId(mentorId) })
       .populate("student", "fullName email phoneNumber profilePicture")
-      .populate("subject", "subjectName syllabus grade")
+      .populate({
+        path: "subject",
+        select: "subjectName syllabus grade",
+        populate: {
+          path: "grade",
+          select: "name grade syllabus"
+        }
+      })
       .sort({ preferredDate: 1, preferredTime: 1 })
       .exec();
   }
@@ -75,13 +102,20 @@ export class TrialClassRepository implements ITrialClassRepository {
       status: "assigned"
     })
       .populate("student", "fullName email phoneNumber profilePicture")
-      .populate("subject", "subjectName grade")
+      .populate({
+        path: "subject",
+        select: "subjectName syllabus grade",
+        populate: {
+          path: "grade",
+          select: "name grade syllabus"
+        }
+      })
       .sort({ preferredTime: 1 })
       .exec();
   }
 
   // UPDATE
-  async update(id: string, updates: Partial<ITrialClassDocument>): Promise<ITrialClassDocument | null> {
+  async updateTrial(id: string, updates: Partial<ITrialClassDocument>): Promise<ITrialClassDocument | null> {
     const updateData: UpdateQuery<ITrialClassDocument> = { ...updates };
 
     if (updates.mentor && typeof updates.mentor === "string") {
@@ -90,13 +124,20 @@ export class TrialClassRepository implements ITrialClassRepository {
 
     return await TrialClass.findByIdAndUpdate(id, updateData, { new: true })
       .populate("student", "fullName email phoneNumber profilePicture")
-      .populate("subject", "subjectName syllabus grade")
+      .populate({
+        path: "subject",
+        select: "subjectName syllabus grade",
+        populate: {
+          path: "grade",
+          select: "name grade syllabus"
+        }
+      })
       .populate("mentor", "fullName email")
       .exec();
   }
 
   // DELETE
-  async delete(id: string): Promise<boolean> {
+  async deleteTrial(id: string): Promise<boolean> {
     const result = await TrialClass.findByIdAndDelete(id);
     return !!result;
   }
@@ -118,7 +159,14 @@ export class TrialClassRepository implements ITrialClassRepository {
       runValidators: true,
     })
       .populate("student", "fullName email phoneNumber profilePicture")
-      .populate("subject", "subjectName syllabus grade")
+      .populate({
+        path: "subject",
+        select: "subjectName syllabus grade",
+        populate: {
+          path: "grade",
+          select: "name grade syllabus"
+        }
+      })
       .populate("mentor", "fullName email")
       .exec();
   }
@@ -139,7 +187,14 @@ export class TrialClassRepository implements ITrialClassRepository {
       runValidators: true,
     })
       .populate("student", "fullName email phoneNumber profilePicture")
-      .populate("subject", "subjectName syllabus grade")
+      .populate({
+        path: "subject",
+        select: "subjectName syllabus grade",
+        populate: {
+          path: "grade",
+          select: "name grade syllabus"
+        }
+      })
       .populate("mentor", "fullName email")
       .exec();
   }
@@ -158,19 +213,26 @@ export class TrialClassRepository implements ITrialClassRepository {
   }
 
   // PAGINATED FIND ALL
-  async findAll(filters: {
+  async findAllPaginated(filters: {
     status?: string;
     page?: number;
     limit?: number;
   }): Promise<{ trialClasses: ITrialClassDocument[]; total: number }> {
-    const { status, page = 1, limit = 10 } = filters;
-    const skip = (page - 1) * limit;
+    const { page: _page, limit, skip } = getPaginationParams(filters);
+    const status = filters.status;
     const query: FilterQuery<ITrialClassDocument> = status ? { status } : {};
 
     const [trialClasses, total] = await Promise.all([
       TrialClass.find(query)
         .populate("student", "fullName email phoneNumber")
-        .populate("subject", "subjectName syllabus grade")
+        .populate({
+          path: "subject",
+          select: "subjectName syllabus grade",
+          populate: {
+            path: "grade",
+            select: "name grade syllabus"
+          }
+        })
         .populate("mentor", "fullName email")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -183,33 +245,54 @@ export class TrialClassRepository implements ITrialClassRepository {
   }
 
 
-    async findByStatus(status: string, page: number = 1, limit: number = 10): Promise<{ trialClasses: ITrialClassDocument[]; total: number }> {
-  try {
-    logger.info(`TrialClassRepository: Fetching trial classes with status - ${status}`, { page, limit });
+  async findByStatus(status: string, page: number = 1, limit: number = 10): Promise<{ trialClasses: ITrialClassDocument[]; total: number }> {
+    try {
+      const { page: p, limit: l, skip } = getPaginationParams({ page, limit });
+      logger.info(`TrialClassRepository: Fetching trial classes with status - ${status}`, { page: p, limit: l });
 
-    const skip = (page - 1) * limit;
+      const [trialClasses, total] = await Promise.all([
+        TrialClass.find({ status })
+          .populate("student", "fullName email phoneNumber")
+          .populate({
+            path: "subject",
+            select: "subjectName syllabus grade",
+            populate: {
+              path: "grade",
+              select: "name grade syllabus"
+            }
+          })
+          .populate("mentor", "fullName email expertise")
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(l)
+          .exec(),
+        TrialClass.countDocuments({ status })
+      ]);
 
-    const [trialClasses, total] = await Promise.all([
-      TrialClass.find({ status })
-        .populate("student", "fullName email phoneNumber")
-        .populate("subject", "name description syllabus grade")
-        .populate("mentor", "fullName email expertise")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .exec(),
-      TrialClass.countDocuments({ status })
-    ]);
-
-    logger.info(`TrialClassRepository: Found ${trialClasses.length} trial classes with status ${status}`);
-    
-    return { trialClasses, total };
-  } catch (error) {
-    logger.error(`TrialClassRepository: Error fetching trial classes with status ${status}`, error);
-    throw new AppError(
-      "Failed to fetch trial classes by status",
-      HttpStatusCode.INTERNAL_SERVER_ERROR
-    );
+      logger.info(`TrialClassRepository: Found ${trialClasses.length} trial classes with status ${status}`);
+      
+      return { trialClasses, total: total };
+    } catch (error) {
+      logger.error(`TrialClassRepository: Error fetching trial classes with status ${status}`, error);
+      throw new AppError(
+        "Failed to fetch trial classes by status",
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
+    }
   }
-}
+  async findCompletedByMentorAndDateRange(mentorId: string, startDate: Date, endDate: Date): Promise<ITrialClassDocument[]> {
+    return await TrialClass.find({
+      mentor: new Types.ObjectId(mentorId),
+      preferredDate: { $gte: startDate, $lte: endDate },
+      status: "completed"
+    }).exec();
+  }
+
+  async aggregate(pipeline: any[]): Promise<any[]> {
+    return await TrialClass.aggregate(pipeline).exec();
+  }
+
+  async countDocuments(filter: FilterQuery<ITrialClassDocument>): Promise<number> {
+    return await TrialClass.countDocuments(filter).exec();
+  }
 }

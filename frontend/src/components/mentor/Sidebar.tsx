@@ -30,7 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { icon: BookOpen, label: 'Classroom', path: '/mentor/classroom' },
     { icon: FileText, label: 'Study Materials', path: '/mentor/materials' },
     { icon: ClipboardList, label: 'Assignments', path: '/mentor/assignments' },
-    { icon: ClipboardList, label: 'Completed Classes', path: '/mentor/completed-trial-classes' },
+    { icon: ClipboardList, label: 'Class History', path: '/mentor/class-history' },
     { icon: Bell, label: 'Notifications', path: '/mentor/notifications' },
     { icon: Clock, label: 'Availability', path: '/mentor/availability' },
     { icon: MessageSquare, label: 'Chats', path: '/mentor/chats' },

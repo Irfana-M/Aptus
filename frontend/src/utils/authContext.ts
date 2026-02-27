@@ -29,7 +29,48 @@ export class AuthContext {
     if (path.startsWith('/admin')) return 'admin';
     if (path.startsWith('/student')) return 'student';
     if (path.startsWith('/mentor')) return 'mentor';
+
+    // Shared routes checking
+    const sharedRoutes = ['/trial-class/', '/session/', '/notifications', '/classroom/'];
+    if (sharedRoutes.some(p => path.startsWith(p))) {
+      // 1. For classroom token links, role is in the token
+      if (path.startsWith('/classroom/')) {
+        const urlToken = path.split('/').pop();
+        if (urlToken && urlToken.includes('.')) {
+          try {
+            const payload = JSON.parse(atob(urlToken.split('.')[1]));
+            if (payload.role) return payload.role as 'admin' | 'student' | 'mentor';
+          } catch {
+            // Ignore decode errors
+          }
+        }
+      }
+
+      // 2. Check preference/cached role for this browser/tab
+      const userRolePref = localStorage.getItem('userRole');
+      if (userRolePref && ['admin', 'student', 'mentor'].includes(userRolePref)) {
+         // Verify we actually have a token for this role before committing
+         if (localStorage.getItem(`${userRolePref}_accessToken`)) {
+             return userRolePref as 'admin' | 'student' | 'mentor';
+         }
+      }
+
+      // 3. Fallback heuristics if no preference (least reliable)
+      if (localStorage.getItem('student_accessToken')) return 'student';
+      if (localStorage.getItem('mentor_accessToken')) return 'mentor';
+      if (localStorage.getItem('admin_accessToken')) return 'admin';
+    }
     return null;
+  }
+  
+  /**
+   * Set role explicitly and lock it for this tab session
+   */
+  setRole(role: 'admin' | 'student' | 'mentor'): void {
+    this.currentRole = role;
+    sessionStorage.setItem('active_role', role);
+    localStorage.setItem('userRole', role); // Also sync localStorage for other components
+    console.log(`🔒 Role explicitly set and locked: ${role}`);
   }
   
   /**
@@ -39,9 +80,7 @@ export class AuthContext {
     const pathRole = this.getRoleFromPath(path);
     
     if (pathRole) {
-      this.currentRole = pathRole;
-      sessionStorage.setItem('active_role', pathRole);
-      console.log(`🔒 Role locked for this tab: ${pathRole}`);
+      this.setRole(pathRole);
     }
   }
   
@@ -95,12 +134,24 @@ export class AuthContext {
   }
   
   /**
-   * Get token for current role
+   * Get token for current role.
+   * Checks role-specific localStorage keys directly so this works on shared
+   * routes (/trial-class/, /session/) where sessionStorage.active_role and
+   * localStorage.userRole may not be populated.
    */
   getTokenForCurrentRole(): string | null {
+    // 1. Prefer the explicitly locked role for this tab (most accurate)
     const role = this.getCurrentRole();
-    if (!role) return null;
-    
-    return localStorage.getItem(`${role}_accessToken`);
+    if (role) {
+      const roleToken = localStorage.getItem(`${role}_accessToken`);
+      if (roleToken) return roleToken;
+    }
+
+    // 2. Direct key fallback — works even when active_role / userRole are absent
+    return (
+      localStorage.getItem('student_accessToken') ||
+      localStorage.getItem('mentor_accessToken') ||
+      null
+    );
   }
 }

@@ -5,11 +5,11 @@ import type { Course } from "../../types/courseTypes";
 
 export interface Enrollment {
   _id: string;
-  studentId: string;
-  courseId: Course; // Populated course
-  enrolledAt: string;
-  status: 'active' | 'completed' | 'dropped';
-  progress: number;
+  student: string; // Renamed from studentId to match backend if needed, but 'course' is more critical
+  course: Course; // Populated course
+  enrollmentDate: string; // Renamed from enrolledAt to match backend
+  status: 'pending_payment' | 'active' | 'cancelled'; // Updated to match backend enum
+  progress?: number;
 }
 
 interface StudentState {

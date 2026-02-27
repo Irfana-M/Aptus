@@ -5,7 +5,7 @@ import type {
 } from "../interfaces/auth/auth.interface";
 import type { IVerificationRepository } from "../interfaces/repositories/IVerificationRepository";
 import type { IAuthRepository } from "../interfaces/auth/IAuthRepository";
-import type { RegisterUserDto } from "../dto/auth/RegisteruserDTO";
+import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO";
 import type { MentorProfile } from "../interfaces/models/mentor.interface";
 import type { IMentorAuthRepository } from "../interfaces/repositories/IMentorAuthRepository";
 import bcrypt from "bcryptjs";

@@ -3,8 +3,10 @@ import type { IOtpService } from "../interfaces/services/IOtpService";
 import type { IEmailService } from "../interfaces/services/IEmailService";
 import type { IStudentAuthRepository } from "../interfaces/repositories/IStudentAuthRepository";
 import type { IMentorAuthRepository } from "../interfaces/repositories/IMentorAuthRepository";
-import type { LoginUserDto } from "../dto/auth/LoginUserDTO";
-import type { RegisterUserDto } from "../dto/auth/RegisteruserDTO";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
+import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository";
+import type { LoginUserDto } from "../dtos/auth/LoginUserDTO";
+import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO";
 import { hashPassword, comparePasswords } from "../utils/password.utils";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt.util";
 import type { IAuthService, UserContextResponse } from "../interfaces/services/IauthService";
@@ -15,20 +17,20 @@ import type {
 } from "../interfaces/auth/auth.interface";
 import type { IProfileService } from "../interfaces/services/IProfileService";
 import { logger } from "../utils/logger";
-import type { SendOtpDto } from "../dto/auth/OtpDTO";
-import type { VerifyOtpDto } from "../dto/auth/VerifyOtpDTO";
+import type { SendOtpDto } from "../dtos/auth/OtpDTO";
+import type { VerifyOtpDto } from "../dtos/auth/VerifyOtpDTO";
 // ForgotPasswordDto import removed as it is unused
 import type {
   MentorBaseResponseDto,
   StudentBaseResponseDto,
-} from "@/dto/auth/UserResponseDTO";
+} from "@/dtos/auth/UserResponseDTO";
 import { UserMapper } from "@/mappers/userMapper";
 import { HttpStatusCode } from "@/constants/httpStatus";
 import { AppError } from "@/utils/AppError";
 import { injectable, inject } from "inversify";
 import { TYPES } from "../types";
-import type { IWalletService } from "../interfaces/services/IWalletService";
 import * as crypto from 'crypto';
+import { InternalEventEmitter, EVENTS } from "../utils/InternalEventEmitter";
 
 // ... (existing imports)
 
@@ -41,7 +43,9 @@ export class AuthService implements IAuthService {
     @inject(TYPES.IStudentAuthRepository) private _studentRepo: IStudentAuthRepository,
     @inject(TYPES.IMentorAuthRepository) private _mentorRepo: IMentorAuthRepository,
     @inject(TYPES.IProfileService) private _profileService: IProfileService,
-    @inject(TYPES.IWalletService) private _walletService: IWalletService
+    @inject(TYPES.InternalEventEmitter) private _eventEmitter: InternalEventEmitter,
+    @inject(TYPES.ITrialClassRepository) private _trialClassRepo: ITrialClassRepository,
+    @inject(TYPES.IStudentRepository) private _studentGeneralRepo: IStudentRepository
   ) {}
 
   async registerUser(data: RegisterUserDto) {
@@ -92,16 +96,18 @@ export class AuthService implements IAuthService {
 
       const user = await this._authRepo.createUser(userData);
 
-      // Initialize empty wallet for the new student
-      if (data.role === 'student') {
-        await this._walletService.createWallet(user._id);
-      }
-
       await this.sendSignupOtp({ email: user.email, role: data.role });
 
       logger.info(
         `User registered successfully: ${data.email}, role: ${data.role}`
       );
+
+      this._eventEmitter.emit(EVENTS.USER_REGISTERED, {
+        email: data.email,
+        role: data.role,
+        fullName: data.fullName
+      });
+
       return { message: "User registered. Please verify your email" };
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -148,20 +154,13 @@ export class AuthService implements IAuthService {
         ? this._studentRepo.markUserVerified(data.email)
         : this._mentorRepo.markUserVerified(data.email));
 
-      // NEW: Credit Referral Bonus here to prevent spam
+      // Referral credit logic removed as wallet system is deleted
       if (role === 'student') {
           const student = await this._studentRepo.findByEmail(data.email);
-          if (student && (student as unknown as { referredBy?: string }).referredBy) {
-             const referrer = await this._studentRepo.findByReferralCode((student as unknown as { referredBy?: string }).referredBy!);
+          if (student && student.referredBy) {
+             const referrer = await this._studentRepo.findByReferralCode(student.referredBy);
              if (referrer) {
-                // Credit Referrer
-                await this._walletService.creditWallet(
-                    referrer._id, 
-                    100, // Reward Amount
-                    'REFERRAL', 
-                    `Referral bonus for inviting ${student.email}`
-                );
-                logger.info(`Referral bonus credited to ${referrer.email} for invoking ${student.email}`);
+                logger.info(`Referral would have been credited to ${referrer.email} for invoking ${student.email} (Wallet system removed)`);
              }
           }
       }
@@ -195,6 +194,20 @@ export class AuthService implements IAuthService {
       const repo = role === "student" ? this._studentRepo : this._mentorRepo;
       const user = await repo.findByEmail(email);
       if (!user) throw new AppError("User not found", HttpStatusCode.NOT_FOUND);
+
+      if (!user.isVerified) {
+        throw new AppError(
+          "Account not verified. Please check your email for the OTP and verify your account.",
+          HttpStatusCode.FORBIDDEN
+        );
+      }
+
+      if (user.isBlocked) {
+        throw new AppError(
+          "Your account has been blocked. Please contact support.",
+          HttpStatusCode.FORBIDDEN
+        );
+      }
 
       if (!user.password) {
         throw new AppError(
@@ -235,17 +248,14 @@ export class AuthService implements IAuthService {
         // Self-healing: If flag is false but user might have completed a trial
         if (!isTrialCompleted) {
           try {
-            const { TrialClass } = await import("../models/student/trialClass.model");
-            const { StudentModel } = await import("../models/student/student.model");
-            
-            const completedTrial = await TrialClass.findOne({
-              student: user._id,
+            const completedTrial = await this._trialClassRepo.findOne({
+              student: user._id.toString(),
               status: 'completed'
             });
 
             if (completedTrial) {
               logger.info(`🩹 Self-healing: Found completed trial for ${email}, updating flag.`);
-              await StudentModel.findByIdAndUpdate(user._id, { isTrialCompleted: true });
+              await this._studentGeneralRepo.updateById(user._id.toString(), { isTrialCompleted: true });
               isTrialCompleted = true;
             }
           } catch (healingError) {

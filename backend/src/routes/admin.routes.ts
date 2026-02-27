@@ -1,13 +1,14 @@
 import { Router } from "express";
 import { ADMIN_ROUTES } from "../constants/routes";
 import { AdminController } from "../controllers/admin.controller";
-import { requireAuth } from "../middleware/authMiddleware";
-import { requireRole } from "../middleware/role.middleware";
+import { requireAuth } from "../middlewares/authMiddleware";
+import { requireRole } from "../middlewares/role.middleware";
 import { container } from "@/inversify.config";
 import { TYPES } from "@/types";
 import { CourseAdminController } from "@/controllers/courseAdmin.controller";
 import { StudentController } from "@/controllers/student.controller";
 import { HttpStatusCode } from "@/constants/httpStatus";
+import { type IMentorRequestService } from "@/interfaces/services/IMentorRequestService";
 
 const adminRouter = Router();
 
@@ -16,6 +17,8 @@ const courseAdminController = container.get<CourseAdminController>(
   TYPES.CourseAdminController
 );
 const studentController = container.get<StudentController>(TYPES.StudentController);
+import { MentorController } from "@/controllers/mentor.controller";
+const mentorController = container.get<MentorController>(TYPES.MentorController);
 import { CourseRequestController } from "@/controllers/courseRequest.controller";
 const courseRequestController = container.get<CourseRequestController>(TYPES.CourseRequestController);
 import { PaymentController } from "@/controllers/payment.controller";
@@ -90,6 +93,13 @@ adminRouter.post(
   requireRole("admin"),
   adminController.addMentor
 );
+adminRouter.get(
+  "/students/search",
+  requireAuth,
+  requireRole("admin"),
+  adminController.searchStudents
+);
+
 adminRouter.patch(
   ADMIN_ROUTES.MENTOR_BLOCK,
   requireAuth,
@@ -102,7 +112,7 @@ adminRouter.patch(
   requireRole("admin"),
   adminController.unblockMentor
 );
-import { validateBody, validateObjectId } from "../middleware/validate.middleware";
+import { validateBody, validateObjectId } from "../middlewares/validate.middleware";
 import { updateMentorProfileSchema } from "../validators/mentor.validator";
 import { updateStudentProfileSchema } from "../validators/student.validator";
 
@@ -191,6 +201,21 @@ adminRouter.put(
   requireRole("admin"),
   courseAdminController.updateOneToOneCourse
 );
+
+adminRouter.post(
+  "/courses/:courseId/enroll",
+  requireAuth,
+  requireRole("admin"),
+  courseAdminController.enrollStudentToCourse
+);
+
+adminRouter.delete(
+  "/courses/:courseId/unenroll/:studentId",
+  requireAuth,
+  requireRole("admin"),
+  courseAdminController.unenrollStudentFromCourse
+);
+
 adminRouter.get(
   ADMIN_ROUTES.ALL_COURSES,
   requireAuth,
@@ -231,6 +256,7 @@ adminRouter.get(
   paymentController.getAllPayments
 );
 
+
 adminRouter.get(
   ADMIN_ROUTES.ENROLLMENTS,
   requireAuth,
@@ -265,7 +291,7 @@ adminRouter.get(
   requireRole("admin"),
   async (req, res, next) => {
     try {
-      const mentorRequestService = container.get<any>(TYPES.IMentorRequestService);
+      const mentorRequestService = container.get<IMentorRequestService>(TYPES.IMentorRequestService);
       const requests = await mentorRequestService.getPendingRequests();
       res.status(HttpStatusCode.OK).json({ success: true, data: requests });
     } catch (error) {
@@ -281,8 +307,14 @@ adminRouter.patch(
   async (req, res, next) => {
     try {
       const { requestId } = req.params;
+      if (!requestId) {
+  return res
+    .status(HttpStatusCode.BAD_REQUEST)
+    .json({ success: false, message: "Request ID is required" });
+}
       const adminId = req.user?.id;
-      const mentorRequestService = container.get<any>(TYPES.IMentorRequestService);
+      if (!adminId) throw new Error("Admin ID not found");
+      const mentorRequestService = container.get<IMentorRequestService>(TYPES.IMentorRequestService);
       await mentorRequestService.approveRequest(requestId, adminId);
       res.status(HttpStatusCode.OK).json({ success: true, message: "Request approved" });
     } catch (error) {
@@ -300,13 +332,25 @@ adminRouter.patch(
       const { requestId } = req.params;
       const { reason } = req.body;
       const adminId = req.user?.id;
-      const mentorRequestService = container.get<any>(TYPES.IMentorRequestService);
+      if (!adminId) throw new Error("Admin ID not found");
+      if (!requestId) {
+  return res
+    .status(HttpStatusCode.BAD_REQUEST)
+    .json({ success: false, message: "Request ID is required" });
+}
+      const mentorRequestService = container.get<IMentorRequestService>(TYPES.IMentorRequestService);
       await mentorRequestService.rejectRequest(requestId, adminId, reason);
       res.status(HttpStatusCode.OK).json({ success: true, message: "Request rejected" });
     } catch (error) {
       next(error);
     }
   }
+);
+adminRouter.patch(
+  ADMIN_ROUTES.MENTOR_LEAVE_APPROVE,
+  requireAuth,
+  requireRole("admin"),
+  mentorController.approveLeave
 );
 
 export default adminRouter;

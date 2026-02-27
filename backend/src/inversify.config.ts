@@ -13,8 +13,6 @@ import { MentorAuthRepository } from "./repositories/mentorAuth.repository";
 import { TrialClassRepository } from "./repositories/trialClass.repository";
 import { GradeRepository } from "@/repositories/grade.repository";
 import { SubjectRepository } from "@/repositories/subject.repository";
-import { type IEnrollmentRepository, type CreateEnrollmentDto } from "./interfaces/repositories/IEnrollmentRepository";
-import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository";
 import type { ICourseRequestRepository } from "@/interfaces/repositories/ICourseRequestRepository";
 // import type { ISessionService } from "./interfaces/services/ISessionService";
 // import { SessionService } from "./services/session/session.service";
@@ -41,6 +39,8 @@ import { EnrollmentLinkRepository } from "./repositories/enrollmentLink.reposito
 import type { IAvailabilityRepository } from "./interfaces/repositories/IAvailabilityRepository";
 import { AvailabilityRepository } from "./repositories/availability.repository";
 import { MentorAssignmentRequestRepository } from "./repositories/mentorAssignmentRequest.repository";
+import { AttendanceRepository } from "./repositories/attendance.repository";
+import type { IAttendanceRepository } from "./interfaces/repositories/IAttendanceRepository";
 
 import { AuthService } from "./services/auth.service";
 import { AdminService } from "./services/admin.service";
@@ -56,7 +56,9 @@ import { VideoCallService } from "./services/VideoCallService";
 import { SocketService } from "./services/SocketService";
 import { UserRoleService } from "./services/userRole.service";
 import { SchedulingService } from "./services/scheduling.service";
+import { AvailabilityService } from "./services/availability.service";
 import { ChatService } from "./services/scheduling/ChatService";
+import { ImageService } from "./services/imageService";
 
 import { AuthController } from "./controllers/auth.controller";
 import { AdminController } from "./controllers/admin.controller";
@@ -68,8 +70,10 @@ import { SubjectController } from "@/controllers/subject.controller";
 import { RoleController } from "./controllers/role.controller";
 import { VideoCallController } from "./controllers/videoCall.controller";
 import { MentorTrialClassController } from "./controllers/mentorTrialClass.controller";
+import { AttendanceController } from "./controllers/attendance.controller";
 import { ChatController } from "./controllers/chat.controller";
 import { CourseAdminController } from "./controllers/courseAdmin.controller";
+import { AvailabilityController } from "./controllers/availability.controller";
 import { CourseRepository } from "./repositories/course.repository";
 import { CourseAdminService } from "./services/courseAdminService";
 import { CourseService } from "./services/course.service";
@@ -80,7 +84,19 @@ import type { ISessionRepository } from "./interfaces/repositories/ISessionRepos
 import { SessionRepository } from "./repositories/session.repository";
 import type { ISessionService } from "./interfaces/services/ISessionService";
 import { SessionService } from "./services/session.service";
-import { SessionController } from "./controllers/session.controller";
+
+import { StudyMaterialRepository } from "./repositories/studyMaterial.repository";
+import { StudyMaterialService } from "./services/studyMaterial.service";
+import { StudyMaterialController } from "./controllers/studyMaterial.controller";
+import type { IStudyMaterialRepository } from "./interfaces/repositories/IStudyMaterialRepository";
+import type { IStudyMaterialService } from "./interfaces/services/IStudyMaterialService";
+import { ExampleRepository } from "./repositories/ExampleRepository";
+import { ExampleService } from "./services/ExampleService";
+import { ExampleController } from "./controllers/example.controller";
+import { PaymentRepository } from "./repositories/payment.repository";
+import { SubscriptionRepository } from "./repositories/subscription.repository";
+import type { IPaymentRepository } from "./interfaces/repositories/IPaymentRepository";
+import type { ISubscriptionRepository } from "./interfaces/repositories/ISubscriptionRepository";
 
 const container = new Container({ defaultScope: "Singleton" });
 
@@ -107,6 +123,27 @@ container.bind(TYPES.IChatMessageRepository).to(ChatMessageRepository);
 container.bind<IAvailabilityRepository>(TYPES.IAvailabilityRepository).to(AvailabilityRepository);
 container.bind<IEnrollmentLinkRepository>(TYPES.IEnrollmentLinkRepository).to(EnrollmentLinkRepository);
 container.bind(TYPES.IMentorAssignmentRequestRepository).to(MentorAssignmentRequestRepository);
+container.bind<IAttendanceRepository>(TYPES.IAttendanceRepository).to(AttendanceRepository);
+container.bind<IStudyMaterialRepository>(TYPES.IStudyMaterialRepository).to(StudyMaterialRepository);
+container.bind(TYPES.IExampleRepository).to(ExampleRepository);
+container.bind<IPaymentRepository>(TYPES.IPaymentRepository).to(PaymentRepository);
+container.bind<ISubscriptionRepository>(TYPES.ISubscriptionRepository).to(SubscriptionRepository);
+
+import { AssignmentSubmissionRepository } from "./repositories/studyMaterial.repository";
+import type { IAssignmentSubmissionRepository } from "./interfaces/repositories/IAssignmentSubmissionRepository";
+container.bind<IAssignmentSubmissionRepository>(TYPES.IAssignmentSubmissionRepository).to(AssignmentSubmissionRepository);
+
+import { StudentSubjectRepository } from "./repositories/studentSubject.repository";
+import type { IStudentSubjectRepository } from "./interfaces/repositories/IStudentSubjectRepository";
+container.bind<IStudentSubjectRepository>(TYPES.IStudentSubjectRepository).to(StudentSubjectRepository);
+
+import { MentorAvailabilityRepository } from "./repositories/mentorAvailability.repository";
+import type { IMentorAvailabilityRepository } from "./interfaces/repositories/IMentorAvailabilityRepository";
+container.bind<IMentorAvailabilityRepository>(TYPES.IMentorAvailabilityRepository).to(MentorAvailabilityRepository);
+
+import { StudentEnrollmentRepository } from "./repositories/studentEnrollment.repository";
+import type { IStudentEnrollmentRepository } from "./interfaces/repositories/IStudentEnrollmentRepository";
+container.bind<IStudentEnrollmentRepository>(TYPES.IStudentEnrollmentRepository).to(StudentEnrollmentRepository);
 
 // === DOMAIN POLICIES ===
 container.bind<SchedulingPolicy>(TYPES.SchedulingPolicy).to(SchedulingPolicy);
@@ -139,12 +176,14 @@ container.bind(TYPES.IProfileService).to(ProfileService);
 container.bind(TYPES.ITrialClassService).to(TrialClassService);
 container.bind(TYPES.IGradeService).to(GradeService);
 container.bind<ISubjectService>(TYPES.ISubjectService).to(SubjectService);
+container.bind(TYPES.ImageService).to(ImageService);
 
 container.bind<IAttendanceService>(TYPES.IAttendanceService).to(AttendanceService);
 container.bind(TYPES.IVideoCallService).to(VideoCallService);
 container.bind(TYPES.ISocketService).to(SocketService).inSingletonScope();
 container.bind(TYPES.IUserRoleService).to(UserRoleService);
 container.bind(TYPES.ICourseAdminService).to(CourseAdminService);
+container.bind(TYPES.IAvailabilityService).to(AvailabilityService);
 container.bind(TYPES.ICourseService).to(CourseService);
 container.bind(TYPES.ISchedulingService).to(SchedulingService);
 container.bind(TYPES.SchedulingOrchestrator).to(SchedulingOrchestrator);
@@ -155,6 +194,27 @@ container.bind(TYPES.CronService).to(CronService);
 container.bind(TYPES.IChatService).to(ChatService);
 container.bind(TYPES.ISubscriptionService).to(SubscriptionService);
 container.bind(TYPES.InternalEventEmitter).to(InternalEventEmitter).inSingletonScope();
+
+import { PricingService } from "./services/session/PricingService";
+container.bind(TYPES.IPricingService).to(PricingService);
+container.bind<IStudyMaterialService>(TYPES.IStudyMaterialService).to(StudyMaterialService);
+container.bind(TYPES.IExampleService).to(ExampleService);
+
+import { BookingSyncService } from "./services/scheduling/BookingSyncService";
+import type { IBookingSyncService } from "./interfaces/services/IBookingSyncService";
+container.bind<IBookingSyncService>(TYPES.IBookingSyncService).to(BookingSyncService);
+
+import { LeaveManagementService } from "./services/scheduling/LeaveManagementService";
+import type { ILeaveManagementService } from "./interfaces/services/ILeaveManagementService";
+container.bind<ILeaveManagementService>(TYPES.ILeaveManagementService).to(LeaveManagementService);
+
+import { TimeSlotQueryService } from "./services/scheduling/TimeSlotQueryService";
+import type { ITimeSlotQueryService } from "./interfaces/services/ITimeSlotQueryService";
+container.bind<ITimeSlotQueryService>(TYPES.ITimeSlotQueryService).to(TimeSlotQueryService);
+
+import { SlotGenerationService } from "./services/scheduling/SlotGenerationService";
+import type { ISlotGenerationService } from "./interfaces/services/ISlotGenerationService";
+container.bind<ISlotGenerationService>(TYPES.ISlotGenerationService).to(SlotGenerationService);
 
 // === CONTROLLERS ===
 container.bind(TYPES.AuthController).to(AuthController);
@@ -171,10 +231,18 @@ container.bind(TYPES.VideoCallController).to(VideoCallController).inSingletonSco
 container.bind(TYPES.MentorTrialClassController).to(MentorTrialClassController);
 container.bind(TYPES.StudentController).to(StudentController);
 container.bind(TYPES.CourseAdminController).to(CourseAdminController);
-container.bind(TYPES.ChatController).to(ChatController);
+container.bind(TYPES.AvailabilityController).to(AvailabilityController);
+container.bind<ChatController>(TYPES.ChatController).to(ChatController);
+container.bind<AttendanceController>(TYPES.AttendanceController).to(AttendanceController);
+container.bind(TYPES.StudyMaterialController).to(StudyMaterialController);
+container.bind(TYPES.IExampleController).to(ExampleController);
 
 
-import { NotificationController } from "./controllers/notification.controller";
+import { SubscriptionController } from "./controllers/subscription.controller";
+container.bind(TYPES.SubscriptionController).to(SubscriptionController);
+
+
+// NotificationController import removed due to being unused
 
 
 
@@ -213,7 +281,6 @@ container.bind(TYPES.PaymentController).to(PaymentController);
 
 // Enrollment Bindings
 import { EnrollmentRepository } from "./repositories/enrollment.repository";
-import type { IEnrollment } from "./models/enrollment.model";
 import { EnrollmentService } from "./services/enrollment.service";
 import { EnrollmentController } from "./controllers/enrollment.controller";
 
@@ -228,16 +295,6 @@ import { MentorDashboardController } from "./controllers/mentorDashboard.control
 container.bind(TYPES.IMentorDashboardService).to(MentorDashboardService);
 container.bind(TYPES.MentorDashboardController).to(MentorDashboardController);
 
-// Wallet Service Bindings
-import { WalletService } from "./services/wallet.service";
-// Availability Bindings
-import { AvailabilityService } from "./services/availability.service";
-import { AvailabilityController } from "./controllers/availability.controller";
-
-container.bind(TYPES.IAvailabilityService).to(AvailabilityService);
-container.bind(TYPES.AvailabilityController).to(AvailabilityController);
-
-container.bind(TYPES.IWalletService).to(WalletService);
 
 // Mentor Request
 import type { IMentorRequestService } from "./interfaces/services/IMentorRequestService"; // Add import
@@ -247,5 +304,32 @@ container.bind<IMentorRequestService>(TYPES.IMentorRequestService).to(MentorRequ
 container.bind<ISessionRepository>(TYPES.ISessionRepository).to(SessionRepository);
 container.bind<ISessionService>(TYPES.ISessionService).to(SessionService);
 
+
+import type { IExamRepository } from "./interfaces/repositories/IExamRepository";
+import { ExamRepository } from "./repositories/exam.repository";
+import type { IExamService } from "./interfaces/services/IExamService";
+import { ExamService } from "./services/exam.service";
+import { ExamController } from "./controllers/exam.controller";
+import { ExamAccessPolicyService } from "./services/exam/ExamAccessPolicyService";
+import { ExamScoringService } from "./services/exam/ExamScoringService";
+import { ExamResultEnricher } from "./services/exam/ExamResultEnricher";
+
+// Exam Bindings
+container
+  .bind<IExamRepository>(TYPES.IExamRepository)
+  .to(ExamRepository)
+  .inSingletonScope();
+container
+  .bind<IExamService>(TYPES.IExamService)
+  .to(ExamService)
+  .inSingletonScope();
+container
+  .bind<ExamController>(TYPES.ExamController)
+  .to(ExamController)
+  .inSingletonScope();
+
+container.bind(TYPES.ExamAccessPolicyService).to(ExamAccessPolicyService);
+container.bind(TYPES.ExamScoringService).to(ExamScoringService);
+container.bind(TYPES.ExamResultEnricher).to(ExamResultEnricher);
 
 export { container };

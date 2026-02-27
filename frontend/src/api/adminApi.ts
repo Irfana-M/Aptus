@@ -87,7 +87,6 @@ adminApi.interceptors.response.use(
           processQueue(new Error('Admin token refresh failed'), null);
           isRefreshing = false;
 
-          console.log('🔐 Admin token refresh failed, logging out...');
           store.dispatch(logoutAdmin());
           localStorage.removeItem("admin_accessToken");
           localStorage.removeItem("adminAccessToken");

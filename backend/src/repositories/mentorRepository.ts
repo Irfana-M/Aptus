@@ -2,7 +2,7 @@ import { MentorModel } from "../models/mentor/mentor.model";
 import type { IMentorRepository, MentorPaginatedResult } from "../interfaces/repositories/IMentorRepository";
 import type { MentorProfile } from "../interfaces/models/mentor.interface";
 import { BaseRepository } from "./baseRepository";
-import { Model, type Document, type PipelineStage } from "mongoose";
+import { Model, type Document, type PipelineStage, type ClientSession } from "mongoose";
 import type { FilterQuery } from "mongoose";
 import { logger } from "../utils/logger";
 import { HttpStatusCode } from "../constants/httpStatus";
@@ -10,7 +10,9 @@ import { getSignedFileUrl } from "../utils/s3Upload";
 import { injectable } from "inversify";
 import { AppError } from "../utils/AppError";
 import { Subject } from "../models/subject.model";
-import type { MentorPaginationParams } from "../dto/shared/paginationTypes";
+import { normalizeTimeTo24h } from "../utils/time.util";
+import type { MentorPaginationParams } from "@/dtos/shared/paginationTypes";
+import { getPaginationParams } from "@/utils/pagination.util";
 
 @injectable()
 export class MentorRepository
@@ -120,9 +122,10 @@ export class MentorRepository
 
   async updateProfile(
     id: string,
-    data: Partial<MentorProfile>
+    data: Partial<MentorProfile>,
+    session?: ClientSession
   ): Promise<MentorProfile | null> {
-    return await this.updateById(id, data);
+    return await this.updateById(id, data, session);
   }
 
   async submitForApproval(id: string): Promise<MentorProfile> {
@@ -204,35 +207,79 @@ export class MentorRepository
     }
   }
 
-// In your MentorRepository - fix the query
   async findBySubjectProficiency(subjectName: string): Promise<MentorProfile[]> {
     try {
-      logger.debug(`Repository: Searching for mentors with subject: ${subjectName}`);
+      logger.info(`MentorRepository: findBySubjectProficiency called with "${subjectName}"`);
       
-      const query: FilterQuery<MentorProfile> = {
-        approvalStatus: "approved",
-        isBlocked: { $ne: true },
-        subjectProficiency: {
-          $elemMatch: {
-            subject: {
-              $regex: subjectName.trim(),
-              $options: 'i' // case-insensitive
+      const pipeline: PipelineStage[] = [
+        {
+          $match: {
+            approvalStatus: "approved",
+            isBlocked: { $ne: true },
+            subjectProficiency: {
+              $elemMatch: {
+                $or: [
+                  { 
+                    subject: {
+                      $regex: subjectName.trim(),
+                      $options: 'i' // case-insensitive regex for Name matching
+                    }
+                  },
+                  { 
+                    subject: subjectName.trim() // exact match for ID strings or exact names
+                  }
+                ]
+              }
             }
           }
+        },
+        {
+          $lookup: {
+            from: "mentoravailabilities",
+            localField: "_id",
+            foreignField: "mentorId",
+            as: "externalAvailability"
+          }
+        },
+        {
+          $addFields: {
+            availability: {
+              $concatArrays: [
+                { $ifNull: ["$availability", []] },
+                {
+                  $map: {
+                    input: { 
+                      $filter: {
+                        input: { $ifNull: ["$externalAvailability", []] },
+                        as: "ext",
+                        cond: { $eq: ["$$ext.isActive", true] }
+                      }
+                    },
+                    as: "avail",
+                    in: {
+                      day: "$$avail.dayOfWeek",
+                      slots: "$$avail.slots"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          $project: {
+            password: 0,
+            externalAvailability: 0
+          }
         }
-      };
+      ];
 
-      const mentors = await this.model
-        .find(query)
-        .select('-password')
-        .lean()
-        .exec();
-
-      logger.info(`Repository found: ${mentors.length} mentors`);
+      const mentors = await this.model.aggregate(pipeline).exec();
+      logger.info(`MentorRepository: findBySubjectProficiency returned ${mentors.length} mentors`);
       
       return mentors;
     } catch (error) {
-      logger.error(`MentorRepository: Error finding mentors by subject ${subjectName}`, error);
+      logger.error(`MentorRepository: Error in findBySubjectProficiency for "${subjectName}"`, error);
       throw error;
     }
   }
@@ -244,31 +291,38 @@ export class MentorRepository
     days?: string[];
     timeSlot?: string;
     excludeCourseId?: string;
-  }) {
-
+  }): Promise<unknown[]> { // Changed return type to unknown[] to match the instruction's context
     const { subjectId, days, timeSlot, excludeCourseId } = params;
     
     try {
-      logger.info(`findAvailableMentors called with: subjectId=${subjectId}, days=${days}, timeSlot=${timeSlot}`);
+      logger.info(`🔍 findAvailableMentors called with: subjectId=${subjectId}, days=${days}, timeSlot=${timeSlot}`);
       
       let subjectName = "";
 
-      // Check if subjectId is a valid ObjectId
       // Handle potential undefined subjectId
       if (!subjectId) {
+         logger.error('❌ Subject ID is required but was not provided');
          throw new AppError("Subject ID is required", HttpStatusCode.BAD_REQUEST);
       }
 
+      // Check if subjectId is a valid ObjectId
       const isValidId = /^[0-9a-fA-F]{24}$/.test(subjectId);
 
       if (isValidId) {
+        logger.debug(`✓ subjectId is valid ObjectId, looking up subject document`);
         const subject = await Subject.findById(subjectId);
-        if (!subject) throw new AppError("Subject not found", HttpStatusCode.NOT_FOUND);
+        if (!subject) {
+          logger.error(`❌ Subject not found with ID: ${subjectId}`);
+          throw new AppError("Subject not found", HttpStatusCode.NOT_FOUND);
+        }
         subjectName = subject.subjectName;
+        logger.info(`✓ Resolved subject ID to name: ${subjectName}`);
       } else {
         // Assume it is the name
+        logger.warn(`⚠️ subjectId is not a valid ObjectId, treating as subject name: ${subjectId}`);
         subjectName = subjectId;
       }
+
 
       // 1. Base Match: Active, Verified, Approved, Subject Match
       const matchStage: FilterQuery<MentorProfile> = {
@@ -286,10 +340,6 @@ export class MentorRepository
 
       logger.info(`🔍 findAvailableMentorsDB query: ${JSON.stringify(matchStage)}`);
 
-      // 2. Lookup conflicting courses (if time provided)
-      // We do NOT filter by time availability in the initial match anymore
-      // We fetch ALL mentors for the subject, then check their specific availability in the result.
-      
       const pipeline: PipelineStage[] = [
         { $match: matchStage },
         {
@@ -297,21 +347,173 @@ export class MentorRepository
             fullName: 1,
             profilePicture: 1,
             rating: 1,
+            totalRatings: 1,
             bio: 1,
             availability: 1,
             subjectProficiency: 1,
+            academicQualifications: 1,
+            experiences: 1,
+            maxSessionsPerWeek: 1,
+            maxSessionsPerDay: 1,
+            currentWeeklyBookings: 1
           },
+        },
+        // Stage 1: Global Weekly Capacity Check
+        {
+          $match: {
+            $expr: {
+              $lt: [
+                {
+                  $cond: {
+                    if: { $and: [
+                      { $ne: [{ $ifNull: [excludeCourseId, ""] }, ""] },
+                      { $toObjectId: { $ifNull: [excludeCourseId, "000000000000000000000000"] } } // dummy to avoid crash if null
+                    ] },
+                    then: { $subtract: ["$currentWeeklyBookings", 1] },
+                    else: "$currentWeeklyBookings"
+                  }
+                },
+                "$maxSessionsPerWeek"
+              ]
+            }
+          }
         }
       ];
 
+      // Add availability and daily capacity check
       if (days && days.length > 0 && timeSlot) {
-          // We still want to know if they represent a "Perfect Match"
-          // But we return everyone. The Service will filter based on the availability and conflicts.
-          // Actually, to make it efficient, we can check conflicts here but keep them in the result?
-          // Let's just return the availability and let the Service or Controller classify them.
+          // Calculate requested day capacity
+          // We check courses for the EXACT days requested
+          pipeline.push({
+              $lookup: {
+                  from: "courses",
+                  let: { mentorId: "$_id" },
+                  pipeline: [
+                      {
+                          $match: {
+                              $expr: {
+                                  $and: [
+                                      { $eq: ["$mentor", "$$mentorId"] },
+                                      { $in: ["$status", ["booked", "ongoing"]] },
+                                      { $eq: ["$isActive", true] },
+                                      // Intersection of requested days and course days
+                                      { $gt: [ { $size: { $setIntersection: ["$schedule.days", days] } }, 0 ] }
+                                  ]
+                              }
+                          }
+                      },
+                      // Group by day to find max load on any single day in the requested set
+                      { $unwind: "$schedule.days" },
+                      { $match: { $expr: { $in: ["$schedule.days", days] } } },
+                      { $group: { _id: "$schedule.days", count: { $sum: 1 } } }
+                  ],
+                  as: "dailyLoads"
+              }
+          });
+
+          // Filter: Ensure no requested day exceeds maxSessionsPerDay
+          pipeline.push({
+              $match: {
+                  $expr: {
+                      $allElementsTrue: {
+                          $map: {
+                              input: days,
+                              as: "d",
+                              in: {
+                                  $lt: [
+                                      {
+                                          $let: {
+                                              vars: { 
+                                                  dayLoad: { 
+                                                      $arrayElemAt: [
+                                                          { $filter: { input: "$dailyLoads", as: "dl", cond: { $eq: ["$$dl._id", "$$d"] } } },
+                                                          0
+                                                      ]
+                                                  }
+                                              },
+                                              in: { $ifNull: ["$$dayLoad.count", 0] }
+                                          }
+                                      },
+                                      "$maxSessionsPerDay"
+                                  ]
+                              }
+                          }
+                      }
+                  }
+              }
+          });
+
+          // Existing logic for specific slot availability and conflicts...
+          // 1. Lookup MentorAvailability for matching days
+          pipeline.push({
+              $lookup: {
+                  from: "mentoravailabilities",
+                  let: { mentorId: "$_id" },
+                  pipeline: [
+                      {
+                          $match: {
+                              $expr: {
+                                  $and: [
+                                      { $eq: ["$mentorId", "$$mentorId"] },
+                                      { $in: ["$dayOfWeek", days] },
+                                      { $eq: ["$isActive", true] }
+                                  ]
+                              }
+                          }
+                      }
+                  ],
+                  as: "availabilityRecords"
+              }
+          });
+
+          const isBatchTime = ['MORNING', 'AFTERNOON'].includes(timeSlot);
+          let startTime = '';
           
-          // However, we MUST check for "Conflicting Bookings" to know if they are available at the requested time.
-          // We can add a field "hasConflict" if they are booked at that time.
+          if (!isBatchTime && timeSlot) {
+              const [start] = timeSlot.split('-').map(s => s.trim());
+              startTime = normalizeTimeTo24h(start || '');
+              logger.debug(`✓ Normalized specific time slot: ${start} -> ${startTime}`);
+          } else {
+              logger.debug(`✓ Checking for ${timeSlot} batch availability on days: ${days.join(', ')}`);
+          }
+          
+          pipeline.push({
+              $addFields: {
+                  hasMatchingAvailability: {
+                      $reduce: {
+                          input: { 
+                              $concatArrays: [
+                                  { $ifNull: ["$availabilityRecords", []] },
+                                  { $filter: {
+                                      input: { $ifNull: ["$availability", []] },
+                                      as: "a",
+                                      cond: { $in: ["$$a.day", days] }
+                                  }}
+                              ]
+                          },
+                          initialValue: false,
+                          in: {
+                              $or: [
+                                  "$$value",
+                                  {
+                                      $anyElementTrue: {
+                                          $map: {
+                                              input: "$$this.slots",
+                                              as: "slot",
+                                              in: isBatchTime 
+                                                  ? true 
+                                                  : { $eq: ["$$slot.startTime", startTime] }
+                                          }
+                                      }
+                                  }
+                              ]
+                          }
+                      }
+                  }
+              }
+          });
+
+          // 3. Check for conflicting bookings
           pipeline.push({
               $lookup: {
                   from: "courses",
@@ -333,6 +535,14 @@ export class MentorRepository
                       }
                   ],
                   as: "conflictingBookings"
+              }
+          });
+
+          // 4. Filter: Keep only mentors with availability AND no conflicts
+          pipeline.push({
+              $match: {
+                  hasMatchingAvailability: true,
+                  conflictingBookings: { $size: 0 }
               }
           });
       }
@@ -362,10 +572,12 @@ export class MentorRepository
       logger.info(`🔍 findAvailableMentors found ${mentorsWithImages.length} subject potential matches`);
       return mentorsWithImages;
 
-    } catch (error: any) {
-      logger.error(`CRITICAL: Error in findAvailableMentors: ${error.message}`, { stack: error.stack });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error(`CRITICAL: Error in findAvailableMentors: ${errorMessage}`, { stack: errorStack });
       throw new AppError(
-        `Failed to find available mentors: ${error.message}`,
+        `Failed to find available mentors: ${errorMessage}`,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -373,9 +585,7 @@ export class MentorRepository
 
   async findAllMentorsPaginated(params: MentorPaginationParams): Promise<MentorPaginatedResult> {
     try {
-      const page = params.page || 1;
-      const limit = params.limit || 10;
-      const skip = (page - 1) * limit;
+      const { page, limit } = getPaginationParams(params as any);
       const search = params.search?.trim() || '';
       const status = params.status || '';
       const subject = params.subject || '';
@@ -403,22 +613,16 @@ export class MentorRepository
 
       logger.info(`findAllMentorsPaginated: Query=${JSON.stringify(query)}, page=${page}, limit=${limit}`);
 
-      // Execute query with pagination
-      const [mentors, total] = await Promise.all([
-        this.model
-          .find(query)
-          .select('-password')
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(limit)
-          .lean()
-          .exec(),
-        this.model.countDocuments(query)
-      ]);
-
+      // Execute query with pagination using base method
+      const { items: mentors, total } = await this.findPaginated(
+        query as Record<string, unknown>,
+        page,
+        limit
+      );
 
       const mentorsWithImages = await Promise.all(
-        mentors.map(async (mentor :MentorProfile) => {
+        mentors.map(async (mentorDoc) => {
+          const mentor = mentorDoc as unknown as MentorProfile;
           const mentorObj = { ...mentor } as MentorProfile;
 
           if (mentor.profilePicture) {
@@ -455,5 +659,26 @@ export class MentorRepository
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
+  }
+
+  async incrementWeeklyBookings(id: string): Promise<void> {
+    await this.model.findByIdAndUpdate(id, { $inc: { currentWeeklyBookings: 1 } });
+  }
+
+  async decrementWeeklyBookings(id: string): Promise<void> {
+    await this.model.findByIdAndUpdate(id, { $inc: { currentWeeklyBookings: -1 } });
+  }
+
+  async addLeave(id: string, leave: { startDate: Date; endDate: Date; reason?: string; approved: boolean }): Promise<void> {
+    await this.model.findByIdAndUpdate(id, {
+      $push: { leaves: leave }
+    });
+  }
+
+  async updateLeaveStatus(mentorId: string, leaveId: string, approved: boolean): Promise<void> {
+    await this.model.updateOne(
+      { _id: mentorId, "leaves._id": leaveId },
+      { $set: { "leaves.$.approved": approved } }
+    );
   }
 }

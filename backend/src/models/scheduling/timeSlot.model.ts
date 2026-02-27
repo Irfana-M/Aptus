@@ -11,7 +11,7 @@ const timeSlotSchema = new Schema<ITimeSlot>(
     subjectId: { 
       type: Schema.Types.ObjectId, 
       ref: 'Subject', 
-      required: true // Made required as per requirements
+      required: true 
     },
     startTime: { 
       type: Date, 
@@ -43,7 +43,6 @@ const timeSlotSchema = new Schema<ITimeSlot>(
 
 // Indexes for performance and conflict prevention
 timeSlotSchema.index({ mentorId: 1, startTime: 1 }, { unique: true });
-timeSlotSchema.index({ mentorId: 1, startTime: 1 }); // Quick lookup for mentor schedule
 timeSlotSchema.index({ subjectId: 1, startTime: 1, status: 1 }); // Optimized for student slot search
 timeSlotSchema.index({ status: 1 });
 

@@ -2,6 +2,8 @@ import { injectable, inject } from "inversify";
 import { TYPES } from "../types";
 import type { ICourseService } from "../interfaces/services/ICourseService";
 import type { ICourseRepository } from "../interfaces/repositories/ICourseRepository";
+import type { CoursePaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes";
+import { formatPaginatedResult, getPaginationParams } from "@/utils/pagination.util";
 
 @injectable()
 export class CourseService implements ICourseService {
@@ -9,8 +11,10 @@ export class CourseService implements ICourseService {
     @inject(TYPES.ICourseRepository) private _courseRepository: ICourseRepository
   ) {}
 
-  async getAvailableCourses(filters: Record<string, unknown>): Promise<unknown[]> {
-    return await this._courseRepository.findAvailableCourses(filters);
+  async getAvailableCourses(params: CoursePaginationParams): Promise<PaginatedResponse<unknown>> {
+    const { page, limit } = getPaginationParams(params);
+    const result = await this._courseRepository.findAllCoursesPaginated(params);
+    return formatPaginatedResult(result.courses, result.total, { page, limit });
   }
 
   async getCourseById(id: string): Promise<unknown | null> {

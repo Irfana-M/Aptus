@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import StudentLayout from '../../components/students/StudentLayout';
 import { fetchMyCourses } from '../../features/student/studentApi';
-import { BookOpen, Clock, CheckCircle, RefreshCcw, Calendar } from 'lucide-react';
+import { BookOpen, Clock, CheckCircle, RefreshCcw, Calendar, Video } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+
+import { useNavigate } from 'react-router-dom';
 
 interface Course {
     _id: string;
+    courseType: string;
     subject: {
         _id: string;
-        name: string;
+        name?: string;
+        subjectName?: string;
     };
     mentor: {
         _id: string;
@@ -31,6 +35,7 @@ interface Course {
 const MyCourses: React.FC = () => {
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
 
     const loadCourses = async () => {
         setLoading(true);
@@ -38,7 +43,7 @@ const MyCourses: React.FC = () => {
             const data = await fetchMyCourses();
             // Backend might return { status: 'success', data: [...] } or just [...]
             const list = data.data || data;
-            setCourses(Array.isArray(list) ? list : []);
+            setCourses(Array.isArray(list) ? (list as Course[]) : []);
         } catch (error) {
             console.error("Failed to load courses", error);
         } finally {
@@ -90,23 +95,40 @@ const MyCourses: React.FC = () => {
                                     </span>
                                 </div>
 
-                                <h3 className="text-xl font-black text-slate-800 mb-2 truncate">{course.subject?.name || 'Subject'}</h3>
+                                <h3 className="text-xl font-black text-slate-800 mb-2 truncate">{course.subject?.subjectName || course.subject?.name || 'Subject'}</h3>
                                 <p className="text-slate-400 text-sm mb-4 flex items-center gap-1.5">
                                     👨‍🏫 {course.mentor?.fullName || 'Mentor TBA'}
                                 </p>
-                                <p className="text-slate-400 text-sm mb-6 flex items-center gap-1.5">
+                                <p className="text-slate-400 text-sm mb-4 flex items-center gap-1.5">
                                     <Clock size={14} /> 
                                     {course.schedule?.days?.join(', ') || 'TBA'} • {course.schedule?.timeSlot || 'TBA'}
                                 </p>
 
-                                <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
+                                <div className="bg-slate-50 rounded-2xl p-4 space-y-4">
                                     <div className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                                        <span>Grade {course.grade?.grade || 'N/A'}</span>
+                                        <span>Grade {course.grade?.grade || 'N/A'} • {course.courseType}</span>
                                         <span>{course.status || 'available'}</span>
                                     </div>
                                     <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
                                         <Calendar size={12} />
                                         <span>Ends: {new Date(course.endDate).toLocaleDateString()}</span>
+                                    </div>
+                                    
+                                    <div className="flex gap-2">
+                                        <Button 
+                                            onClick={() => navigate('/student/classroom')}
+                                            className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs"
+                                        >
+                                            <Video size={14} /> 
+                                            JOIN
+                                        </Button>
+                                        <Button 
+                                            onClick={() => navigate(`/student/course/${course._id}/exams`)}
+                                            className="flex-1 bg-white border-2 border-indigo-100 hover:bg-indigo-50 text-indigo-600 py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs"
+                                        >
+                                            <RefreshCcw size={14} className="rotate-90" /> 
+                                            EXAMS
+                                        </Button>
                                     </div>
                                 </div>
                             </div>

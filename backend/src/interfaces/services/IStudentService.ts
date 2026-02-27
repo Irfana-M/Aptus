@@ -1,4 +1,4 @@
-import type { StudentBaseResponseDto } from "@/dto/auth/UserResponseDTO";
+import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
 import type { AuthUser } from "../auth/auth.interface";
 import type { StudentProfile, StudentRegisterInput } from "../models/student.interface";
 import type { OnboardingEvent } from "../../enums/studentOnboarding.enum";
@@ -11,6 +11,7 @@ export interface IStudentService {
   updateProfile(id: string, data: Partial<StudentProfile>): Promise<StudentProfile>;
   getStudentProfileById(id: string): Promise<StudentProfile | null>;
   advanceOnboarding(studentId: string, event: OnboardingEvent): Promise<void>;
-  updatePreferences(studentId: string, preferences: { subjectId: string; slots: any[] }[]): Promise<StudentProfile>;
+  updatePreferences(studentId: string, preferences: { subjectId: string; slots: { day: string; startTime: string }[] }[]): Promise<StudentProfile>;
+  updateBasicPreferences(studentId: string, subjectIds: string[]): Promise<StudentProfile>;
   requestMentor(studentId: string, subjectId: string, mentorId: string): Promise<void>;
 }

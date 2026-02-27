@@ -28,20 +28,57 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const path = location.pathname;
   
   // Get role from path (NOT from localStorage.userRole!)
+  // Get role from path or tokens (for shared routes)
   const getPathRole = (): string | null => {
     if (path.startsWith('/admin')) return ROLES.ADMIN;
     if (path.startsWith('/student')) return ROLES.STUDENT;
     if (path.startsWith('/mentor')) return ROLES.MENTOR;
     
-    // Shared routes like /trial-class/
-    if (path.startsWith('/trial-class/')) {
+    // Shared routes mapping
+    const sharedRoutes = ['/trial-class/', '/session/', '/notifications', '/classroom/'];
+    if (sharedRoutes.some(p => path.startsWith(p))) {
+        // SPECIAL CASE: Classroom link with token in URL
+        if (path.startsWith('/classroom/')) {
+            const urlToken = path.split('/').pop();
+            if (urlToken && urlToken.includes('.')) {
+                try {
+                    const payload = JSON.parse(atob(urlToken.split('.')[1]));
+                    if (payload.role) return payload.role;
+                } catch {
+                    // Ignore decode errors
+                }
+            }
+        }
+
         // If we are in a tab that already has a role locked, follow that
         const currentTabRole = authContext.getCurrentRole();
         if (currentTabRole) return currentTabRole;
 
-        // Fallback to highest priority available token
-        if (localStorage.getItem('student_accessToken')) return ROLES.STUDENT;
-        if (localStorage.getItem('mentor_accessToken')) return ROLES.MENTOR;
+        // Fallback: Detect role from available tokens
+        const roles = [ROLES.STUDENT, ROLES.MENTOR, ROLES.ADMIN];
+        for (const role of roles) {
+            const token = localStorage.getItem(`${role}_accessToken`) || 
+                         (role === ROLES.ADMIN ? localStorage.getItem('adminAccessToken') : null);
+            if (token) {
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    if (payload.role === role) return role;
+                } catch {
+                    // Ignore decode errors
+                }
+            }
+        }
+
+        // Generic token check
+        const genericToken = localStorage.getItem('accessToken');
+        if (genericToken) {
+            try {
+                const payload = JSON.parse(atob(genericToken.split('.')[1]));
+                if (payload.role) return payload.role;
+            } catch {
+                // Ignore decode errors
+            }
+        }
     }
     return null;
   };
@@ -90,6 +127,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Get token specifically for this path
   const getPathToken = (): string | null => {
     if (!pathRole) return null;
+
+    // SPECIAL CASE: Classroom link with token in URL
+    if (path.startsWith('/classroom/')) {
+        const urlToken = path.split('/').pop();
+        if (urlToken && urlToken.includes('.')) {
+            return urlToken;
+        }
+    }
     
     // Convert role to lowercase for localStorage key
     const roleKey = pathRole.toLowerCase();
@@ -121,8 +166,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return children;
   }
   
-  // BYPASS for trial-class calls - those components handle their own loading
-  if (path.includes('/trial-class/') && path.endsWith('/call')) {
+  // BYPASS for call routes - those components handle their own loading and data fetching
+  const isCallPath = (path.includes('/trial-class/') || path.includes('/session/')) && path.endsWith('/call');
+  if (isCallPath) {
     return children;
   }
   

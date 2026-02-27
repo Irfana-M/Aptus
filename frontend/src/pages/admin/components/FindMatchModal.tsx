@@ -8,22 +8,26 @@ import { X, Check } from 'lucide-react';
 import { adminCourseApi } from '../../../features/admin/adminApi';
 import toast from 'react-hot-toast';
 import { Button } from '../../../components/ui/Button';
+import { formatTo12Hour } from '../../../utils/timeFormat';
 
 interface CourseRequestData {
     id: string;
     _id?: string;
     subject: string;
+    subjectId?: string;
     subjectName?: string;
     grade: string;
+    gradeId?: string;
     preferredDays: string[];
     timeSlot: string;
     timeRange?: string;
     student: {
-        id: string;
+        id?: string;
+        _id?: string;
         fullName: string;
-        email: string;
+        email?: string;
     } | string;
-    plan?: string;
+    mentoringMode?: 'one-to-one' | 'group';
 }
 
 interface FindMatchModalProps {
@@ -71,31 +75,54 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
     }, [selectedMentor]);
 
     const findMentors = useCallback(async (requestId: string) => {
-        if (!request || isSearchingRef.current || !request.subject) {
+        if (!request || isSearchingRef.current) {
             return;
         }
+
+        // Prioritize IDs over names - critical fix for mentor matching
+        const subjectId = request.subjectId || request.subject;
+        const gradeId = request.gradeId || request.grade;
+
+        if (!subjectId) {
+            toast.error("Subject information is missing from this request");
+            return;
+        }
+
+        console.log('🔍 [FindMatchModal] Searching for mentors with:', {
+            subjectId,
+            gradeId,
+            days: request.preferredDays,
+            timeSlot: request.timeSlot || request.timeRange
+        });
 
         isSearchingRef.current = true;
         setLoading(true);
         try {
             const result = await dispatch(fetchAvailableMentorsForCourse({
-                subjectId: request.subject,
-                gradeId: request.grade,
+                subjectId,
+                gradeId,
                 days: request.preferredDays,
                 timeSlot: request.timeSlot || request.timeRange
             })).unwrap();
 
+            console.log('✅ [FindMatchModal] Received mentors:', {
+                matches: result.matches?.length || 0,
+                alternates: result.alternates?.length || 0
+            });
+
             setMentors(result);
-        } catch (err: any) {
-            if (err?.name !== 'AbortError') {
-                toast.error("Failed to find mentors");
+        } catch (err: unknown) {
+            const error = err as Error & { name?: string; message?: string };
+            if (error?.name !== 'AbortError') {
+                console.error('❌ [FindMatchModal] Error finding mentors:', error);
+                toast.error(error?.message || "Failed to find mentors. Please try again.");
             }
         } finally {
             setLastSearchedId(requestId);
             setLoading(false);
             isSearchingRef.current = false;
         }
-    }, [dispatch, request?.subject, request?.grade, request?.preferredDays, request?.timeSlot, request?.timeRange]);
+    }, [dispatch, request]);
 
     useEffect(() => {
         if (!isOpen || !request) return;
@@ -104,9 +131,9 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
         if (currentRequestId && lastSearchedId !== currentRequestId && !isSearchingRef.current) {
             findMentors(currentRequestId);
         }
-    }, [isOpen, request?.id, request?._id, lastSearchedId, findMentors]);
+    }, [isOpen, request?.id, request?._id, lastSearchedId, findMentors, request]);
 
-    const isGroupPlan = request?.plan === 'monthly';
+    const isGroupPlan = request?.mentoringMode === 'group';
 
     const handleCreateCourse = async () => {
         if (!selectedMentor || !request) return;
@@ -119,6 +146,11 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
 
         setCreating(true);
         try {
+            // Resolve IDs with priority for ObjectIDs
+            const subjectId = request.subjectId || request.subject;
+            const gradeId = request.gradeId || request.grade;
+            const studentId = typeof request.student === 'object' ? (request.student._id || request.student.id || "") : request.student;
+
             if (onSubmit) {
                 await onSubmit({
                     mentorId: selectedMentor._id,
@@ -126,13 +158,12 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
                     timeSlot: request.timeSlot || request.timeRange
                 });
             } else {
-                const studentId = typeof request.student === 'object' ? (request.student as any).id || (request.student as any)._id : request.student;
-                
-                await adminCourseApi.createOneToOneCourse({
-                    gradeId: request.grade,
-                    subjectId: request.subject,
+                await adminCourseApi.createCourse({
+                    gradeId: gradeId,
+                    subjectId: subjectId,
                     mentorId: selectedMentor._id,
                     studentId: studentId,
+                    courseType: isGroupPlan ? 'group' : 'one-to-one',
                     schedule: {
                         days: isGroupPlan ? [] : selectedDays,
                         timeSlot: request.timeSlot || request.timeRange
@@ -146,8 +177,9 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
             toast.success("Assignment successful");
             onMatchConfirmed();
             onClose();
-        } catch (error: any) {
-            toast.error(error.message || "Failed to create assignment");
+        } catch (error: unknown) {
+            const err = error as Error & { message?: string };
+            toast.error(err.message || "Failed to create assignment");
         } finally {
             setCreating(false);
         }
@@ -179,7 +211,7 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
                              </span>
                         </div>
                         <p className="text-sm text-slate-700 mt-2 font-bold">
-                            {request?.preferredDays?.join(', ')} at {request?.timeSlot || request?.timeRange}
+                            {request?.preferredDays?.join(', ')} at {(request?.timeSlot || request?.timeRange || '').split('-').map(t => formatTo12Hour(t.trim())).join(' - ')}
                         </p>
                     </div>
                 </div>
@@ -436,7 +468,7 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
                                      <div key={dayName} className="space-y-1">
                                          {dayData?.slots.slice(0, 5).map((s, i) => (
                                              <div key={i} className={`h-6 rounded text-[8px] flex items-center justify-center font-bold ${s.isBooked ? 'bg-slate-50 text-slate-200' : 'bg-teal-50 text-teal-600'}`}>
-                                                 {s.startTime}
+                                                 {formatTo12Hour(s.startTime)}
                                              </div>
                                          ))}
                                      </div>

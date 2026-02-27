@@ -3,12 +3,13 @@ import { TYPES } from "../types";
 import type { NextFunction, Request, Response } from "express";
 import type { IAuthService } from "../interfaces/services/IauthService";
 import { studentRegisterSchema } from "../validations/authValidation/signup.validation";
+import { loginSchema } from "../validations/authValidation/login.validation";
 import type { IOtpService } from "../interfaces/services/IOtpService";
 import { HttpStatusCode } from "../constants/httpStatus";
 import { logger } from "../utils/logger";
-import type { RegisterUserDto } from "../dto/auth/RegisteruserDTO";
-import type { LoginUserDto } from "../dto/auth/LoginUserDTO";
-import type { SendOtpDto } from "../dto/auth/OtpDTO";
+import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO";
+import type { LoginUserDto } from "../dtos/auth/LoginUserDTO";
+import type { SendOtpDto } from "../dtos/auth/OtpDTO";
 import { generateAccessToken, verifyRefreshToken } from "@/utils/jwt.util";
 import { AppError } from "@/utils/AppError";
 import { config } from "../config/app.config";
@@ -24,9 +25,10 @@ export class AuthController {
     try {
       const parsedData = studentRegisterSchema.parse(req.body);
 
+      const { referralCode, ...restParsed } = parsedData;
       const userData: RegisterUserDto = {
-        ...parsedData,
-        role: req.body.role ?? "student",
+        ...restParsed,
+        ...(referralCode !== undefined ? { referralCode } : {}),
       };
 
       const result = await this._authService.registerUser(userData);
@@ -50,7 +52,7 @@ export class AuthController {
 
   login = async (req: Request, res: Response) => {
     try {
-      const loginData: LoginUserDto = req.body;
+      const loginData: LoginUserDto = loginSchema.parse(req.body);
 
       const result = await this._authService.loginUser(loginData);
 

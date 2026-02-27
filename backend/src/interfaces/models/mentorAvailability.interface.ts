@@ -1,8 +1,8 @@
 import { Schema, Document } from "mongoose";
 
 export interface IRecurringSlot {
-  startTime: string; // e.g., "14:00"
-  endTime: string;   // e.g., "15:00"
+  startTime: string; 
+  endTime: string;   
 }
 
 export interface IMentorAvailability extends Document {

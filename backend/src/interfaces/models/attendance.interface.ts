@@ -2,24 +2,14 @@ import { Schema, Document } from "mongoose";
 
 export interface IAttendance extends Document {
   sessionId: Schema.Types.ObjectId;
+  sessionModel: 'Session' | 'TrialClass';
   userId: Schema.Types.ObjectId; 
-  userRole: 'student' | 'mentor';
+  userRole: 'Student' | 'Mentor';
   
-  status: 'present' | 'absent' | 'late' | 'excused' | 'half-day';
-  
-  durationMinutes: number;
-  percentageAttended: number;
-  
-  isLate: boolean;
-  leftEarly: boolean;
-  
-  metadata: {
-    firstJoinedAt?: Date;
-    lastLeftAt?: Date;
-    totalStays: number; 
-  };
+  status: 'present' | 'absent';
   
   isFinalized: boolean; 
+  source: 'manual' | 'trial_derived' | 'automated';
   auditedBy?: Schema.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;

@@ -1,6 +1,7 @@
 import type { MentorProfile } from "../models/mentor.interface";
 import type { IBaseRepository } from "./IBaseRepository";
-import type { MentorPaginationParams } from "@/dto/shared/paginationTypes";
+import type { MentorPaginationParams } from "@/dtos/shared/paginationTypes";
+import type { ClientSession } from "mongoose";
 
 export interface MentorPaginatedResult {
   mentors: MentorProfile[];
@@ -8,11 +9,12 @@ export interface MentorPaginatedResult {
 }
 
 export interface IMentorRepository extends IBaseRepository<MentorProfile> {
-  findById(id: string): Promise<MentorProfile | null>;
+  findById(id: string, session?: ClientSession): Promise<MentorProfile | null>;
   getProfileWithImage(id: string): Promise<MentorProfile | null>;
   updateProfile(
     id: string,
-    data: Partial<MentorProfile>
+    data: Partial<MentorProfile>,
+    session?: ClientSession
   ): Promise<MentorProfile | null>;
   submitForApproval(id: string): Promise<MentorProfile>;
   getPendingApprovals(): Promise<MentorProfile[]>;
@@ -35,4 +37,8 @@ export interface IMentorRepository extends IBaseRepository<MentorProfile> {
     timeSlot?: string;
     excludeCourseId?: string;
   }): Promise<unknown[]>;
+  incrementWeeklyBookings(id: string): Promise<void>;
+  decrementWeeklyBookings(id: string): Promise<void>;
+  addLeave(id: string, leave: { startDate: Date; endDate: Date; reason?: string; approved: boolean }): Promise<void>;
+  updateLeaveStatus(mentorId: string, leaveId: string, approved: boolean): Promise<void>;
 }

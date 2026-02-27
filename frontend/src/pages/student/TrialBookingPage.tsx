@@ -20,6 +20,7 @@ import {
   fetchSubjectsByGradeAndSyllabus,
   updateTrialClass,
   fetchStudentTrialClasses,
+  fetchAvailableTrialSlots,
 } from "../../features/trial/student/studentTrialThunk";
 import {
   clearError,
@@ -51,11 +52,15 @@ const TIME_OPTIONS = [
   { value: "09:00", label: "9:00 AM" },
   { value: "10:00", label: "10:00 AM" },
   { value: "11:00", label: "11:00 AM" },
+  { value: "12:00", label: "12:00 PM" },
+  { value: "13:00", label: "1:00 PM" },
   { value: "14:00", label: "2:00 PM" },
   { value: "15:00", label: "3:00 PM" },
   { value: "16:00", label: "4:00 PM" },
   { value: "17:00", label: "5:00 PM" },
   { value: "18:00", label: "6:00 PM" },
+  {value: "19:00", label: "7:00 PM"},
+  {value: "20:00", label: "8:00 PM - 9:00 PM"},
 ];
 
 const STATS = [
@@ -123,6 +128,11 @@ interface FormErrors {
 
 // StudentInfo interface removed as it was unused and replaced by TrialClassStudent
 
+interface TrialSlot {
+    startTime: string;
+    mentorCount: number;
+}
+
 // Helper Functions
 const extractGradeNumber = (gradeName: string): number | null => {
   const match = gradeName.match(/\d+/);
@@ -165,21 +175,20 @@ const getAvailableDates = (): number[] => {
   return dates;
 };
 
-// Helper to filter time options based on selected date
-const getFilteredTimeOptions = (selectedDate: number | null) => {
+// Helper to filter time options based on selected date and backend availability
+const getFilteredTimeOptions = (
+  selectedDate: number | null,
+  availableBackendSlots: TrialSlot[] = []
+) => {
     if (!selectedDate) return TIME_OPTIONS;
 
     const now = new Date();
     const selected = new Date(selectedDate);
     
-    // If selected date is not today, return all options
-    if (selected.getDate() !== now.getDate() || 
-        selected.getMonth() !== now.getMonth() || 
-        selected.getFullYear() !== now.getFullYear()) {
-        return TIME_OPTIONS;
-    }
+    const isToday = selected.getDate() === now.getDate() && 
+                    selected.getMonth() === now.getMonth() && 
+                    selected.getFullYear() === now.getFullYear();
 
-    // If today, filter out past times
     // Add 1 hour buffer (user can't book a slot starting in less than 1 hour)
     const currentHour = now.getHours() + 1; 
 
@@ -188,10 +197,19 @@ const getFilteredTimeOptions = (selectedDate: number | null) => {
         
         const [slotHour] = option.value.split(':').map(Number);
         
-        // Disable past/too-soon slots
-        if (slotHour <= currentHour) {
+        // 1. Check if it's in the past (only for today)
+        if (isToday && slotHour <= currentHour) {
             return { ...option, disabled: true, label: `${option.label} (passed)` };
         }
+
+        // 2. Check if there's mentor availability from backend
+        // Note: backend slots are like "09:00", so we can match by startTime
+        const isAvailable = availableBackendSlots.some(s => s.startTime === option.value && s.mentorCount > 0);
+        
+        if (!isAvailable) {
+            return { ...option, disabled: true, label: `${option.label} (no slots)` };
+        }
+
         return option;
     });
 };
@@ -222,6 +240,8 @@ const TrialBookingPage: React.FC = () => {
   });
 
   const [selectedDate, setSelectedDate] = useState<number | null>(null);
+  const [availableBackendSlots, setAvailableBackendSlots] = useState<TrialSlot[]>([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [availableSyllabi, setAvailableSyllabi] = useState<string[]>([]);
   const [hasExistingBooking, setHasExistingBooking] = useState(false);
@@ -281,7 +301,7 @@ const TrialBookingPage: React.FC = () => {
         
         // 1. Try to find grade ID directly
         if (studentProfile.gradeId) {
-            const gradeIdVal = studentProfile.gradeId as any;
+            const gradeIdVal = studentProfile.gradeId as unknown as string | { _id: string };
             targetGradeId = typeof gradeIdVal === 'string' 
                 ? gradeIdVal 
                 : gradeIdVal._id || String(gradeIdVal);
@@ -350,6 +370,35 @@ const TrialBookingPage: React.FC = () => {
       }
     }
   }, [formData.grade, formData.syllabus, grades, dispatch]);
+
+  // Fetch real-time availability
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      if (formData.subject && selectedDate) {
+        try {
+          setAvailabilityLoading(true);
+          const d = new Date(selectedDate);
+          const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          const result = await dispatch(fetchAvailableTrialSlots({ 
+            subjectId: formData.subject, 
+            date: dateStr 
+          })).unwrap() as { slots: TrialSlot[] };
+          
+          setAvailableBackendSlots(result.slots || []);
+        } catch (error) {
+          console.error('Failed to fetch availability:', error);
+          setAvailableBackendSlots([]);
+          // Non-blocking error, we'll just show no slots
+        } finally {
+          setAvailabilityLoading(false);
+        }
+      } else {
+        setAvailableBackendSlots([]);
+      }
+    };
+
+    fetchAvailability();
+  }, [formData.subject, selectedDate, dispatch]);
 
   // Booking Status Effects
   useEffect(() => {
@@ -794,17 +843,22 @@ const TrialBookingPage: React.FC = () => {
             }
             className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition appearance-none cursor-pointer"
           >
-            {getFilteredTimeOptions(selectedDate).map((option) => (
+            {getFilteredTimeOptions(selectedDate, availableBackendSlots).map((option) => (
               <option
                 key={option.value}
                 value={option.value}
-                disabled={option.disabled}
-                className={option.disabled ? "text-gray-400 bg-gray-100" : ""}
+                disabled={option.disabled || availabilityLoading}
+                className={option.disabled ? "text-gray-400 bg-gray-100 placeholder:text-gray-400" : ""}
               >
                 {option.label}
               </option>
             ))}
           </select>
+          {availabilityLoading && (
+            <p className="mt-1 text-xs text-teal-600 animate-pulse font-medium">
+              Checking available mentors...
+            </p>
+          )}
           {errors.time && (
             <p className="mt-1 text-sm text-red-500">{errors.time}</p>
           )}

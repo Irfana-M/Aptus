@@ -3,8 +3,8 @@ import { Router } from "express";
 import { container } from "../inversify.config";
 import { TYPES } from "../types";
 import { AvailabilityController } from "../controllers/availability.controller";
-import { requireAuth } from "../middleware/authMiddleware";
-import { requireRole } from "../middleware/role.middleware";
+import { requireAuth } from "../middlewares/authMiddleware";
+import { requireRole } from "../middlewares/role.middleware";
 
 const router = Router();
 const availabilityController = container.get<AvailabilityController>(TYPES.AvailabilityController);

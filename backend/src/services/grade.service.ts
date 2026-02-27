@@ -1,6 +1,6 @@
 import { inject, injectable } from "inversify";
 import type { IGradeRepository } from "@/interfaces/repositories/IGradeRepository";
-import type { GradeResponseDto } from "@/dto/student/grade.dto";
+import type { GradeResponseDto } from "@/dtos/student/grade.dto";
 import { TYPES } from "@/types";
 import { logger } from "@/utils/logger";
 import { AppError } from "@/utils/AppError";

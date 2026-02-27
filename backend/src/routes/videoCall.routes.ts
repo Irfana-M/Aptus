@@ -1,6 +1,6 @@
 import express from 'express';
-import { requireAuth } from '@/middleware/authMiddleware';
-import { requireRole } from '@/middleware/role.middleware';
+import { requireAuth } from '@/middlewares/authMiddleware';
+import { requireRole } from '@/middlewares/role.middleware';
 import { container } from '@/inversify.config';
 import { TYPES } from '@/types';
 

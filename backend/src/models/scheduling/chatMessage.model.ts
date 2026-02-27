@@ -12,7 +12,7 @@ const chatMessageSchema = new Schema<IChatMessage>(
   { timestamps: true }
 );
 
-// Index for fetching history of a room ordered by time
+
 chatMessageSchema.index({ chatRoomId: 1, createdAt: 1 });
 
 export const ChatMessageModel = mongoose.model<IChatMessage>("ChatMessage", chatMessageSchema);

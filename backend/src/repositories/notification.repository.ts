@@ -16,8 +16,9 @@ export class NotificationRepository extends BaseRepository<INotification> implem
   }
 
   async updateStatus(notificationId: string, status: 'sent' | 'failed' | 'read', error?: string, session?: ClientSession): Promise<void> {
-    const update: any = { status };
+    const update: Record<string, unknown> = { status };
     if (status === 'sent') update.sentAt = new Date();
+    if (status === 'read') update.isRead = true;
     if (error) update.error = error;
     
     await this.model.findByIdAndUpdate(notificationId, update, { session: session || null }).exec();
@@ -32,6 +33,6 @@ export class NotificationRepository extends BaseRepository<INotification> implem
   }
 
   async markAsRead(notificationId: string): Promise<void> {
-    await this.model.findByIdAndUpdate(notificationId, { status: 'read' }).exec();
+    await this.model.findByIdAndUpdate(notificationId, { status: 'read', isRead: true }).exec();
   }
 }

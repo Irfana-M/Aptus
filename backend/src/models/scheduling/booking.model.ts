@@ -24,6 +24,8 @@ const bookingSchema = new Schema<IBooking>(
       default: 'scheduled',
       required: true 
     },
+    cost: { type: Number },
+    currency: { type: String },
   },
   { timestamps: true }
 );

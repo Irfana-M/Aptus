@@ -3,6 +3,7 @@ import { mentorApi } from "./mentorApi";
 import type { MentorProfile } from "./mentorSlice";
 import type { RootState } from "../../app/store";
 import type { TrialClass } from "../../types/studentTypes";
+import type { Course } from "../../types/courseTypes";
 
 export const updateMentorProfile = createAsyncThunk<
   MentorProfile,
@@ -69,7 +70,7 @@ export const updateTrialClassStatus = createAsyncThunk<
 });
 
 export const fetchMentorCourses = createAsyncThunk<
-  any[], // Using any[] for now, will refine if needed
+  Course[],
   void,
   { state: RootState }
 >("mentor/fetchCourses", async () => {

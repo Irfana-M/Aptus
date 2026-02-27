@@ -1,5 +1,5 @@
 import type { ITrialClassDocument } from "@/models/student/trialClass.model";
-import type { TrialClassResponseDto } from "@/dto/student/trialClassDTO";
+import type { TrialClassResponseDto } from "@/dtos/student/trialClassDTO";
 
 import mongoose from "mongoose";
 
@@ -7,7 +7,13 @@ interface PopulatedUser { _id: mongoose.Types.ObjectId | string; fullName?: stri
 interface PopulatedSubject { _id: mongoose.Types.ObjectId | string; subjectName?: string; name?: string; syllabus?: string; grade?: Record<string, unknown> | string | number; gradeId?: string | number; }
 interface PopulatedMentor { _id: mongoose.Types.ObjectId | string; fullName?: string; name?: string; email?: string; }
 
-interface GradeInfo { level?: string | number | unknown; gradeLevel?: string | number | unknown; value?: string | number | unknown }
+interface GradeInfo { 
+  name?: string | number | unknown; 
+  grade?: string | number | unknown; 
+  level?: string | number | unknown; 
+  gradeLevel?: string | number | unknown; 
+  value?: string | number | unknown;
+}
 
 export class TrialClassMapper {
   static toResponseDto(entity: ITrialClassDocument): TrialClassResponseDto {
@@ -54,11 +60,43 @@ export class TrialClassMapper {
           syllabus: subjectObj.syllabus || '',
           grade: (() => {
             const gradeVal = subjectObj.grade;
+            
+            // Check if grade is a populated object with name or grade field
             if (gradeVal && typeof gradeVal === "object") {
               const info = gradeVal as GradeInfo;
-              const potentialGrade = info.level || info.gradeLevel || info.value;
-              if (potentialGrade !== undefined) return parseInt(potentialGrade as string, 10);
+              
+              // First check for 'name' field (from Grade model)
+              if (info.level !== undefined) {
+                const parsed = parseInt(info.level as string, 10);
+                if (!isNaN(parsed)) return parsed;
+              }
+              
+              // Check for 'grade' field
+              if (info.gradeLevel !== undefined) {
+                const parsed = parseInt(info.gradeLevel as string, 10);
+                if (!isNaN(parsed)) return parsed;
+              }
+              
+              // Check for 'value' field
+              if (info.value !== undefined) {
+                const parsed = parseInt(info.value as string, 10);
+                if (!isNaN(parsed)) return parsed;
+              }
+              
+              // If it's a populated object with 'name' property (Grade document)
+              if ('name' in info && info.name) {
+                const parsed = parseInt(info.name as string, 10);
+                if (!isNaN(parsed)) return parsed;
+              }
+              
+              // If it's a populated object with 'grade' property
+              if ('grade' in info && info.grade) {
+                const parsed = parseInt(info.grade as string, 10);
+                if (!isNaN(parsed)) return parsed;
+              }
             }
+            
+            // Fallback to gradeId or direct value
             const finalGrade = gradeVal || subjectObj.gradeId;
             return typeof finalGrade === "string" || typeof finalGrade === "number"
               ? parseInt(finalGrade.toString(), 10) || 0

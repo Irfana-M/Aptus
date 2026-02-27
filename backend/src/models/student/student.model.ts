@@ -45,6 +45,9 @@ const studentSchema = new Schema<StudentProfile>(
       status: { type: String, enum: ['active', 'expired', 'cancelled'], default: 'expired' },
       sessionId: { type: String },
       paymentIntentId: { type: String },
+      paymentId: { type: Schema.Types.ObjectId, ref: 'Payment' },
+      planCode: { type: String },
+      planType: { type: String, enum: ['basic', 'premium'] },
       subjectCount: { type: Number, default: 1 },
       availability: [{
         day: String,
@@ -87,6 +90,7 @@ const studentSchema = new Schema<StudentProfile>(
     referralCode: { type: String, unique: true, sparse: true },
     referredBy: { type: String },
     activeSubscriptionId: { type: Schema.Types.ObjectId, ref: 'StudentSubscription' },
+    cancellationCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
@@ -97,3 +101,10 @@ export const StudentModel = mongoose.model<StudentProfile>(
   "Student",
   studentSchema
 );
+
+// Register alias "student" for refPath compatibility
+try {
+  mongoose.model("student");
+} catch {
+  mongoose.model("student", studentSchema);
+}

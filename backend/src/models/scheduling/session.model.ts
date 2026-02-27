@@ -16,11 +16,9 @@ const participantSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ["scheduled", "present", "absent", "late", "left-early"],
+      enum: ["scheduled", "present", "absent"],
       default: "scheduled",
     },
-    joinedAt: Date,
-    leftAt: Date,
   },
   { _id: false }
 );
@@ -64,12 +62,12 @@ const sessionSchema = new Schema<ISession>(
     },
     mentorStatus: {
       type: String,
-      enum: ["scheduled", "present", "absent", "late"],
+      enum: ["scheduled", "present", "absent"],
       default: "scheduled",
     },
     status: {
       type: String,
-      enum: ["scheduled", "in_progress", "completed", "not_held", "cancelled"],
+      enum: ["scheduled", "in_progress", "completed", "not_held", "cancelled", "rescheduling"],
       default: "scheduled",
     },
     startTime: { type: Date, required: true },

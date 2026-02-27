@@ -4,6 +4,8 @@ import { TYPES } from "../types";
 import { HttpStatusCode } from "../constants/httpStatus";
 import { AppError } from "../utils/AppError";
 import type { IEnrollmentService } from "../interfaces/services/IEnrollmentService";
+import { getPaginationParams } from "@/utils/pagination.util";
+import { logger } from "@/utils/logger";
 
 @injectable()
 export class EnrollmentController {
@@ -103,11 +105,11 @@ export class EnrollmentController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const enrollments = await this.enrollmentService.getAllEnrollments();
-      res.status(HttpStatusCode.OK).json({
-        success: true,
-        data: enrollments,
-      });
+      const { page, limit } = getPaginationParams(req.query);
+      logger.info(`Fetching paginated enrollments for admin - Page: ${page}, Limit: ${limit}`);
+
+      const result = await this.enrollmentService.getAllEnrollmentsPaginated({ page, limit });
+      res.status(HttpStatusCode.OK).json(result);
     } catch (error: unknown) {
       next(error);
     }

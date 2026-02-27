@@ -11,12 +11,24 @@ import { fetchStudentProfile } from '../student/studentThunk';
 
 
 interface Props {
-  planType: 'monthly' | 'yearly';
+  planType: string;
   amount: number;
   subjectCount: number;
+  availability?: {
+    day: string;
+    startTime: string;
+    endTime: string;
+  }[];
+  subjects?: string[];
 }
 
-const StripeSubscriptionForm: React.FC<Props> = ({ planType, amount, subjectCount }) => {
+const StripeSubscriptionForm: React.FC<Props> = ({ 
+  planType, 
+  amount, 
+  subjectCount,
+  availability,
+  subjects
+}) => {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -45,6 +57,8 @@ const StripeSubscriptionForm: React.FC<Props> = ({ planType, amount, subjectCoun
           studentId: studentId.toString(), 
           planType,
           subjectCount,
+          availability,
+          subjects
         });
         
         // Update Redux state immediately to unlock sidebar
@@ -139,32 +153,6 @@ const StripeSubscriptionForm: React.FC<Props> = ({ planType, amount, subjectCoun
 
   return (
     <div className="p-4 border rounded-lg shadow-sm bg-white space-y-4">
-      {/* Wallet Payment Option - Temporarily Disabled 
-      {walletBalance >= amount && (
-        <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
-            <div className="flex justify-between items-center mb-2">
-                <span className="text-teal-800 font-medium">Wallet Balance</span>
-                <span className="text-teal-900 font-bold">₹{walletBalance.toFixed(2)}</span>
-            </div>
-            <button
-                type="button"
-                onClick={handleWalletPayment}
-                disabled={loading}
-                className="w-full bg-teal-600 text-white py-2 px-4 rounded hover:bg-teal-700 transition-colors flex items-center justify-center gap-2"
-            >
-               {loading ? 'Processing...' : `Pay ₹${amount} with Wallet`}
-            </button>
-            <div className="relative mt-4">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-teal-200" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-teal-50 px-2 text-teal-600">Or pay with other methods</span>
-                  </div>
-            </div>
-        </div>
-      )}
-      */}
 
       {paymentRequest && (
         <div className="mb-4">

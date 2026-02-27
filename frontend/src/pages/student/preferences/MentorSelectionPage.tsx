@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAppDispatch, useAppSelector } from '../../../app/hooks';
-import { updatePreferences, findMentors, fetchMyMentorRequests } from '../../../features/student/studentApi';
-import { fetchStudentProfile, requestMentor } from '../../../features/student/studentThunk';
+import { useAppSelector } from '../../../app/hooks';
+import { findMentors, fetchMyMentorRequests, fetchMentorDetails } from '../../../features/student/studentApi';
 import StudentLayout from '../../../components/students/StudentLayout';
 import { 
     Users, ChevronLeft, Check, User, Info, Star 
@@ -10,80 +9,128 @@ import {
 import toast from 'react-hot-toast';
 import { Button } from '../../../components/ui/Button';
 import MentorDetailModal from '../../../components/students/MentorDetailModal';
+import type { MentorProfile } from '../../../features/mentor/mentorSlice';
+
+interface SelectedSubject {
+    id: string;
+    subjectName: string;
+    syllabus: string;
+}
+
+interface SubjectPreference {
+    subjectId: string;
+    slots: { day: string; startTime: string; endTime: string }[];
+}
+
+interface MentorMatch {
+    matches: MentorProfile[];
+    alternates: MentorProfile[];
+}
 
 const MentorSelectionPage: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const dispatch = useAppDispatch();
-    const { profile } = useAppSelector((state) => state.student);
-    
-    // State from previous page
-    const selectedSubjects = (location.state?.selectedSubjects || []) as { id: string; subjectName: string; syllabus: string }[];
-    const pendingPreferences = (location.state?.preferences || []) as { subjectId: string; slots: { day: string; startTime: string; endTime: string }[] }[];
+    const { profile, loading: profileLoading } = useAppSelector((state) => state.student);
+
+    // Memoize selected subjects and preferences to prevent effect re-runs
+    const { selectedSubjects, pendingPreferences } = useMemo(() => {
+        let subjects = (location.state?.selectedSubjects || []) as SelectedSubject[];
+        let preferences = (location.state?.preferences || []) as SubjectPreference[];
+
+        // Fallback Recovery (if state is missing but profile has data)
+        if (subjects.length === 0 && profile?.preferredTimeSlots?.length) {
+            const recoveredSubjects: SelectedSubject[] = [];
+            const recoveredPreferences: SubjectPreference[] = [];
+
+            (profile.preferredTimeSlots as { subjectId: { _id?: string, id?: string, subjectName?: string, syllabus?: string }, slots: { day: string; startTime: string; endTime: string }[] }[]).forEach((slot) => {
+                // ensure subjectId is populated object
+                if (slot.subjectId && typeof slot.subjectId === 'object' && slot.subjectId.subjectName) {
+                    const subjId = slot.subjectId._id || slot.subjectId.id || '';
+                    // Avoid duplicates
+                    if (!recoveredSubjects.find(s => s.id === subjId)) {
+                        recoveredSubjects.push({
+                            id: subjId,
+                            subjectName: slot.subjectId.subjectName,
+                            syllabus: slot.subjectId.syllabus || 'Standard'
+                        });
+                    }
+                    if (!recoveredPreferences.find(p => p.subjectId === subjId)) {
+                        recoveredPreferences.push({
+                            subjectId: subjId,
+                            slots: slot.slots || []
+                        });
+                    }
+                }
+            });
+
+            if (recoveredSubjects.length > 0) {
+                subjects = recoveredSubjects;
+                preferences = recoveredPreferences;
+            }
+        }
+        return { selectedSubjects: subjects, pendingPreferences: preferences };
+    }, [location.state?.selectedSubjects, location.state?.preferences, profile?.preferredTimeSlots]);
 
     // Local state
     const [activeSubjectIndex, setActiveSubjectIndex] = useState(0);
-    const [matches, setMatches] = useState<Record<string, { matches: any[]; alternates: any[] }>>({});
-    const [loading, setLoading] = useState(false);
+    const [matches, setMatches] = useState<Record<string, MentorMatch>>({});
+    const [localLoading, setLocalLoading] = useState(false);
     const [selectedMentors, setSelectedMentors] = useState<Record<string, string>>({}); // subjectId -> mentorId
-    const [saving, setSaving] = useState(false);
-    const [myRequests, setMyRequests] = useState<any[]>([]);
+    const [myRequests, setMyRequests] = useState<{ mentorId?: { _id: string }, subjectId?: { _id: string }, status: string }[]>([]);
     
     // Mentor Detail Modal
     const [isDetailOpen, setIsDetailOpen] = useState(false);
-    const [viewingMentor, setViewingMentor] = useState<any | null>(null);
-    const [requestingMentor, setRequestingMentor] = useState(false);
-
+    const [viewingMentor, setViewingMentor] = useState<MentorProfile | null>(null);
+    
     const activeSubject = selectedSubjects[activeSubjectIndex];
-
+    
     useEffect(() => {
-        if (!selectedSubjects.length || !pendingPreferences.length) {
-            navigate('/student/preferences/time-slots');
+        // Wait for profile to load before making redirect decisions
+        if (profileLoading) return;
+
+        if (!selectedSubjects.length) {
+            console.warn('Redirecting from MentorSelection: Missing subjects');
+            navigate('/student/preferences/subjects');
             return;
         }
 
         // Fetch mentors for all subjects
         const loadData = async () => {
-            setLoading(true);
-            const newMatches: Record<string, any> = {};
+            setLocalLoading(true);
+            const newMatches: Record<string, MentorMatch> = {};
 
             try {
-                // 1. Fetch Candidates
-                await Promise.all(selectedSubjects.map(async (subject) => {
-                    const pref = pendingPreferences.find(p => p.subjectId === subject.id);
-                    if (!pref) return;
-
-                    const uniqueDays = Array.from(new Set(pref.slots.map(s => s.day)));
-                    
-                    let timeSlot = "";
-                    if (pref.slots.length > 0) {
-                        const firstSlot = pref.slots[0];
-                        const start = firstSlot.startTime.slice(0, 5); // Take first 5 chars "HH:mm"
-                        const end = firstSlot.endTime.slice(0, 5);     // Take first 5 chars
-                        timeSlot = `${start}-${end}`;
-                    }
-                    
-                    const result = await findMentors(subject.id, profile?.gradeId, uniqueDays, timeSlot);
-                    newMatches[subject.id] = result.data;
+                // 1. Fetch Candidates (No time constraints for Premium flow)
+                await Promise.all(selectedSubjects.map(async (subject: SelectedSubject) => {
+                    // For mentor-first flow, we don't have slots yet, so we pass undefined for days/timeSlot
+                    const result = await findMentors(subject.id, profile?.gradeId);
+                    newMatches[subject.id] = result.data as MentorMatch;
                 }));
                 setMatches(newMatches);
 
                 // 2. Fetch Requests
                 const requestsResponse = await fetchMyMentorRequests();
                 if (requestsResponse.success) {
-                    setMyRequests(requestsResponse.data);
+                    setMyRequests(requestsResponse.data.map(r => ({
+                        _id: r._id,
+                        mentorId: r.mentorId,
+                        subjectId: r.subjectId,
+                        status: r.status
+                    })));
                 }
 
-            } catch (error) {
-                console.error("Failed to fetch data", error);
-                toast.error("Failed to load matching mentors");
+            } catch (error: unknown) {
+                const message = error && typeof error === 'object' && 'response' in error 
+                    ? ((error as { response: { data: { message: string } } }).response?.data?.message || 'Failed to load matching mentors')
+                    : (error instanceof Error ? error.message : 'Failed to load matching mentors');
+                toast.error(message);
             } finally {
-                setLoading(false);
+                setLocalLoading(false);
             }
         };
 
         loadData();
-    }, []);
+    }, [profileLoading, selectedSubjects, navigate, profile?.gradeId]);
 
     const handleSelectMentor = (mentorId: string) => {
         if (!activeSubject) return;
@@ -93,91 +140,76 @@ const MentorSelectionPage: React.FC = () => {
         }));
     };
 
-    const handleSave = async () => {
-        // Filter out empty selections
-        const selectedMentorIds = Object.entries(selectedMentors).filter(([_, id]) => id);
-
-        try {
-            setSaving(true);
-            
-            // 1. Update Time Slots (Backend saves these preferences)
-            await updatePreferences(pendingPreferences);
-            
-            // 2. Request Mentors for selected subjects
-            if (selectedMentorIds.length > 0) {
-                 await Promise.all(selectedMentorIds.map(async ([subjectId, mentorId]) => {
-                     // We use the thunk to handle the state updates and error handling
-                     await dispatch(requestMentor({ subjectId, mentorId })).unwrap();
-                 }));
-            }
-
-            toast.success('Preferences saved and mentors requested successfully!');
-            await dispatch(fetchStudentProfile());
-            navigate('/student/dashboard');
-        } catch (error: any) {
-            console.error('Failed to save preferences', error);
-            toast.error(error.message || 'Failed to request mentors. Please try again.');
-        } finally {
-            setSaving(false);
+    const handleNext = () => {
+        // Validate that a mentor is selected for each subject
+        const missingSubjects = selectedSubjects.filter((s: SelectedSubject) => !selectedMentors[s.id]);
+        
+        if (missingSubjects.length > 0) {
+            toast.error(`Please select a mentor for: ${missingSubjects.map((s: SelectedSubject) => s.subjectName).join(', ')}`);
+            return;
         }
+
+        navigate('/student/preferences/time-slots', { 
+            state: { 
+                selectedSubjects,
+                selectedMentors // Pass selected mentors to the next page
+            } 
+        });
     };
 
-    const isBasicPlan = profile?.subscription?.plan !== 'yearly';
+    const isBasicPlan = 
+        profile?.subscription?.planType === 'basic' || 
+        profile?.subscription?.planCode === 'BASIC';
 
-    const openMentorDetail = async (mentor: any) => {
+    useEffect(() => {
+        if (isBasicPlan && profile) {
+            console.log('🛡️ Basic plan detected, redirecting from mentor selection');
+            navigate('/student/dashboard');
+        }
+    }, [isBasicPlan, profile, navigate]);
+
+    const openMentorDetail = async (mentor: MentorProfile) => {
         if (isBasicPlan) return;
         setViewingMentor(mentor);
         setIsDetailOpen(true);
-    };
-
-    const handleRequestMentor = async () => {
-        if (!viewingMentor || !activeSubject) return;
         
-        setRequestingMentor(true);
+        // Fetch full details (includes reviews/feedback)
         try {
-            await dispatch(requestMentor({ 
-                subjectId: activeSubject.id, 
-                mentorId: viewingMentor._id 
-            })).unwrap();
-            
-            // Update local state to reflect selection
-            setSelectedMentors(prev => ({
-                ...prev,
-                [activeSubject.id]: viewingMentor._id
-            }));
-            
-            // Refresh requests list
-            const requestsResponse = await fetchMyMentorRequests();
-            if (requestsResponse.success) {
-                setMyRequests(requestsResponse.data);
-            }
-            
-            toast.success('Mentor requested successfully!');
-            setIsDetailOpen(false);
-        } catch (error: any) {
-            console.error('Failed to request mentor', error);
-            toast.error(error.message || 'Failed to request mentor');
-        } finally {
-            setRequestingMentor(false);
+            const data = await fetchMentorDetails(mentor._id);
+            setViewingMentor(data.data as unknown as MentorProfile);
+        } catch (error) {
+            console.error("Error fetching mentor details:", error);
         }
     };
 
+    const handleMentorToggle = () => {
+        if (!viewingMentor || !activeSubject) return;
+        
+        const mentorId = viewingMentor._id;
+        setSelectedMentors(prev => ({
+            ...prev,
+            [activeSubject.id]: prev[activeSubject.id] === mentorId ? '' : mentorId
+        }));
+        
+        setIsDetailOpen(false);
+    };
+
     // Determine request status
-    const getMentorRequestStatus = (mentorId: string) => {
+    const getMentorRequestStatus = (mentorId: string): "pending" | "rejected" | "assigned" | "none" => {
         // Check if there is a pending request for this mentor
-        const request = myRequests.find(r => r.mentorId._id === mentorId && r.subjectId._id === activeSubject.id);
-        if (request) return request.status;
+        const request = myRequests.find(r => r.mentorId?._id === mentorId && r.subjectId?._id === activeSubject?.id);
+        if (request) return request.status as "pending" | "rejected" | "assigned" | "none";
 
         // Check if current mentor matches the assigned one
-        const currentPref = profile?.preferredTimeSlots?.find((slot: any) => slot.subjectId === activeSubject.id);
+        const currentPref = (profile?.preferredTimeSlots as { subjectId: string, assignedMentorId: string, status: string }[])?.find(slot => slot.subjectId === activeSubject?.id);
         if (currentPref?.assignedMentorId === mentorId && currentPref?.status === 'mentor_assigned') {
             return 'assigned';
         }
         
-        return null;
+        return "none";
     };
 
-    if (loading) {
+    if (localLoading || (profileLoading && !selectedSubjects.length)) {
         return (
             <StudentLayout title="Select Your Mentors">
                 <div className="min-h-[60vh] flex items-center justify-center">
@@ -203,9 +235,9 @@ const MentorSelectionPage: React.FC = () => {
 
                     {/* Subject Tabs */}
                     <div className="flex flex-wrap justify-center gap-4 mb-10">
-                        {selectedSubjects.map((subject, idx) => {
+                        {selectedSubjects.map((subject: SelectedSubject, idx: number) => {
                             const isSelected = !!selectedMentors[subject.id];
-                            const requestForSubject = myRequests.find(r => r.subjectId._id === subject.id || r.subjectId === subject.id);
+                            const requestForSubject = myRequests.find(r => (r.subjectId?._id || r.subjectId) === subject.id);
                             const hasPending = requestForSubject?.status === 'pending';
                             const hasAssigned = requestForSubject?.status === 'approved';
                             
@@ -253,11 +285,10 @@ const MentorSelectionPage: React.FC = () => {
                                     Perfect Matches
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {currentMatches.matches?.length > 0 ? currentMatches.matches.map((mentor: any) => {
+                                    {currentMatches.matches?.length > 0 ? currentMatches.matches.map((mentor: MentorProfile) => {
                                         const status = getMentorRequestStatus(mentor._id);
                                         const isPending = status === 'pending';
                                         const isAssigned = status === 'assigned';
-                                        const isRejected = status === 'rejected';
                                         
                                         return (
                                         <div 
@@ -283,8 +314,24 @@ const MentorSelectionPage: React.FC = () => {
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <h4 className="font-black text-slate-900 truncate">{mentor.fullName}</h4>
+                                                    <div className="flex items-center gap-1 mt-0.5">
+                                                        <div className="flex items-center gap-0.5">
+                                                            {[...Array(5)].map((_, i) => (
+                                                                <Star 
+                                                                    key={i} 
+                                                                    size={10} 
+                                                                    className={i < Math.floor(mentor.rating || 0) ? "text-yellow-400 fill-yellow-400" : "text-slate-200"} 
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                        <span className="text-[10px] font-bold text-slate-400">
+                                                            ({mentor.rating || 0})
+                                                        </span>
+                                                    </div>
                                                     <p className="text-xs text-slate-500 font-bold uppercase tracking-wide mt-1">
-                                                        {mentor.experience} Expert
+                                                        {mentor.experiences && mentor.experiences.length 
+                                                            ? `${mentor.experiences.reduce((acc: number, curr: { duration: string }) => acc + (parseInt(curr.duration) || 0), 0)}+ Years Experience`
+                                                            : "Experienced Expert"}
                                                     </p>
                                                     
                                                     {/* Status Badges */}
@@ -324,7 +371,8 @@ const MentorSelectionPage: React.FC = () => {
                                                 )}
                                             </div>
                                         </div>
-                                    ); }) : (
+                                    );
+                                    }) : (
                                         <div className="col-span-full py-8 text-center bg-slate-50 rounded-3xl border border-dashed border-slate-200">
                                             <p className="text-slate-400 font-medium">No perfect matches found for these times.</p>
                                         </div>
@@ -338,7 +386,12 @@ const MentorSelectionPage: React.FC = () => {
 
                     <div className="pt-8 mt-10 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-6">
                         <button
-                            onClick={() => navigate('/student/preferences/time-slots')}
+                            onClick={() => navigate('/student/preferences/time-slots', { 
+                                state: { 
+                                    selectedSubjects, 
+                                    savedPreferences: pendingPreferences // Pass back as savedPreferences to restore state
+                                } 
+                            })}
                             className="flex items-center gap-2 text-slate-400 font-black uppercase tracking-widest text-xs hover:text-indigo-600 transition-all group"
                         >
                             <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" strokeWidth={3} />
@@ -346,11 +399,10 @@ const MentorSelectionPage: React.FC = () => {
                         </button>
 
                         <Button 
-                            onClick={handleSave} 
-                            disabled={saving} 
+                            onClick={handleNext} 
                             className="bg-indigo-600 hover:bg-indigo-700 text-white px-12 py-4 rounded-2xl font-black flex items-center gap-3 shadow-xl shadow-indigo-100 transform transition-all active:scale-95 disabled:opacity-30 disabled:grayscale"
                         >
-                             {saving ? 'SAVING...' : 'FINISH & SAVE'}
+                             NEXT: CHOOSE TIME SLOTS
                             <Check size={20} className="ml-2" />
                         </Button>
                     </div>
@@ -361,9 +413,11 @@ const MentorSelectionPage: React.FC = () => {
                 isOpen={isDetailOpen} 
                 onClose={() => setIsDetailOpen(false)} 
                 mentor={viewingMentor}
-                onRequestMentor={handleRequestMentor}
+                onRequestMentor={handleMentorToggle}
                 requestStatus={viewingMentor ? getMentorRequestStatus(viewingMentor._id) : 'none'}
-                isLoadingRequest={requestingMentor}
+                isLoadingRequest={false}
+                isReviewMode={true}
+                isSelected={viewingMentor && activeSubject ? selectedMentors[activeSubject.id] === viewingMentor._id : false}
             />
         </StudentLayout>
     );

@@ -38,6 +38,7 @@ import {
   Ban,
   Check,
   CreditCard,
+  Calendar,
 } from "lucide-react";
 import { showToast } from "../../utils/toast";
 interface Column<T> {
@@ -243,7 +244,7 @@ export const StudentsManagement: React.FC = () => {
       const handleViewTrialClasses = (studentId: string) => {
   dispatch(fetchStudentTrialClasses({ studentId }))
     .unwrap()
-    .then(_trialClasses => {
+    .then(() => {
       // Navigate to trial classes page - using plural 'students' to match route
       navigate(`/admin/students/${studentId}/trial-classes`);
     })
@@ -291,15 +292,12 @@ export const StudentsManagement: React.FC = () => {
             <p className="font-medium text-gray-900">{student.name}</p>
             <p className="text-sm text-gray-500">{student.email}</p>
             {student.trialSummary && (
-            <div className="flex items-center space-x-2 mt-1">
-              <div className={`w-2 h-2 rounded-full ${
-                student.trialSummary.hasPending ? 'bg-yellow-400' : 'bg-green-400'
-              }`} />
-              <span className="text-xs text-gray-600">
-                {student.trialSummary.text}
-              </span>
-            </div>
-          )}
+              <div className="flex items-center mt-1">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${student.trialSummary.color}`}>
+                  {student.trialSummary.text}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       ),
@@ -329,12 +327,13 @@ export const StudentsManagement: React.FC = () => {
               Paid
             </span>
           )}
-           {(student.trialSummary?.pending || 0) > 0 && (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-            <Clock className="w-3 h-3 mr-1" />
-            {student.trialSummary?.pending} Pending Trial
-          </span>
-        )}
+          {student.trialSummary && student.trialSummary.status !== 'completed' && (
+            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${student.trialSummary.color}`}>
+              {student.trialSummary.icon === 'Clock' && <Clock className="w-3 h-3 mr-1" />}
+              {student.trialSummary.icon === 'Calendar' && <Calendar className="w-3 h-3 mr-1" />}
+              {student.trialSummary.text}
+            </span>
+          )}
         </div>
       ),
       sortable: true,
