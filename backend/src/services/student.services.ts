@@ -19,6 +19,8 @@ import { EVENTS } from '../utils/InternalEventEmitter';
 import { PLAN_LIMITS } from '../constants/plans';
 import { PlanType } from '../enums/plan.enum';
 import type { ICourseRepository } from '../interfaces/repositories/ICourseRepository';
+import { ApprovalStatus } from '../domain/enums/ApprovalStatus';
+import { StudentOnboardingStatus } from '../enums/studentOnboarding.enum';
 import type { IEnrollmentService } from '../interfaces/services/IEnrollmentService';
 import type { ICourseRequestRepository } from '../interfaces/repositories/ICourseRequestRepository';
 import type { ISubjectRepository } from '../interfaces/repositories/ISubjectRepository';
@@ -358,8 +360,8 @@ export class StudentService implements IStudentService {
 
       // Handle enum values that might be stored as strings in DB
       const studentProfile = student as StudentProfile;
-      const currentStatus = (studentProfile.onboardingStatus || StudentOnboardingStatus.REGISTERED) as import('../enums/studentOnboarding.enum').StudentOnboardingStatus;
-      const newStatus = StudentOnboardingPolicy.getStatusForEvent(event);
+      const currentStatus = (studentProfile.onboardingStatus || StudentOnboardingStatus.REGISTERED) as StudentOnboardingStatus;
+      const newStatus = StudentOnboardingPolicy.getStatusForEvent(event) as StudentOnboardingStatus;
 
       // Validate transition
       if (!StudentOnboardingPolicy.canTransition(currentStatus, newStatus)) {
@@ -552,7 +554,7 @@ export class StudentService implements IStudentService {
       // 2. Update Student Preferred Time Slot Status
       const studentProfile = student as StudentProfile;
       const subjectPreferenceIndex = studentProfile.preferredTimeSlots?.findIndex(
-        (slot) => slot.subjectId.toString() === subjectId || (slot.subjectId as any)._id?.toString() === subjectId
+        (slot: any) => slot.subjectId.toString() === subjectId || (slot.subjectId as any)._id?.toString() === subjectId
       );
 
       if (

@@ -12,6 +12,10 @@ import type {
   AuthUser,
 } from "@/interfaces/auth/auth.interface";
 import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
+import { StudentOnboardingStatus } from "@/enums/studentOnboarding.enum";
+import { ApprovalStatus } from "@/domain/enums/ApprovalStatus";
+import { Types } from "mongoose";
+
 
 export class StudentMapper {
 
@@ -55,11 +59,15 @@ export class StudentMapper {
       subscription: data.subscription as SubscriptionDetails | undefined,
       authProvider: data.authProvider,
       googleId: data.googleId,
-      gradeId: data.gradeId,
+      gradeId: data.gradeId ? new Types.ObjectId(data.gradeId as any) : undefined,
       onboardingStatus: data.onboardingStatus,
-      preferencesCompleted: data.preferencesCompleted,
-      preferredSubjects: data.preferredSubjects,
-      preferredTimeSlots: data.preferredTimeSlots,
+      preferencesCompleted: data.preferencesCompleted as boolean | undefined,
+      preferredSubjects: data.preferredSubjects?.map(id => new Types.ObjectId(id as any)),
+      preferredTimeSlots: data.preferredTimeSlots?.map((slot: any) => ({
+        subjectId: new Types.ObjectId(slot.subjectId as any),
+        slots: slot.slots,
+        status: slot.status
+      })),
     };
   }
 
@@ -186,7 +194,7 @@ export class StudentMapper {
       role: "student",
       isVerified: s.isVerified ?? false,
       isProfileComplete: s.isProfileCompleted || s.isProfileComplete || false,
-      approvalStatus: "approved",
+      approvalStatus: ApprovalStatus.APPROVED,
       isBlocked: s.isBlocked || false,
       createdAt: s.createdAt,
       updatedAt: s.updatedAt,
@@ -211,11 +219,15 @@ export class StudentMapper {
       subscription: s.subscription as SubscriptionDetails | undefined,
       isTrialCompleted: s.isTrialCompleted || false,
       hasPaid: s.hasPaid ?? ((s.subscription?.status === 'active') || false),
-      onboardingStatus: s.onboardingStatus || 'registered',
-      gradeId: s.gradeId,
+      onboardingStatus: s.onboardingStatus || StudentOnboardingStatus.REGISTERED,
+      gradeId: s.gradeId ? new Types.ObjectId(s.gradeId as any) : undefined,
       preferencesCompleted: s.preferencesCompleted,
-      preferredSubjects: s.preferredSubjects,
-      preferredTimeSlots: s.preferredTimeSlots,
+      preferredSubjects: s.preferredSubjects?.map(id => new Types.ObjectId(id as any)),
+      preferredTimeSlots: s.preferredTimeSlots?.map((slot: any) => ({
+        subjectId: new Types.ObjectId(slot.subjectId as any),
+        slots: slot.slots,
+        status: slot.status
+      })),
     };
   }
 
@@ -241,7 +253,7 @@ export class StudentMapper {
       isTrialCompleted: s.isTrialCompleted || false,
       totalTrialClasses: (s as unknown as { totalTrialClasses: number }).totalTrialClasses || 0,
       pendingTrialClasses: (s as unknown as { pendingTrialClasses: number }).pendingTrialClasses || 0,
-      createdAt: s.createdAt,
+      createdAt: s.createdAt || undefined,
     };
   }
 
@@ -285,8 +297,8 @@ export class StudentMapper {
       isPaid: student.isPaid || false,
       isTrialCompleted: student.isTrialCompleted || false,
       hasPaid: student.hasPaid ?? (student.subscription?.status === 'active'),
-      onboardingStatus: student.onboardingStatus,
-      preferencesCompleted: student.preferencesCompleted,
+      onboardingStatus: student.onboardingStatus || undefined,
+      preferencesCompleted: student.preferencesCompleted as boolean | undefined,
     };
   }
 

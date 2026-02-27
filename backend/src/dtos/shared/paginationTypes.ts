@@ -18,7 +18,7 @@ export interface StudentPaginationParams extends PaginationParams {
 }
 
 export interface CoursePaginationParams extends PaginationParams {
-  status?: 'available' | 'booked' | 'ongoing' | 'completed' | 'cancelled' | '';
+  status?: 'available' | 'booked' | 'ongoing' | 'completed' | 'cancelled' | undefined;
   gradeId?: string;
   subjectId?: string;
   dayOfWeek?: number;

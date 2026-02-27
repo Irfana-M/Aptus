@@ -1,7 +1,7 @@
 import type {
   TrialClassRequestDto,
   TrialClassResponseDto,
-} from "@/dto/student/trialClassDTO";
+} from "@/dtos/student/trialClassDTO";
 
 export interface ITrialClassService {
   requestTrialClass(
