@@ -2,60 +2,46 @@
   "compilerOptions": {
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    "ignoreDeprecations": "6.0",
+    
     // File Layout
     "rootDir": "./src",
     "outDir": "./dist",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@services/*": [
-        "./src/interfaces/services/*"
-      ],
-      "@utils/*": [
-        "./src/utils/*"
-      ],
-      "@constants/*": [
-        "./src/constants/*"
-      ]
+      "@/*": ["./src/*"],
+      "@services/*": ["./src/interfaces/services/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@constants/*": ["./src/constants/*"]
     },
+    
     // Environment Settings
-    "module": "ESNext",
+    "module": "Node16",
+    "moduleResolution": "Node16",  // Fixed typo
     "target": "ES2020",
     "esModuleInterop": true,
-    "allowImportingTsExtensions": false,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
+    
     // For nodejs:
-    "lib": [
-      "ES2020"
-    ],
-    "types": [
-      "reflect-metadata",
-      "node"
-    ],
+    "lib": ["ES2020"],
+    "types": ["reflect-metadata", "node"],
+    
     // Other Outputs
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
+    
     // Stricter Typechecking Options
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
+    
     // Recommended Options
     "strict": true,
-    "moduleResolution": "node",
     "isolatedModules": true,
-    "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "ignoreDeprecations": "5.0"
+    "forceConsistentCasingInFileNames": true
   },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }
