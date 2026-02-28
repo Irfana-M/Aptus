@@ -49,7 +49,7 @@ export class LeaveManagementService implements ILeaveManagementService {
         }
 
         // Cancel slot
-        await this._timeSlotRepo.createOrUpdate({ _id: slotId }, { status: 'cancelled' });
+        await this._timeSlotRepo.createOrUpdate({ _id: new mongoose.Types.ObjectId(slotId) as any }, { status: 'cancelled' });
         
         logger.info(`Slot ${slotId} cancelled and ${bookings.length} bookings handled due to mentor leave`);
       }

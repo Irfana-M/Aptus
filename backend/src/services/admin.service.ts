@@ -1,4 +1,5 @@
 import { injectable, inject } from "inversify";
+import { Types } from "mongoose";
 import { TYPES } from "../types";
 import type { IAdminRepository } from "../interfaces/repositories/IAdminRepository";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt.util";
@@ -1088,7 +1089,7 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
        if (!enrollmentId) {
             const enrollment = await this._enrollmentLinkRepo.findOne({ 
                 studentId: studentId as any,
-                courseId: (course._id as string),
+                courseId: (course._id as unknown as string),
                 isActive: true
             });
             enrollmentId = (enrollment as any)?._id?.toString() || "";

@@ -2,7 +2,7 @@ import { MentorModel } from "../models/mentor/mentor.model";
 import type { IMentorRepository, MentorPaginatedResult } from "../interfaces/repositories/IMentorRepository";
 import type { MentorProfile } from "../interfaces/models/mentor.interface";
 import { BaseRepository } from "./baseRepository";
-import { Model, type Document, type PipelineStage, type ClientSession } from "mongoose";
+import { Model, Types, type Document, type PipelineStage, type ClientSession } from "mongoose";
 import type { FilterQuery } from "mongoose";
 import { logger } from "../utils/logger";
 import { HttpStatusCode } from "../constants/httpStatus";
@@ -125,7 +125,7 @@ export class MentorRepository
     data: Partial<MentorProfile>,
     session?: ClientSession
   ): Promise<MentorProfile | null> {
-    return await this.updateById(id, data, session);
+    return await this.updateById(id, data as any, session);
   }
 
   async submitForApproval(id: string): Promise<MentorProfile> {
