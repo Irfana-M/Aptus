@@ -77,13 +77,13 @@ export class AdminService implements IAdminService {
       }
 
       const accessToken = generateAccessToken({
-        id: admin._id.toString(),
+        id: (admin._id as unknown as string).toString(),
         role: "admin",
         email: admin.email,
       });
 
       const refreshToken = generateRefreshToken({
-        id: admin._id.toString(),
+        id: (admin._id as unknown as string).toString(),
         role: "admin",
         email: admin.email,
       });
@@ -214,7 +214,7 @@ export class AdminService implements IAdminService {
       }>;
 
       const studentDtos: StudentBaseResponseDto[] = studentsRaw.map((s) => ({
-        id: (s._id?.toString() || s.id || '').toString(),
+        id: (s._id as unknown as string || s.id || '').toString(),
         fullName: s.fullName,
         email: s.email,
         phoneNumber: s.phoneNumber || '',
@@ -738,7 +738,7 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
 
       this._eventEmitter.emit(EVENTS.TRIAL_MENTOR_ASSIGNED, {
         trialClassId,
-        studentId: (updatedTrialClass as any).student?.toString(),
+        studentId: (updatedTrialClass as any).student?.toString() as string,
         mentorId,
         mentorName: mentor.fullName,
         subjectName: (updatedTrialClass.subject as any).subjectName || "Subject",
@@ -748,7 +748,7 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
       });
 
       // Send Notification to Student and Mentor
-      const studentId = (updatedTrialClass.student as any)._id?.toString() || (updatedTrialClass.student as any);
+      const studentId = (updatedTrialClass.student as any)._id?.toString() || (updatedTrialClass.student as any).toString();
       const studentName = (updatedTrialClass.student as any).fullName || "Student";
       const subjectName = (updatedTrialClass.subject as any).subjectName || "Subject";
 

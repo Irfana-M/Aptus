@@ -16,7 +16,7 @@ export class AvailabilityRepository extends BaseRepository<ITimeSlot> implements
       slotId,
       { $inc: { currentStudentCount: 1 } },
       { new: true, session: session || null }
-    ).lean();
+    ).lean() as unknown as ITimeSlot | null;
   }
 
   async findAvailableForSubject(subjectId: string, filters?: Record<string, unknown>): Promise<ITimeSlot[]> {
@@ -25,6 +25,6 @@ export class AvailabilityRepository extends BaseRepository<ITimeSlot> implements
        status: 'available',
        ...filters
      };
-     return await TimeSlotModel.find(query).lean();
+     return await TimeSlotModel.find(query).lean() as unknown as ITimeSlot[];
   }
 }

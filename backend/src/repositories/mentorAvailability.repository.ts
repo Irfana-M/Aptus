@@ -15,7 +15,7 @@ export class MentorAvailabilityRepository extends BaseRepository<IMentorAvailabi
     return await this.model.find({ 
       mentorId: new mongoose.Types.ObjectId(mentorId), 
       isActive: true 
-    }).lean(); 
+    }).lean() as unknown as IMentorAvailability[]; 
   }
 
   async deleteMany(filter: mongoose.FilterQuery<IMentorAvailability>, session?: mongoose.ClientSession): Promise<any> {

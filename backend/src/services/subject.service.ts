@@ -62,7 +62,7 @@ export class SubjectService implements ISubjectService {
              logger.warn(`Grade document not found for name: ${gradeId} and syllabus: ${syllabus}`);
              return [];
         }
-        finalGradeId = (gradeDoc._id as { toString(): string }).toString();
+        finalGradeId = (gradeDoc._id as unknown as string).toString();
         console.log(`✅ [SubjectService] Grade "${gradeId}" resolved to ID: ${finalGradeId}`);
       } else {
           console.log(`🔍 [SubjectService] Grade ID "${gradeId}" provided directly.`);
@@ -118,7 +118,7 @@ export class SubjectService implements ISubjectService {
   async findByName(name: string): Promise<string | null> {
     try {
         const subject = await this.subjectRepo.findOne({ subjectName: name });
-        return subject ? (subject._id as string).toString() : null;
+        return subject ? (subject._id as unknown as string).toString() : null;
     } catch (error) {
         logger.error(`Error finding subject by name: ${name}`, error);
         return null;

@@ -11,6 +11,6 @@ export class StudentEnrollmentRepository extends BaseRepository<IEnrollment> imp
   }
 
   async findActiveByCourseId(courseId: string): Promise<IEnrollment[]> {
-    return await this.model.find({ course: courseId, status: 'active' }).lean();
+    return await this.model.find({ course: courseId, status: 'active' }).lean() as unknown as IEnrollment[];
   }
 }

@@ -87,7 +87,7 @@ export class CourseRepository extends BaseRepository<ICourse> implements ICourse
       status: { $in: ["available", "booked", "ongoing"] },
       "schedule.timeSlot": timeSlot,
       "schedule.days": { $in: days } // At least one of the requested days must match
-    }).lean();
+    }).lean() as unknown as ICourse;
   }
   async findActiveConflict(params: {
     mentorId: string;
@@ -745,6 +745,6 @@ export class CourseRepository extends BaseRepository<ICourse> implements ICourse
       mentor: mentorId, 
       isActive: true,
       status: { $in: ['available', 'booked', 'ongoing'] }
-    }).lean();
+    }).lean() as unknown as ICourse[];
   }
 }

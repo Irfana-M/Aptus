@@ -9,14 +9,14 @@ export interface MentorRegisterInput {
 }
 
 export interface MentorDBInput {
-  _id?: string;
+  _id?: string | undefined;
   fullName: string;
   email: string;
   phoneNumber: string;
   password: string;
-  isBlocked?: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
+  isBlocked?: boolean | undefined;
+  createdAt?: Date | undefined;
+  updatedAt?: Date | undefined;
 }
 
 export interface StudentOtp extends MentorRegisterInput {
@@ -72,37 +72,37 @@ export interface MentorProfile {
   password: string;
   phoneNumber: string;
 
-  location?: string;
-  bio?: string;
-  academicQualifications?: AcademicQualification[];
-  experiences?: Experience[];
-  subjectProficiency?: SubjectProficency[];
-  certification?: Certification[];
-  profilePicture?: string;
+  location?: string | undefined;
+  bio?: string | undefined;
+  academicQualifications?: AcademicQualification[] | undefined;
+  experiences?: Experience[] | undefined;
+  subjectProficiency?: SubjectProficency[] | undefined;
+  certification?: Certification[] | undefined;
+  profilePicture?: string | undefined;
 
-  availability?: Availability[];
-  rating?: number;
-  totalRatings?: number;
-  expertise?: string[];
-  maxStudentsPerWeek?: number;
-  maxSessionsPerDay?: number;
-  maxSessionsPerWeek?: number;
-  currentWeeklyBookings?: number;
-  isActive?: boolean;
+  availability?: Availability[] | undefined;
+  rating?: number | undefined;
+  totalRatings?: number | undefined;
+  expertise?: string[] | undefined;
+  maxStudentsPerWeek?: number | undefined;
+  maxSessionsPerDay?: number | undefined;
+  maxSessionsPerWeek?: number | undefined;
+  currentWeeklyBookings?: number | undefined;
+  isActive?: boolean | undefined;
   
-  profileImageUrl?: string | null;
-  profileImageKey?: string;
-  isVerified?: boolean;
+  profileImageUrl?: string | null | undefined;
+  profileImageKey?: string | undefined;
+  isVerified?: boolean | undefined;
   isBlocked: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
-  isProfileComplete?: boolean;
-  approvalStatus?: ApprovalStatus;
-  submittedForApprovalAt?: Date;
-  rejectionReason?: string;
-  authProvider?: "local" | "google";
-  googleId?: string;
-  conflictingBookings?: unknown[];
-  leaves?: LeaveEntry[];
-  commissionPercentage?: number;
+  createdAt?: Date | undefined;
+  updatedAt?: Date | undefined;
+  isProfileComplete?: boolean | undefined;
+  approvalStatus?: ApprovalStatus | undefined;
+  submittedForApprovalAt?: Date | undefined;
+  rejectionReason?: string | undefined;
+  authProvider?: "local" | "google" | undefined;
+  googleId?: string | undefined;
+  conflictingBookings?: unknown[] | undefined;
+  leaves?: LeaveEntry[] | undefined;
+  commissionPercentage?: number | undefined;
 }

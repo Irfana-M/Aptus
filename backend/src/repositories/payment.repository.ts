@@ -9,7 +9,7 @@ export class PaymentRepository implements IPaymentRepository {
   }
 
   async findById(id: string): Promise<IPayment | null> {
-    return await PaymentModel.findById(id).populate('studentId', 'fullName email').lean().exec();
+    return await PaymentModel.findById(id).populate('studentId', 'fullName email').lean().exec() as unknown as IPayment | null;
   }
 
   async findAll(skip: number, limit: number): Promise<IPayment[]> {
@@ -19,7 +19,7 @@ export class PaymentRepository implements IPaymentRepository {
       .skip(skip)
       .limit(limit)
       .lean()
-      .exec();
+      .exec() as unknown as IPayment[];
   }
 
   async countDocuments(): Promise<number> {
@@ -30,7 +30,7 @@ export class PaymentRepository implements IPaymentRepository {
     return await PaymentModel.find({ studentId })
       .sort({ createdAt: -1 })
       .lean()
-      .exec();
+      .exec() as unknown as IPayment[];
   }
 
   async getTotalRevenue(): Promise<number> {

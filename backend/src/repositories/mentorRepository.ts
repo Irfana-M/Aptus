@@ -30,7 +30,7 @@ export class MentorRepository
         .findOne({ email })
         .select("+password")
         .lean()
-        .exec();
+        .exec() as unknown as MentorProfile | null;
 
       if (!mentor) {
         logger.debug(`Mentor not found with email: ${email}`);
@@ -50,7 +50,7 @@ export class MentorRepository
 
   async getProfileWithImage(id: string): Promise<MentorProfile | null> {
     try {
-      const mentor = await this.model.findById(id).lean().exec();
+      const mentor = await this.model.findById(id).lean().exec() as unknown as MentorProfile | null;
       if (!mentor) return null;
 
       const mentorObj = { ...mentor } as MentorProfile;
@@ -137,7 +137,7 @@ export class MentorRepository
           { new: true }
         )
         .lean()
-        .exec();
+        .exec() as unknown as MentorProfile | null;
       if (!updatedMentor) {
         throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
       }
@@ -160,7 +160,7 @@ export class MentorRepository
       const mentors = await this.model
         .find({ approvalStatus: "pending" })
         .lean()
-        .exec();
+        .exec() as unknown as MentorProfile[];
       logger.info(`Fetched pending mentor approvals, count=${mentors.length}`);
       return mentors;
     } catch (error: unknown) {
@@ -188,7 +188,7 @@ export class MentorRepository
           new: true,
         })
         .lean()
-        .exec();
+        .exec() as unknown as MentorProfile | null;
       if (!updatedMentor) {
         throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
       }

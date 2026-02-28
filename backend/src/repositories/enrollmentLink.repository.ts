@@ -18,7 +18,7 @@ export class EnrollmentLinkRepository extends BaseRepository<IEnrollment> implem
   }
 
   async findByCourse(courseId: string): Promise<IEnrollment[]> {
-    return await Enrollment.find({ course: courseId, status: "active" }).populate("student").lean();
+    return await Enrollment.find({ course: courseId, status: "active" }).populate("student").lean() as unknown as IEnrollment[];
   }
 
   async findByStudent(studentId: string): Promise<IEnrollment[]> {
@@ -31,7 +31,8 @@ export class EnrollmentLinkRepository extends BaseRepository<IEnrollment> implem
           { path: "mentor", select: "fullName email profilePicture" },
         ],
       })
-      .sort({ enrollmentDate: -1 });
+      .sort({ enrollmentDate: -1 })
+      .lean() as unknown as IEnrollment[];
   }
 
   async findByIdAndUpdate(id: string, update: Partial<IEnrollment>): Promise<IEnrollment | null> {
@@ -65,6 +66,7 @@ export class EnrollmentLinkRepository extends BaseRepository<IEnrollment> implem
           { path: "mentor", select: "fullName email profilePicture profileImageUrl" },
         ],
       })
-      .sort({ enrollmentDate: -1 });
+      .sort({ enrollmentDate: -1 })
+      .lean() as unknown as IEnrollment[];
   }
 }

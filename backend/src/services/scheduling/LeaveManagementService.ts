@@ -99,11 +99,7 @@ export class LeaveManagementService implements ILeaveManagementService {
         // BaseRepository update: await this.model.findByIdAndUpdate(id, item, ...).
         // If 'item' is any, I can pass $inc.
         
-        await this._timeSlotRepo.createOrUpdate(
-            { _id: timeSlotId }, 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            { $inc: { currentStudentCount: -1 }, status: 'available' } as any 
-        ); 
+        await this._timeSlotRepo.releaseCapacity(timeSlotId, session); 
         // createOrUpdate does findOneAndUpdate with upsert=true.
         // We don't want upsert here necessarily but it might work.
         // But wait, createOrUpdate logic has { $set: data }. 

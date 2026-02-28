@@ -11,6 +11,6 @@ export class StudentSubjectRepository extends BaseRepository<IStudentSubject> im
   }
 
   async findByStudentAndSubject(studentId: string, subjectId: string): Promise<IStudentSubject | null> {
-    return await this.model.findOne({ studentId, subjectId }).lean();
+    return await this.model.findOne({ studentId, subjectId }).lean() as unknown as IStudentSubject | null;
   }
 }

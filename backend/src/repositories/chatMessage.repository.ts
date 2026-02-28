@@ -11,6 +11,6 @@ export class ChatMessageRepository extends BaseRepository<IChatMessage> implemen
   }
 
   async findByRoomId(roomId: string): Promise<IChatMessage[]> {
-    return await this.model.find({ chatRoomId: roomId }).sort({ createdAt: 1 }).lean().exec() as IChatMessage[];
+    return await this.model.find({ chatRoomId: roomId }).sort({ createdAt: 1 }).lean().exec() as unknown as IChatMessage[];
   }
 }

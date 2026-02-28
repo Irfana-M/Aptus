@@ -57,7 +57,7 @@ export class GradeService implements IGradeService {
         const grade = await this.gradeRepo.findOne({ name: name });
         // Also support "Grade 10" if name is stored as "10" or vice versa?
         // Assuming strict match for now.
-        return grade ? (grade._id as string).toString() : null;
+        return grade ? (grade._id as unknown as string).toString() : null;
     } catch (error) {
         logger.error(`Error finding grade by name: ${name}`, error);
         return null;
