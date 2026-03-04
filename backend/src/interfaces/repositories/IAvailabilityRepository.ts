@@ -1,5 +1,5 @@
-import type { ITimeSlot } from "../models/timeSlot.interface";
-import type { IBaseRepository } from "./IBaseRepository";
+import type { ITimeSlot } from "../models/timeSlot.interface.js";
+import type { IBaseRepository } from "./IBaseRepository.js";
 import type { ClientSession } from "mongoose";
 
 export interface IAvailabilityRepository extends IBaseRepository<ITimeSlot> {

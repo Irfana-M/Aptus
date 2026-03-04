@@ -1,5 +1,5 @@
-import type { ITrialClassDocument } from "@/models/student/trialClass.model";
-import type { IBaseRepository } from "./IBaseRepository";
+import type { ITrialClassDocument } from "@/models/student/trialClass.model.js";
+import type { IBaseRepository } from "./IBaseRepository.js";
 import type { FilterQuery } from "mongoose";
 
 export interface ITrialClassRepository extends IBaseRepository<ITrialClassDocument> {
@@ -47,6 +47,6 @@ export interface ITrialClassRepository extends IBaseRepository<ITrialClassDocume
   
   findCompletedByMentorAndDateRange(mentorId: string, startDate: Date, endDate: Date): Promise<ITrialClassDocument[]>;
   
-  aggregate(pipeline: any[]): Promise<any[]>;
+  aggregate(pipeline: unknown[]): Promise<unknown[]>;
   countDocuments(filter: FilterQuery<ITrialClassDocument>): Promise<number>;
 }

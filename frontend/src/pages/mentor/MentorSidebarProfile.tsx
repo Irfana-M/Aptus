@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../constants/routes.constants';
 import { User, Edit } from 'lucide-react';
 
 interface MentorSidebarProfileProps {
@@ -45,7 +46,7 @@ export const MentorSidebarProfile: React.FC<MentorSidebarProfileProps> = ({ prof
         </div>
         
         <button
-          onClick={() => navigate('/mentor/profile-setup')}
+          onClick={() => navigate(ROUTES.MENTOR.PROFILE_SETUP)}
           className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-white/10 hover:bg-white/20 text-white text-xs font-medium rounded-lg transition-all duration-200 group"
         >
           <Edit size={14} className="group-hover:scale-110 transition-transform" />

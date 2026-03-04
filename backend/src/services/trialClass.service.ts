@@ -1,23 +1,24 @@
-import type { ITrialClassDocument } from "@/models/student/trialClass.model";
-import type { OnboardingEvent } from "@/enums/studentOnboarding.enum";
+import type { ITrialClassDocument } from "@/models/student/trialClass.model.js";
+import type { OnboardingEvent } from "@/enums/studentOnboarding.enum.js";
 
 import { inject, injectable } from "inversify";
-import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
-import type { ITrialClassService } from "@/interfaces/services/ITrialClassService";
-import type { IStudentService } from "@/interfaces/services/IStudentService";
-import type { IAttendanceService } from "@/interfaces/services/IAttendanceService";
-import type { TrialEligibilityPolicy } from "@/domain/policy/TrialEligibilityPolicy";
-import type { TrialClassRequestDto, TrialClassResponseDto } from "@/dtos/student/trialClassDTO";
-import type { INotificationService } from "@/interfaces/services/INotificationService";
-import { TYPES } from "@/types";
-import { logger } from "@/utils/logger";
-import { AppError } from "@/utils/AppError";
-import { HttpStatusCode } from "@/constants/httpStatus";
-import { TrialClassMapper } from "@/mappers/trialClassMapper";
+import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository.js";
+import type { ITrialClassService } from "@/interfaces/services/ITrialClassService.js";
+import type { IStudentService } from "@/interfaces/services/IStudentService.js";
+import type { IAttendanceService } from "@/interfaces/services/IAttendanceService.js";
+import type { TrialEligibilityPolicy } from "@/domain/policy/TrialEligibilityPolicy.js";
+import type { TrialClassRequestDto, TrialClassResponseDto } from "@/dtos/student/trialClassDTO.js";
+import type { INotificationService } from "@/interfaces/services/INotificationService.js";
+import { TYPES } from "@/types.js";
+import { logger } from "@/utils/logger.js";
+import { AppError } from "@/utils/AppError.js";
+import { HttpStatusCode } from "@/constants/httpStatus.js";
+import { MESSAGES } from "@/constants/messages.constants.js";
+import { TrialClassMapper } from "@/mappers/trialClassMapper.js";
 import { Types } from "mongoose";
-import type { IMentorRepository } from "@/interfaces/repositories/IMentorRepository";
-import type { ICourseRepository } from "@/interfaces/repositories/ICourseRepository";
-import { InternalEventEmitter, EVENTS } from "@/utils/InternalEventEmitter";
+import type { IMentorRepository } from "@/interfaces/repositories/IMentorRepository.js";
+import type { ICourseRepository } from "@/interfaces/repositories/ICourseRepository.js";
+import { InternalEventEmitter, EVENTS } from "@/utils/InternalEventEmitter.js";
 
 @injectable()
 export class TrialClassService implements ITrialClassService {
@@ -74,15 +75,15 @@ export class TrialClassService implements ITrialClassService {
       });
 
       const populatedTrial = await this.trialRepo.findById(newTrial._id.toString());
-      if (!populatedTrial) throw new AppError("Failed to create trial class", HttpStatusCode.INTERNAL_SERVER_ERROR);
+      if (!populatedTrial) throw new AppError(MESSAGES.TRIAL_CLASS.CREATE_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
 
       logger.info(`Trial class requested by student ${studentId}`);
       
       // Advance onboarding to TRIAL_BOOKED
       try {
           await this.studentService.advanceOnboarding(studentId, 'TRIAL_BOOKED' as OnboardingEvent);
-      } catch (e) {
-          logger.warn(`Could not advance onboarding to TRIAL_BOOKED for ${studentId}`, e);
+      } catch (error) {
+          logger.warn(`Could not advance onboarding to TRIAL_BOOKED for ${studentId}`, error);
       }
       
       // Notify student about successful booking
@@ -101,8 +102,8 @@ export class TrialClassService implements ITrialClassService {
             },
             ['web']
           );
-      } catch (e) {
-          logger.warn(`Could not send trial_booked notification for ${studentId}`, e);
+      } catch (error) {
+          logger.warn(`Could not send trial_booked notification for ${studentId}`, error);
       }
 
       // NEW: Emit event for Admin notification
@@ -117,14 +118,14 @@ export class TrialClassService implements ITrialClassService {
           studentName,
           subjectName
         });
-      } catch (e) {
-        logger.warn(`Could not emit TRIAL_BOOKED event for ${studentId}`, e);
+      } catch (error) {
+        logger.warn(`Could not emit TRIAL_BOOKED event for ${studentId}`, error);
       }
 
       return TrialClassMapper.toResponseDto(populatedTrial);
-    } catch (err) {
-      logger.error("Error creating trial class", err);
-      throw err instanceof AppError ? err : new AppError("Unable to create trial class", HttpStatusCode.INTERNAL_SERVER_ERROR);
+    } catch (error) {
+      logger.error("Error creating trial class", error);
+      throw error instanceof AppError ? error : new AppError(MESSAGES.TRIAL_CLASS.CREATE_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -132,16 +133,16 @@ export class TrialClassService implements ITrialClassService {
     try {
       const trials = await this.trialRepo.findByStudentId(studentId);
       return trials.map(TrialClassMapper.toResponseDto);
-    } catch (err) {
-      logger.error("Error fetching student trial classes", err);
-      throw new AppError("Unable to fetch trial classes", HttpStatusCode.INTERNAL_SERVER_ERROR);
+    } catch (error) {
+      logger.error("Error fetching student trial classes", error);
+      throw new AppError(MESSAGES.TRIAL_CLASS.FETCH_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
   async getTrialClassById(id: string, userId: string): Promise<TrialClassResponseDto> {
     try {
       const trial = await this.trialRepo.findById(id);
-      if (!trial) throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
+      if (!trial) throw new AppError(MESSAGES.TRIAL_CLASS.NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
       const trialStudentId = this.getStringId(trial.student);
       const trialMentorId = this.getStringId(trial.mentor);
@@ -156,20 +157,20 @@ export class TrialClassService implements ITrialClassService {
       });
 
       if (trialStudentId !== userId && trialMentorId !== userId) {
-        throw new AppError("Access denied", HttpStatusCode.FORBIDDEN);
+        throw new AppError(MESSAGES.TRIAL_CLASS.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
       }
 
       return TrialClassMapper.toResponseDto(trial);
-    } catch (err) {
-      logger.error("Error fetching trial class", err);
-      throw err instanceof AppError ? err : new AppError("Unable to fetch trial class", HttpStatusCode.INTERNAL_SERVER_ERROR);
+    } catch (error) {
+      logger.error("Error fetching trial class", error);
+      throw error instanceof AppError ? error : new AppError(MESSAGES.TRIAL_CLASS.FETCH_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
   async assignMentor(trialClassId: string, mentorId: string, meetLink: string): Promise<TrialClassResponseDto> {
     try {
       const trial = await this.trialRepo.findById(trialClassId);
-      if (!trial) throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
+      if (!trial) throw new AppError(MESSAGES.TRIAL_CLASS.NOT_FOUND, HttpStatusCode.NOT_FOUND);
       
       this.policy.canAssignMentor(trial);
 
@@ -179,7 +180,7 @@ export class TrialClassService implements ITrialClassService {
         status: "assigned",
       } as unknown as Partial<ITrialClassDocument>);
 
-      if (!updated) throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
+      if (!updated) throw new AppError(MESSAGES.TRIAL_CLASS.NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
       // Notify student and mentor
       try {
@@ -196,14 +197,14 @@ export class TrialClassService implements ITrialClassService {
           mentorName,
           subjectName
         );
-      } catch (e) {
-        logger.warn("Failed to send trial class assignment notifications", e);
+      } catch (error) {
+        logger.warn("Failed to send trial class assignment notifications", error);
       }
 
       return TrialClassMapper.toResponseDto(updated);
-    } catch (err) {
-      logger.error("Error assigning mentor", err);
-      throw err instanceof AppError ? err : new AppError("Unable to assign mentor", HttpStatusCode.INTERNAL_SERVER_ERROR);
+    } catch (error) {
+      logger.error("Error assigning mentor", error);
+      throw error instanceof AppError ? error : new AppError(MESSAGES.TRIAL_CLASS.ASSIGN_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -219,7 +220,7 @@ export class TrialClassService implements ITrialClassService {
   ): Promise<TrialClassResponseDto> {
     try {
       const existingTrial = await this.trialRepo.findById(trialClassId);
-      if (!existingTrial) throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
+      if (!existingTrial) throw new AppError(MESSAGES.TRIAL_CLASS.NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
       this.policy.canUpdate(existingTrial, studentId);
 
@@ -232,12 +233,12 @@ export class TrialClassService implements ITrialClassService {
       if (updates.notes !== undefined) updateData.notes = updates.notes;
 
       const updatedTrial = await this.trialRepo.updateTrial(trialClassId, updateData as unknown as Partial<ITrialClassDocument>);
-      if (!updatedTrial) throw new AppError("Failed to update trial class", HttpStatusCode.INTERNAL_SERVER_ERROR);
+      if (!updatedTrial) throw new AppError(MESSAGES.TRIAL_CLASS.UPDATE_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
 
       return TrialClassMapper.toResponseDto(updatedTrial);
-    } catch (err) {
-      logger.error("Error updating trial class", err);
-      throw err instanceof AppError ? err : new AppError("Unable to update trial class", HttpStatusCode.INTERNAL_SERVER_ERROR);
+    } catch (error) {
+      logger.error("Error updating trial class", error);
+      throw error instanceof AppError ? error : new AppError(MESSAGES.TRIAL_CLASS.UPDATE_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -248,7 +249,7 @@ export class TrialClassService implements ITrialClassService {
   ): Promise<TrialClassResponseDto> {
     try {
       const trial = await this.trialRepo.findById(trialClassId);
-      if (!trial) throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
+      if (!trial) throw new AppError(MESSAGES.TRIAL_CLASS.NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
       this.policy.canSubmitFeedback(trial, studentId);
 
@@ -259,9 +260,9 @@ export class TrialClassService implements ITrialClassService {
         status: "completed",
       });
 
-      if (!updatedTrial) throw new AppError("Failed to submit feedback", HttpStatusCode.INTERNAL_SERVER_ERROR);
+      if (!updatedTrial) throw new AppError(MESSAGES.TRIAL_CLASS.FEEDBACK_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
 
-      const { StudentModel } = await import("../models/student/student.model");
+      const { StudentModel } = await import("../models/student/student.model.js");
       await StudentModel.findByIdAndUpdate(trialStudentId, { isTrialCompleted: true });
       
       // Advance onboarding status to FEEDBACK_SUBMITTED
@@ -273,20 +274,20 @@ export class TrialClassService implements ITrialClassService {
         if (trialMentorId) {
             await this.attendanceService.createTrialDerivedAttendance(trialClassId, trialStudentId, trialMentorId);
         }
-      } catch (e) {
-        logger.warn(`Could not create trial-derived attendance for trial ${trialClassId}`, e);
+      } catch (error) {
+        logger.warn(`Could not create trial-derived attendance for trial ${trialClassId}`, error);
       }
 
       return TrialClassMapper.toResponseDto(updatedTrial);
-    } catch (err: unknown) {
-      const error = err as Error;
+    } catch (error: unknown) {
+      const errorObj = error as Error;
       logger.error("Error submitting feedback", {
-          message: error?.message,
-          stack: error?.stack,
+          message: errorObj?.message,
+          stack: errorObj?.stack,
           trialClassId,
           studentId
       });
-      throw err instanceof AppError ? err : new AppError("Unable to submit feedback", HttpStatusCode.INTERNAL_SERVER_ERROR);
+      throw error instanceof AppError ? error : new AppError(MESSAGES.TRIAL_CLASS.FEEDBACK_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -294,9 +295,9 @@ export class TrialClassService implements ITrialClassService {
     try {
       const trials = await this.trialRepo.findByMentorId(mentorId);
       return trials.map(TrialClassMapper.toResponseDto);
-    } catch (err) {
-      logger.error("Error fetching mentor trial classes", err);
-      throw new AppError("Unable to fetch trial classes", HttpStatusCode.INTERNAL_SERVER_ERROR);
+    } catch (error) {
+      logger.error("Error fetching mentor trial classes", error);
+      throw new AppError(MESSAGES.TRIAL_CLASS.FETCH_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -304,11 +305,11 @@ export class TrialClassService implements ITrialClassService {
     try {
       const trials = await this.trialRepo.findByMentorId(mentorId);
       const today = new Date().toDateString();
-      const todayTrials = trials.filter(t => new Date(t.preferredDate).toDateString() === today);
+      const todayTrials = trials.filter(trial => new Date(trial.preferredDate).toDateString() === today);
       return todayTrials.map(TrialClassMapper.toResponseDto);
-    } catch (err) {
-      logger.error("Error fetching today's trial classes", err);
-      throw new AppError("Unable to fetch today's trial classes", HttpStatusCode.INTERNAL_SERVER_ERROR);
+    } catch (error) {
+      logger.error("Error fetching today's trial classes", error);
+      throw new AppError(MESSAGES.TRIAL_CLASS.FETCH_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -317,14 +318,14 @@ export class TrialClassService implements ITrialClassService {
       const trials = await this.trialRepo.findByMentorId(mentorId);
 
       const total = trials.length;
-      const completed = trials.filter(t => t.status === "completed").length;
+      const completed = trials.filter(trial => trial.status === "completed").length;
       const now = new Date();
-      const upcoming = trials.filter(t => t.status === "assigned" && new Date(t.preferredDate) > now).length;
+      const upcoming = trials.filter(trial => trial.status === "assigned" && new Date(trial.preferredDate) > now).length;
 
       return { total, completed, upcoming };
-    } catch (err) {
-      logger.error("Error fetching trial class stats", err);
-      throw new AppError("Unable to fetch trial class stats", HttpStatusCode.INTERNAL_SERVER_ERROR);
+    } catch (error) {
+      logger.error("Error fetching trial class stats", error);
+      throw new AppError(MESSAGES.TRIAL_CLASS.FETCH_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -338,11 +339,11 @@ export class TrialClassService implements ITrialClassService {
       if (reason && status === "cancelled") updateData.cancellationReason = reason;
 
       const updated = await this.trialRepo.updateTrial(trialClassId, updateData as unknown as Partial<ITrialClassDocument>);
-      if (!updated) throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
+      if (!updated) throw new AppError(MESSAGES.TRIAL_CLASS.NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
       if (status === "completed") {
       const trialStudentId = this.getStringId(updated.student);
-      const { StudentModel } = await import("../models/student/student.model");
+      const { StudentModel } = await import("../models/student/student.model.js");
       await StudentModel.findByIdAndUpdate(trialStudentId, { isTrialCompleted: true });
       logger.info(`✅ Student ${trialStudentId} marked as isTrialCompleted: true`);
 
@@ -370,15 +371,15 @@ export class TrialClassService implements ITrialClassService {
         if (trialMentorId) {
             await this.attendanceService.createTrialDerivedAttendance(trialClassId, trialStudentId, trialMentorId);
         }
-      } catch (e) {
-        logger.warn(`Could not create trial-derived attendance for trial ${trialClassId}`, e);
+      } catch (error) {
+        logger.warn(`Could not create trial-derived attendance for trial ${trialClassId}`, error);
       }
     }
 
       return TrialClassMapper.toResponseDto(updated);
-    } catch (err) {
-      logger.error("Error updating trial class status", err);
-      throw err instanceof AppError ? err : new AppError("Unable to update trial class status", HttpStatusCode.INTERNAL_SERVER_ERROR);
+    } catch (error) {
+      logger.error("Error updating trial class status", error);
+      throw error instanceof AppError ? error : new AppError(MESSAGES.TRIAL_CLASS.UPDATE_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -389,30 +390,30 @@ export class TrialClassService implements ITrialClassService {
   ): Promise<TrialClassResponseDto> {
     try {
       const trial = await this.trialRepo.findById(trialClassId);
-      if (!trial) throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
+      if (!trial) throw new AppError(MESSAGES.TRIAL_CLASS.NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
       const trialMentorId = this.getStringId(trial.mentor);
       if (!trialMentorId || trialMentorId !== mentorId) {
-        throw new AppError("Access denied", HttpStatusCode.FORBIDDEN);
+        throw new AppError(MESSAGES.TRIAL_CLASS.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
       }
 
       const updatedTrial = await this.trialRepo.updateTrial(trialClassId, { status: "completed" } as unknown as Partial<ITrialClassDocument>);
-      if (!updatedTrial) throw new AppError("Failed to submit feedback", HttpStatusCode.INTERNAL_SERVER_ERROR);
+      if (!updatedTrial) throw new AppError(MESSAGES.TRIAL_CLASS.FEEDBACK_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
 
       return TrialClassMapper.toResponseDto(updatedTrial);
-    } catch (err) {
-      logger.error("Error submitting mentor feedback", err);
-      throw err instanceof AppError ? err : new AppError("Unable to submit feedback", HttpStatusCode.INTERNAL_SERVER_ERROR);
+    } catch (error) {
+      logger.error("Error submitting mentor feedback", error);
+      throw error instanceof AppError ? error : new AppError(MESSAGES.TRIAL_CLASS.FEEDBACK_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
 
   private async validateSubjectExists(subjectId: string): Promise<void> {
-    const { Subject } = await import("../models/subject.model");
+    const { Subject } = await import("../models/subject.model.js");
     const subject = await Subject.findById(subjectId);
 
-    if (!subject) throw new AppError("Subject not found", HttpStatusCode.BAD_REQUEST);
-    if (!subject.isActive) throw new AppError("Subject is not available", HttpStatusCode.BAD_REQUEST);
+    if (!subject) throw new AppError(MESSAGES.ADMIN.COURSE_NOT_FOUND, HttpStatusCode.BAD_REQUEST);
+    if (!subject.isActive) throw new AppError(MESSAGES.ADMIN.COURSE_NOT_AVAILABLE, HttpStatusCode.BAD_REQUEST);
   }
 
   // Helper to get day name from date
@@ -453,8 +454,8 @@ export class TrialClassService implements ITrialClassService {
       const dayOfWeek = this.getDayName(dateObj);
       
       // Resolve Subject
-      const { Subject } = await import("../models/subject.model");
-      let subject: import('../models/subject.model').ISubject | null;
+      const { Subject } = await import("../models/subject.model.js");
+      let subject: import('../models/subject.model.js').ISubject | null;
       
       if (Types.ObjectId.isValid(subjectId)) {
         subject = await Subject.findById(subjectId);
@@ -465,7 +466,7 @@ export class TrialClassService implements ITrialClassService {
         });
       }
 
-      if (!subject) throw new AppError("Subject not found", HttpStatusCode.NOT_FOUND);
+      if (!subject) throw new AppError(MESSAGES.ADMIN.COURSE_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       
       const mentors = await this.mentorRepo.findBySubjectProficiency(subject.subjectName);
       logger.info(`Found ${mentors.length} mentors for subject ${subject.subjectName}`);
@@ -497,7 +498,7 @@ export class TrialClassService implements ITrialClassService {
           const [startTime, endTime] = slot.split('-');
           return { startTime, endTime, mentorCount: count };
         })
-        .filter(s => s.mentorCount > 0 && s.startTime && s.endTime)
+        .filter(slot => slot.mentorCount > 0 && slot.startTime && slot.endTime)
         .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
       
       logger.info(`Found ${availableSlots.length} available time slots on ${date}`);
@@ -509,7 +510,7 @@ export class TrialClassService implements ITrialClassService {
           dayOfWeek,
           subject: subject.subjectName,
           slots: [],
-          message: "No mentors available on this date"
+          message: MESSAGES.TRIAL_CLASS.NO_MENTORS_AVAILABLE
         };
       }
       
@@ -520,21 +521,21 @@ export class TrialClassService implements ITrialClassService {
         subject: subject.subjectName,
         slots: availableSlots
       };
-    } catch (err) {
-      logger.error("Error getting available slots", err);
-      throw err instanceof AppError ? err : new AppError("Unable to fetch available slots", HttpStatusCode.INTERNAL_SERVER_ERROR);
+    } catch (error) {
+      logger.error("Error getting available slots", error);
+      throw error instanceof AppError ? error : new AppError(MESSAGES.TRIAL_CLASS.FETCH_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
   // Auto-assign best available mentor
-  async autoAssignMentor(subjectId: string, date: string, timeSlot: string): Promise<import('../interfaces/models/mentor.interface').MentorProfile> {
+  async autoAssignMentor(subjectId: string, date: string, timeSlot: string): Promise<import('../interfaces/models/mentor.interface.js').MentorProfile> {
     try {
       const dateObj = new Date(date);
       const dayOfWeek = this.getDayName(dateObj);
       
-      const { Subject } = await import("../models/subject.model");
+      const { Subject } = await import("../models/subject.model.js");
       const subject = await Subject.findById(subjectId);
-      if (!subject) throw new AppError("Subject not found", HttpStatusCode.NOT_FOUND);
+      if (!subject) throw new AppError(MESSAGES.ADMIN.COURSE_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       
       // Get mentors with this subject proficiency
       const mentors = await this.mentorRepo.findBySubjectProficiency(subject.subjectName);
@@ -559,7 +560,7 @@ export class TrialClassService implements ITrialClassService {
       
       if (available.length === 0) {
         throw new AppError(
-          "No mentors available for this time slot",
+          MESSAGES.TRIAL_CLASS.NO_MENTORS_AVAILABLE,
           HttpStatusCode.NOT_FOUND
         );
       }
@@ -578,14 +579,14 @@ export class TrialClassService implements ITrialClassService {
       })[0];
       
       if (!best) {
-          throw new AppError("No mentors available for this time slot", HttpStatusCode.NOT_FOUND);
+          throw new AppError(MESSAGES.TRIAL_CLASS.NO_MENTORS_AVAILABLE, HttpStatusCode.NOT_FOUND);
       }
       
       logger.info(`Auto-assigned mentor ${best._id} (rating: ${best.rating}) for ${subject.subjectName} trial class`);
       return best;
-    } catch (err) {
-      logger.error("Error auto-assigning mentor", err);
-      throw err instanceof AppError ? err : new AppError("Unable to assign mentor", HttpStatusCode.INTERNAL_SERVER_ERROR);
+    } catch (error) {
+      logger.error("Error auto-assigning mentor", error);
+      throw error instanceof AppError ? error : new AppError(MESSAGES.TRIAL_CLASS.ASSIGN_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 }

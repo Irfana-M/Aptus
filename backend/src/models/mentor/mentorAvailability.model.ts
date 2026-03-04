@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import type { IMentorAvailability } from '../../interfaces/models/mentorAvailability.interface';
+import type { IMentorAvailability } from '../../interfaces/models/mentorAvailability.interface.js';
 
 const recurringSlotSchema = new Schema({
   startTime: { type: String, required: true },

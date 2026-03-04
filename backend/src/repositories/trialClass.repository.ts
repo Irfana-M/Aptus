@@ -1,13 +1,13 @@
 import { injectable } from "inversify";
-import { TrialClass, type ITrialClassDocument } from "@/models/student/trialClass.model";
-import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
-import { logger } from "@/utils/logger";
+import { TrialClass, type ITrialClassDocument } from "@/models/student/trialClass.model.js";
+import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository.js";
+import { logger } from "@/utils/logger.js";
 import { Types, type FilterQuery, type UpdateQuery } from "mongoose";
-import { HttpStatusCode } from "@/constants/httpStatus";
-import { AppError } from "@/utils/AppError";
-import { getPaginationParams } from "@/utils/pagination.util";
+import { HttpStatusCode } from "@/constants/httpStatus.js";
+import { AppError } from "@/utils/AppError.js";
+import { getPaginationParams } from "@/utils/pagination.util.js";
 
-import { BaseRepository } from "./baseRepository";
+import { BaseRepository } from "./baseRepository.js";
 
 @injectable()
 export class TrialClassRepository extends BaseRepository<ITrialClassDocument> implements ITrialClassRepository {
@@ -288,8 +288,8 @@ export class TrialClassRepository extends BaseRepository<ITrialClassDocument> im
     }).exec();
   }
 
-  async aggregate(pipeline: any[]): Promise<any[]> {
-    return await TrialClass.aggregate(pipeline).exec();
+  async aggregate(pipeline: unknown[]): Promise<unknown[]> {
+    return await TrialClass.aggregate(pipeline as any[]).exec();
   }
 
   async countDocuments(filter: FilterQuery<ITrialClassDocument>): Promise<number> {

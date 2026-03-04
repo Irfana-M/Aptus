@@ -41,12 +41,8 @@ import {
   Calendar,
 } from "lucide-react";
 import { showToast } from "../../utils/toast";
-interface Column<T> {
-  header: string;
-  accessor: keyof T | ((row: T) => React.ReactNode);
-  sortable?: boolean;
-  className?: string;
-}
+import { Loader } from "../../components/ui/Loader";
+import type { Column } from "../../types/table.types";
 
 export const StudentsManagement: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -456,10 +452,7 @@ export const StudentsManagement: React.FC = () => {
           onClose={() => setSidebarOpen(false)}
         />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading students...</p>
-          </div>
+          <Loader size="lg" text="Loading students..." color="purple" />
         </div>
       </div>
     );

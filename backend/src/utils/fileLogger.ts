@@ -9,7 +9,7 @@ export const fileLogger = (message: string, data?: unknown) => {
   const logMessage = `[${timestamp}] ${message} ${data ? JSON.stringify(data) : ''}\n`;
   try {
     fs.appendFileSync(logFile, logMessage);
-  } catch (err) {
-    console.error('Failed to write to log file:', err);
+  } catch (error) {
+    console.error('Failed to write to log file:', error);
   }
 };

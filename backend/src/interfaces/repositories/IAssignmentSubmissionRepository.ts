@@ -1,5 +1,5 @@
-import type { IAssignmentSubmission } from "../models/studyMaterial.interface";
-import type { IBaseRepository } from "./IBaseRepository";
+import type { IAssignmentSubmission } from "../models/studyMaterial.interface.js";
+import type { IBaseRepository } from "./IBaseRepository.js";
 
 export interface IAssignmentSubmissionRepository extends IBaseRepository<IAssignmentSubmission> {
   findByMaterialId(materialId: string): Promise<IAssignmentSubmission[]>;

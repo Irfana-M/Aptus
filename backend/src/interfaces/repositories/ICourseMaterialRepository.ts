@@ -1,4 +1,4 @@
-import type { ICourseMaterial } from '../../models/courseMaterial.model';
+import type { ICourseMaterial } from '../../models/courseMaterial.model.js';
 
 export interface ICourseMaterialRepository {
   create(data: Partial<ICourseMaterial>): Promise<ICourseMaterial>;

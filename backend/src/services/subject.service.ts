@@ -1,31 +1,32 @@
 import { inject, injectable } from "inversify";
-import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository";
-import type { IGradeRepository } from "@/interfaces/repositories/IGradeRepository";
-import type { SubjectResponseDto } from "@/dtos/student/subject.dto";
-import { TYPES } from "@/types";
-import { logger } from "@/utils/logger";
-import { AppError } from "@/utils/AppError";
-import { HttpStatusCode } from "@/constants/httpStatus";
-import type { ISubjectService } from "@/interfaces/services/ISubjectService";
-import type { ISubject } from "@/models/subject.model";
+import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository.js";
+import type { IGradeRepository } from "@/interfaces/repositories/IGradeRepository.js";
+import type { SubjectResponseDto } from "@/dtos/student/subject.dto.js";
+import { TYPES } from "@/types.js";
+import { logger } from "@/utils/logger.js";
+import { AppError } from "@/utils/AppError.js";
+import { HttpStatusCode } from "@/constants/httpStatus.js";
+import type { ISubjectService } from "@/interfaces/services/ISubjectService.js";
+import type { ISubject } from "@/models/subject.model.js";
+import { MESSAGES } from "@/constants/messages.constants.js";
 
 @injectable()
 export class SubjectService implements ISubjectService {
   constructor(
     @inject(TYPES.ISubjectRepository)
-    private subjectRepo: ISubjectRepository,
+    private _subjectRepo: ISubjectRepository,
     @inject(TYPES.IGradeRepository)
-    private gradeRepo: IGradeRepository
+    private _gradeRepo: IGradeRepository
   ) {}
 
   async getAllSubjects(): Promise<SubjectResponseDto[]> {
     try {
-      const subjects = await this.subjectRepo.findAllActive();
-      return subjects.map(this.toResponseDto);
-    } catch (err) {
-      logger.error("Error fetching all subjects", err);
+      const subjects = await this._subjectRepo.findAllActive();
+      return subjects.map(this._toResponseDto);
+    } catch (error) {
+      logger.error("Error fetching all subjects", error);
       throw new AppError(
-        "Unable to fetch subjects",
+        MESSAGES.COURSE.SUBJECTS_FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -34,12 +35,12 @@ export class SubjectService implements ISubjectService {
   async getSubjectsByGrade(gradeId: string, syllabus?: string): Promise<SubjectResponseDto[]> {
     try {
       if (!gradeId) {
-        throw new AppError("Grade ID is required", HttpStatusCode.BAD_REQUEST);
+        throw new AppError(MESSAGES.AVAILABILITY.GRADE_ID_REQUIRED, HttpStatusCode.BAD_REQUEST);
       }
 
       if (gradeId === 'all') {
-        const subjects = await this.subjectRepo.findAllActive();
-        return subjects.map(this.toResponseDto);
+        const subjects = await this._subjectRepo.findAllActive();
+        return subjects.map(this._toResponseDto);
       }
 
       console.log(`🔍 [SubjectService] Resolving subjects for grade: "${gradeId}", syllabus: "${syllabus}"`);
@@ -56,7 +57,7 @@ export class SubjectService implements ISubjectService {
         };
         if (syllabus) query.syllabus = syllabus.toUpperCase();
         
-        const gradeDoc = await this.gradeRepo.findOne(query);
+        const gradeDoc = await this._gradeRepo.findOne(query);
         if (!gradeDoc) {
              console.warn(`⚠️ [SubjectService] Grade document NOT found for Name: "${gradeId}", Syllabus: "${syllabus}"`);
              logger.warn(`Grade document not found for name: ${gradeId} and syllabus: ${syllabus}`);
@@ -69,16 +70,16 @@ export class SubjectService implements ISubjectService {
       }
 
       console.log(`🔍 [SubjectService] Fetching subjects for finalGradeId: ${finalGradeId}`);
-      const subjects = await this.subjectRepo.findByGrade(finalGradeId);
+      const subjects = await this._subjectRepo.findByGrade(finalGradeId);
       console.log(`✅ [SubjectService] Found ${subjects.length} subjects.`);
-      return subjects.map(this.toResponseDto);
-    } catch (err) {
-      logger.error(`Error fetching subjects for grade ID: ${gradeId}`, err);
-      if (err instanceof AppError) {
-        throw err;
+      return subjects.map(this._toResponseDto);
+    } catch (error) {
+      logger.error(`Error fetching subjects for grade ID: ${gradeId}`, error);
+      if (error instanceof AppError) {
+        throw error;
       }
       throw new AppError(
-        "Unable to fetch subjects",
+        MESSAGES.COURSE.SUBJECTS_FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -89,27 +90,27 @@ export class SubjectService implements ISubjectService {
       const validSyllabi = ["CBSE", "STATE", "ICSE"];
       if (!validSyllabi.includes(syllabus.toUpperCase())) {
         throw new AppError(
-          "Invalid syllabus. Must be one of: CBSE, STATE, ICSE",
+          MESSAGES.VALIDATION.INVALID_SYLLABUS,
           HttpStatusCode.BAD_REQUEST
         );
       }
 
       if (grade < 1 || grade > 12) {
         throw new AppError(
-          "Grade must be between 1 and 12",
+          MESSAGES.VALIDATION.INVALID_GRADE_RANGE,
           HttpStatusCode.BAD_REQUEST
         );
       }
 
-      const subjects = await this.subjectRepo.findByGradeAndSyllabus(grade, syllabus);
-      return subjects.map(this.toResponseDto);
-    } catch (err) {
-      logger.error(`Error fetching subjects for grade ${grade} and syllabus ${syllabus}`, err);
-      if (err instanceof AppError) {
-        throw err;
+      const subjects = await this._subjectRepo.findByGradeAndSyllabus(grade, syllabus);
+      return subjects.map(this._toResponseDto);
+    } catch (error) {
+      logger.error(`Error fetching subjects for grade ${grade} and syllabus ${syllabus}`, error);
+      if (error instanceof AppError) {
+        throw error;
       }
       throw new AppError(
-        "Unable to fetch subjects",
+        MESSAGES.COURSE.SUBJECTS_FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -117,7 +118,7 @@ export class SubjectService implements ISubjectService {
 
   async findByName(name: string): Promise<string | null> {
     try {
-        const subject = await this.subjectRepo.findOne({ subjectName: name });
+        const subject = await this._subjectRepo.findOne({ subjectName: name });
         return subject ? (subject._id as unknown as string).toString() : null;
     } catch (error) {
         logger.error(`Error finding subject by name: ${name}`, error);
@@ -125,7 +126,7 @@ export class SubjectService implements ISubjectService {
     }
   }
 
-  private toResponseDto(subject: ISubject): SubjectResponseDto {
+  private _toResponseDto(subject: ISubject): SubjectResponseDto {
     return {
       id: subject._id?.toString() || "",
       subjectName: subject.subjectName,

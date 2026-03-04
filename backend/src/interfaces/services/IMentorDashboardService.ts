@@ -1,4 +1,4 @@
-import type { AssignedStudentsResponseDto, DashboardDataDto, RecentActivityDto, TodaySessionDto } from "../models/mentorDashboard.interface";
+import type { AssignedStudentsResponseDto, DashboardDataDto, RecentActivityDto, TodaySessionDto } from "../models/mentorDashboard.interface.js";
 
 export interface IMentorDashboardService {
   getDashboardData(mentorId: string): Promise<DashboardDataDto>;

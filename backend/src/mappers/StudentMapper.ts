@@ -6,14 +6,14 @@ import type {
   ParentInfo,
   contactInfo,
   AcademicDetails
-} from "@/interfaces/models/student.interface";
+} from "../interfaces/models/student.interface.js";
 import type {
   StudentAuthUser,
   AuthUser,
-} from "@/interfaces/auth/auth.interface";
-import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
-import { StudentOnboardingStatus } from "@/enums/studentOnboarding.enum";
-import { ApprovalStatus } from "@/domain/enums/ApprovalStatus";
+} from "../interfaces/auth/auth.interface.js";
+import type { StudentBaseResponseDto } from "../dtos/auth/UserResponseDTO.js";
+import { StudentOnboardingStatus } from "../enums/studentOnboarding.enum.js";
+import { ApprovalStatus } from "../domain/enums/ApprovalStatus.js";
 import { Types } from "mongoose";
 
 
@@ -59,14 +59,14 @@ export class StudentMapper {
       subscription: data.subscription as SubscriptionDetails | undefined,
       authProvider: data.authProvider,
       googleId: data.googleId,
-      gradeId: data.gradeId ? new Types.ObjectId(data.gradeId as any) : undefined,
+      gradeId: data.gradeId ? new Types.ObjectId(data.gradeId as string) : undefined,
       onboardingStatus: data.onboardingStatus,
       preferencesCompleted: data.preferencesCompleted as boolean | undefined,
-      preferredSubjects: data.preferredSubjects?.map(id => new Types.ObjectId(id as any)),
-      preferredTimeSlots: data.preferredTimeSlots?.map((slot: any) => ({
-        subjectId: new Types.ObjectId(slot.subjectId as any),
+      preferredSubjects: data.preferredSubjects?.map(id => new Types.ObjectId(id as string)),
+      preferredTimeSlots: data.preferredTimeSlots?.map((slot) => ({
+        subjectId: new Types.ObjectId(slot.subjectId as string),
         slots: slot.slots,
-        status: slot.status
+        status: (slot as unknown as { status?: string }).status as 'preferences_submitted' | 'mentor_requested' | 'mentor_assigned' | 'active' | 'reassigned'
       })),
     };
   }
@@ -223,10 +223,10 @@ export class StudentMapper {
       gradeId: s.gradeId?.toString(),
       preferencesCompleted: s.preferencesCompleted,
       preferredSubjects: s.preferredSubjects?.map(id => id.toString()),
-      preferredTimeSlots: s.preferredTimeSlots?.map((slot: any) => ({
-        subjectId: slot.subjectId?.toString(),
+      preferredTimeSlots: s.preferredTimeSlots?.map((slot) => ({
+        subjectId: slot.subjectId?.toString() || "",
         slots: slot.slots,
-        status: slot.status
+        status: (slot as unknown as { status?: string }).status || ""
       })),
     };
   }

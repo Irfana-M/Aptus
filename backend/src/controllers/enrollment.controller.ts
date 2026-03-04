@@ -1,16 +1,26 @@
 import { injectable, inject } from "inversify";
 import type { Request, Response, NextFunction } from "express";
-import { TYPES } from "../types";
-import { HttpStatusCode } from "../constants/httpStatus";
-import { AppError } from "../utils/AppError";
-import type { IEnrollmentService } from "../interfaces/services/IEnrollmentService";
-import { getPaginationParams } from "@/utils/pagination.util";
-import { logger } from "@/utils/logger";
+import { TYPES } from "../types.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import { AppError } from "../utils/AppError.js";
+import type { IEnrollmentService } from "../interfaces/services/IEnrollmentService.js";
+import { getPaginationParams } from "@/utils/pagination.util.js";
+import { logger } from "@/utils/logger.js";
+import { MESSAGES } from "../constants/messages.constants.js";
+import { EnrollmentStatus } from "@/enums/enrollment.enum.js";
+import { UserRole } from "@/enums/user.enum.js";
+
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    role: UserRole;
+  };
+}
 
 @injectable()
 export class EnrollmentController {
   constructor(
-    @inject(TYPES.IEnrollmentService) private enrollmentService: IEnrollmentService
+    @inject(TYPES.IEnrollmentService) private _enrollmentService: IEnrollmentService
   ) {}
 
   enrollInCourse = async (
@@ -23,23 +33,23 @@ export class EnrollmentController {
       // But let's keep the check if middleware isn't trusted implicitly
       const user = req.user;
       if (!user) {
-        throw new AppError("User not authenticated", HttpStatusCode.UNAUTHORIZED);
+        throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
       }
 
       const { courseId } = req.params;
       
       if (!courseId) {
-        throw new AppError("Course ID is required", HttpStatusCode.BAD_REQUEST);
+        throw new AppError(MESSAGES.COMMON.ID_REQUIRED("Course"), HttpStatusCode.BAD_REQUEST);
       }
 
-      const enrollment = await this.enrollmentService.enrollInCourse(
+      const enrollment = await this._enrollmentService.enrollInCourse(
         user.id, 
         courseId
       );
 
       res.status(HttpStatusCode.CREATED).json({
         success: true,
-        message: "Successfully enrolled in course",
+        message: MESSAGES.COURSE.ENROLL_SUCCESS,
         data: enrollment,
       });
     } catch (error: unknown) {
@@ -55,10 +65,10 @@ export class EnrollmentController {
     try {
       const user = req.user;
       if (!user) {
-        throw new AppError("User not authenticated", HttpStatusCode.UNAUTHORIZED);
+        throw new AppError(MESSAGES.AUTH.NOT_AUTHENTICATED, HttpStatusCode.UNAUTHORIZED);
       }
 
-      const enrollments = await this.enrollmentService.getStudentEnrollments(
+      const enrollments = await this._enrollmentService.getStudentEnrollments(
         user.id,
       );
 
@@ -78,20 +88,20 @@ export class EnrollmentController {
   ): Promise<void> => {
     try {
       const { enrollmentId } = req.params;
-      const { status } = req.body;
+      const { status } = req.body as { status: EnrollmentStatus };
       
       if (!enrollmentId) {
-        throw new AppError("Enrollment ID is required", HttpStatusCode.BAD_REQUEST);
+        throw new AppError(MESSAGES.COMMON.ID_REQUIRED("Enrollment"), HttpStatusCode.BAD_REQUEST);
       }
 
-      const enrollment = await this.enrollmentService.updateEnrollmentStatus(
+      const enrollment = await this._enrollmentService.updateEnrollmentStatus(
         enrollmentId,
         status
       );
 
       res.status(HttpStatusCode.OK).json({
         success: true,
-        message: "Enrollment status updated",
+        message: MESSAGES.COURSE.ENROLLMENT_STATUS_UPDATED,
         data: enrollment,
       });
     } catch (error: unknown) {
@@ -108,7 +118,7 @@ export class EnrollmentController {
       const { page, limit } = getPaginationParams(req.query);
       logger.info(`Fetching paginated enrollments for admin - Page: ${page}, Limit: ${limit}`);
 
-      const result = await this.enrollmentService.getAllEnrollmentsPaginated({ page, limit });
+      const result = await this._enrollmentService.getAllEnrollmentsPaginated({ page, limit });
       res.status(HttpStatusCode.OK).json(result);
     } catch (error: unknown) {
       next(error);

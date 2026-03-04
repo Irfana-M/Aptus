@@ -1,9 +1,9 @@
-import type { StudentProfile } from "../../interfaces/models/student.interface";
-import type { ITimeSlot } from "../../interfaces/models/timeSlot.interface";
-import type { ISubscriptionPlan, IStudentSubscription } from "../../interfaces/models/subscription.interface";
-import { BookingEligibility, SCHEDULING_CONFIG } from "../../constants/schedulingDecision";
-import type { IBooking } from "../../interfaces/models/booking.interface";
-import type { MentorProfile } from "../../interfaces/models/mentor.interface";
+import type { StudentProfile } from "../../interfaces/models/student.interface.js";
+import type { ITimeSlot } from "../../interfaces/models/timeSlot.interface.js";
+import type { ISubscriptionPlan, IStudentSubscription } from "../../interfaces/models/subscription.interface.js";
+import { BookingEligibility, SCHEDULING_CONFIG } from "../../constants/schedulingDecision.js";
+import type { IBooking } from "../../interfaces/models/booking.interface.js";
+import type { MentorProfile } from "../../interfaces/models/mentor.interface.js";
 
 export interface SchedulingContext {
   student: StudentProfile;

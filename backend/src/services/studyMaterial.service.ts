@@ -1,18 +1,19 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types";
-import type { IStudyMaterialService } from "../interfaces/services/IStudyMaterialService";
-import type { IStudyMaterialRepository } from "../interfaces/repositories/IStudyMaterialRepository";
-import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository";
-import type { IAssignmentSubmissionRepository } from "../interfaces/repositories/IAssignmentSubmissionRepository";
-import type { IBookingRepository } from "../interfaces/repositories/IBookingRepository";
-import type { ISubjectRepository } from "../interfaces/repositories/ISubjectRepository";
-import type { IStudyMaterial, IAssignmentSubmission } from "../interfaces/models/studyMaterial.interface";
-import { uploadFileToS3 } from "../utils/s3Upload";
-import { logger } from "../utils/logger";
-import { AppError } from "../utils/AppError";
-import { HttpStatusCode } from "../constants/httpStatus";
-import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository";
-import type { INotificationService } from "../interfaces/services/INotificationService";
+import { TYPES } from "../types.js";
+import type { IStudyMaterialService } from "../interfaces/services/IStudyMaterialService.js";
+import type { IStudyMaterialRepository } from "../interfaces/repositories/IStudyMaterialRepository.js";
+import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository.js";
+import type { IAssignmentSubmissionRepository } from "../interfaces/repositories/IAssignmentSubmissionRepository.js";
+import type { IBookingRepository } from "../interfaces/repositories/IBookingRepository.js";
+import type { ISubjectRepository } from "../interfaces/repositories/ISubjectRepository.js";
+import type { IStudyMaterial, IAssignmentSubmission } from "../interfaces/models/studyMaterial.interface.js";
+import { uploadFileToS3 } from "../utils/s3Upload.js";
+import { logger } from "../utils/logger.js";
+import { AppError } from "../utils/AppError.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository.js";
+import type { INotificationService } from "../interfaces/services/INotificationService.js";
+import { MESSAGES } from "../constants/messages.constants.js";
 
 @injectable()
 export class StudyMaterialService implements IStudyMaterialService {
@@ -52,7 +53,7 @@ export class StudyMaterialService implements IStudyMaterialService {
           // Check if the mentor is authorized for this session
           const sessionAny = session as any;
           if (sessionAny.mentorId.toString() !== data.mentorId) {
-            throw new AppError("You are not the mentor for this session", HttpStatusCode.FORBIDDEN);
+            throw new AppError(MESSAGES.STUDY_MATERIAL.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
           }
           sessionId = sessionAny._id.toString();
           courseId = sessionAny.courseId?.toString();
@@ -113,12 +114,12 @@ export class StudyMaterialService implements IStudyMaterialService {
 
       // Authorization Check: Does mentor teach this subject?
       const mentor = await this._mentorRepo.findById(data.mentorId);
-      if (!mentor) throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
+      if (!mentor) throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       const subject = await this._subjectRepo.findById(data.subjectId);
-      if (!subject) throw new AppError("Subject not found", HttpStatusCode.NOT_FOUND);
+      if (!subject) throw new AppError(MESSAGES.COURSE.NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
-      const hasProficiency = mentor.subjectProficiency?.some(p => 
-        p.subject.toLowerCase() === subject.subjectName.toLowerCase()
+      const hasProficiency = mentor.subjectProficiency?.some(proficiency => 
+        proficiency.subject.toLowerCase() === subject.subjectName.toLowerCase()
       );
 
       if (!hasProficiency) {
@@ -173,11 +174,11 @@ export class StudyMaterialService implements IStudyMaterialService {
       // 1. Get assignment to check due date
       const assignment = await this._studyMaterialRepo.findById(data.assignmentId);
       if (!assignment) {
-        throw new AppError("Assignment not found", HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.STUDY_MATERIAL.NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
 
       if (assignment.materialType !== 'assignment') {
-        throw new AppError("This is not an assignment", HttpStatusCode.BAD_REQUEST);
+        throw new AppError(MESSAGES.STUDY_MATERIAL.NOT_AN_ASSIGNMENT, HttpStatusCode.BAD_REQUEST);
       }
 
       // 2. Check if student is assigned
@@ -185,7 +186,7 @@ export class StudyMaterialService implements IStudyMaterialService {
         (id: any) => id.toString() === data.studentId
       );
       if (!isAssigned) {
-        throw new AppError("You are not assigned to this assignment", HttpStatusCode.FORBIDDEN);
+        throw new AppError(MESSAGES.STUDY_MATERIAL.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
       }
 
       // 3. Check for existing submission
@@ -194,7 +195,7 @@ export class StudyMaterialService implements IStudyMaterialService {
         data.studentId
       );
       if (existingSubmission) {
-        throw new AppError("You have already submitted this assignment", HttpStatusCode.CONFLICT);
+        throw new AppError(MESSAGES.STUDY_MATERIAL.ALREADY_SUBMITTED, HttpStatusCode.CONFLICT);
       }
 
       // 4. Check if late
@@ -203,7 +204,7 @@ export class StudyMaterialService implements IStudyMaterialService {
         : false;
 
       if (isLate && !assignment.assignmentDetails?.allowLateSubmission) {
-        throw new AppError("Late submissions are not allowed for this assignment", HttpStatusCode.FORBIDDEN);
+        throw new AppError(MESSAGES.STUDY_MATERIAL.LATE_SUBMISSION_FORBIDDEN, HttpStatusCode.FORBIDDEN);
       }
 
       // 5. Upload files to S3
@@ -243,18 +244,18 @@ export class StudyMaterialService implements IStudyMaterialService {
 
       const submission = await this._submissionRepo.findById(submissionId);
       if (!submission) {
-        throw new AppError("Submission not found", HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.STUDY_MATERIAL.NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
 
       // Verify mentor owns the assignment
       const assignment = await this._studyMaterialRepo.findById(submission.materialId.toString());
       if (!assignment || assignment.mentorId.toString() !== mentorId) {
-        throw new AppError("Unauthorized to provide feedback", HttpStatusCode.FORBIDDEN);
+        throw new AppError(MESSAGES.STUDY_MATERIAL.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
       }
 
       const updated = await this._submissionRepo.addFeedback(submissionId, feedback);
       if (!updated) {
-        throw new AppError("Failed to update feedback", HttpStatusCode.INTERNAL_SERVER_ERROR);
+        throw new AppError(MESSAGES.STUDY_MATERIAL.FEEDBACK_UPDATE_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
       }
 
       logger.info(`Feedback provided for submission ${submissionId}`);
@@ -310,7 +311,7 @@ export class StudyMaterialService implements IStudyMaterialService {
     // Verify mentor owns the assignment
     const assignment = await this._studyMaterialRepo.findById(assignmentId);
     if (!assignment || assignment.mentorId.toString() !== mentorId) {
-      throw new AppError("Unauthorized", HttpStatusCode.FORBIDDEN);
+      throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.FORBIDDEN);
     }
 
     return this._submissionRepo.findByMaterialId(assignmentId);
@@ -323,11 +324,11 @@ export class StudyMaterialService implements IStudyMaterialService {
   async deleteMaterial(materialId: string, mentorId: string): Promise<boolean> {
     const material = await this._studyMaterialRepo.findById(materialId);
     if (!material) {
-      throw new AppError("Material not found", HttpStatusCode.NOT_FOUND);
+      throw new AppError(MESSAGES.STUDY_MATERIAL.NOT_FOUND, HttpStatusCode.NOT_FOUND);
     }
 
     if (material.mentorId.toString() !== mentorId) {
-      throw new AppError("Unauthorized to delete this material", HttpStatusCode.FORBIDDEN);
+      throw new AppError(MESSAGES.STUDY_MATERIAL.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
     }
 
     return this._studyMaterialRepo.delete(materialId);
@@ -364,7 +365,7 @@ export class StudyMaterialService implements IStudyMaterialService {
           });
 
           const submittedStudentIds = new Set(
-            submissions.map(s => s.studentId.toString())
+            submissions.map(submission => submission.studentId.toString())
           );
 
           // Filter to students who haven't submitted
@@ -394,8 +395,8 @@ export class StudyMaterialService implements IStudyMaterialService {
               ['web', 'email']
             );
           }
-        } catch (err) {
-          logger.error(`[StudyMaterialService] Error sending reminder for assignment ${assignment._id}:`, err);
+        } catch (error) {
+          logger.error(`[StudyMaterialService] Error sending reminder for assignment ${assignment._id}:`, error);
         }
       }
 

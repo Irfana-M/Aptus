@@ -1,12 +1,15 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../constants/routes.constants';
 import { 
   Users, Clock, Calendar, BookOpen, ClipboardList, 
   User, Home, FileText, Plus, Trash2, Edit
 } from 'lucide-react';
 import { DashboardLayout } from '../../../components/layout/DashboardLayout';
 import type { NavItem } from '../../../components/layout/DashboardSidebar';
+import { Loader } from '../../../components/ui/Loader';
+import { EmptyState } from '../../../components/ui/EmptyState';
 import { getExamsByMentor } from "../../../features/exam/examSlice";
 import type { AppDispatch, RootState } from "../../../app/store";
 import { logoutUser } from "../../../features/auth/authThunks";
@@ -24,7 +27,7 @@ const MentorExamList: React.FC = () => {
 
     const handleLogout = async () => {
         await dispatch(logoutUser());
-        navigate('/login');
+        navigate(ROUTES.LOGIN);
     };
 
     const mentorNavItems: NavItem[] = [
@@ -60,7 +63,7 @@ const MentorExamList: React.FC = () => {
                         <p className="text-gray-500 mt-1">Manage your course exams and assessments</p>
                     </div>
                     <button
-                        onClick={() => navigate('/mentor/exams/create')}
+                        onClick={() => navigate(ROUTES.MENTOR.CREATE_EXAM)}
                         className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
                     >
                         <Plus size={20} />
@@ -85,18 +88,19 @@ const MentorExamList: React.FC = () => {
                                 {loading ? (
                                     <tr>
                                         <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                                            <div className="flex justify-center">
-                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
-                                            </div>
+                                            <Loader size="md" />
                                         </td>
                                     </tr>
                                 ) : exams.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <FileText className="w-12 h-12 text-gray-200" />
-                                                <p>No exams created yet.</p>
-                                            </div>
+                                        <td colSpan={6} className="px-6 py-12">
+                                            <EmptyState 
+                                                title="No exams created yet"
+                                                description="Manage your course exams and assessments by creating your first exam."
+                                                icon={FileText}
+                                                actionLabel="Create Exam"
+                                                onAction={() => navigate(ROUTES.MENTOR.CREATE_EXAM)}
+                                            />
                                         </td>
                                     </tr>
                                 ) : (

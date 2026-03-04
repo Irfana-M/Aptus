@@ -1,31 +1,31 @@
-import { StudentModel } from "../models/student/student.model";
+import { StudentModel } from "../models/student/student.model.js";
 // Unused Document, Model imports removed
-import type { StudentProfile } from "../interfaces/models/student.interface";
-import type { IVerificationRepository } from "../interfaces/repositories/IVerificationRepository";
+import type { StudentProfile } from "../interfaces/models/student.interface.js";
+import type { IVerificationRepository } from "../interfaces/repositories/IVerificationRepository.js";
 
-import type { IStudentAuthRepository } from "../interfaces/repositories/IStudentAuthRepository";
-import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO";
-import type { AuthUser, StudentAuthUser } from "../interfaces/auth/auth.interface";
+import type { IStudentAuthRepository } from "../interfaces/repositories/IStudentAuthRepository.js";
+import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO.js";
+import type { AuthUser, StudentAuthUser } from "../interfaces/auth/auth.interface.js";
 // Unused BaseRepository import removed
 
-import { StudentMapper } from "@/mappers/StudentMapper";
+import { StudentMapper } from "@/mappers/StudentMapper.js";
 import bcrypt from "bcryptjs";
-import { logger } from "../utils/logger";
+import { logger } from "../utils/logger.js";
 import { injectable } from "inversify";
-import { AppError } from "@/utils/AppError";
-import { HttpStatusCode } from "@/constants/httpStatus";
+import { AppError } from "@/utils/AppError.js";
+import { HttpStatusCode } from "@/constants/httpStatus.js";
 
 @injectable()
 export class StudentAuthRepository
   implements IStudentAuthRepository, IVerificationRepository<StudentAuthUser>
 {
-  private model = StudentModel;
+  private _model = StudentModel;
   constructor() {}
 
  
   async findByEmail(email: string): Promise<StudentAuthUser | null> {
     try {
-      const student = await this.model.findOne({ email }).lean().exec();
+      const student = await this._model.findOne({ email }).lean().exec();
       if (!student) {
         logger.warn(`Student not found with email: ${email}`);
         return null;
@@ -44,7 +44,7 @@ export class StudentAuthRepository
 
   async findById(id: string): Promise<StudentAuthUser | null> {
     try {
-      const student = await this.model.findById(id).lean().exec();
+      const student = await this._model.findById(id).lean().exec();
       if (!student) {
         logger.warn(`Student not found with ID: ${id}`);
         return null;
@@ -72,7 +72,7 @@ export class StudentAuthRepository
         approvalStatus: "approved",
       };
 
-      const createdStudent = await this.model.create(studentData);
+      const createdStudent = await this._model.create(studentData);
       logger.info(`Student created: ${createdStudent.email}`);
       return StudentMapper.toStudentAuthUser({ ...createdStudent.toObject(), role: "student" } as unknown as StudentAuthUser);
     } catch (error: unknown) {
@@ -87,7 +87,7 @@ export class StudentAuthRepository
 
   async markUserVerified(email: string): Promise<void> {
     try {
-      const result = await this.model.updateOne(
+      const result = await this._model.updateOne(
         { email },
         { $set: { isVerified: true } }
       );
@@ -109,7 +109,7 @@ export class StudentAuthRepository
   async block(id: string): Promise<StudentAuthUser> {
     try {
       logger.debug(`Blocking student: ${id}`);
-      const blockedStudent = await this.model
+      const blockedStudent = await this._model
         .findByIdAndUpdate(
           id, 
           { 
@@ -140,7 +140,7 @@ export class StudentAuthRepository
   async unblock(id: string): Promise<StudentAuthUser> {
     try {
       logger.debug(`Unblocking student: ${id}`);
-      const unblockedStudent = await this.model
+      const unblockedStudent = await this._model
         .findByIdAndUpdate(
           id, 
           { 
@@ -190,7 +190,7 @@ export class StudentAuthRepository
 
   async updatePassword(email: string, hashedPassword: string): Promise<void> {
     try {
-      const result = await this.model.updateOne(
+      const result = await this._model.updateOne(
         { email },
         { password: hashedPassword }
       );
@@ -282,12 +282,12 @@ export class StudentAuthRepository
 
  
   async create(data: Partial<StudentAuthUser>): Promise<StudentAuthUser> {
-    const result = await this.model.create(data);
+    const result = await this._model.create(data);
     return StudentMapper.toStudentAuthUser({ ...result.toObject(), role: "student" } as unknown as StudentAuthUser);
   }
 
   async updateById(id: string, data: Partial<StudentAuthUser>): Promise<StudentAuthUser> {
-    const result = await this.model
+    const result = await this._model
       .findByIdAndUpdate(id, data, { new: true })
       .lean()
       .exec();
@@ -300,13 +300,13 @@ export class StudentAuthRepository
   }
 
   async findAll(): Promise<StudentAuthUser[]> {
-    const students = await this.model.find({}).lean().exec();
+    const students = await this._model.find({}).lean().exec();
     return students.map(student => StudentMapper.toStudentAuthUser({ ...student, role: "student" } as unknown as StudentAuthUser));
   }
 
   async findByReferralCode(code: string): Promise<StudentAuthUser | null> {
     try {
-      const student = await this.model.findOne({ referralCode: code });
+      const student = await this._model.findOne({ referralCode: code });
       if (!student) return null;
       return StudentMapper.toStudentAuthUser({ ...student.toObject(), role: "student" } as unknown as StudentAuthUser);
     } catch (error) {

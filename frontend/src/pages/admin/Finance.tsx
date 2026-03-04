@@ -1,24 +1,39 @@
 import { useEffect, useState } from 'react';
 import { Sidebar } from '../../components/admin/Sidebar';
 import { Topbar } from '../../components/admin/Topbar';
-import { Download, Search, CheckCircle, XCircle, Info, Landmark, Users, RefreshCw } from 'lucide-react';
+import { Download, Search } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../../app/store';
 import { fetchFinanceData } from '../../features/admin/financeThunk';
-import toast from 'react-hot-toast';
-import { AxiosError } from 'axios';
+import { Pagination } from '../../components/ui/Pagination';
+import { Loader } from '../../components/ui/Loader';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { CreditCard } from 'lucide-react';
 
 
 
 export default function Finance() {
   const dispatch = useDispatch<AppDispatch>();
-  const { payments, loading } = useSelector((state: RootState) => state.finance);
+  const { payments, pagination, loading } = useSelector((state: RootState) => state.finance);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
-    dispatch(fetchFinanceData());
-  }, [dispatch]);
+    dispatch(fetchFinanceData({page: currentPage, limit: itemsPerPage}));
+  }, [dispatch, currentPage, itemsPerPage]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newLimit: number) => {
+    setItemsPerPage(newLimit);
+    setCurrentPage(1);
+  }
+
+  
 
   const filteredPayments = payments.filter(p => 
     p.invoiceId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -53,7 +68,7 @@ export default function Finance() {
             </div>
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                <p className="text-gray-500 text-sm font-medium">Transactions</p>
-               <h3 className="text-3xl font-bold text-gray-900 mt-2">{payments.length}</h3>
+               <h3 className="text-3xl font-bold text-gray-900 mt-2">{pagination?.totalItems ?? payments.length}</h3>
             </div>
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                <p className="text-gray-500 text-sm font-medium">Pending/Failed</p>
@@ -102,9 +117,21 @@ export default function Finance() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {loading ? (
-                    <tr><td colSpan={6} className="px-6 py-8 text-center">Loading transactions...</td></tr>
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12">
+                        <Loader size="md" text="Loading transactions..." />
+                      </td>
+                    </tr>
                   ) : filteredPayments.length === 0 ? (
-                    <tr><td colSpan={6} className="px-6 py-8 text-center">No transactions found</td></tr>
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12">
+                        <EmptyState 
+                          icon={CreditCard} 
+                          title="No transactions found" 
+                          description={searchTerm ? `No payments match "${searchTerm}"` : "There are no recorded transactions yet."}
+                        />
+                      </td>
+                    </tr>
                   ) : filteredPayments.map((payment) => (
                     <tr key={payment._id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 font-mono text-gray-900">{payment.invoiceId}</td>
@@ -133,6 +160,22 @@ export default function Finance() {
                   ))}
                 </tbody>
               </table>
+                         {/* After the table */}
+           {pagination && pagination.totalPages > 1 && (
+             <div className="bg-white rounded-xl border border-gray-200 shadow-sm mt-4">
+               <Pagination
+                 currentPage={pagination.currentPage}
+                 totalPages={pagination.totalPages}
+                 totalItems={pagination.totalItems}
+                 itemsPerPage={pagination.itemsPerPage}
+                 onPageChange={handlePageChange}
+                 onItemsPerPageChange={handleItemsPerPageChange}
+                 variant="detailed"
+                 className="px-6 py-4"
+               />
+             </div>
+           )}
+
             </div>
           </div>
         </div>

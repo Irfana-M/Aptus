@@ -1,10 +1,10 @@
 
 import { Router } from 'express';
-import { container } from '../inversify.config';
-import { TYPES } from '../types';
-import { NotificationController } from '../controllers/notification.controller';
-import { AuthMiddleware } from '../middlewares/authMiddleware';
-import type { INotificationService } from '../interfaces/services/INotificationService';
+import { container } from '../inversify.config.js';
+import { TYPES } from '../types.js';
+import { NotificationController } from '../controllers/notification.controller.js';
+import { AuthMiddleware } from '../middlewares/authMiddleware.js';
+import type { INotificationService } from '../interfaces/services/INotificationService.js';
 
 const router = Router();
 const notificationService = container.get<INotificationService>(TYPES.INotificationService);

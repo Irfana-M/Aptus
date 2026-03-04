@@ -1,5 +1,5 @@
-import type { IAttendance } from "../models/attendance.interface";
-import type { IBaseRepository } from "./IBaseRepository";
+import type { IAttendance } from "../models/attendance.interface.js";
+import type { IBaseRepository } from "./IBaseRepository.js";
 
 export interface IAttendanceRepository extends IBaseRepository<IAttendance> {
   findBySession(sessionId: string): Promise<IAttendance[]>;

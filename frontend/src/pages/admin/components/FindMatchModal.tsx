@@ -9,6 +9,7 @@ import { adminCourseApi } from '../../../features/admin/adminApi';
 import toast from 'react-hot-toast';
 import { Button } from '../../../components/ui/Button';
 import { formatTo12Hour } from '../../../utils/timeFormat';
+import { Loader } from '../../../components/ui/Loader';
 
 interface CourseRequestData {
     id: string;
@@ -219,8 +220,7 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-6">
                     {loading ? (
                         <div className="flex flex-col items-center justify-center p-20">
-                            <div className="animate-spin rounded-full h-10 w-10 border-4 border-teal-500/20 border-t-teal-500 mb-4"></div>
-                            <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Searching experts...</p>
+                            <Loader size="md" text="Searching experts..." color="teal" />
                         </div>
                     ) : (
                         <div className="space-y-8">
@@ -277,7 +277,7 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
                                                         <div className="flex items-center gap-2">
                                                             <p className="font-black text-slate-800">{mentor.fullName}</p>
                                                             {mentor.hasConflict && (
-                                                                <span className="px-2 py-0.5 bg-red-500 text-white text-[8px] font-black rounded uppercase animate-pulse">
+                                                                <span className="px-2 py-0.5 bg-rose-100 text-rose-600 text-[8px] font-black rounded uppercase">
                                                                     Reserved
                                                                 </span>
                                                             )}

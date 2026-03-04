@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { container } from '@/inversify.config';
-import { TYPES } from '@/types';
+import { container } from '../inversify.config.js';
+import { TYPES } from '../types.js';
 
-import type { RoleController } from '@/controllers/role.controller';
+import type { RoleController } from '../controllers/role.controller.js';
 
-import { verifyAccessToken } from '@/utils/jwt.util';
+import { verifyAccessToken } from '../utils/jwt.util.js';
 
 const roleRoutes = Router();
 

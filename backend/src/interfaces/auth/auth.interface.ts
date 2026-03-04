@@ -1,5 +1,5 @@
-import type { StudentOnboardingStatus } from "@/enums/studentOnboarding.enum";
-import type { SubscriptionDetails } from "../models/student.interface";
+import type { StudentOnboardingStatus } from "../../enums/studentOnboarding.enum.js";
+import type { SubscriptionDetails } from "../models/student.interface.js";
 
 export interface BaseUser {
   _id: string;
@@ -89,6 +89,6 @@ export interface StudentAuthUser extends Omit<AuthUser, 'role'> {
   preferredSubjects?: string[] | undefined;
   preferredTimeSlots?: {
     subjectId: string;
-    slots: import("../models/student.interface").Availability[];
+    slots: import("../models/student.interface.js").Availability[];
   }[] | undefined;
 }

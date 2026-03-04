@@ -9,6 +9,7 @@ import type { AppDispatch } from "../../app/store";
 import { registerUser } from "../../features/auth/authThunks";
 import { clearError } from "../../features/auth/authSlice";
 import { selectAuthLoading, selectAuthError } from "../../features/auth/authSelector";
+import { ROUTES } from "../../constants/routes.constants";
 
 import { AuthLayout } from "../../components/layout/AuthLayout";
 import registerImage from "../../assets/images/register_banner.jpeg";
@@ -42,7 +43,7 @@ export default function Register() {
     
     if (token && userRole) {
         // Redirect to dashboard/profile setup based on role
-        const path = userRole === "mentor" ? "/mentor/dashboard" : "/student/dashboard";
+        const path = userRole === "mentor" ? ROUTES.MENTOR.DASHBOARD : ROUTES.STUDENT.DASHBOARD;
         navigate(path, { replace: true });
     }
   }, [dispatch, navigate]);
@@ -57,7 +58,7 @@ export default function Register() {
       if (registerUser.fulfilled.match(resultAction)) {
         localStorage.setItem("signupEmail", data.email);
         toast.success("Signup successful! Check your email for OTP.");
-        navigate("/verify-otp");
+        navigate(ROUTES.VERIFY_OTP);
       } else {
         toast.error(resultAction.payload as string);
       }
@@ -138,7 +139,7 @@ export default function Register() {
   {/* Sign in link */}
   <p className="text-sm text-gray-600 mt-4 text-center">
     Already have an account?{" "}
-    <a href="/login" className="text-blue-600 font-medium hover:underline">
+    <a href={ROUTES.LOGIN} className="text-blue-600 font-medium hover:underline">
       Sign in
     </a>
   </p>

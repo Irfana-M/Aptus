@@ -4,6 +4,9 @@ import { getAvailableTrialSlots, requestTrialClass, fetchSubjectsByGrade } from 
 import toast from "react-hot-toast";
 import Header from "../../components/layout/Header";
 import { Button } from "../../components/ui/Button";
+import { Loader } from "../../components/ui/Loader";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { ROUTES } from "../../constants/routes.constants";
 import { useSelector } from "react-redux";
 import type { RootState } from "../../app/store";
 
@@ -165,7 +168,7 @@ const BookTuitionSessions = () => {
     };
 
     if (showSuccess) {
-        return <SuccessComponent message={successMessage} onClose={() => window.location.href = "/student/dashboard"} />;
+        return <SuccessComponent message={successMessage} onClose={() => window.location.href = ROUTES.STUDENT.DASHBOARD} />;
     }
 
     return (
@@ -239,9 +242,8 @@ const BookTuitionSessions = () => {
                                     </div>
 
                                     {loadingSlots ? (
-                                        <div className="py-12 flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50">
-                                            <div className="w-8 h-8 border-4 border-teal-500/30 border-t-teal-500 rounded-full animate-spin mb-3"></div>
-                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">Checking availability...</p>
+                                        <div className="py-12 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50">
+                                            <Loader size="sm" text="Checking availability..." color="teal" />
                                         </div>
                                     ) : availableSlots.length > 0 ? (
                                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -260,17 +262,14 @@ const BookTuitionSessions = () => {
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="py-10 text-center bg-amber-50 rounded-2xl border border-amber-100">
-                                            <p className="text-amber-800 font-bold mb-2">
-                                                {noSlotsMessage || "No slots available."}
-                                            </p>
-                                            <button 
-                                                onClick={() => setSelectedDate("")}
-                                                className="text-xs font-black text-amber-600 uppercase tracking-wide hover:underline cursor-pointer"
-                                            >
-                                                Try another date
-                                            </button>
-                                        </div>
+                                        <EmptyState 
+                                            icon={Clock}
+                                            title="No slots available" 
+                                            description={noSlotsMessage || "No mentors available on this date. Please try another day."}
+                                            actionLabel="Try another date"
+                                            onAction={() => setSelectedDate("")}
+                                            variant="compact"
+                                        />
                                     )}
                                 </div>
                             )}

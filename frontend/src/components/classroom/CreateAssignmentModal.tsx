@@ -11,21 +11,7 @@ interface CreateAssignmentModalProps {
   onSuccess: () => void;
 }
 
-interface Student {
-  _id: string;
-  fullName: string;
-  email: string;
-}
-
-interface CourseGroup {
-  key: string; // unique combo of subjectId_gradeId
-  subjectId: string;
-  subjectName: string;
-  gradeId: string;
-  gradeName: string;
-  syllabus: string;
-  students: Student[];
-}
+import type { Student, CourseGroup } from '../../types/classroom.types';
 
 const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({ onClose, onSuccess }) => {
   const [title, setTitle] = useState('');

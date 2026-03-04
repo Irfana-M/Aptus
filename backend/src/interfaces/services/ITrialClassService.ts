@@ -1,7 +1,7 @@
 import type {
   TrialClassRequestDto,
   TrialClassResponseDto,
-} from "@/dtos/student/trialClassDTO";
+} from "../../dtos/student/trialClassDTO.js";
 
 export interface ITrialClassService {
   requestTrialClass(
@@ -25,7 +25,7 @@ export interface ITrialClassService {
     subjectId: string,
     date: string,
     timeSlot: string
-  ): Promise<import("../models/mentor.interface").MentorProfile>;
+  ): Promise<import("../models/mentor.interface.js").MentorProfile>;
 
   updateTrialClass(
     trialClassId: string,

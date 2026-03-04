@@ -1,10 +1,10 @@
-import { AppError } from "@/utils/AppError";
-import { logger } from "@/utils/logger";
-import { HttpStatusCode } from "@/constants/httpStatus";
-import type { IBaseRepository } from "@/interfaces/repositories/IBaseRepository";
+import { AppError } from "@/utils/AppError.js";
+import { logger } from "@/utils/logger.js";
+import { HttpStatusCode } from "@/constants/httpStatus.js";
+import type { IBaseRepository } from "@/interfaces/repositories/IBaseRepository.js";
 import { injectable } from "inversify";
 
-import { Model, Document } from "mongoose";
+import { Model, Document, SortOrder } from "mongoose";
 import type { ClientSession, FilterQuery } from "mongoose";
 
 @injectable()
@@ -289,9 +289,9 @@ async unblock(id: string): Promise<T> {
     filter: Record<string, unknown>,
     page: number,
     limit: number,
+    sort: Record<string, SortOrder> = { createdAt: -1 as SortOrder },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    sort: any = { createdAt: -1 },
-    populate?: string[] | any
+    populate?: string | string[] | any
   ): Promise<{ items: T[], total: number }> {
     try {
       const skip = (page - 1) * limit;
@@ -305,7 +305,7 @@ async unblock(id: string): Promise<T> {
 
       if (populate) {
         if (Array.isArray(populate)) {
-          populate.forEach(p => query.populate(p));
+          populate.forEach(path => query.populate(path));
         } else {
           query.populate(populate);
         }

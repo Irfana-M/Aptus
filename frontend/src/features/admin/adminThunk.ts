@@ -1,5 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { adminAuthApi, adminCourseApi, adminStudentApi, adminRequestsApi, adminMentorRequestApi, type AddStudentRequestDto, type AddStudentResponseDto, type AdminLoginDto, type StudentsWithStatsResponse, type PaginatedResponse } from "./adminApi";
+import { adminAuthApi, adminCourseApi, adminStudentApi, adminRequestsApi, adminMentorRequestApi, type AddStudentRequestDto, type AddStudentResponseDto, type AdminLoginDto, type StudentsWithStatsResponse, type PaginatedResponse, type PaginationMeta } from "./adminApi";
 import type { AdminLoginResponse } from "../../types/dtoTypes";
 import { adminMentorApi } from "./adminApi";
 import type { RootState } from "../../app/store";
@@ -9,7 +9,8 @@ import type { StudentProfile } from "../../types/student.types";
 import type { TrialClass } from "../../types/trialTypes";
 import { logger } from "../../utils/logger";
 import { getApiErrorMessage, getErrorMessage } from "../../utils/errorUtils";
-import type { MentorRequestListItem, Enrollment } from "../../types/adminTypes";
+import type { MentorRequestListItem } from "../../types/adminTypes";
+import type { Enrollment } from "../../types/enrollmentTypes";
 import { z } from 'zod';
 import { 
   adminCreateStudentSchema, 
@@ -548,12 +549,16 @@ export const updateStudentAdmin = createAsyncThunk<
 
 
 
-export const fetchAllTrialClassesAdmin = createAsyncThunk(
+export const fetchAllTrialClassesAdmin = createAsyncThunk<
+  TrialClass[],
+  void,
+  { rejectValue: string }
+>(
   'admin/fetchAllTrialClasses',
   async (_, { rejectWithValue }) => {
     try {
       const response = await adminStudentApi.getTrialClasses();
-      return response.data;
+      return (response.data.data || response.data) as TrialClass[];
     } catch (error: unknown) {
       return rejectWithValue(getApiErrorMessage(error, 'Failed to fetch trial classes'));
     }
@@ -1140,7 +1145,8 @@ export const fetchAllCourseRequestsAdmin = createAsyncThunk<
 >("admin/fetchAllCourseRequests", async (_, { rejectWithValue }) => {
   try {
     const response = await adminRequestsApi.getAllRequests();
-    const requests = response.data.data || [];
+    const data = response.data;
+    const requests = 'data' in data ? data.data : [];
     
     // Manual mapping to ensure 'id' is present
     return (requests as (CourseRequest & { _id?: string })[]).map(req => ({
@@ -1156,14 +1162,66 @@ export const fetchAllCourseRequestsAdmin = createAsyncThunk<
   }
 });
 
+export const fetchCourseRequestsPaginated = createAsyncThunk<
+  { requests: CourseRequest[]; pagination: PaginationMeta },
+  { page?: number; limit?: number; search?: string; status?: string },
+  { rejectValue: string }
+>("admin/fetchCourseRequestsPaginated", async (params, { rejectWithValue }) => {
+  try {
+    const response = await adminRequestsApi.getAllRequests(params);
+    const responseData = response.data;
+
+    if (responseData && 'pagination' in responseData && 'data' in responseData) {
+      const requests = (responseData.data as (CourseRequest & { _id?: string })[]).map(req => ({
+        ...req,
+        id: req._id || req.id,
+        student: req.student ? (typeof req.student === 'object' ? {
+          ...req.student,
+          id: (req.student as Record<string, unknown>)._id as string || (req.student as Record<string, unknown>).id as string || (req.student as unknown as string)
+        } : req.student) : 'Unknown Student'
+      })) as CourseRequest[];
+
+      return {
+        requests,
+        pagination: responseData.pagination,
+      };
+    }
+
+    // Fallback
+    const requestsData = 'data' in responseData ? responseData.data : (Array.isArray(responseData) ? responseData : []);
+    const requests = (requestsData as (CourseRequest & { _id?: string })[]).map(req => ({
+        ...req,
+        id: req._id || req.id,
+    })) as CourseRequest[];
+
+    return {
+      requests,
+      pagination: {
+        currentPage: 1,
+        totalPages: 1,
+        totalItems: requests.length,
+        itemsPerPage: requests.length,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
+    };
+  } catch (error: unknown) {
+    return rejectWithValue(getApiErrorMessage(error, "Failed to fetch course requests"));
+  }
+});
+
 export const updateCourseRequestStatusAdmin = createAsyncThunk<
   { success: boolean; message: string },
-  { requestId: string; status: string },
+  { requestId: string; status: string; params?: { page?: number; limit?: number; search?: string; status?: string } },
   { rejectValue: string }
-> ("admin/updateCourseRequestStatus", async ({ requestId, status }, { rejectWithValue, dispatch }) => {
+> ("admin/updateCourseRequestStatus", async ({ requestId, status, params }, { rejectWithValue, dispatch }) => {
   try {
     const response = await adminRequestsApi.updateRequestStatus(requestId, status);
-    dispatch(fetchAllCourseRequestsAdmin());
+    if (params) {
+        dispatch(fetchCourseRequestsPaginated(params));
+    } else {
+        dispatch(fetchAllCourseRequestsAdmin());
+    }
     return { success: response.data.success, message: response.data.message };
   } catch (error: unknown) {
     return rejectWithValue(getApiErrorMessage(error, "Failed to update status"));
@@ -1255,7 +1313,9 @@ export const fetchAllEnrollmentsAdmin = createAsyncThunk<
   try {
     const { adminEnrollmentApi } = await import("./adminApi");
     const response = await adminEnrollmentApi.fetchAllEnrollments();
-    const enrollments = response.data.data;
+    const data = response.data;
+    const enrollments = 'data' in data ? data.data : [];
+
     return (enrollments as unknown as Record<string, unknown>[]).map(en => {
       const student = en.student as Record<string, unknown> | undefined;
       if (student && student.profileImage && !student.profilePicture) {
@@ -1268,9 +1328,69 @@ export const fetchAllEnrollmentsAdmin = createAsyncThunk<
         course: en.course || '',
         enrollmentDate: en.enrollmentDate || en.enrolledAt || new Date().toISOString(),
         status: (en.status || 'active') as Enrollment['status'],
+        createdAt: (en.createdAt || en.enrollmentDate || new Date().toISOString()).toString(),
+        updatedAt: (en.updatedAt || en.enrollmentDate || new Date().toISOString()).toString(),
         enrolledAt: (en.enrolledAt || en.enrollmentDate || new Date().toISOString()).toString()
       };
     }) as unknown as Enrollment[];
+  } catch (error: unknown) {
+    return rejectWithValue(getApiErrorMessage(error, "Failed to fetch enrollments"));
+  }
+});
+
+export const fetchEnrollmentsPaginated = createAsyncThunk<
+  { enrollments: Enrollment[]; pagination: PaginationMeta },
+  { page?: number; limit?: number; search?: string; status?: string },
+  { rejectValue: string }
+>("admin/fetchEnrollmentsPaginated", async (params, { rejectWithValue }) => {
+  try {
+    const { adminEnrollmentApi } = await import("./adminApi");
+    const response = await adminEnrollmentApi.fetchAllEnrollments(params);
+    const responseData = response.data;
+
+    if (responseData && 'pagination' in responseData && 'data' in responseData) {
+      const enrollments = (responseData.data as unknown as Record<string, unknown>[]).map(en => {
+        const student = en.student as Record<string, unknown> | undefined;
+        if (student && student.profileImage && !student.profilePicture) {
+          student.profilePicture = student.profileImage;
+        }
+        return {
+          ...en,
+          id: (en._id || en.id || '').toString(),
+          student: student || '',
+          course: en.course || '',
+          enrollmentDate: en.enrollmentDate || en.enrolledAt || new Date().toISOString(),
+          status: (en.status || 'active') as Enrollment['status'],
+          createdAt: (en.createdAt || en.enrollmentDate || new Date().toISOString()).toString(),
+          updatedAt: (en.updatedAt || en.enrollmentDate || new Date().toISOString()).toString(),
+          enrolledAt: (en.enrolledAt || en.enrollmentDate || new Date().toISOString()).toString()
+        };
+      }) as unknown as Enrollment[];
+
+      return {
+        enrollments,
+        pagination: responseData.pagination,
+      };
+    }
+
+    // Fallback
+    const enrollmentsData = 'data' in responseData ? responseData.data : (Array.isArray(responseData) ? responseData : []);
+    const enrollments = (enrollmentsData as unknown as Record<string, unknown>[]).map(en => ({
+        ...en,
+        id: (en._id || en.id || '').toString(),
+    })) as unknown as Enrollment[];
+
+    return {
+      enrollments,
+      pagination: {
+        currentPage: 1,
+        totalPages: 1,
+        totalItems: enrollments.length,
+        itemsPerPage: enrollments.length,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
+    };
   } catch (error: unknown) {
     return rejectWithValue(getApiErrorMessage(error, "Failed to fetch enrollments"));
   }

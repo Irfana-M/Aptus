@@ -1,7 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
-import type { INotificationService } from '../interfaces/services/INotificationService';
-import { HttpStatusCode } from '../constants/httpStatus';
-import { AppError } from '../utils/AppError';
+import type { INotificationService } from '../interfaces/services/INotificationService.js';
+import { HttpStatusCode } from '../constants/httpStatus.js';
+import { AppError } from '../utils/AppError.js';
+import { MESSAGES } from '../constants/messages.constants.js';
 
 export class NotificationController {
   constructor(
@@ -11,7 +12,7 @@ export class NotificationController {
   async getNotifications(req: Request, res: Response, next: NextFunction) {
     try {
       const user = req.user;
-      if (!user) throw new AppError('Unauthorized', HttpStatusCode.UNAUTHORIZED);
+      if (!user) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
 
       const notifications = await this._notificationService.getUserNotifications(user.id, user.role);
       const mappedNotifications = notifications.map(n => ({
@@ -33,12 +34,12 @@ export class NotificationController {
     try {
         const { id } = req.params;
         if (!id) {
-            throw new AppError('Notification ID is required', HttpStatusCode.BAD_REQUEST);
+            throw new AppError(MESSAGES.COMMON.ID_REQUIRED('Notification'), HttpStatusCode.BAD_REQUEST);
         }
         await this._notificationService.markAsRead(id);
         res.status(HttpStatusCode.OK).json({
             success: true,
-            message: 'Notification marked as read'
+            message: MESSAGES.NOTIFICATION.MARK_READ_SUCCESS
         });
     } catch (error) {
         next(error);

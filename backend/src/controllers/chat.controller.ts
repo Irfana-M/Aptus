@@ -1,15 +1,17 @@
 import type { Request, Response } from "express";
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types";
-import type { IChatService } from "../interfaces/services/IChatService";
-import { AppError } from "../utils/AppError";
-import { HttpStatusCode } from "../constants/httpStatus";
-import { logger } from "../utils/logger";
+import { TYPES } from "../types.js";
+import type { IChatService } from "../interfaces/services/IChatService.js";
+import { AppError } from "../utils/AppError.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import { UserRole } from "../enums/user.enum.js";
+import { logger } from "../utils/logger.js";
+import { MESSAGES } from "../constants/messages.constants.js";
 
 interface AuthenticatedRequest extends Request {
   user: {
     id: string;
-    role: 'mentor' | 'student' | 'admin';
+    role: UserRole;
   };
 }
 
@@ -27,7 +29,7 @@ export class ChatController {
       const userId = authReq.user.id;
       const role = authReq.user.role;
 
-      if (!sessionId) throw new AppError("Session ID is required", HttpStatusCode.BAD_REQUEST);
+      if (!sessionId) throw new AppError(MESSAGES.COMMON.ID_REQUIRED("Session"), HttpStatusCode.BAD_REQUEST);
 
       const message = await this._chatService.sendMessage(sessionId, userId, role, content);
       
@@ -40,7 +42,7 @@ export class ChatController {
       const appError = error as { statusCode?: number; message?: string };
       res.status(appError.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: appError.message || "Failed to send message"
+        message: appError.message || MESSAGES.COMMON.INTERNAL_SERVER_ERROR
       });
     }
   }
@@ -52,7 +54,7 @@ export class ChatController {
       const userId = authReq.user.id;
       const role = authReq.user.role;
 
-      if (!sessionId) throw new AppError("Session ID is required", HttpStatusCode.BAD_REQUEST);
+      if (!sessionId) throw new AppError(MESSAGES.COMMON.ID_REQUIRED("Session"), HttpStatusCode.BAD_REQUEST);
 
       const history = await this._chatService.getChatHistory(sessionId, userId, role);
 
@@ -65,7 +67,7 @@ export class ChatController {
       const appError = error as { statusCode?: number; message?: string };
       res.status(appError.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: appError.message || "Failed to fetch chat history"
+        message: appError.message || MESSAGES.COMMON.INTERNAL_SERVER_ERROR
       });
     }
   }
@@ -74,7 +76,7 @@ export class ChatController {
       try {
         const { sessionId } = req.params;
 
-        if (!sessionId) throw new AppError("Session ID is required", HttpStatusCode.BAD_REQUEST);
+        if (!sessionId) throw new AppError(MESSAGES.COMMON.ID_REQUIRED("Session"), HttpStatusCode.BAD_REQUEST);
 
         const room = await this._chatService.initiateChatRoom(sessionId);
           res.status(HttpStatusCode.OK).json({
@@ -86,7 +88,7 @@ export class ChatController {
           const appError = error as { statusCode?: number; message?: string };
           res.status(appError.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR).json({
               success: false,
-              message: appError.message || "Failed to initiate chat"
+              message: appError.message || MESSAGES.COMMON.INTERNAL_SERVER_ERROR
           });
       }
   }

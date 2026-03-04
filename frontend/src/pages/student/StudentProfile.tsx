@@ -9,6 +9,8 @@ import toast from 'react-hot-toast';
 import { fetchGrades } from '../../features/trial/student/studentTrialThunk';
 import { selectGrades, selectGradesLoading } from '../../features/trial/student/studentTrialSelectors';
 import { updateProfileStatus } from '../../features/auth/authSlice';
+import { ROUTES } from '../../constants/routes.constants';
+import { Loader } from '../../components/ui/Loader';
 
 
 interface FormFieldProps {
@@ -248,7 +250,7 @@ const StudentProfile: React.FC = () => {
              dispatch(updateProfileStatus({ isProfileComplete: true }));
              toast.success('Profile updated successfully!');
              setIsEditing(false); // Switch to view mode on success
-             navigate('/student/dashboard');
+             navigate(ROUTES.STUDENT.DASHBOARD);
         } else {
             toast.error('Failed to update profile: ' + (resultAction.payload as string));
         }
@@ -302,7 +304,7 @@ const StudentProfile: React.FC = () => {
                                 toast.error("Preferences are locked because a mentor request is pending or active.");
                                 return;
                             }
-                            navigate('/student/preferences/subjects');
+                            navigate(ROUTES.STUDENT.PREFERENCES.SUBJECTS);
                         }}
                         className={`flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-colors font-medium ml-2 ${
                              profile?.preferredTimeSlots?.some((p: unknown) => (p as { status?: string }).status && (p as { status?: string }).status !== 'preferences_submitted')
@@ -389,8 +391,12 @@ const StudentProfile: React.FC = () => {
                         <FormField label="Short Bio / Learning Goal" type="textarea" value={profileData.learningGoal} onChange={handleChange('learningGoal')} rows={3} />
                       </div>
 
-                      <button onClick={handleSubmit} disabled={loading} className={`w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                        {loading ? 'Saving...' : 'Save Changes'}
+                      <button 
+                        onClick={handleSubmit} 
+                        disabled={loading} 
+                        className={`w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        {loading ? <Loader size="sm" color="white" text="Saving..." /> : 'Save Changes'}
                       </button>
                   </div>
               ) : (
@@ -433,7 +439,7 @@ const StudentProfile: React.FC = () => {
                            <div className="flex justify-between items-center mb-4">
                                <h3 className="text-sm uppercase tracking-wider text-gray-500 font-bold">Preferences</h3>
                                <button 
-                                   onClick={() => navigate('/student/preferences/subjects')}
+                                   onClick={() => navigate(ROUTES.STUDENT.PREFERENCES.SUBJECTS)}
                                    className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
                                >
                                    Edit Preferences

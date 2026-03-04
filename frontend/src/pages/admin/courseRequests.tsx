@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../../app/store';
-import { fetchAllCourseRequestsAdmin, updateCourseRequestStatusAdmin } from '../../features/admin/adminThunk';
+import { fetchCourseRequestsPaginated, updateCourseRequestStatusAdmin } from '../../features/admin/adminThunk';
+import { setCourseRequestsPagination } from "../../features/admin/adminSlice";
 import type { CourseRequest } from "../../types/studentTypes";
 import { Check, X, Clock, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatTo12Hour } from '../../utils/timeFormat';
+import { useDebounce } from "../../hooks/useDebounce";
+import { Pagination } from "../../components/ui/Pagination";
+import { SearchAndFilters, type FilterConfig } from "../../components/ui/SearchAndFilters";
+import { Loader } from '../../components/ui/Loader';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 import FindMatchModal from './components/FindMatchModal';
 
@@ -15,24 +21,55 @@ interface AdminCourseRequestsPageProps {
 
 const AdminCourseRequestsPage: React.FC<AdminCourseRequestsPageProps> = ({ onCreateCourse }) => {
     const dispatch = useDispatch<AppDispatch>();
-    const { courseRequests, courseRequestsLoading, courseRequestsError } = useSelector((state: RootState) => state.admin);
+    const { 
+        courseRequests, 
+        courseRequestsLoading, 
+        courseRequestsError, 
+        courseRequestsPagination 
+    } = useSelector((state: RootState) => state.admin);
+    
     const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState<CourseRequest | null>(null);
+    const [searchTerm, setSearchTerm] = useState("");
+    const debouncedSearch = useDebounce(searchTerm, 500);
+    const [statusFilter, setStatusFilter] = useState("");
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+
+    const { currentPage, totalPages, totalStudents } = courseRequestsPagination;
 
     useEffect(() => {
-        dispatch(fetchAllCourseRequestsAdmin());
-    }, [dispatch]);
+        dispatch(fetchCourseRequestsPaginated({ 
+            page: currentPage, 
+            limit: itemsPerPage, 
+            search: debouncedSearch, 
+            status: statusFilter 
+        }));
+    }, [dispatch, currentPage, itemsPerPage, debouncedSearch, statusFilter]);
+
+    const handlePageChange = (page: number) => {
+        dispatch(setCourseRequestsPagination({ currentPage: page }));
+    };
+
+    const handleItemsPerPageChange = (limit: number) => {
+        setItemsPerPage(limit);
+        dispatch(setCourseRequestsPagination({ currentPage: 1 }));
+    };
 
     const handleStatusUpdate = async (requestId: string, status: string) => {
         try {
-            const resultAction = await dispatch(updateCourseRequestStatusAdmin({ requestId, status }));
+            const params = {
+                page: currentPage,
+                limit: itemsPerPage,
+                search: debouncedSearch,
+                status: statusFilter
+            };
+            const resultAction = await dispatch(updateCourseRequestStatusAdmin({ requestId, status, params }));
             if (updateCourseRequestStatusAdmin.fulfilled.match(resultAction)) {
                 toast.success(`Request ${status} successfully`);
-                dispatch(fetchAllCourseRequestsAdmin()); // Refresh list
             } else {
                 toast.error(`Failed to ${status} request`);
             }
-        } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
+        } catch (_error) {
              toast.error("An unexpected error occurred");
         }
     };
@@ -43,9 +80,12 @@ const AdminCourseRequestsPage: React.FC<AdminCourseRequestsPageProps> = ({ onCre
     };
 
     const handleMatchConfirmed = () => {
-        // Refresh requests or update status to 'fulfilled' if backend doesn't do it automatically
-        dispatch(fetchAllCourseRequestsAdmin());
-        // Could also explicitly update status here if needed
+        dispatch(fetchCourseRequestsPaginated({ 
+            page: currentPage, 
+            limit: itemsPerPage, 
+            search: debouncedSearch, 
+            status: statusFilter 
+        }));
     };
 
     const getStatusBadge = (status: string) => {
@@ -64,15 +104,39 @@ const AdminCourseRequestsPage: React.FC<AdminCourseRequestsPageProps> = ({ onCre
         }
     };
 
-    return (
-        <div className="p-6">
-            <h1 className="text-2xl font-bold mb-6 text-gray-800">Course Requests</h1>
+    const filterConfigs: FilterConfig[] = [
+        {
+            key: "status",
+            label: "All Statuses",
+            options: [
+                { label: "Pending", value: "pending" },
+                { label: "Approved", value: "approved" },
+                { label: "Rejected", value: "rejected" },
+                { label: "Course Created", value: "fulfilled" },
+            ],
+        },
+    ];
 
-            {courseRequestsLoading && (
-                 <div className="flex justify-center items-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
-                </div>
-            )}
+    return (
+        <div className="p-6 space-y-6">
+            <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold text-gray-800">Course Requests</h1>
+            </div>
+
+            <SearchAndFilters
+                searchTerm={searchTerm}
+                onSearchChange={(value) => {
+                    setSearchTerm(value);
+                    dispatch(setCourseRequestsPagination({ currentPage: 1 }));
+                }}
+                filters={{ status: statusFilter }}
+                onFilterChange={(_key, value) => {
+                    setStatusFilter(value);
+                    dispatch(setCourseRequestsPagination({ currentPage: 1 }));
+                }}
+                filterConfigs={filterConfigs}
+                searchPlaceholder="Search by student, subject..."
+            />
 
             {courseRequestsError && (
                 <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
@@ -87,22 +151,28 @@ const AdminCourseRequestsPage: React.FC<AdminCourseRequestsPageProps> = ({ onCre
                 </div>
             )}
 
-            {!courseRequestsLoading && !courseRequestsError && (
-                <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Schedule</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {courseRequestsLoading ? (
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Schedule</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    <td colSpan={6} className="px-6 py-12 text-center">
+                                        <Loader size="md" text="Loading requests..." color="teal" />
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {courseRequests.map((request: CourseRequest) => (
+                            ) : courseRequests.length > 0 ? (
+                                courseRequests.map((request: CourseRequest) => (
                                     <tr key={request.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
@@ -175,15 +245,34 @@ const AdminCourseRequestsPage: React.FC<AdminCourseRequestsPageProps> = ({ onCre
                                              )}
                                         </td>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        {courseRequests.length === 0 && (
-                            <div className="text-center py-8 text-gray-500">
-                                No course requests found.
-                            </div>
-                        )}
-                    </div>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-12 text-center">
+                                        <EmptyState 
+                                            icon={Clock} 
+                                            title="No requests found" 
+                                            description="No course requests found matching your criteria." 
+                                        />
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {totalPages > 0 && (
+                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={totalStudents}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={handlePageChange}
+                        onItemsPerPageChange={handleItemsPerPageChange}
+                        variant="detailed"
+                    />
                 </div>
             )}
             
@@ -198,3 +287,4 @@ const AdminCourseRequestsPage: React.FC<AdminCourseRequestsPageProps> = ({ onCre
 };
 
 export default AdminCourseRequestsPage;
+            

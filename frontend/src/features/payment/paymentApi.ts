@@ -6,18 +6,14 @@ interface AvailabilitySlot {
   endTime: string;
 }
 
-export const createPaymentIntent = async (
-  planCode: string, 
-  amount: number,
-  subjectCount: number = 1
-) => {
-  const response = await api.post('/payment/create-intent', { planCode, amount, subjectCount });
-  return response.data;
+export const createPaymentIntent = async (planType: string, amount: number, subjectCount: number, studentId?: string) => {
+  const { data } = await api.post('/payment/create-intent', { planType, amount, subjectCount, studentId });
+  return data;
 };
 
-export const confirmPayment = async (data: { 
-    paymentIntentId: string; 
-    studentId: string; 
+export const confirmPayment = async (data: {
+    paymentIntentId: string;
+    studentId: string;
     planType: string;
     subjectCount: number;
     availability?: AvailabilitySlot[];

@@ -4,9 +4,12 @@ import { useAppDispatch, useAppSelector } from '../../../app/hooks';
 import { saveStudentPreferences as updatePreferences, getMentorAvailableSlots } from '../../../features/student/studentApi';
 import { requestMentor, fetchStudentProfile } from '../../../features/student/studentThunk';
 import StudentLayout from '../../../components/students/StudentLayout';
-import { Clock, ChevronLeft, Check, Sun, Moon, Calendar } from 'lucide-react';
+import { Clock, Info, Check, ChevronLeft, Sun, Moon, Calendar, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
+import { Loader } from '../../../components/ui/Loader';
+import { Alert } from '../../../components/ui/Alert';
 import toast from 'react-hot-toast';
 import { Button } from '../../../components/ui/Button';
+import { ROUTES } from '../../../constants/routes.constants';
 
 interface SelectedSubject {
     id: string;
@@ -113,7 +116,7 @@ const TimeSlotsSelectionPage: React.FC = () => {
         if (loading) return;
         if (!selectedSubjects.length) {
             console.warn('Redirecting from TimeSlots: Missing subjects');
-            navigate('/student/preferences/subjects');
+            navigate(ROUTES.STUDENT.PREFERENCES.SUBJECTS);
             return;
         }
         // If premium but no mentors selected, go back to mentor selection
@@ -123,7 +126,7 @@ const TimeSlotsSelectionPage: React.FC = () => {
              // But if they have saved preferences, maybe they are editing?
              // Let's rely on location.state.selectedMentors existence primarily
              if (!location.state?.selectedMentors) {
-                navigate('/student/preferences/mentors', { state: { selectedSubjects } });
+                navigate(ROUTES.STUDENT.PREFERENCES.MENTORS, { state: { selectedSubjects } });
              }
         }
     }, [selectedSubjects, navigate, loading, isPremium, selectedMentors, location.state?.selectedMentors]);
@@ -274,7 +277,7 @@ const TimeSlotsSelectionPage: React.FC = () => {
 
             toast.success('Preferences saved and requests sent successfully!');
             await dispatch(fetchStudentProfile());
-            navigate('/student/dashboard');
+            navigate(ROUTES.STUDENT.DASHBOARD);
         } catch (error: unknown) {
             const message = error && typeof error === 'object' && 'response' in error 
                 ? ((error as { response: { data: { message: string } } }).response?.data?.message || 'Failed to save preferences')
@@ -288,8 +291,8 @@ const TimeSlotsSelectionPage: React.FC = () => {
     if (loading) {
         return (
             <StudentLayout title="Set Your Free Time">
-                <div className="min-h-[60vh] flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+                <div className="min-h-[60vh]">
+                    <Loader size="lg" text="Fetching your profile..." />
                 </div>
             </StudentLayout>
         );
@@ -368,9 +371,8 @@ const TimeSlotsSelectionPage: React.FC = () => {
                             {/* PREMIUM UI - Dynamic Mentor Slots */}
                             {isPremium ? (
                                 loadingSlots ? (
-                                    <div className="py-20 flex flex-col items-center justify-center">
-                                         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-600 mb-4"></div>
-                                         <p className="text-slate-400 font-bold">Loading mentor's availability...</p>
+                                    <div className="py-20">
+                                         <Loader size="md" text="Loading mentor's availability..." />
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -486,7 +488,7 @@ const TimeSlotsSelectionPage: React.FC = () => {
 
                     <div className="pt-8 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-6">
                         <button
-                            onClick={() => navigate(isPremium ? '/student/preferences/mentors' : '/student/preferences/subjects', {
+                            onClick={() => navigate(isPremium ? ROUTES.STUDENT.PREFERENCES.MENTORS : ROUTES.STUDENT.PREFERENCES.SUBJECTS, {
                                 state: {
                                     selectedSubjects,
                                     selectedMentors
@@ -504,8 +506,14 @@ const TimeSlotsSelectionPage: React.FC = () => {
                                 disabled={saving} 
                                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-12 py-4 rounded-2xl font-black flex items-center gap-3 shadow-xl shadow-indigo-100 transform transition-all active:scale-95 disabled:opacity-30 disabled:grayscale"
                             >
-                                {saving ? 'SAVING...' : (isPremium ? 'FINISH & REQUEST MENTORS' : 'SAVE ALL PREFERENCES')}
-                                {!saving && <Check size={20} strokeWidth={3} />}
+                                {saving ? (
+                                    <Loader size="sm" color="text-white" text="SAVING..." className="flex-row gap-3" />
+                                ) : (
+                                    <>
+                                        {isPremium ? 'FINISH & REQUEST MENTORS' : 'SAVE ALL PREFERENCES'}
+                                        <Check size={20} strokeWidth={3} />
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </div>

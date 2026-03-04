@@ -1,30 +1,29 @@
 
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types";
+import { TYPES } from "../types.js";
 import type { Request, Response, NextFunction } from "express";
-import type { IAvailabilityService } from "../interfaces/services/IAvailabilityService";
+import type { IAvailabilityService } from "../interfaces/services/IAvailabilityService.js";
+import { HttpStatusCode } from "@/constants/httpStatus.js";
+import { MESSAGES } from "@/constants/messages.constants.js";
 
 @injectable()
 export class AvailabilityController {
   constructor(
-    @inject(TYPES.IAvailabilityService) private service: IAvailabilityService
+    @inject(TYPES.IAvailabilityService) private _service: IAvailabilityService
   ) {}
 
   public updateAvailability = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { mentorId } = req.params;
       if (!mentorId) {
-        res.status(400).json({ message: "Mentor ID is required" });
+        res.status(HttpStatusCode.BAD_REQUEST).json({ message: MESSAGES.COMMON.ID_REQUIRED("Mentor") });
         return;
       }
       const { schedule } = req.body;
       
-      // console.log(`[AvailabilityController] Updating availability for mentor: ${mentorId}`); // Removed debug log
-      // console.log(`[AvailabilityController] Payload schedule:`, JSON.stringify(schedule, null, 2)); // Removed debug log
-
-      // TODO: Add validation for schedule structure
-      const updatedProfile = await this.service.updateAvailability(mentorId, schedule);
-      res.status(200).json({ message: "Availability updated successfully", data: updatedProfile.availability });
+      
+      const updatedMentorProfile = await this._service.updateAvailability(mentorId, schedule);
+      res.status(HttpStatusCode.ACCEPTED).json({ message: MESSAGES.ADMIN.AVAILABILITY_UPDATE_SUCCESS, data: updatedMentorProfile.availability });
     } catch (error) {
        next(error);
     }
@@ -33,9 +32,9 @@ export class AvailabilityController {
   public getAvailability = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { mentorId } = req.params;
-      if (!mentorId) throw new Error("Mentor ID is required");
-      const availability = await this.service.getAvailability(mentorId);
-      res.status(200).json({ data: availability });
+      if (!mentorId) throw new Error(MESSAGES.COMMON.ID_REQUIRED("Mentor"));
+      const mentorAvailability = await this._service.getAvailability(mentorId);
+      res.status(HttpStatusCode.OK).json({ data: mentorAvailability });
     } catch (error) {
       next(error);
     }
@@ -43,12 +42,12 @@ export class AvailabilityController {
 
   public findMatches = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        // Query params: subject, grade, days (comma separated?), timeSlot
+        
         const { subject, grade, days, timeSlot } = req.query;
         
-        // Grade, days, and timeSlot are optional for finding mentors by subject (Discovery)
+        
         if (!subject) {
-            res.status(400).json({ message: "Missing required query parameter: subject" });
+            res.status(HttpStatusCode.BAD_REQUEST).json({ message: MESSAGES.ADMIN.REQUIRED_PARAMETER("subject") });
             return;
         }
 
@@ -56,14 +55,14 @@ export class AvailabilityController {
             ? (Array.isArray(days) ? days as string[] : (days as string).split(','))
             : [];
 
-        const mentors = await this.service.findMatchingMentors(
+        const matchedMentors = await this._service.findMatchingMentors(
             subject as string, 
             (grade as string) || "", 
             daysArray, 
             (timeSlot as string) || ""
         );
 
-        res.status(200).json({ data: mentors });
+        res.status(HttpStatusCode.OK).json({ data: matchedMentors });
     } catch (error) {
         next(error);
     }
@@ -73,11 +72,11 @@ export class AvailabilityController {
       try {
           const { mentorId } = req.params;
           if (!mentorId) {
-              res.status(400).json({ message: "Mentor ID is required" });
+              res.status(HttpStatusCode.BAD_REQUEST).json({ message: MESSAGES.COMMON.ID_REQUIRED("Mentor") });
               return;
           }
-          const profile = await this.service.getPublicProfile(mentorId);
-          res.status(200).json({ data: profile });
+          const profile = await this._service.getPublicProfile(mentorId);
+          res.status(HttpStatusCode.OK).json({ data: profile });
       } catch (error) {
           next(error);
       }

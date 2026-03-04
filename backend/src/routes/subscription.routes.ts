@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { container } from '../inversify.config';
-import { TYPES } from '../types';
-import { SubscriptionController } from '../controllers/subscription.controller';
+import { container } from '../inversify.config.js';
+import { TYPES } from '../types.js';
+import { SubscriptionController } from '../controllers/subscription.controller.js';
 
 const router = Router();
 const subscriptionController = container.get<SubscriptionController>(TYPES.SubscriptionController);
@@ -20,5 +20,6 @@ router.get('/plans', (req, res) => subscriptionController.getActivePlans(req, re
  * @body { planCode: string, numberOfSubjects: number }
  */
 router.post('/calculate-cost', (req, res) => subscriptionController.calculateCost(req, res));
+
 
 export default router;

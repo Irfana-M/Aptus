@@ -1,7 +1,7 @@
-import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
-import type { AuthUser } from "../auth/auth.interface";
-import type { StudentProfile, StudentRegisterInput } from "../models/student.interface";
-import type { OnboardingEvent } from "../../enums/studentOnboarding.enum";
+import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO.js";
+import type { AuthUser } from "../auth/auth.interface.js";
+import type { StudentProfile, StudentRegisterInput } from "../models/student.interface.js";
+import type { OnboardingEvent } from "../../enums/studentOnboarding.enum.js";
 
 export interface IStudentService {
   registerStudent(data: AuthUser): Promise<AuthUser>;

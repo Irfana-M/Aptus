@@ -1,58 +1,98 @@
 import type { Request, Response } from 'express';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../types';
-import type { IPaymentService } from '@/interfaces/services/payment.service.interface';
-import type { IStudentService } from "@/interfaces/services/IStudentService";
-import type { ISubscriptionService } from "@/interfaces/services/ISubscriptionService";
-import { getPaginationParams, formatPaginatedResult } from '@/utils/pagination.util';
+import { TYPES } from '../types.js';
+import type { IPaymentService } from '@/interfaces/services/payment.service.interface.js';
+import type { IStudentService } from "@/interfaces/services/IStudentService.js";
+import type { ISubscriptionService } from "@/interfaces/services/ISubscriptionService.js";
+import { getPaginationParams, formatPaginatedResult } from '@/utils/pagination.util.js';
+import { HttpStatusCode } from '@/constants/httpStatus.js';
+import { MESSAGES } from '@/constants/messages.constants.js';
+import { SubscriptionStatus } from '@/enums/subscription.enum.js';
+import { PaymentStatus } from '@/enums/payment.enum.js';
 
 @injectable()
 export class PaymentController {
   constructor(
-    @inject(TYPES.IPaymentService) private paymentService: IPaymentService,
-    @inject(TYPES.IStudentService) private studentService: IStudentService,
-    @inject(TYPES.ISubscriptionService) private subscriptionService: ISubscriptionService
+    @inject(TYPES.IPaymentService) private _paymentService: IPaymentService,
+    @inject(TYPES.IStudentService) private _studentService: IStudentService,
+    @inject(TYPES.ISubscriptionService) private _subscriptionService: ISubscriptionService
   ) {}
 
-  createIntent = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { amount: providedAmount } = req.body;
-      const amount = Math.round(providedAmount * 100);
+createIntent = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { amount: providedAmount, studentId } = req.body;
+    const amount = Math.round(providedAmount * 100);
 
-      if (!amount || amount <= 0) {
-        res.status(400).json({ message: 'Invalid amount' });
-        return;
+    if (!amount || amount <= 0) {
+      res.status(HttpStatusCode.BAD_REQUEST).json({ message: MESSAGES.PAYMENT.INVALID_AMOUNT });
+      return;
+    }
+
+    if (studentId) {
+      const student = await this._studentService.getById(studentId);
+
+      if (student?.subscription?.status === SubscriptionStatus.ACTIVE) {
+        const endDate = new Date(student.subscription.endDate);
+
+        if (endDate > new Date()) {
+          res.status(HttpStatusCode.FORBIDDEN).json({
+            message: MESSAGES.PAYMENT.ACTIVE_SUBSCRIPTION_EXISTS,
+            code: 'ALREADY_SUBSCRIBED'
+          });
+          return;
+        }
       }
 
-      const paymentIntent = await this.paymentService.createPaymentIntent(amount);
+      const latestPayment =
+        await this._paymentService.findLatestSubscriptionPayment(studentId);
 
-      res.status(200).json({
-        clientSecret: paymentIntent.client_secret,
-        id: paymentIntent.id
-      });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      res.status(500).json({ message });
+      if (latestPayment) {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        if (new Date(latestPayment.createdAt) > thirtyDaysAgo) {
+          res.status(HttpStatusCode.FORBIDDEN).json({
+            message: MESSAGES.PAYMENT.DUPLICATE_PAYMENT,
+            code: 'MONTHLY_PAYMENT_LIMIT'
+          });
+          return;
+        }
+      }
     }
-  };
+
+    const paymentIntent =
+      await this._paymentService.createPaymentIntent(amount);
+
+    res.status(HttpStatusCode.OK).json({
+      clientSecret: paymentIntent.client_secret,
+      id: paymentIntent.id
+    });
+
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : MESSAGES.COMMON.UNKNOWN_ERROR;
+
+    res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message });
+  }
+};
 
   confirmPayment = async (req: Request, res: Response): Promise<void> => {
     try {
       const { paymentIntentId, studentId, planType: rawPlanType, subjectCount = 1 } = req.body;
 
       if (!studentId) {
-        res.status(400).json({ message: 'Student ID required to activate subscription' });
+        res.status(HttpStatusCode.BAD_REQUEST).json({ message: MESSAGES.PAYMENT.STUDENT_ID_REQUIRED });
         return;
       }
 
-      const paymentIntent = await this.paymentService.verifyPaymentIntent(paymentIntentId);
+      const paymentIntent = await this._paymentService.verifyPaymentIntent(paymentIntentId);
 
       if (paymentIntent.status === 'succeeded') {
-        const paymentRecord = await this.paymentService.savePaymentRecord({
+        const paymentRecord = await this._paymentService.savePaymentRecord({
           studentId,
           amount: paymentIntent.amount / 100,
           currency: paymentIntent.currency,
-          status: 'completed',
+          status: PaymentStatus.COMPLETED,
           method: 'stripe',
           type: 'SUBSCRIPTION',
           stripePaymentIntentId: paymentIntentId,
@@ -61,7 +101,7 @@ export class PaymentController {
           purpose: `Subscription: ${rawPlanType}`,
         });
 
-        await this.subscriptionService.activateSubscription(
+        await this._subscriptionService.activateSubscription(
           studentId,
           rawPlanType,
           subjectCount,
@@ -70,24 +110,24 @@ export class PaymentController {
           paymentRecord._id.toString()
         );
 
-        res.status(200).json({ success: true, message: 'Subscription activated' });
+        res.status(HttpStatusCode.OK).json({ success: true, message: MESSAGES.PAYMENT.ACTIVATION_SUCCESS });
       } else {
-        res.status(400).json({ success: false, message: 'Payment not successful' });
+        res.status(HttpStatusCode.BAD_REQUEST).json({ success: false, message: MESSAGES.PAYMENT.PAYMENT_FAILED });
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      res.status(500).json({ message });
+      const message = error instanceof Error ? error.message : MESSAGES.COMMON.UNKNOWN_ERROR;
+      res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message });
     }
   };
 
   getAllPayments = async (req: Request, res: Response): Promise<void> => {
     try {
       const { page, limit, skip } = getPaginationParams(req.query);
-      const { payments, total } = await this.paymentService.getAllPayments(page, limit, skip);
-      res.status(200).json(formatPaginatedResult(payments, total, { page, limit }));
+      const { payments, total } = await this._paymentService.getAllPayments(page, limit, skip);
+      res.status(HttpStatusCode.OK).json(formatPaginatedResult(payments, total, { page, limit }));
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unknown error";
-      res.status(500).json({ success: false, message });
+      res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message });
     }
   };
 
@@ -95,14 +135,14 @@ export class PaymentController {
       try {
           const { studentId } = req.params;
           if (!studentId) {
-            res.status(400).json({ message: 'Student ID is required' });
+            res.status(HttpStatusCode.BAD_REQUEST).json({ message: MESSAGES.PAYMENT.STUDENT_ID_REQUIRED });
             return;
           }
-          const payments = await this.paymentService.getStudentPayments(studentId);
-          res.status(200).json({ success: true, data: payments });
+          const payments = await this._paymentService.getStudentPayments(studentId);
+          res.status(HttpStatusCode.OK).json({ success: true, data: payments });
       } catch (error: unknown) {
           const message = error instanceof Error ? error.message : "Unknown error";
-          res.status(500).json({ message });
+          res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message });
       }
   };
 }

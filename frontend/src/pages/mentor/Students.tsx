@@ -4,10 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { Users, Clock, Calendar, MessageSquare, Video, Search, ChevronRight, BookOpen } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import type { NavItem } from '../../components/layout/DashboardSidebar';
+import { Loader } from '../../components/ui/Loader';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { fetchMentorTrialClasses, fetchMentorProfile, fetchMentorCourses } from "../../features/mentor/mentorThunk";
 import { logoutUser } from "../../features/auth/authThunks";
 import type { AppDispatch, RootState } from "../../app/store";
 import { Home, User, ClipboardList } from 'lucide-react';
+import { ROUTES } from '../../constants/routes.constants';
 
 interface UnifiedStudent {
     id: string;
@@ -53,17 +56,17 @@ const MentorStudentsPage: React.FC = () => {
 
     const handleLogout = async () => {
         await dispatch(logoutUser());
-        navigate('/login');
+        navigate(ROUTES.LOGIN);
     };
 
     const mentorNavItems: NavItem[] = [
-        { icon: <Home size={20} />, label: 'Dashboard', path: '/mentor/dashboard' },
-        { icon: <User size={20} />, label: 'Profile', path: '/mentor/profile' },
-        { icon: <Users size={20} />, label: 'Students/Batches', path: '/mentor/students' },
-        { icon: <Calendar size={20} />, label: 'Attendance', path: '/mentor/attendance' },
-        { icon: <BookOpen size={20} />, label: 'Classroom', path: '/mentor/classroom' },
-        { icon: <ClipboardList size={20} />, label: 'Class History', path: '/mentor/class-history' },
-        { icon: <Clock size={20} />, label: 'Availability', path: '/mentor/availability' },
+        { icon: <Home size={20} />, label: 'Dashboard', path: ROUTES.MENTOR.DASHBOARD },
+        { icon: <User size={20} />, label: 'Profile', path: ROUTES.MENTOR.PROFILE },
+        { icon: <Users size={20} />, label: 'Students/Batches', path: ROUTES.MENTOR.STUDENTS },
+        { icon: <Calendar size={20} />, label: 'Attendance', path: ROUTES.MENTOR.ATTENDANCE },
+        { icon: <BookOpen size={20} />, label: 'Classroom', path: ROUTES.MENTOR.CLASSROOM },
+        { icon: <ClipboardList size={20} />, label: 'Class History', path: ROUTES.MENTOR.CLASS_HISTORY },
+        { icon: <Clock size={20} />, label: 'Availability', path: ROUTES.MENTOR.AVAILABILITY },
     ];
 
     const dashboardUser = {
@@ -199,19 +202,18 @@ const MentorStudentsPage: React.FC = () => {
                             <tbody className="divide-y divide-gray-100">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={activeTab === 'trials' ? 6 : 5} className="px-6 py-12 text-center text-gray-500">
-                                            <div className="flex justify-center">
-                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
-                                            </div>
+                                        <td colSpan={activeTab === 'trials' ? 6 : 5} className="px-6 py-12">
+                                            <Loader size="md" />
                                         </td>
                                     </tr>
                                 ) : assignedStudents.length === 0 ? (
                                     <tr>
-                                        <td colSpan={activeTab === 'trials' ? 6 : 5} className="px-6 py-12 text-center text-gray-500">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <Users className="w-12 h-12 text-gray-200" />
-                                                <p>No {activeTab === 'trials' ? 'trial requests' : 'active courses'} found.</p>
-                                            </div>
+                                        <td colSpan={activeTab === 'trials' ? 6 : 5} className="px-6 py-12">
+                                            <EmptyState 
+                                                title={`No ${activeTab === 'trials' ? 'trial requests' : 'active courses'} found`}
+                                                description={`You don't have any ${activeTab === 'trials' ? 'trial requests' : 'active courses'} at the moment.`}
+                                                icon={Users}
+                                            />
                                         </td>
                                     </tr>
                                 ) : (
@@ -294,7 +296,7 @@ const MentorStudentsPage: React.FC = () => {
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button 
-                                                        onClick={() => navigate(`/trial-class/${cls.id}/call`)}
+                                                        onClick={() => navigate(ROUTES.COMMON.VIDEO_CALL.replace(':trialClassId', cls.id))}
                                                         className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"
                                                         title="Launch Classroom"
                                                     >

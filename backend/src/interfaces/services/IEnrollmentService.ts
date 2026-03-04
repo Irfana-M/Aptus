@@ -1,5 +1,5 @@
-import type { PaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes";
-import type { IEnrollment } from "../../models/enrollment.model";
+import type { PaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes.js";
+import type { IEnrollment } from "../../models/enrollment.model.js";
 
 export interface IEnrollmentService {
   enrollInCourse(studentId: string, courseId: string): Promise<IEnrollment>;

@@ -1,25 +1,26 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types";
-import type { IUserRoleService, VerificationResponse, UserExistenceResponse, UserEmailResponse, TrialClassAuthData } from "@/interfaces/services/IUserRoleSrvice";
-import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository";
-import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
-import type {  StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
-import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO";
-import { logger } from "../utils/logger";
-import { MentorMapper } from "@/mappers/MentorMapper";
-import { StudentMapper } from "@/mappers/StudentMapper";
-import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
-import { verifyAccessToken } from "../utils/jwt.util";
+import { TYPES } from "../types.js";
+import type { IUserRoleService, VerificationResponse, UserExistenceResponse, UserEmailResponse, TrialClassAuthData } from "@/interfaces/services/IUserRoleSrvice.js";
+import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository.js";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository.js";
+import type {  StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO.js";
+import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO.js";
+import { logger } from "../utils/logger.js";
+import { MentorMapper } from "@/mappers/MentorMapper.js";
+import { StudentMapper } from "@/mappers/StudentMapper.js";
+import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository.js";
+import { verifyAccessToken } from "../utils/jwt.util.js";
 import { Types } from "mongoose";
-import type { ISessionRepository } from "@/interfaces/repositories/ISessionRepository";
+import { MESSAGES } from "@/constants/messages.constants.js";
+import type { ISessionRepository } from "@/interfaces/repositories/ISessionRepository.js";
 
 @injectable()
 export class UserRoleService implements IUserRoleService {
   constructor(
-    @inject(TYPES.IMentorRepository) private mentorRepository: IMentorRepository,
-    @inject(TYPES.IStudentRepository) private studentRepository: IStudentRepository,
-    @inject(TYPES.ITrialClassRepository) private trialClassRepository: ITrialClassRepository,
-    @inject(TYPES.ISessionRepository) private sessionRepository: ISessionRepository
+    @inject(TYPES.IMentorRepository) private _mentorRepository: IMentorRepository,
+    @inject(TYPES.IStudentRepository) private _studentRepository: IStudentRepository,
+    @inject(TYPES.ITrialClassRepository) private _trialClassRepository: ITrialClassRepository,
+    @inject(TYPES.ISessionRepository) private _sessionRepository: ISessionRepository
   ) {}
 
   
@@ -30,14 +31,14 @@ export class UserRoleService implements IUserRoleService {
   ): Promise<VerificationResponse> {
     try {
       if (role === "mentor") {
-        const mentor = await this.mentorRepository.findById(userId);
-        if (!mentor) return { success: false, error: "Mentor not found" };
+        const mentor = await this._mentorRepository.findById(userId);
+        if (!mentor) return { success: false, error: MESSAGES.AUTH.USER_NOT_FOUND };
         return { success: true, user: MentorMapper.toResponseDto(mentor) };
       }
 
       if (role === "student") {
-        const student = await this.studentRepository.findById(userId);
-        if (!student) return { success: false, error: "Student not found" };
+        const student = await this._studentRepository.findById(userId);
+        if (!student) return { success: false, error: MESSAGES.AUTH.USER_NOT_FOUND };
         const dto = StudentMapper.toStudentResponseDto(student);
         return { success: true, user: { ...dto, role: "student" } };
       }
@@ -46,10 +47,10 @@ export class UserRoleService implements IUserRoleService {
          return { success: true }; // Basic check for admin for now
       }
 
-      return { success: false, error: "Invalid role" };
+      return { success: false, error: MESSAGES.AUTH.INVALID_ROLE };
     } catch (error: unknown) {
       logger.error('Error verifying user role:', error);
-      return { success: false, error: "Database error" };
+      return { success: false, error: MESSAGES.COMMON.INTERNAL_SERVER_ERROR };
     }
   }
 
@@ -59,14 +60,14 @@ export class UserRoleService implements IUserRoleService {
   ): Promise<MentorResponseDto | StudentBaseResponseDto | null> {
     try {
       if (role === 'mentor') {
-        const mentor = await this.mentorRepository.findById(userId);
+        const mentor = await this._mentorRepository.findById(userId);
         if (!mentor) return null;
         
         return MentorMapper.toResponseDto(mentor);
       } 
       
       if (role === 'student') {
-        const student = await this.studentRepository.findById(userId);
+        const student = await this._studentRepository.findById(userId);
         if (!student) return null;
         
         return StudentMapper.toStudentResponseDto(student);
@@ -94,7 +95,7 @@ export class UserRoleService implements IUserRoleService {
       // 1. Try Trial Class First
       let trialClass;
       try {
-        trialClass = await this.trialClassRepository.findById(trialClassId);
+        trialClass = await this._trialClassRepository.findById(trialClassId);
       } catch (_err) {
         // Not a trial class, continue to check regular session
         logger.debug(`ID ${trialClassId} not found in trial classes, checking sessions...`);
@@ -133,7 +134,7 @@ export class UserRoleService implements IUserRoleService {
           
           return { 
              authorized: false, 
-             error: `User not authorized for trial class.`,
+             error: MESSAGES.TRIAL_CLASS.ACCESS_DENIED,
              trialClass
           };
       }
@@ -141,7 +142,7 @@ export class UserRoleService implements IUserRoleService {
       // 2. Fallback to Session (Regular Class)
       let session;
       try {
-        session = await this.sessionRepository.findById(trialClassId);
+        session = await this._sessionRepository.findById(trialClassId);
       } catch (_err) {
         logger.debug(`ID ${trialClassId} not found in sessions.`);
       }
@@ -179,7 +180,7 @@ export class UserRoleService implements IUserRoleService {
           
            return { 
              authorized: false, 
-             error: `User not authorized for session.`,
+             error: MESSAGES.TRIAL_CLASS.ACCESS_DENIED,
              trialClass: {
                 id: (session as any)._id?.toString(),
                 status: (session as any).status,
@@ -190,7 +191,7 @@ export class UserRoleService implements IUserRoleService {
       
       return { 
         authorized: false, 
-        error: 'Class/Session not found' 
+        error: MESSAGES.COMMON.NOT_FOUND 
       };
 
     } catch (error) {
@@ -204,7 +205,7 @@ export class UserRoleService implements IUserRoleService {
     userId: string
   ): Promise<UserExistenceResponse> {
     try {
-      const mentor = await this.mentorRepository.findById(userId);
+      const mentor = await this._mentorRepository.findById(userId);
       if (mentor) {
         return {
           exists: true,
@@ -213,7 +214,7 @@ export class UserRoleService implements IUserRoleService {
         };
       }
       
-      const student = await this.studentRepository.findById(userId);
+      const student = await this._studentRepository.findById(userId);
       if (student) {
         return {
           exists: true,
@@ -243,33 +244,33 @@ export class UserRoleService implements IUserRoleService {
       const decoded = verifyAccessToken(token);
       
       if (!decoded || !decoded.id || !decoded.role) {
-        return { success: false, error: 'Invalid token' };
+        return { success: false, error: MESSAGES.AUTH.INVALID_TOKEN };
       }
       
       return await this.verifyUserRole(decoded.id, decoded.role);
     } catch (error) {
       logger.error('Error getting user from token:', error);
-      return { success: false, error: 'Token verification failed' };
+      return { success: false, error: MESSAGES.AUTH.INVALID_TOKEN };
     }
   }
 
  
   public async getUserEmail(userId: string): Promise<UserEmailResponse> {
     try {
-      const mentor = await this.mentorRepository.findById(userId);
+      const mentor = await this._mentorRepository.findById(userId);
       if (mentor) {
         return { success: true, email: mentor.email, role: 'mentor' };
       }
       
-      const student = await this.studentRepository.findById(userId);
+      const student = await this._studentRepository.findById(userId);
       if (student) {
         return { success: true, email: student.email, role: 'student' };
       }
       
-      return { success: false, error: 'User not found' };
+      return { success: false, error: MESSAGES.AUTH.USER_NOT_FOUND };
     } catch (error) {
       logger.error('Error getting user email:', error);
-      return { success: false, error: 'Database error' };
+      return { success: false, error: MESSAGES.COMMON.INTERNAL_SERVER_ERROR };
     }
   }
 }

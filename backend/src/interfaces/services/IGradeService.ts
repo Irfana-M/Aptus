@@ -1,4 +1,4 @@
-import type { GradeResponseDto } from "@/dtos/student/grade.dto";
+import type { GradeResponseDto } from "../../dtos/student/grade.dto.js";
 
 export interface IGradeService {
   getAllGrades(): Promise<GradeResponseDto[]>;

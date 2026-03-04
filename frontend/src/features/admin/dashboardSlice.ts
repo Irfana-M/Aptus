@@ -13,6 +13,14 @@ export interface DashboardState {
   totalMentors: number;
   recentStudents: Stat[];
   recentMentors: Stat[];
+  finance?: {
+    totalRevenue: number;
+    monthlyRevenue: { month: string; amount: number }[];
+    totalPayments: number;
+    revenuePerStudent: { studentId: string; studentName: string; amount: number }[];
+  };
+  activeSessions: number;
+  pendingApprovals: number;
   loading: boolean;
   error: string | null;
 }
@@ -22,6 +30,9 @@ const initialState: DashboardState = {
   totalMentors: 0,
   recentStudents: [],
   recentMentors: [],
+  finance: undefined,
+  activeSessions: 0,
+  pendingApprovals: 0,
   loading: false,
   error: null,
 };
@@ -60,6 +71,9 @@ const dashboardSlice = createSlice({
         state.totalMentors = action.payload.totalMentors;
         state.recentStudents = action.payload.recentStudents;
         state.recentMentors = action.payload.recentMentors;
+        state.finance = action.payload.finance;
+        state.activeSessions = action.payload.activeSessions;
+        state.pendingApprovals = action.payload.pendingApprovals;
       })
       .addCase(fetchDashboardData.rejected, (state, action) => {
         state.loading = false;

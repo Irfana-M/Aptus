@@ -65,6 +65,7 @@ export const API_ROUTES = {
     ADMIN_APPROVE: "/mentor/admin/:mentorId/approve",
     ADMIN_REJECT: "/mentor/admin/:mentorId/reject",
     SESSIONS: "/mentor/sessions",
+    UPCOMING_SESSIONS: "/mentor/me/sessions/upcoming",
   },
   STUDENT: {
     PROFILE: "/student/profile",

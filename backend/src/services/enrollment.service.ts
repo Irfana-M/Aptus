@@ -1,18 +1,19 @@
 import { injectable, inject } from "inversify";
 import { Types } from "mongoose";
-import type { IEnrollment } from "../models/enrollment.model";
-import { logger } from "../utils/logger";
-import { getErrorMessage } from "../utils/errorUtils";
-import { TYPES } from "../types";
-import type { IEnrollmentRepository } from "../interfaces/repositories/IEnrollmentRepository";
-import type { IEnrollmentLinkRepository } from "../interfaces/repositories/IEnrollmentLinkRepository";
-import type { ICourseRepository } from "../interfaces/repositories/ICourseRepository";
-import type { IEnrollmentService } from "../interfaces/services/IEnrollmentService";
-import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
-import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository";
-import type { PaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes";
-import { formatPaginatedResult, getPaginationParams } from "@/utils/pagination.util";
-import { ImageService } from "./imageService";
+import type { IEnrollment } from "../models/enrollment.model.js";
+import { logger } from "../utils/logger.js";
+import { getErrorMessage } from "../utils/errorUtils.js";
+import { TYPES } from "../types.js";
+import type { IEnrollmentRepository } from "../interfaces/repositories/IEnrollmentRepository.js";
+import type { IEnrollmentLinkRepository } from "../interfaces/repositories/IEnrollmentLinkRepository.js";
+import type { ICourseRepository } from "../interfaces/repositories/ICourseRepository.js";
+import type { IEnrollmentService } from "../interfaces/services/IEnrollmentService.js";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository.js";
+import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository.js";
+import type { PaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes.js";
+import { formatPaginatedResult, getPaginationParams } from "@/utils/pagination.util.js";
+import { ImageService } from "./imageService.js";
+import { MESSAGES } from "@/constants/messages.constants.js";
 
 @injectable()
 export class EnrollmentService implements IEnrollmentService {
@@ -33,11 +34,11 @@ export class EnrollmentService implements IEnrollmentService {
       logger.info(`Enrolling student ${studentId} in course ${courseId}`);
 
       const student = await this.studentRepository.findById(studentId);
-      if (!student) throw new Error("Student not found");
+      if (!student) throw new Error(MESSAGES.AUTH.USER_NOT_FOUND);
 
       const sub = student.subscription;
       if (!sub) {
-        throw new Error("Student does not have a subscription plan");
+        throw new Error(MESSAGES.PAYMENT.NO_ACTIVE_SUBSCRIPTION);
       }
 
       // Check Limits using linking records
@@ -57,11 +58,11 @@ export class EnrollmentService implements IEnrollmentService {
 
       const course = await this.courseRepository.findById(courseId);
       if (!course) {
-        throw new Error("Course not found");
+        throw new Error(MESSAGES.COURSE.NOT_FOUND);
       }
 
       if (course.status !== "available") {
-        throw new Error("Course is not available for enrollment");
+        throw new Error(MESSAGES.ADMIN.COURSE_NOT_AVAILABLE);
       }
 
       // Check if student is already enrolled using linking records
@@ -71,7 +72,7 @@ export class EnrollmentService implements IEnrollmentService {
       );
 
       if (existingEnrollment) {
-        throw new Error("Student is already enrolled in this course");
+        throw new Error(MESSAGES.COURSE.ALREADY_ENROLLED);
       }
 
       // Create enrollment linkage record
@@ -126,7 +127,7 @@ export class EnrollmentService implements IEnrollmentService {
       );
 
       if (!enrollment) {
-        throw new Error("Enrollment not found");
+        throw new Error(MESSAGES.COURSE.ENROLLMENT_NOT_FOUND);
       }
 
       if (status === "cancelled") {

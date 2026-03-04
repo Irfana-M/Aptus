@@ -1,4 +1,4 @@
-import { QuestionType } from "../../models/exam.model";
+import { QuestionType } from "../../models/exam.model.js";
 
 export interface CreateQuestionDTO {
   text: string;

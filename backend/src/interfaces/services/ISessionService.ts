@@ -1,4 +1,5 @@
-import type { ISession } from '../models/session.interface';
+import type { ISession } from '../models/session.interface.js';
+import type { LeaveEligibilityResponse } from './ILeaveEligibilityService.js';
 
 export interface CreateSessionDto {
   mentorId: string;
@@ -14,6 +15,7 @@ export interface CreateSessionDto {
 
 export interface ISessionService {
   getStudentUpcomingSessions(studentId: string): Promise<ISession[]>;
+  getStudentUpcomingSessionsWithEligibility(studentId: string): Promise<LeaveEligibilityResponse>;
   getMentorUpcomingSessions(mentorId: string): Promise<ISession[]>;
   getMentorTodaySessions(mentorId: string): Promise<ISession[]>;
   createSession(data: Partial<ISession>): Promise<ISession>;

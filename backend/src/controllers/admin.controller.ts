@@ -1,19 +1,24 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types";
+import { TYPES } from "../types.js";
 import type { Request, Response, NextFunction } from "express";
-import type { IAdminService } from "../interfaces/services/IAdminService";
-import { logger } from "../utils/logger";
-import { HttpStatusCode } from "../constants/httpStatus";
-import { generateAccessToken, verifyRefreshToken } from "@/utils/jwt.util";
-import { AppError } from "@/utils/AppError";
-import { config } from "../config/app.config";
-import { getPaginationParams } from "@/utils/pagination.util";
-import type { MentorPaginationParams, StudentPaginationParams } from "@/dtos/shared/paginationTypes";
+import type { IAdminService } from "../interfaces/services/IAdminService.js";
+import { logger } from "../utils/logger.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import { MESSAGES } from "../constants/messages.constants.js";
+import { generateAccessToken, verifyRefreshToken } from "@/utils/jwt.util.js";
+import { AppError } from "@/utils/AppError.js";
+import { config } from "../config/app.config.js";
+import { getPaginationParams } from "@/utils/pagination.util.js";
+import type { MentorPaginationParams, StudentPaginationParams } from "@/dtos/shared/paginationTypes.js";
+import { UserRole } from "@/enums/user.enum.js";
+import { ApprovalStatus } from "@/domain/enums/ApprovalStatus.js";
+import { StudentStatus } from "@/enums/student.enum.js";
+import { UserVerificationStatus } from "@/enums/userVerification.enum.js";
 
 interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
-    role: 'admin' | 'mentor' | 'student';
+    role: UserRole;
   };
 }
 
@@ -33,7 +38,7 @@ export class AdminController {
       if (!fullName || !email) {
         res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Full name and email are required",
+          message: MESSAGES.COMMON.REQUIRED_FIELDS(["Full name", "email"]),
         });
         return;
       }
@@ -48,7 +53,7 @@ export class AdminController {
 
       res.status(HttpStatusCode.CREATED).json({
         success: true,
-        message: "Student added successfully",
+        message: MESSAGES.ADMIN.STUDENT_ADDED,
         data: result,
       });
     } catch (error: unknown) {
@@ -76,16 +81,16 @@ export class AdminController {
       );
       if (!refreshToken) {
         throw new AppError(
-          "No refresh token provided",
+          MESSAGES.AUTH.REFRESH_TOKEN_REQUIRED,
           HttpStatusCode.UNAUTHORIZED
         );
       }
 
       const payload = verifyRefreshToken(refreshToken);
       console.log("🔐 Backend Refresh - Token payload:", payload);
-      if (!payload || payload.role !== "admin") {
+      if (!payload || payload.role !== UserRole.ADMIN) {
         throw new AppError(
-          "Unauthorized refresh attempt",
+          MESSAGES.ADMIN.UNAUTHORIZED_REFRESH,
           HttpStatusCode.FORBIDDEN
         );
       }
@@ -106,10 +111,10 @@ export class AdminController {
           email: payload.email,
           role: payload.role,
         },
-        message: "Admin access token refreshed successfully",
+        message: MESSAGES.ADMIN.REFRESH_SUCCESS,
       });
     } catch (error: unknown) {
-      // Clear cookie immediately on any refresh failure to prevent infinite loops
+     
       res.clearCookie("adminRefreshToken", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -120,7 +125,7 @@ export class AdminController {
         error instanceof AppError
           ? error
           : new AppError(
-              "Admin token refresh failed",
+              MESSAGES.ADMIN.REFRESH_FAILED,
               HttpStatusCode.INTERNAL_SERVER_ERROR
             )
       );
@@ -142,27 +147,27 @@ export class AdminController {
         success: true,
         accessToken,
         admin,
-        message: "Login successful",
+        message: MESSAGES.AUTH.LOGIN_SUCCESS,
       });
     } catch (error: unknown) {
-      const err = error as AppError;
-      logger.error(`Admin login failed: ${req.body.email} - ${err.message}`);
-      res.status(HttpStatusCode.UNAUTHORIZED).json({ message: err.message });
+      const errorTyped = error as AppError;
+      logger.error(`Admin login failed: ${req.body.email} - ${errorTyped.message}`);
+      res.status(HttpStatusCode.UNAUTHORIZED).json({ message: errorTyped.message });
     }
   };
 
   getDashboardData = async (_req: Request, res: Response) => {
     try {
       logger.info("Fetching dashboard data");
-      const data = await this._adminService.getDashboardData();
+      const dashboardData = await this._adminService.getDashboardData();
       logger.info("Dashboard data fetched successfully");
-      res.status(HttpStatusCode.OK).json(data);
+      res.status(HttpStatusCode.OK).json(dashboardData);
     } catch (error: unknown) {
-      const err = error as AppError;
-      logger.error(`Error fetching dashboard data: ${err.message}`);
+      const errorTyped = error as AppError;
+      logger.error(`Error fetching dashboard data: ${errorTyped.message}`);
       res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ message: err.message });
+        .json({ message: errorTyped.message });
     }
   };
 
@@ -170,7 +175,7 @@ export class AdminController {
     try {
       const { page, limit, ..._otherParams } = getPaginationParams(req.query);
       const search = req.query.search as string | undefined;
-      const status = req.query.status as 'pending' | 'approved' | 'rejected' | '' | undefined;
+      const status = req.query.status as ApprovalStatus | '' | undefined;
       const subject = req.query.subject as string | undefined;
 
       logger.info("Admin: Fetching mentors with pagination/filters", { page, limit, search, status, subject });
@@ -186,11 +191,11 @@ export class AdminController {
       const result = await this._adminService.getAllMentorsPaginated(paginationParams);
       return res.status(HttpStatusCode.OK).json(result);
     } catch (error: unknown) {
-      const err = error as AppError;
-      logger.error(`Error fetching mentors: ${err.message}`);
+      const errorTyped = error as AppError;
+      logger.error(`Error fetching mentors: ${errorTyped.message}`);
       res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: err.message,
+        message: errorTyped.message,
       });
     }
   };
@@ -199,8 +204,8 @@ export class AdminController {
     try {
       const { page, limit } = getPaginationParams(req.query);
       const search = req.query.search as string | undefined;
-      const status = req.query.status as 'active' | 'blocked' | '' | undefined;
-      const verification = req.query.verification as 'verified' | 'pending' | '' | undefined;
+      const status = req.query.status as StudentStatus | '' | undefined;
+      const verification = req.query.verification as UserVerificationStatus | '' | undefined;
 
       logger.info("Admin: Fetching students with pagination/filters", { page, limit, search, status, verification });
       
@@ -215,11 +220,11 @@ export class AdminController {
       const result = await this._adminService.getAllStudentsPaginated(paginationParams);
       return res.status(HttpStatusCode.OK).json(result);
     } catch (error: unknown) {
-      const err = error as AppError;
-      logger.error(`Error fetching students: ${err.message}`);
+      const errorTyped = error as AppError;
+      logger.error(`Error fetching students: ${errorTyped.message}`);
       res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: err.message,
+        message: errorTyped.message,
       });
     }
   };
@@ -232,7 +237,7 @@ export class AdminController {
       logger.warn("Mentor ID is missing in request");
       return res
         .status(HttpStatusCode.BAD_REQUEST)
-        .json({ message: "Mentor ID is required" });
+        .json({ message: MESSAGES.COMMON.ID_REQUIRED("Mentor") });
     }
     try {
       logger.info(`Fetching mentor profile: ${mentorId}`);
@@ -241,18 +246,18 @@ export class AdminController {
         logger.warn(`Mentor not found: ${mentorId}`);
         return res
           .status(HttpStatusCode.NOT_FOUND)
-          .json({ message: "Mentor not found" });
+          .json({ message: MESSAGES.AUTH.USER_NOT_FOUND });
       }
       logger.info(`✅ [AdminController] Successfully fetched mentor profile for: ${mentorId}`);
       res.status(HttpStatusCode.OK).json(mentor);
     } catch (error: unknown) {
-      const err = error as AppError;
+      const errorTyped = error as AppError;
       logger.error(
-        `Error fetching mentor profile ${mentorId}: ${err.message}`
+        `Error fetching mentor profile ${mentorId}: ${errorTyped.message}`
       );
       res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ message: err.message });
+        .json({ message: errorTyped.message });
     }
   };
 
@@ -262,7 +267,7 @@ export class AdminController {
       logger.warn("Mentor ID is missing in request");
       return res
         .status(HttpStatusCode.BAD_REQUEST)
-        .json({ message: "Mentor ID is required" });
+        .json({ message: MESSAGES.COMMON.ID_REQUIRED("Mentor") });
     }
     const authReq = req as AuthenticatedRequest;
     const adminId = authReq.user?.id;
@@ -270,25 +275,25 @@ export class AdminController {
       logger.warn("Admin ID is missing in request");
       return res
         .status(HttpStatusCode.UNAUTHORIZED)
-        .json({ message: "Unauthorized" });
+        .json({ message: MESSAGES.COMMON.UNAUTHORIZED });
     }
     try {
       logger.info(`Admin ${adminId} approving mentor: ${mentorId}`);
-      const result = await this._adminService.updateMentorApprovalStatus(
+      const approvalResult = await this._adminService.updateMentorApprovalStatus(
         mentorId,
-        "approved",
+        ApprovalStatus.APPROVED,
         adminId
       );
       logger.info(`Mentor ${mentorId} approved by admin ${adminId}`);
-      res.status(HttpStatusCode.OK).json(result);
+      res.status(HttpStatusCode.OK).json(approvalResult);
     } catch (error: unknown) {
-      const err = error as AppError;
+      const errorTyped = error as AppError;
       logger.error(
-        `Error approving mentor ${mentorId} by admin ${adminId}: ${err.message}`
+        `Error approving mentor ${mentorId} by admin ${adminId}: ${errorTyped.message}`
       );
       res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ message: err.message });
+        .json({ message: errorTyped.message });
     }
   };
 
@@ -298,7 +303,7 @@ export class AdminController {
       logger.warn("Mentor ID is missing in request");
       return res
         .status(HttpStatusCode.BAD_REQUEST)
-        .json({ message: "Mentor ID is required" });
+        .json({ message: MESSAGES.COMMON.ID_REQUIRED("Mentor") });
     }
     const { reason } = req.body;
     const adminId = (req as AuthenticatedRequest).user?.id;
@@ -306,28 +311,28 @@ export class AdminController {
       logger.warn("Admin ID is missing in request");
       return res
         .status(HttpStatusCode.UNAUTHORIZED)
-        .json({ message: "Unauthorized" });
+        .json({ message: MESSAGES.COMMON.UNAUTHORIZED });
     }
     try {
       logger.info(
         `Admin ${adminId} rejecting mentor: ${mentorId}, Reason: ${reason}`
       );
-      const result = await this._adminService.updateMentorApprovalStatus(
+      const rejectionResult = await this._adminService.updateMentorApprovalStatus(
         mentorId,
-        "rejected",
+        ApprovalStatus.REJECTED,
         adminId,
         reason
       );
       logger.info(`Mentor ${mentorId} rejected by admin ${adminId}`);
-      res.status(HttpStatusCode.OK).json(result);
+      res.status(HttpStatusCode.OK).json(rejectionResult);
     } catch (error: unknown) {
-      const err = error as AppError;
+      const errorTyped = error as AppError;
       logger.error(
-        `Error rejecting mentor ${mentorId} by admin ${adminId}: ${err.message}`
+        `Error rejecting mentor ${mentorId} by admin ${adminId}: ${errorTyped.message}`
       );
       res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ message: err.message });
+        .json({ message: errorTyped.message });
     }
   };
 
@@ -339,28 +344,28 @@ export class AdminController {
       logger.warn("Mentor ID is missing in request");
       res.status(HttpStatusCode.BAD_REQUEST).json({
         success: false,
-        message: "Mentor ID is required",
+        message: MESSAGES.COMMON.ID_REQUIRED("Mentor"),
       });
       return;
     }
 
     try {
       logger.info(`Blocking mentor: ${mentorId}`);
-      const result = await this._adminService.blockMentor(mentorId);
+      const blockResult = await this._adminService.blockMentor(mentorId);
       
       logger.info(`Mentor blocked successfully: ${mentorId}`);
       res.status(HttpStatusCode.OK).json({
         success: true,
-        data: result,
-        message: "Mentor blocked successfully",
+        data: blockResult,
+        message: MESSAGES.ADMIN.MENTOR_BLOCKED,
       });
     } catch (error: unknown) {
-      const err = error as AppError;
-      logger.error(`Error blocking mentor ${mentorId}: ${err.message}`);
-      const statusCode = err.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+      const errorTyped = error as AppError;
+      logger.error(`Error blocking mentor ${mentorId}: ${errorTyped.message}`);
+      const statusCode = errorTyped.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
       res.status(statusCode).json({
         success: false,
-        message: err.message,
+        message: errorTyped.message,
       });
     }
   };
@@ -373,28 +378,28 @@ unblockMentor = async (req: Request, res: Response): Promise<void> => {
       logger.warn("Mentor ID is missing in request");
       res.status(HttpStatusCode.BAD_REQUEST).json({
         success: false,
-        message: "Mentor ID is required",
+        message: MESSAGES.COMMON.ID_REQUIRED("Mentor"),
       });
       return;
     }
 
     try {
       logger.info(`Unblocking mentor: ${mentorId}`);
-      const result = await this._adminService.unblockMentor(mentorId);
+      const unblockResult = await this._adminService.unblockMentor(mentorId);
       
       logger.info(`Mentor unblocked successfully: ${mentorId}`);
       res.status(HttpStatusCode.OK).json({
         success: true,
-        data: result,
-        message: "Mentor unblocked successfully",
+        data: unblockResult,
+        message: MESSAGES.ADMIN.MENTOR_UNBLOCKED,
       });
     } catch (error: unknown) {
-      const err = error as AppError;
-      logger.error(`Error unblocking mentor ${mentorId}: ${err.message}`);
-      const statusCode = err.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+      const errorTyped = error as AppError;
+      logger.error(`Error unblocking mentor ${mentorId}: ${errorTyped.message}`);
+      const statusCode = errorTyped.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
       res.status(statusCode).json({
         success: false,
-        message: err.message,
+        message: errorTyped.message,
       });
     }
   };
@@ -409,12 +414,12 @@ unblockMentor = async (req: Request, res: Response): Promise<void> => {
     if (!fullName || !email) {
       res.status(HttpStatusCode.BAD_REQUEST).json({
         success: false,
-        message: "Full name and email are required",
+        message: MESSAGES.COMMON.REQUIRED_FIELDS(["Full name", "email"]),
       });
       return;
     }
 
-    const result = await this._adminService.addMentor({
+    const addMentorResult = await this._adminService.addMentor({
       fullName,
       email,
       phoneNumber,
@@ -426,16 +431,16 @@ unblockMentor = async (req: Request, res: Response): Promise<void> => {
 
     res.status(HttpStatusCode.CREATED).json({
       success: true,
-      message: "Mentor added successfully",
-      data: result,
+      message: MESSAGES.ADMIN.MENTOR_ADDED,
+      data: addMentorResult,
     });
     } catch (error: unknown) {
-      const err = error as AppError;
-      logger.error(`Admin: Add mentor error for ${req.body.email}:`, err);
-      const statusCode = err.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+      const errorTyped = error as AppError;
+      logger.error(`Admin: Add mentor error for ${req.body.email}:`, errorTyped);
+      const statusCode = errorTyped.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
       res.status(statusCode).json({
         success: false,
-        message: err.message,
+        message: errorTyped.message,
       });
     }
 };
@@ -451,27 +456,27 @@ updateMentor = async (req: Request, res: Response): Promise<void> => {
     if (!mentorId) {
       res.status(HttpStatusCode.BAD_REQUEST).json({
         success: false,
-        message: "Mentor ID is required",
+        message: MESSAGES.COMMON.ID_REQUIRED("Mentor"),
       });
       return;
     }
 
-    const result = await this._adminService.updateMentor(mentorId, updateData);
+    const updateMentorResult = await this._adminService.updateMentor(mentorId, updateData);
 
     logger.info(`Admin: Mentor updated successfully - ${mentorId}`);
 
     res.status(HttpStatusCode.OK).json({
       success: true,
-      message: "Mentor updated successfully",
-      data: result,
+      message: MESSAGES.ADMIN.MENTOR_UPDATED,
+      data: updateMentorResult,
     });
     } catch (error: unknown) {
-      const err = error as AppError;
-      logger.error(`Admin: Update mentor error for ${req.params.mentorId}:`, err);
-      const statusCode = err.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+      const errorTyped = error as AppError;
+      logger.error(`Admin: Update mentor error for ${req.params.mentorId}:`, errorTyped);
+      const statusCode = errorTyped.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
       res.status(statusCode).json({
         success: false,
-        message: err.message,
+        message: errorTyped.message,
       });
     }
 };
@@ -486,27 +491,27 @@ updateStudent = async (req: Request, res: Response): Promise<void> => {
     if (!studentId) {
       res.status(HttpStatusCode.BAD_REQUEST).json({
         success: false,
-        message: "Student ID is required",
+        message: MESSAGES.COMMON.ID_REQUIRED("Student"),
       });
       return;
     }
 
-    const result = await this._adminService.updateStudent(studentId, updateData);
+    const updateStudentResult = await this._adminService.updateStudent(studentId, updateData);
 
     logger.info(`Admin: Student updated successfully - ${studentId}`);
 
     res.status(HttpStatusCode.OK).json({
       success: true,
-      message: "Student updated successfully",
-      data: result,
+      message: MESSAGES.ADMIN.STUDENT_UPDATED,
+      data: updateStudentResult,
     });
     } catch (error: unknown) {
-      const err = error as AppError;
-      logger.error(`Admin: Update student error for ${req.params.studentId}:`, err);
-      const statusCode = err.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+      const errorTyped = error as AppError;
+      logger.error(`Admin: Update student error for ${req.params.studentId}:`, errorTyped);
+      const statusCode = errorTyped.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
       res.status(statusCode).json({
         success: false,
-        message: err.message,
+        message: errorTyped.message,
       });
     }
 };
@@ -519,28 +524,28 @@ updateStudent = async (req: Request, res: Response): Promise<void> => {
       logger.warn("Student ID is missing in request");
       res.status(HttpStatusCode.BAD_REQUEST).json({
         success: false,
-        message: "Student ID is required",
+        message: MESSAGES.COMMON.ID_REQUIRED("Student"),
       });
       return;
     }
 
     try {
       logger.info(`Blocking student: ${studentId}`);
-      const result = await this._adminService.blockStudent(studentId);
+      const blockStudentResult = await this._adminService.blockStudent(studentId);
       
       logger.info(`Student blocked successfully: ${studentId}`);
       res.status(HttpStatusCode.OK).json({
         success: true,
-        data: result,
-        message: "Student blocked successfully",
+        data: blockStudentResult,
+        message: MESSAGES.ADMIN.STUDENT_BLOCKED,
       });
     } catch (error: unknown) {
-      const err = error as AppError;
-      logger.error(`Error blocking student ${studentId}: ${err.message}`);
-      const statusCode = err.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+      const errorTyped = error as AppError;
+      logger.error(`Error blocking student ${studentId}: ${errorTyped.message}`);
+      const statusCode = errorTyped.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
       res.status(statusCode).json({
         success: false,
-        message: err.message,
+        message: errorTyped.message,
       });
     }
   };
@@ -552,28 +557,28 @@ updateStudent = async (req: Request, res: Response): Promise<void> => {
       logger.warn("Student ID is missing in request");
       res.status(HttpStatusCode.BAD_REQUEST).json({
         success: false,
-        message: "Student ID is required",
+        message: MESSAGES.COMMON.ID_REQUIRED("Student"),
       });
       return;
     }
 
     try {
       logger.info(`Unblocking student: ${studentId}`);
-      const result = await this._adminService.unblockStudent(studentId);
+      const unblockStudentResult = await this._adminService.unblockStudent(studentId);
       
       logger.info(`Student unblocked successfully: ${studentId}`);
       res.status(HttpStatusCode.OK).json({
         success: true,
-        data: result,
-        message: "Student unblocked successfully",
+        data: unblockStudentResult,
+        message: MESSAGES.ADMIN.STUDENT_UNBLOCKED,
       });
     } catch (error: unknown) {
-      const err = error as AppError;
-      logger.error(`Error unblocking student ${studentId}: ${err.message}`);
-      const statusCode = err.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+      const errorTyped = error as AppError;
+      logger.error(`Error unblocking student ${studentId}: ${errorTyped.message}`);
+      const statusCode = errorTyped.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
       res.status(statusCode).json({
         success: false,
-        message: err.message,
+        message: errorTyped.message,
       });
     }
   };
@@ -608,7 +613,7 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
     logger.info(`AdminController: Fetching trial classes for student - ${studentId}`, { status });
 
     if (!studentId) {
-      throw new AppError("Student ID is required", HttpStatusCode.BAD_REQUEST);
+      throw new AppError(MESSAGES.COMMON.ID_REQUIRED("Student"), HttpStatusCode.BAD_REQUEST);
     }
 
     // Add try-catch around the service call
@@ -620,7 +625,7 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
       success: true,
       data: trialClasses,
       count: trialClasses.length,
-      message: "Student trial classes fetched successfully",
+      message: MESSAGES.ADMIN.TRIAL_CLASSES_FETCH_SUCCESS,
     });
     
     console.log('🔍 [DEBUG] AdminController.getStudentTrialClasses - END');
@@ -654,7 +659,7 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
         success: true,
         data: result.trialClasses,
         pagination: result.pagination,
-        message: "Trial classes fetched successfully",
+        message: MESSAGES.ADMIN.TRIAL_CLASSES_FETCH_SUCCESS,
       });
     } catch (error: unknown) {
       logger.error("AdminController: Error fetching all trial classes", error);
@@ -669,7 +674,7 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
       logger.info(`AdminController: Fetching trial class details - ${trialClassId}`);
 
       if (!trialClassId) {
-        throw new AppError("Trial class ID is required", HttpStatusCode.BAD_REQUEST);
+        throw new AppError(MESSAGES.COMMON.ID_REQUIRED("Trial class"), HttpStatusCode.BAD_REQUEST);
       }
 
       const trialClass = await this._adminService.getTrialClassDetails(trialClassId);
@@ -679,7 +684,7 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
       res.status(HttpStatusCode.OK).json({
         success: true,
         data: trialClass,
-        message: "Trial class details fetched successfully",
+        message: MESSAGES.ADMIN.TRIAL_CLASS_DETAILS_FETCH_SUCCESS,
       });
     } catch (error: unknown) {
       logger.error(`AdminController: Error fetching trial class details ${req.params.trialClassId}`, error);
@@ -700,7 +705,7 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
 
       if (!trialClassId || !mentorId || !scheduledDate || !scheduledTime) {
         throw new AppError(
-          "Trial class ID, mentor ID, scheduled date, and scheduled time are required",
+          MESSAGES.COMMON.REQUIRED_FIELDS(["Trial class ID", "mentor ID", "scheduled date", "scheduled time"]),
           HttpStatusCode.BAD_REQUEST
         );
       }
@@ -717,7 +722,7 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
       res.status(HttpStatusCode.OK).json({
         success: true,
         data: result,
-        message: "Mentor assigned successfully",
+        message: MESSAGES.ADMIN.MENTOR_ASSIGNED_SUCCESS,
       });
     } catch (error: unknown) {
       logger.error(`AdminController: Error assigning mentor to trial class ${req.params.trialClassId}`, error);
@@ -733,7 +738,7 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
       logger.info(`AdminController: Updating trial class status - ${trialClassId}`, { status, reason });
 
       if (!trialClassId || !status) {
-        throw new AppError("Trial class ID and status are required", HttpStatusCode.BAD_REQUEST);
+        throw new AppError(MESSAGES.COMMON.REQUIRED_FIELDS(["Trial class ID", "status"]), HttpStatusCode.BAD_REQUEST);
       }
 
       const validStatuses = ["requested", "assigned", "completed", "cancelled"];
@@ -751,7 +756,7 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
       res.status(HttpStatusCode.OK).json({
         success: true,
         data: result,
-        message: "Trial class status updated successfully",
+        message: MESSAGES.ADMIN.STATUS_UPDATE_SUCCESS,
       });
     } catch (error: unknown) {
       logger.error(`AdminController: Error updating trial class status ${req.params.trialClassId}`, error);
@@ -767,7 +772,7 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
       logger.info(`AdminController: Fetching available mentors`, { subjectId, preferredDate, days, timeSlot });
 
       if (!subjectId || typeof subjectId !== 'string') {
-        throw new AppError("Subject ID is required", HttpStatusCode.BAD_REQUEST);
+        throw new AppError(MESSAGES.COMMON.ID_REQUIRED("Subject"), HttpStatusCode.BAD_REQUEST);
       }
 
       // Parse days if it comes as a string (which query params often do)
@@ -775,7 +780,7 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
       if (Array.isArray(days)) {
         daysArray = days as string[];
       } else if (typeof days === 'string') {
-        daysArray = days.split(',').map(d => d.trim());
+        daysArray = days.split(',').map(day => day.trim());
       }
 
       const result = await this._adminService.getAvailableMentors(
@@ -788,7 +793,7 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
       res.status(HttpStatusCode.OK).json({
         success: true,
         data: result,
-        message: "Available mentors fetched successfully",
+        message: MESSAGES.ADMIN.AVAILABLE_MENTORS_FETCH_SUCCESS,
       });
     } catch (error) {
       logger.error("AdminController: Error fetching available mentors", error);

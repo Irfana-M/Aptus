@@ -1,4 +1,4 @@
-import type { IMentorAssignmentRequest } from "../../models/mentorAssignmentRequest.model";
+import type { IMentorAssignmentRequest } from "../../models/mentorAssignmentRequest.model.js";
 
 export interface IMentorRequestService {
   getPendingRequests(): Promise<IMentorAssignmentRequest[]>;

@@ -2,8 +2,8 @@ import type {
   AuthUser,
   MentorAuthUser,
   StudentAuthUser,
-} from "../interfaces/auth/auth.interface";
-import type { MentorBaseResponseDto, StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
+} from "../interfaces/auth/auth.interface.js";
+import type { MentorBaseResponseDto, StudentBaseResponseDto } from "../dtos/auth/UserResponseDTO.js";
 
 export class UserMapper {
   static toMentorResponseDto(user: MentorAuthUser): MentorBaseResponseDto {

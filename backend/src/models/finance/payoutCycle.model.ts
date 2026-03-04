@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import type { IPayoutCycle } from '../../interfaces/models/compensation.interface';
+import type { IPayoutCycle } from '../../interfaces/models/compensation.interface.js';
 
 const payoutCycleSchema = new Schema<IPayoutCycle>(
   {

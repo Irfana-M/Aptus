@@ -1,17 +1,18 @@
 
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types";
-import type { IAvailabilityService } from "../interfaces/services/IAvailabilityService";
-import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository";
-import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository";
-import type { IMentorAvailabilityRepository } from "../interfaces/repositories/IMentorAvailabilityRepository";
-import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository";
-import type { Availability, MentorProfile, TimeSlot } from "../interfaces/models/mentor.interface";
-import { AppError } from "../utils/AppError";
-import { HttpStatusCode } from "../constants/httpStatus";
-import { logger } from "../utils/logger";
+import { TYPES } from "../types.js";
+import type { IAvailabilityService } from "../interfaces/services/IAvailabilityService.js";
+import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository.js";
+import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository.js";
+import type { IMentorAvailabilityRepository } from "../interfaces/repositories/IMentorAvailabilityRepository.js";
+import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository.js";
+import type { Availability, MentorProfile, TimeSlot } from "../interfaces/models/mentor.interface.js";
+import { AppError } from "../utils/AppError.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import { logger } from "../utils/logger.js";
 import { Types } from "mongoose";
-import { isSlotMatching, isShiftMatching } from "../utils/time.util";
+import { isSlotMatching, isShiftMatching } from "../utils/time.util.js";
+import { MESSAGES } from "../constants/messages.constants.js";
 
 @injectable()
 export class AvailabilityService implements IAvailabilityService {
@@ -26,7 +27,7 @@ export class AvailabilityService implements IAvailabilityService {
     // 1. Update old field (for backward compatibility)
     const updatedMentor = await this._mentorRepo.updateProfile(mentorId, { availability: schedule });
     if (!updatedMentor) {
-      throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
+      throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
     }
 
     // 2. Also save to MentorAvailability collection (new system)
@@ -38,8 +39,8 @@ export class AvailabilityService implements IAvailabilityService {
       for (const dayAvail of schedule) {
         if (dayAvail.slots && dayAvail.slots.length > 0) {
           await this._mentorAvailabilityRepo.create({
-            mentorId: mentorId as any,
-            dayOfWeek: dayAvail.day as any,
+            mentorId: new Types.ObjectId(mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
+            dayOfWeek: dayAvail.day as 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday',
             slots: dayAvail.slots.map(slot => ({
               startTime: slot.startTime,
               endTime: slot.endTime
@@ -59,22 +60,21 @@ export class AvailabilityService implements IAvailabilityService {
   }
 
   async findMatchingMentors(subject: string, grade: string, days: string[], timeSlot: string, excludeCourseId?: string): Promise<{ matches: MentorProfile[], alternates: MentorProfile[] }> {
-    try {
-        const queryParams = {
-            gradeId: grade,
-            subjectId: subject,
-            days: days,
-            timeSlot: timeSlot,
-        } as { gradeId: string; subjectId: string; days?: string[]; timeSlot?: string; excludeCourseId?: string; };
-        
-        if (excludeCourseId) queryParams.excludeCourseId = excludeCourseId;
+    const queryParams = {
+        gradeId: grade,
+        subjectId: subject,
+        days: days,
+        timeSlot: timeSlot,
+    } as { gradeId: string; subjectId: string; days?: string[]; timeSlot?: string; excludeCourseId?: string; };
+    
+    if (excludeCourseId) queryParams.excludeCourseId = excludeCourseId;
 
-        const allMentors = await this._mentorRepo.findAvailableMentors(queryParams) as (MentorProfile & { conflictingBookings?: unknown[] })[];
-
+    const allMentors = await this._mentorRepo.findAvailableMentors(queryParams);
+    const mentorList = allMentors as (MentorProfile & { conflictingBookings?: unknown[] })[];
         const matches: MentorProfile[] = [];
         const alternates: MentorProfile[] = [];
 
-        for (const mentor of allMentors) {
+        for (const mentor of mentorList) {
             try {
                 let isPerfectMatch = true;
 
@@ -94,17 +94,17 @@ export class AvailabilityService implements IAvailabilityService {
                         }
 
                         if (isShift) {
-                            const hasSlotInShift = daySchedule.slots.some((s: TimeSlot) => 
-                                isShiftMatching(s.startTime, timeSlot as 'MORNING' | 'AFTERNOON') && !s.isBooked
+                            const hasSlotInShift = daySchedule.slots.some((slot: TimeSlot) => 
+                                isShiftMatching(slot.startTime, timeSlot as 'MORNING' | 'AFTERNOON') && !slot.isBooked
                             );
                             if (!hasSlotInShift) {
                                 isPerfectMatch = false;
                                 break;
                             }
                         } else {
-                            const [reqStart, reqEnd] = timeSlot.split('-').map(t => t.trim());
-                            const hasSlot = daySchedule.slots.some((s: TimeSlot) => 
-                                isSlotMatching(s.startTime, s.endTime, reqStart || "", reqEnd) && !s.isBooked
+                            const [reqStart, reqEnd] = timeSlot.split('-').map(part => part.trim());
+                            const hasSlot = daySchedule.slots.some((slot: TimeSlot) => 
+                                isSlotMatching(slot.startTime, slot.endTime, reqStart || "", reqEnd) && !slot.isBooked
                             );
                             if (!hasSlot) {
                                 isPerfectMatch = false;
@@ -135,9 +135,10 @@ export class AvailabilityService implements IAvailabilityService {
                         }}
                     ]);
 
-                    if (trialStats.length > 0 && finalTotal === 0) {
-                        finalRating = Number(trialStats[0].avgRating.toFixed(1));
-                        finalTotal = trialStats[0].count;
+                    const stats = trialStats as unknown as { avgRating: number; count: number }[];
+                    if (stats.length > 0 && finalTotal === 0) {
+                        finalRating = Number((stats[0]?.avgRating ?? 0).toFixed(1));
+                        finalTotal = stats[0]?.count ?? 0;
                     }
                 } catch (_err) {
                     logger.warn(`Could not aggregate trial stats for mentor ${mentor._id}`);
@@ -154,21 +155,17 @@ export class AvailabilityService implements IAvailabilityService {
                 } else {
                     alternates.push(mentorWithStats);
                 }
-            } catch (mentorError) {
+            } catch (_mentorError) {
                 continue;
             }
         }
-        
         return { matches, alternates };
-    } catch (error) {
-        throw error;
-    }
   }
 
   async getAvailability(mentorId: string): Promise<Availability[]> {
     const mentor = await this._mentorRepo.getProfileWithImage(mentorId);
     if (!mentor) {
-        throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
     }
     return mentor.availability || [];
   }
@@ -176,7 +173,7 @@ export class AvailabilityService implements IAvailabilityService {
   async bookSlots(mentorId: string, days: string[], timeSlot: string, _maxStudents: number = 10): Promise<void> {
     const mentor = await this._mentorRepo.getProfileWithImage(mentorId);
     if (!mentor || !mentor.availability) {
-      throw new AppError("Mentor not found or availability not set", HttpStatusCode.NOT_FOUND);
+      throw new AppError(MESSAGES.AVAILABILITY.MENTOR_NOT_FOUND, HttpStatusCode.NOT_FOUND);
     }
 
     const timeSlots = timeSlot.includes('|') ? timeSlot.split('|') : [timeSlot];
@@ -206,7 +203,7 @@ export class AvailabilityService implements IAvailabilityService {
   async releaseSlots(mentorId: string, days: string[], timeSlot: string): Promise<void> {
     const mentor = await this._mentorRepo.getProfileWithImage(mentorId);
     if (!mentor || !mentor.availability) {
-      throw new AppError("Mentor not found or availability not set", HttpStatusCode.NOT_FOUND);
+      throw new AppError(MESSAGES.AVAILABILITY.MENTOR_NOT_FOUND, HttpStatusCode.NOT_FOUND);
     }
 
     const timeSlots = timeSlot.includes('|') ? timeSlot.split('|') : [timeSlot];
@@ -236,7 +233,7 @@ export class AvailabilityService implements IAvailabilityService {
   async getPublicProfile(mentorId: string): Promise<Partial<MentorProfile & { reviews: Array<{ studentName: string; rating: number; comment: string; date: Date }> }>> {
       const mentor = await this._mentorRepo.getProfileWithImage(mentorId);
       if (!mentor) {
-          throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
+          throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
 
       let reviews: Array<{ studentName: string; rating: number; comment: string; date: Date }> = [];
@@ -285,9 +282,10 @@ export class AvailabilityService implements IAvailabilityService {
                   }}
               ]);
 
-              if (trialStats.length > 0) {
-                  calculatedRating = Number(trialStats[0].avgRating.toFixed(1));
-                  calculatedTotal = trialStats[0].count;
+              const stats = trialStats as unknown as { avgRating: number; count: number }[];
+              if (stats.length > 0 && stats[0]) {
+                  calculatedRating = Number((stats[0].avgRating || 0).toFixed(1));
+                  calculatedTotal = stats[0].count || 0;
               }
           }
       } catch (error) {
@@ -307,10 +305,10 @@ export class AvailabilityService implements IAvailabilityService {
       const publicProfile: Partial<MentorProfile & { reviews: Array<{ studentName: string; rating: number; comment: string; date: Date }> }> = {
           _id,
           fullName,
-          profileImageUrl: profileImageUrl as any,
-          subjectProficiency: subjectProficiency as any,
-          academicQualifications: academicQualifications as any,
-          experiences: experiences as any,
+          profileImageUrl: profileImageUrl as string | undefined,
+          subjectProficiency,
+          academicQualifications,
+          experiences,
           bio: bio || "",
           rating: calculatedRating,
           totalRatings: calculatedTotal,

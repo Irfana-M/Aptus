@@ -5,6 +5,8 @@ import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { fetchAllAttendanceAdmin } from '../../features/attendance/attendanceThunk';
 import { format } from 'date-fns';
 import { UserCheck, UserX, Calendar, Search, Filter, BookOpen } from 'lucide-react';
+import { Loader } from '../../components/ui/Loader';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 const AdminAttendance: React.FC = () => {
     const dispatch = useAppDispatch();
@@ -163,10 +165,7 @@ const AdminAttendance: React.FC = () => {
                                     {loading ? (
                                         <tr>
                                             <td colSpan={5} className="px-6 py-12 text-center">
-                                                <div className="flex flex-col items-center gap-3">
-                                                    <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                                                    <p className="text-slate-400 text-xs font-black uppercase tracking-widest">Loading Records...</p>
-                                                </div>
+                                                <Loader size="md" text="Loading Records..." />
                                             </td>
                                         </tr>
                                     ) : filteredHistory.length > 0 ? (
@@ -184,11 +183,13 @@ const AdminAttendance: React.FC = () => {
                                                             {record.sessionId?.subjectId?.subjectName || record.sessionId?.subject?.subjectName || 'N/A'}
                                                         </span>
                                                         <span className={`w-fit px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${
-                                                            record.sessionId?.sessionType === 'group' 
-                                                                ? 'bg-orange-50 text-orange-600' 
-                                                                : 'bg-indigo-50 text-indigo-600'
+                                                            record.sessionModel === 'TrialClass'
+                                                                ? 'bg-teal-50 text-teal-600'
+                                                                : record.sessionId?.sessionType === 'group' 
+                                                                    ? 'bg-orange-50 text-orange-600' 
+                                                                    : 'bg-indigo-50 text-indigo-600'
                                                         }`}>
-                                                            {record.sessionId?.sessionType === 'group' ? 'Group' : '1:1'}
+                                                            {record.sessionModel === 'TrialClass' ? 'Trial' : record.sessionId?.sessionType === 'group' ? 'Group' : '1:1'}
                                                         </span>
                                                     </div>
                                                 </td>
@@ -216,12 +217,12 @@ const AdminAttendance: React.FC = () => {
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <Calendar size={48} className="text-slate-100 mb-2" />
-                                                    <p className="text-lg font-bold text-slate-300">No records found</p>
-                                                    <p className="text-xs font-medium max-w-xs mx-auto">Adjust your search or filters to find specific attendance entries.</p>
-                                                </div>
+                                            <td colSpan={5} className="px-6 py-12 text-center">
+                                                <EmptyState 
+                                                    icon={Calendar} 
+                                                    title="No records found" 
+                                                    description="Adjust your search or filters to find specific attendance entries." 
+                                                />
                                             </td>
                                         </tr>
                                     )}

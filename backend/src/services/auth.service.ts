@@ -1,36 +1,38 @@
-import type { IAuthRepository } from "../interfaces/auth/IAuthRepository";
-import type { IOtpService } from "../interfaces/services/IOtpService";
-import type { IEmailService } from "../interfaces/services/IEmailService";
-import type { IStudentAuthRepository } from "../interfaces/repositories/IStudentAuthRepository";
-import type { IMentorAuthRepository } from "../interfaces/repositories/IMentorAuthRepository";
-import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
-import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository";
-import type { LoginUserDto } from "../dtos/auth/LoginUserDTO";
-import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO";
-import { hashPassword, comparePasswords } from "../utils/password.utils";
-import { generateAccessToken, generateRefreshToken } from "../utils/jwt.util";
-import type { IAuthService, UserContextResponse } from "../interfaces/services/IauthService";
+import type { IAuthRepository } from "../interfaces/auth/IAuthRepository.js";
+import type { IOtpService } from "../interfaces/services/IOtpService.js";
+import type { IEmailService } from "../interfaces/services/IEmailService.js";
+import type { IStudentAuthRepository } from "../interfaces/repositories/IStudentAuthRepository.js";
+import type { IMentorAuthRepository } from "../interfaces/repositories/IMentorAuthRepository.js";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository.js";
+import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository.js";
+import type { LoginUserDto } from "../dtos/auth/LoginUserDTO.js";
+import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO.js";
+import { hashPassword, comparePasswords } from "../utils/password.utils.js";
+import { generateAccessToken, generateRefreshToken } from "../utils/jwt.util.js";
+import type { IAuthService, UserContextResponse } from "../interfaces/services/IauthService.js";
 import type {
   AuthUser,
   MentorAuthUser,
   StudentAuthUser,
-} from "../interfaces/auth/auth.interface";
-import type { IProfileService } from "../interfaces/services/IProfileService";
-import { logger } from "../utils/logger";
-import type { SendOtpDto } from "../dtos/auth/OtpDTO";
-import type { VerifyOtpDto } from "../dtos/auth/VerifyOtpDTO";
+} from "../interfaces/auth/auth.interface.js";
+import type { IProfileService } from "../interfaces/services/IProfileService.js";
+import { logger } from "../utils/logger.js";
+import type { SendOtpDto } from "../dtos/auth/OtpDTO.js";
+import type { VerifyOtpDto } from "../dtos/auth/VerifyOtpDTO.js";
 // ForgotPasswordDto import removed as it is unused
 import type {
   MentorBaseResponseDto,
   StudentBaseResponseDto,
-} from "@/dtos/auth/UserResponseDTO";
-import { UserMapper } from "@/mappers/userMapper";
-import { HttpStatusCode } from "@/constants/httpStatus";
-import { AppError } from "@/utils/AppError";
+} from "@/dtos/auth/UserResponseDTO.js";
+import { UserMapper } from "@/mappers/userMapper.js";
+import { HttpStatusCode } from "@/constants/httpStatus.js";
+import { AppError } from "@/utils/AppError.js";
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types";
+import { TYPES } from "../types.js";
 import * as crypto from 'crypto';
-import { InternalEventEmitter, EVENTS } from "../utils/InternalEventEmitter";
+import { InternalEventEmitter, EVENTS } from "../utils/InternalEventEmitter.js";
+import { MESSAGES } from "../constants/messages.constants.js";
+import { UserRole } from "../enums/user.enum.js";
 
 // ... (existing imports)
 
@@ -48,15 +50,15 @@ export class AuthService implements IAuthService {
     @inject(TYPES.IStudentRepository) private _studentGeneralRepo: IStudentRepository
   ) {}
 
-  async registerUser(data: RegisterUserDto) {
+  async registerUser(registrationData: RegisterUserDto) {
     try {
-      const existingUser = await this._authRepo.findByEmail(data.email);
-      if (existingUser) throw new Error("User already exists");
+      const existingUser = await this._authRepo.findByEmail(registrationData.email);
+      if (existingUser) throw new AppError(MESSAGES.AUTH.USER_EXISTS, HttpStatusCode.CONFLICT);
 
-      if (data.password !== data.confirmPassword)
-        throw new Error("Passwords do not match");
+      if (registrationData.password !== registrationData.confirmPassword)
+        throw new AppError(MESSAGES.AUTH.PASSWORDS_NOT_MATCH, HttpStatusCode.BAD_REQUEST);
 
-      const hashedPassword = await hashPassword(data.password);
+      const hashedPassword = await hashPassword(registrationData.password);
       
       // Generate unique referral code for the new user
       const newReferralCode = crypto.randomBytes(4).toString('hex').toUpperCase();
@@ -64,28 +66,17 @@ export class AuthService implements IAuthService {
       // Handle referral usage (if new user signed up with a code)
       let referredBy = undefined;
       // Note: Data is typed as RegisterUserDto which has referralCode
-      const inputRefCode = data.referralCode;
+      const inputRefCode = registrationData.referralCode;
 
-      if (inputRefCode && data.role === 'student') {
+      if (inputRefCode && registrationData.role === UserRole.STUDENT) {
          const referrer = await this._studentRepo.findByReferralCode(inputRefCode);
          if (referrer) {
             referredBy = referrer.referralCode;
-            // Credit the referrer - amount configurable, e.g., 100
-             // We can do this async or await. Await ensures reliability.
-             // Usually credit should happen ONLY after verification, but per user request 
-             // "credit referrer when new user signs up", we do it here or after verify.
-             // Safest is after verification (verifySignupOtp), but user said "Signs Up". 
-             // "Signs Up" usually implies successful registration.
-             // Let's defer actual credit to 'verifySignupOtp' to prevent spam/fake accounts 
-             // from draining budget, OR do it here if "Sign Up" means just filling form.
-             // Recommendation: Do it on Verification. 
-             // But to follow user instruction "Signs Up", I will store 'referredBy' now 
-             // and credit in 'verifySignupOtp'.
          }
       }
 
       const userData: RegisterUserDto = {
-        ...data,
+        ...registrationData,
         password: hashedPassword,
         referralCode: newReferralCode,
       };
@@ -96,67 +87,67 @@ export class AuthService implements IAuthService {
 
       const user = await this._authRepo.createUser(userData);
 
-      await this.sendSignupOtp({ email: user.email, role: data.role });
+      await this.sendSignupOtp({ email: user.email, role: registrationData.role });
 
       logger.info(
-        `User registered successfully: ${data.email}, role: ${data.role}`
+        `User registered successfully: ${registrationData.email}, role: ${registrationData.role}`
       );
 
       this._eventEmitter.emit(EVENTS.USER_REGISTERED, {
-        email: data.email,
-        role: data.role,
-        fullName: data.fullName
+        email: registrationData.email,
+        role: registrationData.role,
+        fullName: registrationData.fullName
       });
 
-      return { message: "User registered. Please verify your email" };
+      return { message: MESSAGES.AUTH.REGISTRATION_SUCCESS };
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : MESSAGES.COMMON.UNKNOWN_ERROR;
       logger.error(
-        `User registration failed: ${data.email} - ${errorMessage}`
+        `User registration failed: ${registrationData.email} - ${errorMessage}`
       );
       throw error;
     }
   }
 
-  async sendSignupOtp(data: SendOtpDto): Promise<void> {
+  async sendSignupOtp(otpData: SendOtpDto): Promise<void> {
     try {
       await this._otpService.generateAndSaveOtp(
-        data.email,
+        otpData.email,
         "signup",
         "email",
         new Date(Date.now() + 10 * 60 * 1000),
-        data.role
+        otpData.role
       );
-      logger.info(`Signup OTP sent to: ${data.email}, role: ${data.role}`);
+      logger.info(`Signup OTP sent to: ${otpData.email}, role: ${otpData.role}`);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : MESSAGES.COMMON.UNKNOWN_ERROR;
       logger.error(
-        `Failed to send signup OTP to ${data.email} - ${errorMessage}`
+        `Failed to send signup OTP to ${otpData.email} - ${errorMessage}`
       );
       throw error;
     }
   }
 
-  async verifySignupOtp(data: VerifyOtpDto) {
+  async verifySignupOtp(verificationData: VerifyOtpDto) {
     try {
       const savedOtp = await this._otpService.verifyOtp(
-        data.email,
+        verificationData.email,
         "signup",
-        data.otp
+        verificationData.otp
       );
-      if (!savedOtp) throw new Error("Invalid or expired OTP");
+      if (!savedOtp) throw new AppError(MESSAGES.AUTH.INVALID_OTP, HttpStatusCode.BAD_REQUEST);
 
       const role =
-        savedOtp.role ?? (await this._authRepo.findByEmail(data.email))?.role;
-      if (!role) throw new Error("Cannot determine user role");
+        savedOtp.role ?? (await this._authRepo.findByEmail(verificationData.email))?.role;
+      if (!role) throw new AppError(MESSAGES.AUTH.CANNOT_DETERMINE_ROLE, HttpStatusCode.BAD_REQUEST);
 
-      await (role === "student"
-        ? this._studentRepo.markUserVerified(data.email)
-        : this._mentorRepo.markUserVerified(data.email));
+      await (role === UserRole.STUDENT
+        ? this._studentRepo.markUserVerified(verificationData.email)
+        : this._mentorRepo.markUserVerified(verificationData.email));
 
       // Referral credit logic removed as wallet system is deleted
       if (role === 'student') {
-          const student = await this._studentRepo.findByEmail(data.email);
+          const student = await this._studentRepo.findByEmail(verificationData.email);
           if (student && student.referredBy) {
              const referrer = await this._studentRepo.findByReferralCode(student.referredBy);
              if (referrer) {
@@ -166,17 +157,17 @@ export class AuthService implements IAuthService {
       }
 
       await this._emailService.sendMail(
-        data.email,
-        "Welcome to Aptus",
-        `<p>Your account has been verified successfully!</p>`
+        verificationData.email,
+        MESSAGES.AUTH.WELCOME_EMAIL_SUBJECT,
+        MESSAGES.AUTH.VERIFIED_EMAIL_BODY
       );
 
-      logger.info(`User verified successfully: ${data.email}, role: ${role}`);
+      logger.info(`User verified successfully: ${verificationData.email}, role: ${role}`);
       return true;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : MESSAGES.COMMON.UNKNOWN_ERROR;
       logger.error(
-        `Signup verification failed for ${data.email} - ${errorMessage}`
+        `Signup verification failed for ${verificationData.email} - ${errorMessage}`
       );
       throw error;
     }
@@ -191,34 +182,34 @@ export class AuthService implements IAuthService {
     isTrialCompleted?: boolean;
   }> {
     try {
-      const repo = role === "student" ? this._studentRepo : this._mentorRepo;
+      const repo = role === UserRole.STUDENT ? this._studentRepo : this._mentorRepo;
       const user = await repo.findByEmail(email);
-      if (!user) throw new AppError("User not found", HttpStatusCode.NOT_FOUND);
+      if (!user) throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
       if (!user.isVerified) {
         throw new AppError(
-          "Account not verified. Please check your email for the OTP and verify your account.",
+          MESSAGES.AUTH.ACCOUNT_NOT_VERIFIED,
           HttpStatusCode.FORBIDDEN
         );
       }
 
       if (user.isBlocked) {
         throw new AppError(
-          "Your account has been blocked. Please contact support.",
+          MESSAGES.AUTH.ACCOUNT_BLOCKED,
           HttpStatusCode.FORBIDDEN
         );
       }
 
       if (!user.password) {
         throw new AppError(
-          "Invalid credentials - authentication method not supported",
+          MESSAGES.AUTH.AUTH_METHOD_NOT_SUPPORTED,
           HttpStatusCode.UNAUTHORIZED
         );
       }
 
       const isMatch = await comparePasswords(password, user.password);
       if (!isMatch)
-        throw new AppError("Invalid credentials", HttpStatusCode.UNAUTHORIZED);
+        throw new AppError(MESSAGES.AUTH.INVALID_CREDENTIALS, HttpStatusCode.UNAUTHORIZED);
 
       const accessToken = generateAccessToken({
         id: user._id,
@@ -303,7 +294,7 @@ export class AuthService implements IAuthService {
       );
       return result;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : MESSAGES.COMMON.UNKNOWN_ERROR;
       logger.error(`User login failed: ${email} - ${errorMessage}`);
       throw error;
     }
@@ -316,7 +307,7 @@ export class AuthService implements IAuthService {
       else await this._mentorRepo.markUserVerified(data.email);
       logger.info(`User marked verified: ${data.email}, role: ${data.role}`);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : MESSAGES.COMMON.UNKNOWN_ERROR;
       logger.error(
         `Failed to mark user verified: ${data.email} - ${errorMessage}`
       );
@@ -324,28 +315,28 @@ export class AuthService implements IAuthService {
     }
   }
 
-  async sendForgotPasswordOtp(data: SendOtpDto): Promise<void> {
+  async sendForgotPasswordOtp(otpRequestData: SendOtpDto): Promise<void> {
     try {
       const repo =
-        data.role === "student" ? this._studentRepo : this._mentorRepo;
-      const user = await repo.findByEmail(data.email);
+        otpRequestData.role === UserRole.STUDENT ? this._studentRepo : this._mentorRepo;
+      const user = await repo.findByEmail(otpRequestData.email);
       if (!user)
-        throw new Error(`No ${data.role} account found with this email`);
+        throw new AppError(MESSAGES.AUTH.NO_ACCOUNT_FOUND, HttpStatusCode.NOT_FOUND);
 
       await this._otpService.generateAndSaveOtp(
-        data.email,
+        otpRequestData.email,
         "forgotPassword",
         "email",
         new Date(Date.now() + 10 * 60 * 1000),
-        data.role
+        otpRequestData.role
       );
       logger.info(
-        `Forgot password OTP sent to: ${data.email}, role: ${data.role}`
+        `Forgot password OTP sent to: ${otpRequestData.email}, role: ${otpRequestData.role}`
       );
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : MESSAGES.COMMON.UNKNOWN_ERROR;
       logger.error(
-        `Failed to send forgot password OTP: ${data.email} - ${errorMessage}`
+        `Failed to send forgot password OTP: ${otpRequestData.email} - ${errorMessage}`
       );
       throw error;
     }
@@ -356,7 +347,7 @@ export class AuthService implements IAuthService {
   //     const { email, otp, password, confirmPassword } = data;
 
   //     if (password !== confirmPassword)
-  //       throw new Error("Passwords do not match");
+  //       throw new Error(MESSAGES.AUTH.PASSWORDS_NOT_MATCH);
 
   //     const verifiedOtp = await this._otpService.verifyOtp(
   //       email,
@@ -384,7 +375,7 @@ export class AuthService implements IAuthService {
       logger.info(`Fetched user by email: ${email}`);
       return UserMapper.toAuthUser(user);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : MESSAGES.COMMON.UNKNOWN_ERROR;
       logger.error(
         `Failed to fetch user by email: ${email} - ${errorMessage}`
       );
@@ -399,7 +390,7 @@ export class AuthService implements IAuthService {
 
       return UserMapper.toMentorResponseDto(user as MentorAuthUser);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : MESSAGES.COMMON.UNKNOWN_ERROR;
       logger.error(`Failed to get mentor profile: ${email} - ${errorMessage}`);
       throw error;
     }
@@ -414,7 +405,7 @@ export class AuthService implements IAuthService {
 
       return UserMapper.toStudentResponseDto(user as StudentAuthUser);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : MESSAGES.COMMON.UNKNOWN_ERROR;
       logger.error(
         `Failed to get student profile: ${email} - ${errorMessage}`
       );
@@ -424,11 +415,11 @@ export class AuthService implements IAuthService {
 
   async getUserById(id: string, role: string): Promise<UserContextResponse> {
     try {
-      const repo = role === "student" ? this._studentRepo : this._mentorRepo;
+      const repo = role === UserRole.STUDENT ? this._studentRepo : this._mentorRepo;
       const user = await repo.findById(id);
       
       if (!user) {
-        throw new AppError("User not found", HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
 
       let isProfileComplete = false;

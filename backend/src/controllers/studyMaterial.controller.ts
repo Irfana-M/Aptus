@@ -1,15 +1,17 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types";
+import { TYPES } from "../types.js";
 import type { Request, Response } from "express";
-import type { IStudyMaterialService } from "../interfaces/services/IStudyMaterialService";
-import { HttpStatusCode } from "../constants/httpStatus";
-import { logger } from "../utils/logger";
-import { getSignedFileUrl } from "../utils/s3Upload";
+import type { IStudyMaterialService } from "../interfaces/services/IStudyMaterialService.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import { logger } from "../utils/logger.js";
+import { getSignedFileUrl } from "../utils/s3Upload.js";
+import { MESSAGES } from "../constants/messages.constants.js";
+import { UserRole } from "../enums/user.enum.js";
 
 interface ExtendedRequest extends Request {
   user?: {
     id: string;
-    role: 'admin' | 'mentor' | 'student';
+    role: UserRole;
   };
 }
 
@@ -29,7 +31,7 @@ export class StudyMaterialController {
       if (!mentorId || !sessionId || !title || !file) {
         return res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Missing required fields or file",
+          message: MESSAGES.STUDY_MATERIAL.MISSING_FIELDS,
         });
       }
 
@@ -50,7 +52,7 @@ export class StudyMaterialController {
       const appError = error as { message?: string };
       return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: appError.message || "Failed to upload study material",
+        message: appError.message || MESSAGES.STUDENT.UPLOAD_FAILED("study material"),
       });
     }
   };
@@ -66,7 +68,7 @@ export class StudyMaterialController {
       if (!mentorId || !title || !description || !subjectId || !dueDate || !assignedTo || !file) {
         return res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Missing required fields: title, description, subjectId, dueDate, assignedTo, file",
+          message: MESSAGES.STUDY_MATERIAL.MISSING_FIELDS,
         });
       }
 
@@ -84,14 +86,14 @@ export class StudyMaterialController {
       return res.status(HttpStatusCode.CREATED).json({
         success: true,
         data: assignment,
-        message: "Assignment created successfully",
+        message: MESSAGES.STUDY_MATERIAL.ASSIGNMENT_CREATE_SUCCESS,
       });
     } catch (error: unknown) {
       logger.error("Error in createAssignment controller:", error);
       const appError = error as { statusCode?: number; message?: string };
       return res.status(appError.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: appError.message || "Failed to create assignment",
+        message: appError.message || MESSAGES.ADMIN.CREATE_FAILED,
       });
     }
   };
@@ -105,7 +107,7 @@ export class StudyMaterialController {
       if (!studentId || !assignmentId || !files || files.length === 0) {
         return res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Missing required fields or files",
+          message: MESSAGES.STUDY_MATERIAL.MISSING_FIELDS,
         });
       }
 
@@ -118,14 +120,14 @@ export class StudyMaterialController {
       return res.status(HttpStatusCode.CREATED).json({
         success: true,
         data: submission,
-        message: "Assignment submitted successfully",
+        message: MESSAGES.STUDY_MATERIAL.ASSIGNMENT_SUBMIT_SUCCESS,
       });
     } catch (error: unknown) {
       logger.error("Error in submitAssignment controller:", error);
       const appError = error as { statusCode?: number; message?: string };
       return res.status(appError.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: appError.message || "Failed to submit assignment",
+        message: appError.message || MESSAGES.STUDENT.UPLOAD_FAILED("assignment"),
       });
     }
   };
@@ -139,7 +141,7 @@ export class StudyMaterialController {
       if (!mentorId || !submissionId || !feedback) {
         return res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Missing required fields",
+          message: MESSAGES.COMMON.REQUIRED_FIELDS(['submissionId', 'feedback']),
         });
       }
 
@@ -148,14 +150,14 @@ export class StudyMaterialController {
       return res.status(HttpStatusCode.OK).json({
         success: true,
         data: updated,
-        message: "Feedback provided successfully",
+        message: MESSAGES.STUDY_MATERIAL.FEEDBACK_SUCCESS,
       });
     } catch (error: unknown) {
       logger.error("Error in provideFeedback controller:", error);
       const appError = error as { statusCode?: number; message?: string };
       return res.status(appError.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: appError.message || "Failed to provide feedback",
+        message: appError.message || MESSAGES.STUDY_MATERIAL.FEEDBACK_UPDATE_FAILED,
       });
     }
   };
@@ -168,7 +170,7 @@ export class StudyMaterialController {
       if (!mentorId) {
         return res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Mentor ID missing",
+          message: MESSAGES.STUDY_MATERIAL.MENTOR_ID_MISSING,
         });
       }
 
@@ -183,7 +185,7 @@ export class StudyMaterialController {
       const appError = error as { message?: string };
       return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: appError.message || "Failed to fetch materials",
+        message: appError.message || MESSAGES.ADMIN.FETCH_FAILED,
       });
     }
   };
@@ -195,7 +197,7 @@ export class StudyMaterialController {
       if (!studentId) {
         return res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Student ID missing",
+          message: MESSAGES.STUDY_MATERIAL.STUDENT_ID_MISSING,
         });
       }
 
@@ -210,7 +212,7 @@ export class StudyMaterialController {
       const appError = error as { message?: string };
       return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: appError.message || "Failed to fetch assignments",
+        message: appError.message || MESSAGES.ADMIN.FETCH_FAILED,
       });
     }
   };
@@ -223,7 +225,7 @@ export class StudyMaterialController {
       if (!mentorId || !assignmentId) {
         return res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Missing required parameters",
+          message: MESSAGES.COMMON.REQUIRED_FIELDS(['parameters']),
         });
       }
 
@@ -238,7 +240,7 @@ export class StudyMaterialController {
       const appError = error as { statusCode?: number; message?: string };
       return res.status(appError.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: appError.message || "Failed to fetch submissions",
+        message: appError.message || MESSAGES.ADMIN.FETCH_FAILED,
       });
     }
   };
@@ -251,7 +253,7 @@ export class StudyMaterialController {
       if (!studentId || !assignmentId) {
         return res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Missing required parameters",
+          message: MESSAGES.COMMON.REQUIRED_FIELDS(['parameters']),
         });
       }
 
@@ -266,7 +268,7 @@ export class StudyMaterialController {
       const appError = error as { message?: string };
       return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: appError.message || "Failed to fetch submission",
+        message: appError.message || MESSAGES.ADMIN.FETCH_FAILED,
       });
     }
   };
@@ -278,7 +280,7 @@ export class StudyMaterialController {
       if (!fileKey) {
         return res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "File key is required",
+          message: MESSAGES.STUDY_MATERIAL.FILE_KEY_REQUIRED,
         });
       }
 
@@ -293,7 +295,7 @@ export class StudyMaterialController {
       const appError = error as { message?: string };
       return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: appError.message || "Failed to generate download URL",
+        message: appError.message || MESSAGES.ADMIN.FETCH_FAILED,
       });
     }
   };
@@ -307,7 +309,7 @@ export class StudyMaterialController {
       if (!sessionId) {
         return res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Session ID is required",
+          message: MESSAGES.COMMON.ID_REQUIRED('Session'),
         });
       }
 
@@ -322,7 +324,7 @@ export class StudyMaterialController {
       const appError = error as { message?: string };
       return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: appError.message || "Failed to fetch materials",
+        message: appError.message || MESSAGES.ADMIN.FETCH_FAILED,
       });
     }
   };
@@ -333,7 +335,7 @@ export class StudyMaterialController {
       if (!studentId) {
         return res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Student ID missing",
+          message: MESSAGES.STUDY_MATERIAL.STUDENT_ID_MISSING,
         });
       }
 
@@ -348,7 +350,7 @@ export class StudyMaterialController {
       const appError = error as { message?: string };
       return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: appError.message || "Failed to fetch materials",
+        message: appError.message || MESSAGES.ADMIN.FETCH_FAILED,
       });
     }
   };
@@ -361,7 +363,7 @@ export class StudyMaterialController {
       if (!mentorId || !materialId) {
          return res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Missing required parameters",
+          message: MESSAGES.COMMON.REQUIRED_FIELDS(['parameters']),
         });
       }
 
@@ -369,14 +371,14 @@ export class StudyMaterialController {
 
       return res.status(HttpStatusCode.OK).json({
         success: true,
-        message: "Material deleted successfully",
+        message: MESSAGES.STUDY_MATERIAL.DELETE_SUCCESS,
       });
     } catch (error: unknown) {
       logger.error("Error in deleteMaterial controller:", error);
       const appError = error as { message?: string };
       return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: appError.message || "Failed to delete material",
+        message: appError.message || MESSAGES.ADMIN.DELETE_FAILED,
       });
     }
   };

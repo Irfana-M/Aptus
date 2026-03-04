@@ -1,33 +1,34 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types";
-import { type IMentorAssignmentRequest } from "../models/mentorAssignmentRequest.model";
-import { NotificationService } from "./NotificationService";
-import { InternalEventEmitter } from "../utils/InternalEventEmitter";
-import { EVENTS } from "../utils/InternalEventEmitter";
-import { AppError } from "../utils/AppError";
-import { HttpStatusCode } from "../constants/httpStatus";
-import { logger } from "../utils/logger";
+import { TYPES } from "../types.js";
+import { type IMentorAssignmentRequest } from "../models/mentorAssignmentRequest.model.js";
+import { NotificationService } from "./NotificationService.js";
+import { InternalEventEmitter } from "../utils/InternalEventEmitter.js";
+import { EVENTS } from "../utils/InternalEventEmitter.js";
+import { AppError } from "../utils/AppError.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import { logger } from "../utils/logger.js";
 import { Types } from "mongoose";
+import { MESSAGES } from "../constants/messages.constants.js";
 
 import { v4 as uuidv4 } from 'uuid';
 
-import type { IMentorRequestService } from "../interfaces/services/IMentorRequestService";
-import type { SchedulingPolicy } from "../domain/scheduling/SchedulingPolicy";
-import type { ISubscriptionRepository } from "../interfaces/repositories/ISubscriptionRepository";
-import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository";
+import type { IMentorRequestService } from "../interfaces/services/IMentorRequestService.js";
+import type { SchedulingPolicy } from "../domain/scheduling/SchedulingPolicy.js";
+import type { ISubscriptionRepository } from "../interfaces/repositories/ISubscriptionRepository.js";
+import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository.js";
 
 @injectable()
 export class MentorRequestService implements IMentorRequestService {
   constructor(
     @inject(TYPES.INotificationService) private notificationService: NotificationService,
-    @inject(TYPES.IMentorAssignmentRequestRepository) private requestRepo: import("../interfaces/repositories/IMentorAssignmentRequestRepository").IMentorAssignmentRequestRepository,
-    @inject(TYPES.IStudentRepository) private studentRepo: import("../interfaces/repositories/IStudentRepository").IStudentRepository,
-    @inject(TYPES.ICourseRepository) private courseRepo: import("../interfaces/repositories/ICourseRepository").ICourseRepository,
-    @inject(TYPES.IEnrollmentLinkRepository) private enrollmentLinkRepo: import("../interfaces/repositories/IEnrollmentLinkRepository").IEnrollmentLinkRepository,
-    @inject(TYPES.ISessionRepository) private sessionRepo: import("../interfaces/repositories/ISessionRepository").ISessionRepository,
-    @inject(TYPES.IGradeRepository) private gradeRepo: import("../interfaces/repositories/IGradeRepository").IGradeRepository,
-    @inject(TYPES.ITimeSlotRepository) private timeSlotRepo: import("../interfaces/repositories/ITimeSlotRepository").ITimeSlotRepository,
-    @inject(TYPES.IMentorRepository) private mentorRepo: import("../interfaces/repositories/IMentorRepository").IMentorRepository,
+    @inject(TYPES.IMentorAssignmentRequestRepository) private requestRepo: import("../interfaces/repositories/IMentorAssignmentRequestRepository.js").IMentorAssignmentRequestRepository,
+    @inject(TYPES.IStudentRepository) private studentRepo: import("../interfaces/repositories/IStudentRepository.js").IStudentRepository,
+    @inject(TYPES.ICourseRepository) private courseRepo: import("../interfaces/repositories/ICourseRepository.js").ICourseRepository,
+    @inject(TYPES.IEnrollmentLinkRepository) private enrollmentLinkRepo: import("../interfaces/repositories/IEnrollmentLinkRepository.js").IEnrollmentLinkRepository,
+    @inject(TYPES.ISessionRepository) private sessionRepo: import("../interfaces/repositories/ISessionRepository.js").ISessionRepository,
+    @inject(TYPES.IGradeRepository) private gradeRepo: import("../interfaces/repositories/IGradeRepository.js").IGradeRepository,
+    @inject(TYPES.ITimeSlotRepository) private timeSlotRepo: import("../interfaces/repositories/ITimeSlotRepository.js").ITimeSlotRepository,
+    @inject(TYPES.IMentorRepository) private mentorRepo: import("../interfaces/repositories/IMentorRepository.js").IMentorRepository,
     @inject(TYPES.ISubscriptionRepository) private subscriptionRepo: ISubscriptionRepository,
     @inject(TYPES.ITrialClassRepository) private trialClassRepo: ITrialClassRepository,
     @inject(TYPES.SchedulingPolicy) private schedulingPolicy: SchedulingPolicy,
@@ -61,7 +62,7 @@ export class MentorRequestService implements IMentorRequestService {
       // STEP 1: Fetch MentorAssignmentRequest
       const request = await this.requestRepo.findById(requestId);
       if (!request) {
-        throw new AppError("Request not found", HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.ADMIN.RESOURCE_NOT_FOUND("Request"), HttpStatusCode.NOT_FOUND);
       }
 
       const getDetails = (field: unknown) => {
@@ -73,13 +74,13 @@ export class MentorRequestService implements IMentorRequestService {
       const effectiveMentorIdStr = overrides?.mentorId || getDetails(request.mentorId);
 
       if (!effectiveMentorIdStr) {
-        throw new AppError("Mentor ID is required for approval", HttpStatusCode.BAD_REQUEST);
+        throw new AppError(MESSAGES.ADMIN.VALIDATION_FAILED, HttpStatusCode.BAD_REQUEST);
       }
 
       // STEP 2: Fetch Student
       const studentProfile = await this.studentRepo.findStudentProfileById(requestStudentIdStr);
       if (!studentProfile) {
-        throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.STUDENT.NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
 
       const isFreshApproval = request.status !== 'approved';
@@ -101,12 +102,12 @@ export class MentorRequestService implements IMentorRequestService {
           // Manual Override (Legacy/Admin force) - assumes strict TimeSlot string
           // This path flattens to a single time for all days
           schedule = {
-            days: overrides.days.map(d => d.charAt(0).toUpperCase() + d.slice(1).toLowerCase()),
+            days: overrides.days.map(day => day.charAt(0).toUpperCase() + day.slice(1).toLowerCase()),
             timeSlot: overrides.timeSlot || "TBD"
           };
       } else {
           // Automatic from Student Preferences
-          const matchedSlot = (studentProfile as unknown as import('../interfaces/models/student.interface').StudentProfile).preferredTimeSlots?.find(
+          const matchedSlot = (studentProfile as unknown as import('../interfaces/models/student.interface.js').StudentProfile).preferredTimeSlots?.find(
             (slot) => {
               const s = slot as unknown as { subjectId?: { _id?: { toString(): string }, toString(): string } };
               const slotSubjectId = s.subjectId?._id ? s.subjectId._id.toString() : s.subjectId?.toString();
@@ -116,10 +117,10 @@ export class MentorRequestService implements IMentorRequestService {
           
           if (matchedSlot?.slots && matchedSlot.slots.length > 0) {
               // Extract FULL slots (Day + Time)
-              slots = (matchedSlot as unknown as { slots: { day: string, startTime: string, endTime: string }[] }).slots.map((s) => ({
-                  day: s.day.charAt(0).toUpperCase() + s.day.slice(1).toLowerCase(),
-                  startTime: s.startTime,
-                  endTime: s.endTime
+              slots = (matchedSlot as unknown as { slots: { day: string, startTime: string, endTime: string }[] }).slots.map((slot) => ({
+                  day: slot.day.charAt(0).toUpperCase() + slot.day.slice(1).toLowerCase(),
+                  startTime: slot.startTime,
+                  endTime: slot.endTime
               }));
 
               // Construct Helper Schedule Object for Legacy Code compatibility
@@ -127,7 +128,7 @@ export class MentorRequestService implements IMentorRequestService {
               const timeSlotSummary = slots.length > 1 ? "Multiple Times" : (firstSlot ? `${firstSlot.startTime}-${firstSlot.endTime}` : "Multiple Times");
 
               schedule = {
-                days: slots.map(s => s.day),
+                days: slots.map(slot => slot.day),
                 timeSlot: timeSlotSummary,
                 slots: slots
               };
@@ -135,14 +136,14 @@ export class MentorRequestService implements IMentorRequestService {
       }
 
       if (!schedule || (!schedule.days?.length && !slots.length)) {
-         throw new AppError("Schedule not resolved. Please provide days and timeSlot.", HttpStatusCode.BAD_REQUEST);
+         throw new AppError(MESSAGES.ADMIN.VALIDATION_FAILED, HttpStatusCode.BAD_REQUEST);
       }
 
       // STEP 3: Validate Subscription
-      const studentWithType = studentProfile as unknown as import('../interfaces/models/student.interface').StudentProfile;
+      const studentWithType = studentProfile as unknown as import('../interfaces/models/student.interface.js').StudentProfile;
       const subscription = studentWithType.subscription;
       if (!subscription || subscription.status !== 'active') {
-          throw new AppError("Student does not have an active subscription.", HttpStatusCode.FORBIDDEN);
+          throw new AppError(MESSAGES.ENROLLMENT.NOT_FOUND, HttpStatusCode.FORBIDDEN);
       }
 
       const planStr = (subscription.plan || 'monthly').toLowerCase();
@@ -168,7 +169,7 @@ export class MentorRequestService implements IMentorRequestService {
               slots = slots.slice(0, maxSessions);
               // Sync redundant schedule object
               schedule.slots = slots;
-              schedule.days = slots.map((s: { day: string }) => s.day);
+              schedule.days = slots.map((slot: { day: string }) => slot.day);
           }
       } else if (schedule.days.length > maxSessions) {
           // Fallback for legacy generic days array
@@ -188,8 +189,8 @@ export class MentorRequestService implements IMentorRequestService {
           }
       }
 
-      if (!finalGradeIdStr && (studentProfile as unknown as import('../interfaces/models/student.interface').StudentProfile).academicDetails?.grade) {
-          const gradeStr = (studentProfile as unknown as import('../interfaces/models/student.interface').StudentProfile).academicDetails!.grade;
+      if (!finalGradeIdStr && (studentProfile as unknown as import('../interfaces/models/student.interface.js').StudentProfile).academicDetails?.grade) {
+          const gradeStr = (studentProfile as unknown as import('../interfaces/models/student.interface.js').StudentProfile).academicDetails!.grade;
           // Try to lookup Grade by name or number
           const gradeNum = parseInt(gradeStr.replace(/\D/g, ''));
           const foundGrade = await this.gradeRepo.findOne({ 
@@ -206,14 +207,14 @@ export class MentorRequestService implements IMentorRequestService {
       }
 
       if (!finalGradeIdStr) {
-         throw new AppError(`Could not resolve Grade ID for student. Grade: ${(studentProfile as unknown as import('../interfaces/models/student.interface').StudentProfile).academicDetails?.grade}`, HttpStatusCode.BAD_REQUEST);
+         throw new AppError(MESSAGES.ADMIN.VALIDATION_FAILED, HttpStatusCode.BAD_REQUEST);
       }
 
       // --- VALIDATION START ---
       // 1. Validate Mentor Availability
       const mentor = await this.mentorRepo.findById(effectiveMentorIdStr);
       if (!mentor) {
-         throw new AppError("Mentor selected for approval not found.", HttpStatusCode.NOT_FOUND);
+         throw new AppError(MESSAGES.AVAILABILITY.MENTOR_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
 
       // Check if mentor slot exists for ALL days
@@ -223,36 +224,36 @@ export class MentorRequestService implements IMentorRequestService {
       if (slots.length > 0) {
           // Validate specific slots
           for (const slotItem of slots) {
-             const daySched = mentorAvailability.find((d: { day: string, slots?: { startTime: string }[] }) => d.day === slotItem.day && d.slots && d.slots.length > 0);
+             const daySched = mentorAvailability.find((availableDay: { day: string, slots?: { startTime: string }[] }) => availableDay.day === slotItem.day && availableDay.slots && availableDay.slots.length > 0);
              if (!daySched) {
                  missingDays.push(slotItem.day);
                  continue;
              }
-             const hasTime = daySched.slots?.some((s: { startTime: string }) => s.startTime === slotItem.startTime);
+             const hasTime = daySched.slots?.some((slotIdentifier: { startTime: string }) => slotIdentifier.startTime === slotItem.startTime);
              if (!hasTime) {
                  missingDays.push(`${slotItem.day} (${slotItem.startTime})`);
              }
           }
           
           if (missingDays.length > 0) {
-              throw new AppError(`Mentor is NOT available on: ${missingDays.join(', ')}. forced assignment blocked.`, HttpStatusCode.BAD_REQUEST);
+              throw new AppError(MESSAGES.AVAILABILITY.MENTOR_NOT_FOUND, HttpStatusCode.BAD_REQUEST);
           }
       } else if (schedule && schedule.timeSlot) {
           const startSlot = schedule.timeSlot.split('-')[0]?.trim() || "10:00";
           for (const day of schedule.days) {
-              const daySched = mentorAvailability.find((d: { day: string, slots?: { startTime: string }[] }) => d.day === day && d.slots && d.slots.length > 0);
+              const daySched = mentorAvailability.find((availableDay: { day: string, slots?: { startTime: string }[] }) => availableDay.day === day && availableDay.slots && availableDay.slots.length > 0);
               if (!daySched) {
                   missingDays.push(day);
                   continue;
               }
-              const hasTime = daySched.slots?.some((s: { startTime: string }) => s.startTime === startSlot);
+              const hasTime = daySched.slots?.some((slotIdentifier: { startTime: string }) => slotIdentifier.startTime === startSlot);
               if (!hasTime) {
                   missingDays.push(day);
               }
           }
 
           if (missingDays.length > 0) {
-              throw new AppError(`Mentor is NOT available on ${missingDays.join(', ')} at ${startSlot}. Forced assignment blocked.`, HttpStatusCode.BAD_REQUEST);
+              throw new AppError(MESSAGES.AVAILABILITY.MENTOR_NOT_FOUND, HttpStatusCode.BAD_REQUEST);
           }
       }
 
@@ -260,7 +261,7 @@ export class MentorRequestService implements IMentorRequestService {
       // Basic -> Group Only
       // Premium -> 1:1 Only
       if (!isPremium && courseType === 'one-to-one') {
-          throw new AppError("Basic plan students cannot be assigned 1:1 mentorship. Please upgrade to Premium.", HttpStatusCode.FORBIDDEN);
+          throw new AppError(MESSAGES.STUDENT.BASIC_PLAN_CONSTRAINT, HttpStatusCode.FORBIDDEN);
       }
       if ((planStr === 'premium' || planStr === 'yearly') && courseType === 'group' && request.mentoringMode === 'one-to-one') {
            // Allow Premium to join Group if they explicitly asked for it? 
@@ -300,13 +301,13 @@ export class MentorRequestService implements IMentorRequestService {
           } as Record<string, unknown>);
            
            if (existingGroupCourses) {
-               course = existingGroupCourses as unknown as import('../models/course.model').ICourse;
+               course = existingGroupCourses as unknown as import('../models/course.model.js').ICourse;
                logger.info(`[ApproveRequest] Joining existing group course ${course._id}`);
               
                // Increment enrolled count
                await this.courseRepo.updateCourse((course as unknown as { _id: { toString(): string } })._id.toString(), {
                   $inc: { enrolledStudents: 1 } as unknown as number
-               } as Partial<import("../interfaces/repositories/ICourseRepository").CreateOneToOneCourseDto>);
+               } as Partial<import("../interfaces/repositories/ICourseRepository.js").CreateOneToOneCourseDto>);
                recoveredRecords.push('joined_existing_group');
            }
       }
@@ -327,7 +328,7 @@ export class MentorRequestService implements IMentorRequestService {
             courseType,
             maxStudents: courseType === 'group' ? 10 : 1,
             enrolledStudents: courseType === 'group' ? 1 : 0
-          } as unknown as import("../interfaces/repositories/ICourseRepository").CreateOneToOneCourseDto)) as import("../models/course.model").ICourse;
+          } as unknown as import("../interfaces/repositories/ICourseRepository.js").CreateOneToOneCourseDto)) as import("../models/course.model.js").ICourse;
           recoveredRecords.push(courseType === 'group' ? 'group_course_created' : 'course_created');
       }
 
@@ -340,7 +341,7 @@ export class MentorRequestService implements IMentorRequestService {
               student: new Types.ObjectId(requestStudentIdStr) as unknown as import('mongoose').Schema.Types.ObjectId,
               course: new Types.ObjectId(courseIdForLink) as unknown as import('mongoose').Schema.Types.ObjectId,
               status: 'active' as 'active' | 'pending_payment' | 'cancelled',
-          } as unknown as Partial<import('../models/enrollment.model').IEnrollment>);
+          } as unknown as Partial<import('../models/enrollment.model.js').IEnrollment>);
           enrollmentId = (newLink as unknown as { _id: { toString(): string } })._id.toString();
           recoveredRecords.push('enrollment_link_created');
       } else {
@@ -457,10 +458,10 @@ export class MentorRequestService implements IMentorRequestService {
     try {
       const request = await this.requestRepo.findById(requestId);
       if (!request) {
-        throw new AppError("Request not found", HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.ADMIN.RESOURCE_NOT_FOUND("Request"), HttpStatusCode.NOT_FOUND);
       }
       if (request.status !== 'pending') {
-        throw new AppError("Request has already been processed", HttpStatusCode.BAD_REQUEST);
+        throw new AppError(MESSAGES.ADMIN.UPDATE_FAILED, HttpStatusCode.BAD_REQUEST);
       }
 
       const getDetails = (field: unknown) => {
@@ -522,7 +523,7 @@ export class MentorRequestService implements IMentorRequestService {
 
     // Fetch mentor profile for limits (optimize: fetch once outside loops)
     const sessionMentorIdx = await this.mentorRepo.findById(mentorId);
-    if (!sessionMentorIdx) throw new AppError(`Mentor ${mentorId} not found during generation`, HttpStatusCode.NOT_FOUND);
+    if (!sessionMentorIdx) throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
     for (let i = 0; i < weeks; i++) {
         for (const slot of slots) {
@@ -581,8 +582,8 @@ export class MentorRequestService implements IMentorRequestService {
                 });
                 weeklyCount += weeklyTrials;
 
-            } catch (_err) {
-                 logger.warn(`Failed to include trial classes in limit check: ${_err}`);
+            } catch (error) {
+                 logger.warn(`Failed to include trial classes in limit check: ${error}`);
             }
 
             const limitResult = this.schedulingPolicy.isMentorWithinLimits(sessionMentorIdx, dailyCount, weeklyCount);
@@ -610,20 +611,20 @@ export class MentorRequestService implements IMentorRequestService {
                         status: 'available',
                         maxStudents: courseType === 'group' ? 10 : 1,
                         currentStudentCount: 0
-                    } as unknown as import('../interfaces/models/timeSlot.interface').ITimeSlot);
-                } catch (e) {
-                    const err = e as { code?: number };
-                    if (err.code === 11000) {
+                    } as unknown as import('../interfaces/models/timeSlot.interface.js').ITimeSlot);
+                } catch (error) {
+                    const errorObj = error as { code?: number };
+                    if (errorObj.code === 11000) {
                         slotDoc = await this.timeSlotRepo.findOne({
                             mentorId: new Types.ObjectId(mentorId),
                             startTime: startDateTime,
                             endTime: endDateTime
                         });
-                    } else throw e;
+                    } else throw error;
                 }
             }
 
-            if (!slotDoc) throw new AppError("Failed to resolve time slot", HttpStatusCode.INTERNAL_SERVER_ERROR);
+            if (!slotDoc) throw new AppError(MESSAGES.SESSION.INVALID_STATE, HttpStatusCode.INTERNAL_SERVER_ERROR);
 
             // 2. Reserve Slot (LOCKED state)
             const reserved = await this.timeSlotRepo.reserveSlot((slotDoc as unknown as { _id: { toString(): string } })._id.toString());
@@ -652,7 +653,7 @@ export class MentorRequestService implements IMentorRequestService {
                 mentorStatus: 'scheduled' as const
             };
 
-            await this.sessionRepo.create(sessionData as unknown as import('../interfaces/models/session.interface').ISession);
+            await this.sessionRepo.create(sessionData as unknown as import('../interfaces/models/session.interface.js').ISession);
 
             // 4. Confirm Booking (BOOKED state)
             await this.timeSlotRepo.confirmBooking((slotDoc as unknown as { _id: { toString(): string } })._id.toString());

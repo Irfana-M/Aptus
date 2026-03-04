@@ -1,4 +1,4 @@
-import type { IOtp } from "../models/otp.interface";
+import type { IOtp } from "../models/otp.interface.js";
 
 export interface IOtpService {
   generateAndSaveOtp(

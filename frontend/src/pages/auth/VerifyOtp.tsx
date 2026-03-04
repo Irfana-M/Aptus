@@ -7,6 +7,7 @@ import { selectAuthLoading, selectAuthError } from "../../features/auth/authSele
 import type { AppDispatch } from "../../app/store";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import { ROUTES } from "../../constants/routes.constants";
 
 export default function VerifyOtp() {
   const dispatch = useDispatch<AppDispatch>();
@@ -20,7 +21,7 @@ export default function VerifyOtp() {
 
   useEffect(() => {
     if (!email) {
-        navigate('/register', { replace: true });
+        navigate(ROUTES.REGISTER, { replace: true });
     }
   }, [email, navigate]);
 
@@ -55,7 +56,7 @@ export default function VerifyOtp() {
       const resultAction = await dispatch(verifyOtp({ email, otp: otpCode }));
       if (verifyOtp.fulfilled.match(resultAction)) {
         toast.success("OTP verified successfully!");
-        navigate("/login", { replace: true });
+        navigate(ROUTES.LOGIN, { replace: true });
       } else {
         toast.error(resultAction.payload as string);
       }

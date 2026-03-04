@@ -1,18 +1,23 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types";
-import type { ISessionService } from "../interfaces/services/ISessionService";
-import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository";
-import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository";
-import type { ISession } from "../interfaces/models/session.interface";
-import type { INotificationService } from "../interfaces/services/INotificationService";
-import type { ISchedulingService } from "../interfaces/services/ISchedulingService";
-import type { IAttendanceService } from "../interfaces/services/IAttendanceService";
+import { TYPES } from "../types.js";
+import type { ISessionService } from "../interfaces/services/ISessionService.js";
+import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository.js";
+import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository.js";
+import type { ISession } from "../interfaces/models/session.interface.js";
+import type { INotificationService } from "../interfaces/services/INotificationService.js";
+import type { ISchedulingService } from "../interfaces/services/ISchedulingService.js";
+import type { IAttendanceService } from "../interfaces/services/IAttendanceService.js";
 
-import type { IBookingRepository } from "../interfaces/repositories/IBookingRepository";
-import type { ISubjectRepository } from "../interfaces/repositories/ISubjectRepository";
-import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
-import { logger } from "../utils/logger";
+import type { IBookingRepository } from "../interfaces/repositories/IBookingRepository.js";
+import type { ISubjectRepository } from "../interfaces/repositories/ISubjectRepository.js";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository.js";
+import type { ILeaveEligibilityService, LeaveEligibilityResponse } from "../interfaces/services/ILeaveEligibilityService.js";
+import { logger } from "../utils/logger.js";
 import { Types } from "mongoose";
+import { MESSAGES } from "../constants/messages.constants.js";
+import { AppError } from "../utils/AppError.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import { STUDENT_CANCEL_CUTOFF_HOURS } from "../config/leavePolicy.config.js";
 
 @injectable()
 export class SessionService implements ISessionService {
@@ -22,6 +27,7 @@ export class SessionService implements ISessionService {
     @inject(TYPES.IBookingRepository) private bookingRepo: IBookingRepository,
     @inject(TYPES.ISubjectRepository) private subjectRepo: ISubjectRepository,
     @inject(TYPES.IStudentRepository) private studentRepo: IStudentRepository,
+    @inject(TYPES.ILeaveEligibilityService) private leaveEligibilityService: ILeaveEligibilityService,
     @inject(TYPES.INotificationService) private notificationService: INotificationService,
     @inject(TYPES.ISchedulingService) private schedulingService: ISchedulingService,
     @inject(TYPES.IAttendanceService) private attendanceService: IAttendanceService
@@ -30,6 +36,11 @@ export class SessionService implements ISessionService {
   async getStudentUpcomingSessions(studentId: string): Promise<ISession[]> {
     const sessions = await this.sessionRepo.findUpcomingByStudent(studentId);
     return sessions;
+  }
+
+  async getStudentUpcomingSessionsWithEligibility(studentId: string): Promise<LeaveEligibilityResponse> {
+    const sessions = await this.sessionRepo.findUpcomingByStudent(studentId);
+    return this.leaveEligibilityService.computeStudentEligibility(sessions, new Date());
   }
 
   async getMentorUpcomingSessions(mentorId: string): Promise<ISession[]> {
@@ -95,11 +106,19 @@ export class SessionService implements ISessionService {
 
   async reportAbsence(sessionId: string, studentId: string, reason: string): Promise<void> {
     const session = await this.sessionRepo.findById(sessionId);
-    if (!session) throw new Error("Session not found");
-    
+    if (!session) throw new Error(MESSAGES.SESSION.NOT_FOUND);
     // Authorization check
-    const isParticipant = session.participants.some(p => p.userId.toString() === studentId);
-    if (!isParticipant) throw new Error("Unauthorized");
+    const isParticipant = session.participants.some(participant => participant.userId.toString() === studentId);
+    if (!isParticipant) throw new Error(MESSAGES.SESSION.ACCESS_DENIED);
+
+    // Cutoff Validation: 12-hour rule
+    const now = new Date();
+    const diffInHours = (new Date(session.startTime).getTime() - now.getTime()) / (1000 * 60 * 60);
+    
+    if (diffInHours < STUDENT_CANCEL_CUTOFF_HOURS) {
+        logger.warn(`Student ${studentId} absence report rejected: Session ${sessionId} starts in ${diffInHours.toFixed(2)}h (Cutoff: ${STUDENT_CANCEL_CUTOFF_HOURS}h)`);
+        throw new AppError(MESSAGES.SESSION.CANCEL_CUTOFF_ERROR, HttpStatusCode.BAD_REQUEST);
+    }
 
     // Fetch student details for notification
     const student = await this.studentRepo.findById(studentId);
@@ -143,14 +162,14 @@ export class SessionService implements ISessionService {
 
   async cancelSession(sessionId: string, mentorId: string, reason: string): Promise<void> {
     const session = await this.sessionRepo.findById(sessionId);
-    if (!session) throw new Error("Session not found");
+    if (!session) throw new Error(MESSAGES.SESSION.NOT_FOUND);
 
-    if (session.mentorId.toString() !== mentorId) throw new Error("Unauthorized");
+    if (session.mentorId.toString() !== mentorId) throw new Error(MESSAGES.SESSION.ACCESS_DENIED);
 
     await this.sessionRepo.updateStatus(sessionId, 'rescheduling');
 
     // Notify student
-    const student = session.participants.find(p => p.role === 'student');
+    const student = session.participants.find(participant => participant.role === 'student');
     if (student) {
         await this.notificationService.notifyUser(
             student.userId.toString(),
@@ -166,15 +185,15 @@ export class SessionService implements ISessionService {
 
   async resolveRescheduling(sessionId: string, studentId: string, newTimeSlotId?: string, slotDetails?: { date: string, startTime: string, endTime: string }): Promise<void> {
     const session = await this.sessionRepo.findById(sessionId);
-    if (!session) throw new Error("Session not found");
+    if (!session) throw new Error(MESSAGES.SESSION.NOT_FOUND);
 
     if (session.status !== 'rescheduling') {
-        throw new Error("Session is not in rescheduling state");
+        throw new Error(MESSAGES.SESSION.INVALID_STATE);
     }
 
     // Security check: ensure the student is part of this session
-    const isParticipant = session.participants.some(p => p.userId.toString() === studentId);
-    if (!isParticipant) throw new Error("Unauthorized: You are not a participant in this session");
+    const isParticipant = session.participants.some(participant => participant.userId.toString() === studentId);
+    if (!isParticipant) throw new Error(MESSAGES.SESSION.ACCESS_DENIED);
 
     if (newTimeSlotId || slotDetails) {
         // RESCHEDULE CASE
@@ -217,11 +236,11 @@ export class SessionService implements ISessionService {
             logger.info(`Ensured/Created slot ${effectiveSlotId} for rescheduling`);
         }
         
-        if (!effectiveSlotId) throw new Error("Failed to resolve time slot for rescheduling");
+        if (!effectiveSlotId) throw new Error(MESSAGES.SESSION.INVALID_STATE);
 
         const newSlot = await this.timeSlotRepo.findById(effectiveSlotId);
-        if (!newSlot) throw new Error("New time slot not found");
-        if (newSlot.status !== 'available') throw new Error("Selected time slot is no longer available");
+        if (!newSlot) throw new Error(MESSAGES.AVAILABILITY.SLOT_NOT_FOUND);
+        if (newSlot.status !== 'available') throw new Error(MESSAGES.AVAILABILITY.SLOT_NOT_AVAILABLE);
 
         // 1. Reserve new slot
         await this.timeSlotRepo.reserveSlot(effectiveSlotId);
@@ -304,11 +323,11 @@ export class SessionService implements ISessionService {
 
   async completeSession(sessionId: string, mentorId: string): Promise<ISession | null> {
     const session = await this.sessionRepo.findById(sessionId);
-    if (!session) throw new Error("Session not found");
+    if (!session) throw new Error(MESSAGES.SESSION.NOT_FOUND);
 
     // Authorization: Only the assigned mentor can complete the session
     if (session.mentorId.toString() !== mentorId) {
-        throw new Error("Unauthorized: Only the assigned mentor can complete this session");
+        throw new Error(MESSAGES.SESSION.ACCESS_DENIED);
     }
 
     // Idempotency: If already completed, return safely
@@ -331,7 +350,7 @@ export class SessionService implements ISessionService {
     // Create automated attendance for all participants
     try {
         if (updatedSession && updatedSession.participants) {
-            const studentId = updatedSession.participants.find(p => p.role === 'student')?.userId.toString();
+            const studentId = updatedSession.participants.find(participant => participant.role === 'student')?.userId.toString();
             if (studentId) {
                 await this.attendanceService.createAutomationAttendance(sessionId, studentId, mentorId);
             }
@@ -350,7 +369,7 @@ export class SessionService implements ISessionService {
       logger.info(`[SessionService] Activating join links for window ${from.toISOString()} to ${to.toISOString()}`);
 
       // Dynamic import to avoid circular dependencies
-      const { SessionAccessService } = await import('./scheduling/SessionAccessService');
+      const { SessionAccessService } = await import('./scheduling/SessionAccessService.js');
       const sessionAccessService = new SessionAccessService();
 
       // 1. Find booked slots in the time window
@@ -360,11 +379,11 @@ export class SessionService implements ISessionService {
       });
 
       // 2. Sync sessions from slots (ensure Session records exist)
-      await this.syncSessionsFromSlots(slots.map(s => ({
-        _id: (s as unknown as { _id: { toString(): string } })._id.toString(),
-        mentorId: s.mentorId.toString(),
-        startTime: s.startTime,
-        endTime: s.endTime
+      await this.syncSessionsFromSlots(slots.map(slot => ({
+        _id: (slot as unknown as { _id: { toString(): string } })._id.toString(),
+        mentorId: slot.mentorId.toString(),
+        startTime: slot.startTime,
+        endTime: slot.endTime
       })));
 
       // 3. For each slot, find session and notify participants
@@ -419,8 +438,8 @@ export class SessionService implements ISessionService {
           }
 
           logger.info(`[SessionService] Sent join link notifications for session ${sessionId}`);
-        } catch (err) {
-          logger.error(`[SessionService] Error processing slot ${slot._id}:`, err);
+        } catch (error) {
+          logger.error(`[SessionService] Error processing slot ${slot._id}:`, error);
         }
       }
 

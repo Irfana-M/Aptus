@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { submitCourseRequest } from '../studentThunk';
+import { ROUTES } from '../../../constants/routes.constants';
 import { showToast } from '../../../utils/toast';
 import { studentApi } from '../studentApi';
 import { useNavigate } from 'react-router-dom';
@@ -52,7 +53,8 @@ const CustomTimeRequestModal: React.FC<CustomTimeRequestModalProps> = ({
         // Fetch subjects for the student's grade
         const fetchSubjects = async () => {
             try {
-                const response = await studentApi.fetchSubjectsByGrade(profile?.gradeId || 'all');
+                const gradeId = typeof profile?.gradeId === 'object' ? profile.gradeId._id : profile?.gradeId;
+                const response = await studentApi.fetchSubjectsByGrade(gradeId || 'all');
                 setSubjects(response.data || []);
             } catch (error) {
                 console.error("Failed to fetch subjects", error);
@@ -102,7 +104,8 @@ const CustomTimeRequestModal: React.FC<CustomTimeRequestModalProps> = ({
     e.preventDefault();
     
     // Validate all
-    const finalGrade = studentGradeName || profile?.gradeId;
+    const gradeId = typeof profile?.gradeId === 'object' ? profile.gradeId._id : profile?.gradeId;
+    const finalGrade = studentGradeName || gradeId;
 
     for (const req of requests) {
         if (!req.subject || req.preferredDays.length === 0 || !req.startTime || !req.endTime || !finalGrade) {
@@ -116,7 +119,7 @@ const CustomTimeRequestModal: React.FC<CustomTimeRequestModalProps> = ({
         await Promise.all(requests.map(req => 
             dispatch(submitCourseRequest({
                 subject: req.subject,
-                grade: finalGrade || '', 
+                grade: String(finalGrade || ''), 
                 mentoringMode: req.mentoringMode,
                 preferredDays: req.preferredDays,
                 timeSlot: `${req.startTime}-${req.endTime}`,
@@ -125,7 +128,7 @@ const CustomTimeRequestModal: React.FC<CustomTimeRequestModalProps> = ({
         ));
         
         onClose();
-        navigate('/student/subscription-plans');
+        navigate(ROUTES.STUDENT.SUBSCRIPTION_PLANS);
     } catch (error) {
         console.error("Error submitting requests", error);
     }

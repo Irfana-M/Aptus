@@ -1,10 +1,10 @@
 import { injectable } from "inversify";
 import mongoose from "mongoose";
-import { QuestionType } from "../../models/exam.model";
-import type { IExam, IQuestion } from "../../models/exam.model";
-import type { IAnswer } from "../../models/examResult.model";
-import { ExamStatus } from "../../models/examResult.model";
-import type { SubmitAnswerDTO } from "../../dtos/exam/SubmitExamDTO";
+import { QuestionType } from "../../models/exam.model.js";
+import type { IExam, IQuestion } from "../../models/exam.model.js";
+import type { IAnswer } from "../../models/examResult.model.js";
+import { ExamStatus } from "../../models/examResult.model.js";
+import type { SubmitAnswerDTO } from "../../dtos/exam/SubmitExamDTO.js";
 
 @injectable()
 export class ExamScoringService {

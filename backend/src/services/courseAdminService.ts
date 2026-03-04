@@ -1,30 +1,31 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "@/types";
-import type { IMentorRepository } from "@/interfaces/repositories/IMentorRepository";
-import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository";
-import { AvailableMentorDto } from "@/dtos/mentor/AvailableMentorDTO";
-import { AppError } from "@/utils/AppError";
-import { HttpStatusCode } from "@/constants/httpStatus";
-import type { ICourseAdminService } from "@/interfaces/services/ICourseAdminService";
-import type { ICourseRepository } from "@/interfaces/repositories/ICourseRepository";
-import type { GradeResponseDto } from "@/dtos/student/grade.dto";
-import type { SubjectResponseDto } from "@/dtos/student/subject.dto";
-import type { ISubjectService } from "@/interfaces/services/ISubjectService";
-import type { IGradeService } from "@/interfaces/services/IGradeService";
-import type { CoursePaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes";
-import { logger } from "@/utils/logger";
-import type { IAvailabilityService } from "@/interfaces/services/IAvailabilityService";
-import type { MentorProfile } from "@/interfaces/models/mentor.interface";
-import type { CreateCourseParams } from "@/interfaces/services/ICourseAdminService";
-import type { IEnrollmentRepository } from "@/interfaces/repositories/IEnrollmentRepository";
-import type { IEnrollmentLinkRepository } from "@/interfaces/repositories/IEnrollmentLinkRepository";
-import type { INotificationService } from "@/interfaces/services/INotificationService";
-import type { ISchedulingService } from "@/interfaces/services/ISchedulingService";
-import type { ISessionService } from "@/interfaces/services/ISessionService";
-import type { ITimeSlotRepository } from "@/interfaces/repositories/ITimeSlotRepository";
-import type { IMentorRequestService } from "@/interfaces/services/IMentorRequestService";
-import type { ISessionRepository } from "@/interfaces/repositories/ISessionRepository";
-import type { IPaymentRepository } from "@/interfaces/repositories/IPaymentRepository";
+import { TYPES } from "../types.js";
+import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository.js";
+import type { ISubjectRepository } from "../interfaces/repositories/ISubjectRepository.js";
+import { AvailableMentorDto } from "../dtos/mentor/AvailableMentorDTO.js";
+import { AppError } from "../utils/AppError.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import type { ICourseAdminService } from "../interfaces/services/ICourseAdminService.js";
+import type { ICourseRepository } from "../interfaces/repositories/ICourseRepository.js";
+import type { GradeResponseDto } from "../dtos/student/grade.dto.js";
+import type { SubjectResponseDto } from "../dtos/student/subject.dto.js";
+import type { ISubjectService } from "../interfaces/services/ISubjectService.js";
+import type { IGradeService } from "../interfaces/services/IGradeService.js";
+import type { CoursePaginationParams, PaginatedResponse } from "../dtos/shared/paginationTypes.js";
+import { logger } from "../utils/logger.js";
+import { MESSAGES } from "../constants/messages.constants.js";
+import type { IAvailabilityService } from "../interfaces/services/IAvailabilityService.js";
+import type { MentorProfile } from "../interfaces/models/mentor.interface.js";
+import type { CreateCourseParams } from "../interfaces/services/ICourseAdminService.js";
+import type { IEnrollmentRepository } from "../interfaces/repositories/IEnrollmentRepository.js";
+import type { IEnrollmentLinkRepository } from "../interfaces/repositories/IEnrollmentLinkRepository.js";
+import type { INotificationService } from "../interfaces/services/INotificationService.js";
+import type { ISchedulingService } from "../interfaces/services/ISchedulingService.js";
+import type { ISessionService } from "../interfaces/services/ISessionService.js";
+import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository.js";
+import type { IMentorRequestService } from "../interfaces/services/IMentorRequestService.js";
+import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository.js";
+import type { IPaymentRepository } from "../interfaces/repositories/IPaymentRepository.js";
 import { Types } from "mongoose";
 
 @injectable()
@@ -65,7 +66,7 @@ export class CourseAdminService implements ICourseAdminService {
     }
     
     if (!subjectDoc) {
-        throw new AppError(`Subject '${params.subjectId || 'unknown'}' not found`, HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.ADMIN.RESOURCE_NOT_FOUND("Subject"), HttpStatusCode.NOT_FOUND);
     }
 
     // 2. Robustly resolve Grade ID (needed for availabilityService)
@@ -75,7 +76,7 @@ export class CourseAdminService implements ICourseAdminService {
         if (resolvedGradeIdFromModel) {
             resolvedGradeId = resolvedGradeIdFromModel;
         } else {
-             throw new AppError(`Grade '${params.gradeId}' not found`, HttpStatusCode.NOT_FOUND);
+             throw new AppError(MESSAGES.ADMIN.RESOURCE_NOT_FOUND("Grade"), HttpStatusCode.NOT_FOUND);
         }
     }
 
@@ -110,11 +111,11 @@ export class CourseAdminService implements ICourseAdminService {
         if (subjectDoc) {
             subjectId = (subjectDoc._id as any).toString();
         } else {
-             throw new AppError(`Subject '${subjectId}' not found`, HttpStatusCode.NOT_FOUND);
+             throw new AppError(MESSAGES.ADMIN.RESOURCE_NOT_FOUND("Subject"), HttpStatusCode.NOT_FOUND);
         }
     } else if (subjectId) {
         const subjectDoc = await this._subjectRepo.findById(subjectId);
-        if (!subjectDoc) throw new AppError(`Subject '${subjectId}' not found`, HttpStatusCode.NOT_FOUND);
+        if (!subjectDoc) throw new AppError(MESSAGES.ADMIN.RESOURCE_NOT_FOUND("Subject"), HttpStatusCode.NOT_FOUND);
     }
 
     // 2. Resolve Grade ID if name provided
@@ -124,7 +125,7 @@ export class CourseAdminService implements ICourseAdminService {
         if (resolvedId) {
             gradeId = resolvedId;
         } else {
-             throw new AppError(`Grade '${gradeId}' not found`, HttpStatusCode.NOT_FOUND);
+             throw new AppError(MESSAGES.ADMIN.RESOURCE_NOT_FOUND("Grade"), HttpStatusCode.NOT_FOUND);
         }
     }
 
@@ -207,7 +208,7 @@ export class CourseAdminService implements ICourseAdminService {
     });
 
     if (!course) {
-        throw new AppError("Failed to create enrollment", HttpStatusCode.INTERNAL_SERVER_ERROR);
+        throw new AppError(MESSAGES.ADMIN.CREATE_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
 
     // Increment mentor's weekly bookings since status is "booked"
@@ -290,7 +291,7 @@ export class CourseAdminService implements ICourseAdminService {
     // 0. Fetch existing course
     const existingCourse = await this.courseRepo.findById(id);
     if (!existingCourse) {
-      throw new AppError("Course not found", HttpStatusCode.NOT_FOUND);
+      throw new AppError(MESSAGES.ADMIN.COURSE_NOT_FOUND, HttpStatusCode.NOT_FOUND);
     }
 
     // 1. Resolve IDs
@@ -357,7 +358,7 @@ export class CourseAdminService implements ICourseAdminService {
                         await this.timeSlotRepo.updateById(timeSlotId, {
                             currentStudentCount: newCount,
                             status: newCount === 0 ? 'available' : slot.status
-                        } as Partial<import("../interfaces/models/timeSlot.interface").ITimeSlot>);
+                        } as Partial<import("../interfaces/models/timeSlot.interface.js").ITimeSlot>);
                      }
                 }
             }
@@ -379,7 +380,7 @@ export class CourseAdminService implements ICourseAdminService {
     if (data.endDate) updateData.endDate = new Date(data.endDate);
 
     const updated = await this.courseRepo.updateCourse(id, updateData);
-    if (!updated) throw new AppError("Course not found", HttpStatusCode.NOT_FOUND);
+    if (!updated) throw new AppError(MESSAGES.ADMIN.COURSE_NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
     // 5. If significant changes, BOOK NEW RESOURCES & REGENERATE
     if ((mentorChanged || scheduleChanged) && newMentorId && newSchedule.days?.length > 0 && newSchedule.timeSlot) {
@@ -393,9 +394,9 @@ export class CourseAdminService implements ICourseAdminService {
 
         // B. Regenerate Future Sessions (Modern System)
         // Extract Start/End times
-        const formatTimePart = (t: string) => {
-             if (!t) return "00:00";
-             const [cleanTime, mod] = t.trim().split(' ');
+        const formatTimePart = (timePart: string) => {
+             if (!timePart) return "00:00";
+             const [cleanTime, mod] = timePart.trim().split(' ');
              const cleanTimeArr = (cleanTime || "00:00").split(':').map(Number);
              let h = cleanTimeArr[0];
              const m = cleanTimeArr[1];
@@ -405,12 +406,12 @@ export class CourseAdminService implements ICourseAdminService {
              }
              return `${(h || 0).toString().padStart(2, '0')}:${(m || 0).toString().padStart(2, '0')}`;
         };
-        const [startRaw, endRaw] = newSchedule.timeSlot.split('-').map(s => s.trim());
+        const [startRaw, endRaw] = newSchedule.timeSlot.split('-').map(part => part.trim());
         const startTimeStr = formatTimePart(startRaw || "00:00");
         const endTimeStr = formatTimePart(endRaw || "00:00");
 
-        const newSlots = newSchedule.days.map((d: string) => ({
-            day: d,
+        const newSlots = newSchedule.days.map((day: string) => ({
+            day: day,
             startTime: startTimeStr,
             endTime: endTimeStr
         }));
@@ -484,9 +485,9 @@ export class CourseAdminService implements ICourseAdminService {
                   { courseId, subjectName }
               );
           }
-      } catch(e) {
+      } catch(error) {
         // Log error sending update notifications
-        logger.error(`Error finding TrialClass ${courseId}:`, e);
+        logger.error(`Error finding TrialClass ${courseId}:`, error);
       }
   }
 
@@ -515,7 +516,7 @@ export class CourseAdminService implements ICourseAdminService {
       };
     } catch (error) {
       logger.error("Error fetching paginated courses:", error);
-      throw new AppError("Failed to fetch courses", HttpStatusCode.INTERNAL_SERVER_ERROR);
+      throw new AppError(MESSAGES.ADMIN.FETCH_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -529,7 +530,7 @@ export class CourseAdminService implements ICourseAdminService {
 
   async enrollStudentToCourse(courseId: string, studentId: string): Promise<unknown> {
     const course = await this.courseRepo.findById(courseId);
-    if (!course) throw new AppError("Course not found", HttpStatusCode.NOT_FOUND);
+    if (!course) throw new AppError(MESSAGES.ADMIN.COURSE_NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
     if (course.courseType === 'one-to-one') {
       return await this.updateOneToOneCourse(courseId, { studentId });
@@ -566,8 +567,8 @@ export class CourseAdminService implements ICourseAdminService {
             `You have been enrolled in the group course: ${subjectName} ${scheduleInfo}.`,
             { courseId: course._id, subjectName, schedule }
         );
-      } catch (err) {
-        logger.error(`Failed to send enrollment notification to student ${studentId}:`, err);
+      } catch (error) {
+        logger.error(`Failed to send enrollment notification to student ${studentId}:`, error);
       }
 
       // CREATE PAYMENT RECORD FOR FINANCIAL VISIBILITY
@@ -580,13 +581,13 @@ export class CourseAdminService implements ICourseAdminService {
         );
       }
 
-      return await this.courseRepo.updateCourse(courseId, { $inc: { enrolledStudents: 1 } } as unknown as Partial<import("../interfaces/repositories/ICourseRepository").CreateOneToOneCourseDto>);
+      return await this.courseRepo.updateCourse(courseId, { $inc: { enrolledStudents: 1 } } as any);
     }
   }
 
   async unenrollStudentFromCourse(courseId: string, studentId: string): Promise<unknown> {
     const course = await this.courseRepo.findById(courseId);
-    if (!course) throw new AppError("Course not found", HttpStatusCode.NOT_FOUND);
+    if (!course) throw new AppError(MESSAGES.ADMIN.COURSE_NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
     if (course.courseType === 'one-to-one') {
       return await this.updateOneToOneCourse(courseId, { studentId: undefined });
@@ -607,8 +608,8 @@ export class CourseAdminService implements ICourseAdminService {
             `You have been unenrolled from the course: ${subjectName}.`,
             { courseId: course._id, subjectName }
         );
-      } catch (err) {
-        logger.error(`Failed to send unenrollment notification to student ${studentId}:`, err);
+      } catch (error) {
+        logger.error(`Failed to send unenrollment notification to student ${studentId}:`, error);
       }
 
       // Trigger Slot Synchronization
@@ -618,7 +619,7 @@ export class CourseAdminService implements ICourseAdminService {
         );
       }
 
-      return await this.courseRepo.updateCourse(courseId, { $inc: { enrolledStudents: -1 } } as unknown as Partial<import("../interfaces/repositories/ICourseRepository").CreateOneToOneCourseDto>);
+      return await this.courseRepo.updateCourse(courseId, { $inc: { enrolledStudents: -1 } } as unknown as Partial<import("../interfaces/repositories/ICourseRepository.js").CreateOneToOneCourseDto>);
     }
   }
   private async _triggerSessionSync(mentorId: string) {
@@ -633,8 +634,8 @@ export class CourseAdminService implements ICourseAdminService {
             startTime: { $gte: today, $lte: nextMonth } as any
         });
 
-        const slotsFormatted = slots.map(s => {
-            const typed = s as unknown as { _id: { toString(): string }, mentorId: { toString(): string }, startTime: Date, endTime: Date };
+        const slotsFormatted = slots.map(slot => {
+            const typed = slot as unknown as { _id: { toString(): string }, mentorId: { toString(): string }, startTime: Date, endTime: Date };
             return {
                 _id: typed._id.toString(),
                 mentorId: typed.mentorId.toString(),

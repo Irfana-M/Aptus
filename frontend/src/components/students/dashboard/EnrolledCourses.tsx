@@ -2,18 +2,24 @@ import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchMyEnrollments } from '../../../features/student/studentThunk';
 import { BookOpen } from 'lucide-react';
-import type { RootState } from '../../../app/store';
+import type { RootState, AppDispatch } from '../../../app/store';
+import { Loader } from '../../ui/Loader';
+import { EmptyState } from '../../ui/EmptyState';
 
 const EnrolledCourses: React.FC = () => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const { enrollments, loading } = useSelector((state: RootState) => state.student);
 
   useEffect(() => {
     dispatch(fetchMyEnrollments());
   }, [dispatch]);
 
-  if (loading && enrollments.length === 0) {
-    return <div className="bg-white rounded-lg shadow-sm p-6">Loading Enrollments...</div>;
+  if (loading && (!enrollments || enrollments.length === 0)) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6 flex justify-center">
+        <Loader size="md" />
+      </div>
+    );
   }
 
   return (
@@ -40,7 +46,12 @@ const EnrolledCourses: React.FC = () => {
             </div>
             ))
         ) : (
-            <p className="text-gray-500 text-sm">No active enrollments found.</p>
+            <EmptyState 
+              icon={BookOpen} 
+              title="No courses yet" 
+              description="Explore our plans to get started." 
+              className="py-4 border-none" 
+            />
         )}
       </div>
     </div>

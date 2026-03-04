@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import { ROUTES } from '../../constants/routes.constants';
 import { Home, User, Users, Calendar, BookOpen, FileText, ClipboardList, Bell, Clock } from 'lucide-react';
 import { DashboardLayout } from '../layout/DashboardLayout';
 import type { NavItem } from '../layout/DashboardSidebar';
@@ -28,19 +29,19 @@ export const MentorLayout: React.FC<MentorLayoutProps> = ({ children, title }) =
 
   const handleLogout = async () => {
     await dispatch(logoutUser());
-    navigate('/login');
+    navigate(ROUTES.LOGIN);
   };
 
   const mentorNavItems: NavItem[] = [
-    { icon: <Home size={20} />, label: 'Dashboard', path: '/mentor/dashboard' },
-    { icon: <User size={20} />, label: 'Profile', path: '/mentor/profile-setup' },
-    { icon: <Users size={20} />, label: 'Students/Batches', path: '/mentor/students' },
-    { icon: <Calendar size={20} />, label: 'Attendance', path: '/mentor/attendance' },
-    { icon: <BookOpen size={20} />, label: 'Classroom', path: '/mentor/classroom' },
-    { icon: <FileText size={20} />, label: 'Study & Assignments', path: '/mentor/study-materials' },
-    { icon: <ClipboardList size={20} />, label: 'Class History', path: '/mentor/class-history' },
-    { icon: <Clock size={20} />, label: 'Availability', path: '/mentor/availability' },
-    { icon: <Bell size={20} />, label: 'Notifications', path: '/notifications' },
+    { icon: <Home size={20} />, label: 'Dashboard', path: ROUTES.MENTOR.DASHBOARD },
+    { icon: <User size={20} />, label: 'Profile', path: ROUTES.MENTOR.PROFILE_SETUP },
+    { icon: <Users size={20} />, label: 'Students/Batches', path: ROUTES.MENTOR.STUDENTS },
+    { icon: <Calendar size={20} />, label: 'Attendance', path: ROUTES.MENTOR.ATTENDANCE },
+    { icon: <BookOpen size={20} />, label: 'Classroom', path: ROUTES.MENTOR.CLASSROOM },
+    { icon: <FileText size={20} />, label: 'Study & Assignments', path: ROUTES.MENTOR.STUDY_MATERIALS },
+    { icon: <ClipboardList size={20} />, label: 'Class History', path: ROUTES.MENTOR.CLASS_HISTORY },
+    { icon: <Clock size={20} />, label: 'Availability', path: ROUTES.MENTOR.AVAILABILITY },
+    { icon: <Bell size={20} />, label: 'Notifications', path: ROUTES.COMMON.NOTIFICATIONS },
   ];
 
   const dashboardUser = {

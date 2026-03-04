@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import type { AppDispatch } from '../../app/store';
+import { useAppDispatch, useAppSelector } from '../../app/hooks';
+import { ROUTES } from '../../constants/routes.constants';
 import { 
   fetchTrialClassDetails,
   updateTrialClassStatus
@@ -11,6 +11,8 @@ import { Sidebar } from '../../components/admin/Sidebar';
 import { Topbar } from '../../components/admin/Topbar';
 import { MentorAssignmentModal } from '../../components/admin/MentorAssignmentModal';
 import { showToast } from '../../utils/toast';
+import { Loader } from '../../components/ui/Loader';
+import { EmptyState } from '../../components/ui/EmptyState';
 import {
   ArrowLeft,
   Clock,
@@ -28,9 +30,9 @@ import type { TrialClassResponse } from '../../types/trialTypes';
 export const TrialClassDetailsPage: React.FC = () => {
   const { trialClassId } = useParams<{ trialClassId: string }>();
   const navigate = useNavigate();
-  const dispatch = useDispatch<AppDispatch>();
-  const loading = useSelector(selectAdminLoading);
-  const trialClass = useSelector(selectTrialClassDetails) as TrialClassResponse | null;
+  const dispatch = useAppDispatch();
+  const loading = useAppSelector(selectAdminLoading);
+  const trialClass = useAppSelector(selectTrialClassDetails) as TrialClassResponse | null;
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("Trial Classes");
@@ -110,10 +112,7 @@ export const TrialClassDetailsPage: React.FC = () => {
           onClose={() => setSidebarOpen(false)}
         />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading trial class details...</p>
-          </div>
+          <Loader size="lg" text="Loading trial class details..." />
         </div>
       </div>
     );
@@ -129,16 +128,20 @@ export const TrialClassDetailsPage: React.FC = () => {
           onClose={() => setSidebarOpen(false)}
         />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Trial Class Not Found</h2>
-            <p className="text-gray-600 mb-4">The requested trial class could not be found.</p>
-            <button
-              onClick={() => navigate('/admin/trial-classes')}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-            >
-              Back to Trial Classes
-            </button>
+          <div className="text-center max-w-md">
+            <EmptyState 
+              icon={XCircle} 
+              title="Trial Class Not Found" 
+              description="The requested trial class could not be found or has been removed." 
+            />
+            <div className="mt-6">
+              <button
+                onClick={() => navigate(ROUTES.ADMIN.TRIAL_CLASSES)}
+                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium shadow-md shadow-purple-200"
+              >
+                Back to Trial Classes
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -169,7 +172,7 @@ export const TrialClassDetailsPage: React.FC = () => {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => navigate('/admin/trial-classes')}
+                onClick={() => navigate(ROUTES.ADMIN.TRIAL_CLASSES)}
                 className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 <ArrowLeft size={20} />

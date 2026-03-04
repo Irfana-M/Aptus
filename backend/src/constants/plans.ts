@@ -1,4 +1,4 @@
-import { PlanType } from '../enums/plan.enum';
+import { PlanType } from '../enums/plan.enum.js';
 
 export const PLAN_LIMITS = {
   [PlanType.BASIC]: {
@@ -13,11 +13,11 @@ export const PLAN_LIMITS = {
 
 export const PRICING_STRUCTURE = {
   [PlanType.BASIC]: {
-    monthly: 29.99,
-    currency: 'USD',
+    monthly: 2999,
+    currency: 'INR',
   },
   [PlanType.PREMIUM]: {
-    monthly: 99.99, // Assumption
-    currency: 'USD',
+    monthly: 9999, // Assumption
+    currency: 'INR',
   },
 };

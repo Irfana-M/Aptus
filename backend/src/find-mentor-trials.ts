@@ -1,5 +1,5 @@
 
-import { TrialClass } from "./models/student/trialClass.model";
+import { TrialClass } from "./models/student/trialClass.model.js";
 import mongoose from "mongoose";
 
 async function findMentorTrials() {
@@ -9,8 +9,8 @@ async function findMentorTrials() {
     const trials = await TrialClass.find({ mentor: new mongoose.Types.ObjectId(mentorId) });
     
     console.log(`Found ${trials.length} trials for mentor ${mentorId}`);
-    trials.forEach(t => {
-        console.log(`- Trial ID: ${t._id}, Status: ${t.status}, Student: ${t.student}`);
+    trials.forEach(trial => {
+        console.log(`- Trial ID: ${trial._id}, Status: ${trial.status}, Student: ${trial.student}`);
     });
     
     await mongoose.disconnect();

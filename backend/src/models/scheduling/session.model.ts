@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import type { ISession, ISessionParticipant } from "../../interfaces/models/session.interface";
+import type { ISession, ISessionParticipant } from "../../interfaces/models/session.interface.js";
 
 const participantSchema = new Schema(
   {

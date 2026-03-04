@@ -5,6 +5,7 @@ import { studentTrialApi } from '../../features/trial/student/studentTrialApi';
 import { fetchStudentProfile } from '../../features/student/studentThunk';
 import Header from '../../components/layout/Header';
 import { X } from 'lucide-react';
+import { ROUTES } from '../../constants/routes.constants';
 
 
 const TrialClassFeedback: React.FC = () => {
@@ -43,7 +44,7 @@ const TrialClassFeedback: React.FC = () => {
       if (rating >= 4 || satisfaction === 'satisfied') {
         setTimeout(() => {
           // User Requirement: Always go to profile-setup when satisfied
-          navigate('/student/profile-setup');
+          navigate(ROUTES.STUDENT.PROFILE_SETUP);
         }, 1500);
       } else {
         // Show popup for unsatisfied users
@@ -60,11 +61,11 @@ const TrialClassFeedback: React.FC = () => {
   };
 
   const handleContinueWithApp = () => {
-    navigate('/student/trial-classes');
+    navigate(ROUTES.STUDENT.DASHBOARD);
   };
 
   const handleGoToHomepage = () => {
-    navigate('/');
+    navigate(ROUTES.HOME);
   };
 
   return (

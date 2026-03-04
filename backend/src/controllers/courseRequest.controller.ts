@@ -1,14 +1,17 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types";
+import { TYPES } from "../types.js";
 import type { Request, Response, NextFunction } from 'express';
-import type { ICourseRequestService } from '../interfaces/services/ICourseRequestService';
-import { getPaginationParams } from "@/utils/pagination.util";
-import { logger } from "@/utils/logger";
+import type { ICourseRequestService } from '../interfaces/services/ICourseRequestService.js';
+import { getPaginationParams } from "@/utils/pagination.util.js";
+import { logger } from "@/utils/logger.js";
+import { HttpStatusCode } from "@/constants/httpStatus.js";
+import { MESSAGES } from "@/constants/messages.constants.js";
+import { UserRole } from "@/enums/user.enum.js";
 
 interface AuthRequest extends Request {
   user?: {
     id: string;
-    role: "admin" | "mentor" | "student";
+    role: UserRole;
     userId?: string; 
   }
 }
@@ -29,7 +32,7 @@ export class CourseRequestController {
       console.log('📝 [DEBUG] StudentID:', studentId);
 
       if (!studentId) {
-        res.status(401).json({ message: 'Unauthorized' });
+        res.status(HttpStatusCode.UNAUTHORIZED).json({ message: MESSAGES.COMMON.UNAUTHORIZED });
         return;
       }
 
@@ -40,13 +43,13 @@ export class CourseRequestController {
 
       if (!subject || !grade || !mentoringMode || !preferredDays || !finalTimeSlot) {
         console.error('❌ [DEBUG] Missing required fields', { subject, grade, mentoringMode, preferredDays, finalTimeSlot });
-        res.status(400).json({ message: 'Missing required fields' });
+        res.status(HttpStatusCode.BAD_REQUEST).json({ message: MESSAGES.COMMON.REQUIRED_FIELDS(['subject', 'grade', 'mentoringMode', 'preferredDays', 'timeSlot']) });
         return;
       }
       
       if (!Array.isArray(preferredDays) || preferredDays.length === 0) {
            console.error('❌ [DEBUG] preferredDays must be a non-empty array');
-           res.status(400).json({ message: 'At least one preferred day is required' });
+           res.status(HttpStatusCode.BAD_REQUEST).json({ message: MESSAGES.STUDENT.PREFERENCE_REQUIRED });
            return;
       }
 
@@ -66,18 +69,18 @@ export class CourseRequestController {
 
       console.log('✅ [DEBUG] Saved request:', savedRequest);
 
-      res.status(201).json({
-        message: 'Course request submitted successfully',
+      res.status(HttpStatusCode.CREATED).json({
+        message: MESSAGES.STUDENT.MENTOR_REQUEST_SUCCESS,
         data: savedRequest
       });
     } catch (error: unknown) {
       console.error('❌ [DEBUG] Error creating course request:', error);
       if (error instanceof Error && error.name === 'ValidationError') {
-           res.status(400).json({ message: 'Validation Error', error: error.message });
+           res.status(HttpStatusCode.BAD_REQUEST).json({ message: MESSAGES.ADMIN.VALIDATION_FAILED, error: error.message });
            return;
       }
       const message = error instanceof Error ? error.message : 'Unknown error';
-      res.status(500).json({ message: 'Internal server error', error: message });
+      res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: 'Internal server error', error: message });
     }
   }
 
@@ -89,11 +92,11 @@ export class CourseRequestController {
 
       const result = await this._service.getAllRequestsPaginated({ page, limit });
 
-      res.status(200).json(result);
+      res.status(HttpStatusCode.OK).json(result);
     } catch (error: unknown) {
       console.error('Error fetching course requests:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
-      res.status(500).json({ success: false, message: 'Internal server error', error: message });
+      res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Internal server error', error: message });
     }
   }
 
@@ -104,20 +107,20 @@ export class CourseRequestController {
           const studentId = authReq.user?.userId || authReq.user?.id;
           
           if (!studentId) {
-              res.status(401).json({ message: 'Unauthorized' });
+              res.status(HttpStatusCode.UNAUTHORIZED).json({ message: MESSAGES.COMMON.UNAUTHORIZED });
               return;
           }
 
           const requests = await this._service.getMyRequests(studentId);
 
-          res.status(200).json({
-              message: 'My course requests fetched successfully',
+          res.status(HttpStatusCode.OK).json({
+              message: MESSAGES.STUDENT.FETCH_SUCCESS,
               data: requests
           });
       } catch (error: unknown) {
         console.error('Error fetching my course requests:', error);
         const message = error instanceof Error ? error.message : 'Unknown error';
-        res.status(500).json({ message: 'Internal server error', error: message });
+        res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: 'Internal server error', error: message });
     }
   }
 
@@ -128,19 +131,19 @@ export class CourseRequestController {
       const { status } = req.body;
 
       if (!id) {
-          res.status(400).json({ message: 'Request ID is required' });
+          res.status(HttpStatusCode.BAD_REQUEST).json({ message: MESSAGES.COMMON.ID_REQUIRED("Request") });
           return;
       }
 
       const updatedRequest = await this._service.updateStatus(id, status);
 
       if (!updatedRequest) {
-        res.status(404).json({ message: 'Request not found' });
+        res.status(HttpStatusCode.NOT_FOUND).json({ message: MESSAGES.ADMIN.RESOURCE_NOT_FOUND("Request") });
         return;
       }
 
-      res.status(200).json({
-        message: 'Request status updated',
+      res.status(HttpStatusCode.OK).json({
+        message: MESSAGES.ADMIN.STATUS_UPDATE_SUCCESS,
         data: updatedRequest
       });
     } catch (error: unknown) {
@@ -148,10 +151,10 @@ export class CourseRequestController {
       const message = error instanceof Error ? error.message : 'Unknown error';
       
       if (message === "Invalid status") {
-          res.status(400).json({ message });
+          res.status(HttpStatusCode.BAD_REQUEST).json({ message });
           return;
       }
-      res.status(500).json({ message: 'Internal server error', error: message });
+      res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: 'Internal server error', error: message });
     }
   }
 }

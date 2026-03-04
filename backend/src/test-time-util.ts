@@ -1,5 +1,5 @@
 
-import { normalizeTimeTo24h, isSlotMatching, isShiftMatching } from './utils/time.util';
+import { normalizeTimeTo24h, isSlotMatching, isShiftMatching } from './utils/time.util.js';
 
 const test = () => {
   console.log('--- Testing normalizeTimeTo24h ---');

@@ -1,8 +1,8 @@
 import { injectable } from "inversify";
-import { Grade, type IGrade } from "@/models/grade.model";
-import { logger } from "@/utils/logger";
-import type { IGradeRepository } from "@/interfaces/repositories/IGradeRepository";
-import { BaseRepository } from "./baseRepository";
+import { Grade, type IGrade } from "@/models/grade.model.js";
+import { logger } from "@/utils/logger.js";
+import type { IGradeRepository } from "@/interfaces/repositories/IGradeRepository.js";
+import { BaseRepository } from "./baseRepository.js";
 
 @injectable()
 export class GradeRepository extends BaseRepository<IGrade> implements IGradeRepository {

@@ -1,6 +1,6 @@
 import mongoose, { Schema } from "mongoose";
-import type { MentorProfile } from "@/interfaces/models/mentor.interface";
-import { ApprovalStatus } from "../../domain/enums/ApprovalStatus";
+import type { MentorProfile } from "@/interfaces/models/mentor.interface.js";
+import { ApprovalStatus } from "../../domain/enums/ApprovalStatus.js";
 const academicQualificationSchema = new Schema({
   institutionName: String,
   degree: String,

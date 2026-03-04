@@ -1,53 +1,53 @@
 import { injectable, inject } from 'inversify';
 
-import type { IStudentService } from "../interfaces/services/IStudentService";
-import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
-import type { IGradeRepository } from "../interfaces/repositories/IGradeRepository";
-import type { AuthUser } from "../interfaces/auth/auth.interface";
-import { logger } from "../utils/logger";
-import { getErrorMessage } from "../utils/errorUtils";
-import { HttpStatusCode } from "../constants/httpStatus";
-import { TYPES } from '../types';
-import type { StudentBaseResponseDto } from '@/dtos/auth/UserResponseDTO';
-import { StudentMapper } from '@/mappers/StudentMapper';
-import type { StudentProfile, StudentRegisterInput, AcademicDetails, contactInfo, ParentInfo } from '@/interfaces/models/student.interface';
-import { AppError } from '@/utils/AppError';
+import type { IStudentService } from "../interfaces/services/IStudentService.js";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository.js";
+import type { IGradeRepository } from "../interfaces/repositories/IGradeRepository.js";
+import type { AuthUser } from "../interfaces/auth/auth.interface.js";
+import { logger } from "../utils/logger.js";
+import { getErrorMessage } from "../utils/errorUtils.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import { TYPES } from '../types.js';
+import type { StudentBaseResponseDto } from '@/dtos/auth/UserResponseDTO.js';
+import { StudentMapper } from '@/mappers/StudentMapper.js';
+import type { StudentProfile, StudentRegisterInput, AcademicDetails, contactInfo, ParentInfo } from '@/interfaces/models/student.interface.js';
+import { AppError } from '@/utils/AppError.js';
+import { MESSAGES } from '@/constants/messages.constants.js';
 
-import type { INotificationService } from '../interfaces/services/INotificationService';
-import { InternalEventEmitter } from '../utils/InternalEventEmitter';
-import { EVENTS } from '../utils/InternalEventEmitter';
-import { PLAN_LIMITS } from '../constants/plans';
-import { PlanType } from '../enums/plan.enum';
-import type { ICourseRepository } from '../interfaces/repositories/ICourseRepository';
-import { ApprovalStatus } from '../domain/enums/ApprovalStatus';
-import { StudentOnboardingStatus } from '../enums/studentOnboarding.enum';
-import type { IEnrollmentService } from '../interfaces/services/IEnrollmentService';
-import type { ICourseRequestRepository } from '../interfaces/repositories/ICourseRequestRepository';
-import type { ISubjectRepository } from '../interfaces/repositories/ISubjectRepository';
+import type { INotificationService } from '../interfaces/services/INotificationService.js';
+import { InternalEventEmitter } from '../utils/InternalEventEmitter.js';
+import { EVENTS } from '../utils/InternalEventEmitter.js';
+import { PLAN_LIMITS } from '../constants/plans.js';
+import { PlanType } from '../enums/plan.enum.js';
+import type { ICourseRepository } from '../interfaces/repositories/ICourseRepository.js';
+import { OnboardingEvent, StudentOnboardingStatus } from '../enums/studentOnboarding.enum.js';
+import type { IEnrollmentService } from '../interfaces/services/IEnrollmentService.js';
+import type { ICourseRequestRepository } from '../interfaces/repositories/ICourseRequestRepository.js';
+import type { ISubjectRepository } from '../interfaces/repositories/ISubjectRepository.js';
 
 @injectable()
 export class StudentService implements IStudentService {
   constructor(
-    @inject(TYPES.IStudentRepository) private studentRepo: IStudentRepository,
-    @inject(TYPES.IGradeRepository) private gradeRepo: IGradeRepository,
-    @inject(TYPES.INotificationService) private notificationService: INotificationService,
-    @inject(TYPES.IMentorAssignmentRequestRepository) private mentorRequestRepo: import("../interfaces/repositories/IMentorAssignmentRequestRepository").IMentorAssignmentRequestRepository,
-    @inject(TYPES.ICourseRepository) private courseRepo: ICourseRepository,
-    @inject(TYPES.IEnrollmentService) private enrollmentService: IEnrollmentService,
-    @inject(TYPES.ICourseRequestRepository) private courseRequestRepo: ICourseRequestRepository,
-    @inject(TYPES.ISubjectRepository) private subjectRepo: ISubjectRepository,
-    @inject(TYPES.InternalEventEmitter) private eventEmitter: InternalEventEmitter
+    @inject(TYPES.IStudentRepository) private _studentRepo: IStudentRepository,
+    @inject(TYPES.IGradeRepository) private _gradeRepo: IGradeRepository,
+    @inject(TYPES.INotificationService) private _notificationService: INotificationService,
+    @inject(TYPES.IMentorAssignmentRequestRepository) private _mentorRequestRepo: import("../interfaces/repositories/IMentorAssignmentRequestRepository.js").IMentorAssignmentRequestRepository,
+    @inject(TYPES.ICourseRepository) private _courseRepo: ICourseRepository,
+    @inject(TYPES.IEnrollmentService) private _enrollmentService: IEnrollmentService,
+    @inject(TYPES.ICourseRequestRepository) private _courseRequestRepo: ICourseRequestRepository,
+    @inject(TYPES.ISubjectRepository) private _subjectRepo: ISubjectRepository,
+    @inject(TYPES.InternalEventEmitter) private _eventEmitter: InternalEventEmitter
   ) {}
 
   async registerStudent(data: AuthUser): Promise<AuthUser> {
     try {
-      const existing = await this.studentRepo.findByEmail(data.email);
+      const existing = await this._studentRepo.findByEmail(data.email);
       if (existing) {
         logger.warn(`Attempted to register existing student: ${data.email}`);
-        throw new AppError("Student already exists", HttpStatusCode.BAD_REQUEST);
+        throw new AppError(MESSAGES.AUTH.USER_EXISTS, HttpStatusCode.BAD_REQUEST);
       }
 
-      const student = await this.studentRepo.createUser(data);
+      const student = await this._studentRepo.createUser(data);
       logger.info(`Student registered successfully: ${student.email}`);
       return student;
     } catch (error: unknown) {
@@ -61,7 +61,7 @@ export class StudentService implements IStudentService {
   async findStudentByEmail(email: string): Promise<AuthUser | null> {
     try {
       logger.debug(`Finding student by email: ${email}`);
-      const student = await this.studentRepo.findByEmail(email);
+      const student = await this._studentRepo.findByEmail(email);
       return student;
     } catch (error: unknown) {
       logger.error(`Error finding student by email ${email}`, { error: getErrorMessage(error) });
@@ -79,7 +79,7 @@ export class StudentService implements IStudentService {
           isVerified: false
       } as unknown as AuthUser;
       
-      const student = await this.studentRepo.createUser(newUser);
+      const student = await this._studentRepo.createUser(newUser);
       logger.info(`Student created successfully: ${student.email}`);
       return student;
     } catch (error: unknown) {
@@ -90,7 +90,7 @@ export class StudentService implements IStudentService {
 
 
   async getById(id: string): Promise<StudentBaseResponseDto | null> {
-    const student = await this.studentRepo.findById(id);
+    const student = await this._studentRepo.findById(id);
     if (!student) return null;
 
     // Inject role dynamically since DB doesn't have it
@@ -105,13 +105,13 @@ export class StudentService implements IStudentService {
       // Handle profile picture upload if provided
       if (data.profileImage) {
           try {
-            const imageKey = await this.handleProfilePictureUpload(data.profileImage as unknown);
+            const imageKey = await this._handleProfilePictureUpload(data.profileImage as unknown);
             data.profileImage = imageKey;
             data.profileImageKey = imageKey; // Also save to profileImageKey if needed
             logger.debug(`Profile image uploaded for student: ${id}, Key: ${imageKey}`);
           } catch (uploadError: unknown) {
             logger.error(`Error uploading profile image for student ${id}: ${getErrorMessage(uploadError)}`);
-            throw new Error(`Failed to upload profile image: ${getErrorMessage(uploadError)}`);
+            throw new Error(MESSAGES.STUDENT.UPLOAD_FAILED("profile image"));
           }
         }
 
@@ -131,8 +131,8 @@ export class StudentService implements IStudentService {
       */
       
       // 1. Fetch current student to merge data for completeness check
-      const currentStudent = await this.studentRepo.findById(id);
-      if (!currentStudent) throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
+      const currentStudent = await this._studentRepo.findById(id);
+      if (!currentStudent) throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
       const studentObj = currentStudent as unknown as StudentProfile;
 
@@ -164,13 +164,13 @@ export class StudentService implements IStudentService {
 
           if (gradeName && syllabus) {
             try {
-              const grade = await this.gradeRepo.findOne({
+              const grade = await this._gradeRepo.findOne({
                 name: gradeName,
                 syllabus: syllabus.toUpperCase() as "CBSE" | "STATE" | "ICSE",
                 isActive: true
               });
               if (grade) {
-                updateDataFlat.gradeId = grade._id as any;
+                updateDataFlat.gradeId = grade._id as unknown as import('mongoose').Types.ObjectId;
                 logger.info(`Resolved gradeId: ${grade._id} for Grade: ${gradeName}, Syllabus: ${syllabus}`);
               } else {
                 logger.warn(`Could not resolve gradeId for Grade: ${gradeName}, Syllabus: ${syllabus}`);
@@ -274,17 +274,17 @@ export class StudentService implements IStudentService {
         missingFields: !isProfileCompleted ? 'CHECK WARN LOGS' : 'NONE'
       });
       
-      const updatedStudent = await this.studentRepo.updateProfile(id, updateDataMapped);
+      const updatedStudent = await this._studentRepo.updateProfile(id, updateDataMapped);
       logger.info(`Student profile updated successfully: ${id}, isProfileCompleted: ${isProfileCompleted}`);
 
       // Auto-advance onboarding status if profile is determined complete
       if (isProfileCompleted) {
           try {
               await this.advanceOnboarding(id, 'PROFILE_COMPLETED');
-          } catch (e) {
+          } catch (error) {
               // Non-blocking error, just log. 
               // Usually this means they were already advanced or it's an idempotent operation
-              logger.warn(`Could not advance onboarding status after profile update for ${id}. This might be expected if already advanced.`, { error: getErrorMessage(e) });
+              logger.warn(`Could not advance onboarding status after profile update for ${id}. This might be expected if already advanced.`, { error: getErrorMessage(error) });
           }
       }
 
@@ -295,7 +295,7 @@ export class StudentService implements IStudentService {
     }
   }
 
-  private async handleProfilePictureUpload(file: unknown): Promise<string> {
+  private async _handleProfilePictureUpload(file: unknown): Promise<string> {
     const f = file as { originalname: string; mimetype: string; size: number; buffer: Buffer };
     try {
       logger.debug("Handling profile picture upload:", {
@@ -304,7 +304,7 @@ export class StudentService implements IStudentService {
         size: f.size,
       });
 
-      if (!f) throw new Error("No file provided for profile picture");
+      if (!f) throw new Error(MESSAGES.STUDENT.FILE_REQUIRED("profile picture"));
 
       const allowedMimeTypes = [
         "image/jpeg",
@@ -319,7 +319,7 @@ export class StudentService implements IStudentService {
       const maxSize = 5 * 1024 * 1024;
       if (f.size > maxSize) throw new Error("File too large (max 5MB)");
 
-      const { uploadFileToS3 } = await import("../utils/s3Upload");
+      const { uploadFileToS3 } = await import("../utils/s3Upload.js");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const imageKey = await uploadFileToS3(f as any); 
 
@@ -335,10 +335,10 @@ export class StudentService implements IStudentService {
   async getStudentProfileById(id: string): Promise<StudentProfile | null> {
     try {
       logger.info(`Fetching complete profile for student: ${id}`);
-      const profile = await this.studentRepo.findStudentProfileById(id);
+      const profile = await this._studentRepo.findStudentProfileById(id);
       
       if (!profile) {
-        throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
 
       logger.info(`Student profile retrieved successfully: ${id}`);
@@ -349,14 +349,14 @@ export class StudentService implements IStudentService {
     }
   }
 
-  async advanceOnboarding(studentId: string, event: import('../enums/studentOnboarding.enum').OnboardingEvent): Promise<void> {
+  async advanceOnboarding(studentId: string, event: import('../enums/studentOnboarding.enum.js').OnboardingEvent): Promise<void> {
     try {
       // Lazy load to avoid circular dependency issues if any, though Domain/Policy should be clean
-      const { StudentOnboardingPolicy } = await import('../domain/policy/StudentOnboardingPolicy');
-      const { StudentOnboardingStatus } = await import('../enums/studentOnboarding.enum');
+      const { StudentOnboardingPolicy } = await import('../domain/policy/StudentOnboardingPolicy.js');
+      const { StudentOnboardingStatus } = await import('../enums/studentOnboarding.enum.js');
 
-      const student = await this.studentRepo.findStudentProfileById(studentId);
-      if (!student) throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
+      const student = await this._studentRepo.findStudentProfileById(studentId);
+      if (!student) throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
       // Handle enum values that might be stored as strings in DB
       const studentProfile = student as StudentProfile;
@@ -369,11 +369,11 @@ export class StudentService implements IStudentService {
         if (currentStatus === newStatus) return; // Idempotent
         
         logger.warn(`Invalid onboarding transition for student ${studentId}: ${currentStatus} -> ${newStatus}`);
-        throw new AppError(`Invalid onboarding transition from ${currentStatus}`, HttpStatusCode.BAD_REQUEST);
+        throw new AppError(MESSAGES.STUDENT.INVALID_TRANSITION(currentStatus), HttpStatusCode.BAD_REQUEST);
       }
 
       // Update status
-      await this.studentRepo.updateProfile(studentId, { onboardingStatus: newStatus });
+      await this._studentRepo.updateProfile(studentId, { onboardingStatus: newStatus });
       logger.info(`Student ${studentId} onboarding advanced: ${currentStatus} -> ${newStatus}`);
 
     } catch (error: unknown) {
@@ -386,18 +386,18 @@ export class StudentService implements IStudentService {
     try {
       logger.info(`Updating nested preferences for student: ${studentId}`);
       
-      const student = await this.studentRepo.findStudentProfileById(studentId);
-      if (!student) throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
+      const student = await this._studentRepo.findStudentProfileById(studentId);
+      if (!student) throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       
       const studentProfile = student as StudentProfile;
       const planSubjectCount = studentProfile.subscription?.subjectCount || 1;
       
       // 1. Validate subject count and structure
       if (!preferences || preferences.length === 0) {
-        throw new AppError("At least one subject preference must be selected", HttpStatusCode.BAD_REQUEST);
+        throw new AppError(MESSAGES.STUDENT.PREFERENCE_REQUIRED, HttpStatusCode.BAD_REQUEST);
       }
       if (preferences.length > planSubjectCount) {
-        throw new AppError(`You can select up to ${planSubjectCount} subjects based on your plan`, HttpStatusCode.BAD_REQUEST);
+        throw new AppError(MESSAGES.STUDENT.PLAN_LIMIT_EXCEEDED(planSubjectCount), HttpStatusCode.BAD_REQUEST);
       }
       
       // 2. Validate slots per subject and plan constraints
@@ -406,34 +406,34 @@ export class StudentService implements IStudentService {
 
       preferences.forEach(pref => {
         if (!pref.slots || pref.slots.length === 0) {
-          throw new AppError(`Subject ${pref.subjectId} must have at least one time slot`, HttpStatusCode.BAD_REQUEST);
+          throw new AppError(MESSAGES.STUDENT.SLOT_REQUIRED(pref.subjectId), HttpStatusCode.BAD_REQUEST);
         }
 
         // Basic Plan Constraint: Exactly 2 sessions (one Sat, one Sun)
         if (isBasic) {
            if (pref.slots.length !== 2) {
-             throw new AppError(`Basic Plan requires exactly 2 shifts per subject (one for Saturday and one for Sunday).`, HttpStatusCode.BAD_REQUEST);
+             throw new AppError(MESSAGES.STUDENT.BASIC_PLAN_CONSTRAINT, HttpStatusCode.BAD_REQUEST);
            }
            const hasSat = pref.slots.some((s) => s.day === 'Saturday');
            const hasSun = pref.slots.some((s) => s.day === 'Sunday');
            if (!hasSat || !hasSun) {
-             throw new AppError(`Basic Plan requires one shift on Saturday and one on Sunday.`, HttpStatusCode.BAD_REQUEST);
+             throw new AppError(MESSAGES.STUDENT.BASIC_PLAN_CONSTRAINT, HttpStatusCode.BAD_REQUEST);
            }
         }
 
         pref.slots.forEach((slot) => {
           // Holiday constraint for Basic Plan (Redundant but safe)
           if (isBasic && !['Saturday', 'Sunday'].includes(slot.day)) {
-            throw new AppError("Basic plan sessions are only allowed on holidays (Saturday and Sunday)", HttpStatusCode.BAD_REQUEST);
+            throw new AppError(MESSAGES.STUDENT.BASIC_PLAN_CONSTRAINT, HttpStatusCode.BAD_REQUEST);
           }
 
           // Validate Shift Values (MORNING/AFTERNOON) or Time Formats
           const isShift = ['MORNING', 'AFTERNOON', 'FLEXIBLE'].includes(slot.startTime);
           
           // Cross-subject overlap check (simplified for shifts)
-          const hasOverlap = allSelectedSlots.some(s => s.day === slot.day && s.startTime === slot.startTime);
+          const hasOverlap = allSelectedSlots.some(selectedSlot => selectedSlot.day === slot.day && selectedSlot.startTime === slot.startTime);
           if (hasOverlap && isShift) {
-            throw new AppError(`Shift ${slot.day} ${slot.startTime} is selected for multiple subjects. Please pick distinct shifts.`, HttpStatusCode.BAD_REQUEST);
+            throw new AppError(MESSAGES.STUDENT.SHIFT_OVERLAP(slot.day, slot.startTime), HttpStatusCode.BAD_REQUEST);
           }
           
           allSelectedSlots.push({ day: slot.day, startTime: slot.startTime });
@@ -442,12 +442,12 @@ export class StudentService implements IStudentService {
       
       // 3. Update profile
       const updateData: Partial<StudentProfile> = {
-        preferredSubjects: preferences.map(p => p.subjectId) as any,
-        preferredTimeSlots: preferences as any,
+        preferredSubjects: preferences.map(preference => preference.subjectId) as unknown as import('mongoose').Types.ObjectId[],
+        preferredTimeSlots: preferences as unknown as import('../interfaces/models/student.interface.js').SubjectPreference[],
         preferencesCompleted: true
       };
       
-      const updatedStudent = await this.studentRepo.updateProfile(studentId, updateData);
+      const updatedStudent = await this._studentRepo.updateProfile(studentId, updateData);
       
       // 4. Handle Group Course Requests for Basic Plan
       if (isBasic) {
@@ -472,54 +472,54 @@ export class StudentService implements IStudentService {
           }
 
           // Fetch subject details for accurate names and syllabus
-          const subjectDoc = await this.subjectRepo.findById(validSubId);
+          const subjectDoc = await this._subjectRepo.findById(validSubId);
           
           // Upsert CourseRequest: one per student per subject
-          const existingRequest = await this.courseRequestRepo.findOne({
-            student: studentId as any,
-            subjectId: validSubId as any,
+          const existingRequest = await this._courseRequestRepo.findOne({
+            student: studentId as unknown as import('mongoose').Types.ObjectId,
+            subjectId: validSubId as unknown as import('mongoose').Types.ObjectId,
             status: { $in: ['pending', 'approved', 'reviewed'] }
-          }) || await this.courseRequestRepo.findOne({ // Fallback to name search for legacy requests
-            student: studentId as any,
+          }) || await this._courseRequestRepo.findOne({ // Fallback to name search for legacy requests
+            student: studentId as unknown as import('mongoose').Types.ObjectId,
             subject: subjectDoc?.subjectName || pref.subjectId,
             status: { $in: ['pending', 'approved', 'reviewed'] }
           });
 
           const requestData: Record<string, unknown> = {
-            student: studentId as any,
+            student: studentId,
             subject: subjectDoc?.subjectName || pref.subjectId,
-            subjectId: validSubId as any,
-            grade: (studentProfile.gradeId as any)?.name || studentProfile.academicDetails?.grade || 'N/A',
+            subjectId: validSubId,
+            grade: (studentProfile.gradeId as unknown as { name?: string })?.name || studentProfile.academicDetails?.grade || 'N/A',
             syllabus: subjectDoc?.syllabus || studentProfile.academicDetails?.syllabus,
             mentoringMode: 'group',
             status: 'pending',
-            preferredDays: pref.slots.map(s => s.day),
+            preferredDays: pref.slots.map(slot => slot.day),
             timeSlot: pref.slots[0]?.startTime, 
             timezone: studentProfile.contactInfo?.address || 'UTC' // Falling back to address if timezone not in profile
           };
 
           if (validGradeId) {
-              requestData.gradeId = validGradeId as any;
+              requestData.gradeId = validGradeId;
           }
 
           if (existingRequest) {
-            await this.courseRequestRepo.updateById((existingRequest as any)._id, requestData);
+            await this._courseRequestRepo.updateById((existingRequest as unknown as { _id: { toString(): string } })._id.toString(), requestData);
           } else {
-            await this.courseRequestRepo.create(requestData);
+            await this._courseRequestRepo.create(requestData);
           }
         }
       }
 
       // 5. Advance onboarding
       try {
-        await this.advanceOnboarding(studentId, 'PREFERENCES_COMPLETED' as any);
-      } catch (e) {
-        logger.warn(`Failed to advance onboarding to PREFERENCES_COMPLETED for ${studentId}`, { error: getErrorMessage(e) });
+        await this.advanceOnboarding(studentId, 'PREFERENCES_COMPLETED' as import('../enums/studentOnboarding.enum.js').OnboardingEvent);
+      } catch (error) {
+        logger.warn(`Failed to advance onboarding to PREFERENCES_COMPLETED for ${studentId}`, { error: getErrorMessage(error) });
       }
 
       // 5. Notifications via events
-      const studentName = (updatedStudent as any)?.fullName || "Student";
-      this.eventEmitter.emit(EVENTS.PREFERENCES_SUBMITTED, {
+      const studentName = (updatedStudent as unknown as { fullName?: string })?.fullName || "Student";
+      this._eventEmitter.emit(EVENTS.PREFERENCES_SUBMITTED, {
         studentId,
         studentName,
         adminId: "SYSTEM_ADMIN" 
@@ -536,48 +536,49 @@ export class StudentService implements IStudentService {
     try {
       logger.info(`Processing mentor request: Student ${studentId}, Subject ${subjectId}, Mentor ${mentorId}`);
 
-      const student = await this.studentRepo.findStudentProfileById(studentId);
-      if (!student) throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
+      const student = await this._studentRepo.findStudentProfileById(studentId);
+      if (!student) throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
 
       // 1. Check for existing pending request
-      const existingRequest = await this.mentorRequestRepo.findOne({
-        studentId: studentId as any,
-        subjectId: subjectId as any,
+      const existingRequest = await this._mentorRequestRepo.findOne({
+        studentId: studentId as unknown as import('mongoose').Types.ObjectId,
+        subjectId: subjectId as unknown as import('mongoose').Types.ObjectId,
         status: 'pending'
       });
 
       if (existingRequest) {
-        throw new AppError("You already have a pending mentor request for this subject.", HttpStatusCode.CONFLICT);
+        throw new AppError(MESSAGES.STUDENT.PENDING_REQUEST_EXISTS, HttpStatusCode.CONFLICT);
       }
 
       // 2. Update Student Preferred Time Slot Status
       const studentProfile = student as StudentProfile;
       const subjectPreferenceIndex = studentProfile.preferredTimeSlots?.findIndex(
-        (slot: any) => slot.subjectId.toString() === subjectId || (slot.subjectId as any)._id?.toString() === subjectId
+        (slot) => (slot.subjectId as unknown as { toString(): string }).toString() === subjectId ||
+          (slot.subjectId as unknown as { _id?: { toString(): string } })._id?.toString() === subjectId
       );
 
       if (
         subjectPreferenceIndex === undefined || subjectPreferenceIndex === -1
       ) {
-        throw new AppError("Preferences not found for this subject. Please submit preferences first.", HttpStatusCode.BAD_REQUEST);
+        throw new AppError(MESSAGES.STUDENT.PREFERENCES_MISSING, HttpStatusCode.BAD_REQUEST);
       }
 
       // We need to use updateOne directly to target the specific array element
-      await this.studentRepo.updateProfile(studentId, {
+      await this._studentRepo.updateProfile(studentId, {
         [`preferredTimeSlots.${subjectPreferenceIndex}.status`]: 'mentor_requested'
       } as Partial<StudentProfile>);
 
       // 3. Create MentorAssignmentRequest
-      await this.mentorRequestRepo.create({
-        studentId: studentId as any,
-        subjectId: subjectId as any,
-        mentorId: mentorId as any,
+      await this._mentorRequestRepo.create({
+        studentId: studentId as unknown as import('mongoose').Types.ObjectId,
+        subjectId: subjectId as unknown as import('mongoose').Types.ObjectId,
+        mentorId: mentorId as unknown as import('mongoose').Types.ObjectId,
         status: 'pending'
       });
 
       // 4. Send Notification via event
-      this.eventEmitter.emit(EVENTS.MENTOR_REQUEST_SUBMITTED, {
+      this._eventEmitter.emit(EVENTS.MENTOR_REQUEST_SUBMITTED, {
         studentId,
         studentName: studentProfile.fullName || "Student",
         mentorName: "Mentor", 
@@ -595,17 +596,17 @@ export class StudentService implements IStudentService {
     try {
       logger.info(`Updating basic preferences for student: ${studentId}, Subjects: ${subjectIds}`);
       
-      const student = await this.studentRepo.findStudentProfileById(studentId);
-      if (!student) throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
+      const student = await this._studentRepo.findStudentProfileById(studentId);
+      if (!student) throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       
       const studentProfile = student as StudentProfile;
       const planSubjectCount = studentProfile.subscription?.subjectCount || 1;
       
       if (!subjectIds || subjectIds.length === 0) {
-        throw new AppError("At least one subject must be selected", HttpStatusCode.BAD_REQUEST);
+        throw new AppError(MESSAGES.STUDENT.PREFERENCE_REQUIRED, HttpStatusCode.BAD_REQUEST);
       }
       if (subjectIds.length > planSubjectCount) {
-        throw new AppError(`You can select up to ${planSubjectCount} subjects based on your plan`, HttpStatusCode.BAD_REQUEST);
+        throw new AppError(MESSAGES.STUDENT.PLAN_LIMIT_EXCEEDED(planSubjectCount), HttpStatusCode.BAD_REQUEST);
       }
 
       // Process each subject
@@ -613,7 +614,7 @@ export class StudentService implements IStudentService {
         // 1. Search for existing group course with capacity
         const maxGroupSize = PLAN_LIMITS[PlanType.BASIC].maxGroupSize;
         
-        const existingGroup = await this.courseRepo.findOne({
+        const existingGroup = await this._courseRepo.findOne({
           subject: subjectId,
           courseType: 'group',
           status: 'available',
@@ -621,34 +622,34 @@ export class StudentService implements IStudentService {
           isActive: true,
           // Optimization: Check for grade as well if student's grade is known
           grade: studentProfile.gradeId || studentProfile.academicDetails?.grade
-        } as any);
+        } as unknown as Record<string, unknown>);
 
         if (existingGroup) {
           logger.info(`Found existing group course ${existingGroup._id}. Enrolling student ${studentId}`);
-          await this.enrollmentService.enrollInCourse(studentId, (existingGroup as any)._id.toString());
+          await this._enrollmentService.enrollInCourse(studentId, (existingGroup as unknown as { _id: { toString(): string } })._id.toString());
           
           // Increment enrolledStudents count
-          await this.courseRepo.updateCourse((existingGroup as any)._id.toString(), { 
+          await this._courseRepo.updateCourse((existingGroup as unknown as { _id: { toString(): string } })._id.toString(), { 
             $inc: { enrolledStudents: 1 } 
-          } as any);
+          } as unknown as Record<string, unknown>);
 
           // Emit notification event for mentor
-          this.eventEmitter.emit(EVENTS.MENTOR_STUDENT_ASSIGNED, {
+          this._eventEmitter.emit(EVENTS.MENTOR_STUDENT_ASSIGNED, {
             studentId,
             studentName: studentProfile.fullName,
-            courseId: (existingGroup as any)._id.toString(),
-            mentorId: (existingGroup as any).mentor?.toString()
+            courseId: (existingGroup as unknown as { _id: { toString(): string } })._id.toString(),
+            mentorId: (existingGroup as unknown as { mentor?: { toString(): string } }).mentor?.toString()
           });
         } else {
           logger.info(`No existing group found for subject ${subjectId}. Creating Admin request.`);
           // 3. Create CourseRequest for Admin
           const gradeVal = studentProfile.gradeId || studentProfile.academicDetails?.grade;
-          const finalGradeId = (gradeVal && typeof gradeVal === 'object' && '_id' in gradeVal) ? (gradeVal as any)._id.toString() : gradeVal;
+          const finalGradeId = (gradeVal && typeof gradeVal === 'object' && '_id' in gradeVal) ? (gradeVal as unknown as { _id: { toString(): string } })._id.toString() : gradeVal;
 
-          await this.courseRequestRepo.create({
-            student: studentId as any,
+          await this._courseRequestRepo.create({
+            student: studentId,
             subject: subjectId,
-            grade: finalGradeId as any,
+            grade: finalGradeId || 'N/A',
             mentoringMode: 'group',
             status: 'pending',
             preferredDays: [], // Flexible
@@ -657,7 +658,7 @@ export class StudentService implements IStudentService {
           });
 
           // Notify Admin
-          this.eventEmitter.emit(EVENTS.PREFERENCES_SUBMITTED, {
+          this._eventEmitter.emit(EVENTS.PREFERENCES_SUBMITTED, {
             studentId,
             studentName: studentProfile.fullName,
             subjectId,
@@ -668,24 +669,25 @@ export class StudentService implements IStudentService {
 
       // Advance onboarding
       try {
-        await this.advanceOnboarding(studentId, 'PREFERENCES_COMPLETED' as any);
-      } catch (e) {
-        logger.warn(`Failed to advance onboarding to PREFERENCES_COMPLETED for ${studentId}`, { error: getErrorMessage(e) });
+        await this.advanceOnboarding(studentId, 'PREFERENCES_COMPLETED' as unknown as OnboardingEvent);
+      } catch (error) {
+        logger.warn(`Failed to advance onboarding to PREFERENCES_COMPLETED for ${studentId}`, { error: getErrorMessage(error) });
       }
 
       // Set preferencesCompleted flag
       const updateData: Partial<StudentProfile> = {
-        preferredSubjects: subjectIds as any,
+        preferredSubjects: subjectIds as unknown as import('mongoose').Types.ObjectId[],
         preferencesCompleted: true
       };
       
-      return await this.studentRepo.updateProfile(studentId, updateData) as StudentProfile;
+      return await this._studentRepo.updateProfile(studentId, updateData) as StudentProfile;
 
     } catch (error: unknown) {
       logger.error(`Error updating basic preferences for student ${studentId}`, { error: getErrorMessage(error) });
       throw error;
     }
   }
+
 }
 
 

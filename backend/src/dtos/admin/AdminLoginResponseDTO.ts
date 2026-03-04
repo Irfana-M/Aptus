@@ -1,5 +1,5 @@
-import type { MentorResponseDto } from "../mentor/MentorResponseDTO";
-import type { StudentBaseResponseDto } from "../auth/UserResponseDTO";
+import type { MentorResponseDto } from "../mentor/MentorResponseDTO.js";
+import type { StudentBaseResponseDto } from "../auth/UserResponseDTO.js";
 
 export interface AdminLoginResponseDto {
   admin: AdminResponseDto;
@@ -21,6 +21,8 @@ export interface DashboardDataDto {
   recentStudents: StudentBaseResponseDto[];
   recentMentors: MentorResponseDto[];
   finance?: FinanceDashboardDataDto | undefined;
+  activeSessions: number;
+  pendingApprovals: number;
 }
 
 export interface FinanceDashboardDataDto {

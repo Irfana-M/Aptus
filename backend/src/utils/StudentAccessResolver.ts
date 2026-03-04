@@ -1,5 +1,5 @@
-import type { StudentProfile } from "../interfaces/models/student.interface";
-import { AccessState } from "../constants/accessControl";
+import type { StudentProfile } from "../interfaces/models/student.interface.js";
+import { AccessState } from "../constants/accessControl.js";
 
 export class StudentAccessResolver {
   public static resolve(student: StudentProfile): AccessState {

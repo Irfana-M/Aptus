@@ -1,9 +1,9 @@
 import { injectable } from "inversify";
 import mongoose from "mongoose";
-import { BaseRepository } from "./baseRepository";
-import { MentorAvailabilityModel } from "../models/mentor/mentorAvailability.model";
-import type { IMentorAvailability } from "../interfaces/models/mentorAvailability.interface";
-import type { IMentorAvailabilityRepository } from "../interfaces/repositories/IMentorAvailabilityRepository";
+import { BaseRepository } from "./baseRepository.js";
+import { MentorAvailabilityModel } from "../models/mentor/mentorAvailability.model.js";
+import type { IMentorAvailability } from "../interfaces/models/mentorAvailability.interface.js";
+import type { IMentorAvailabilityRepository } from "../interfaces/repositories/IMentorAvailabilityRepository.js";
 
 @injectable()
 export class MentorAvailabilityRepository extends BaseRepository<IMentorAvailability> implements IMentorAvailabilityRepository {
@@ -18,7 +18,7 @@ export class MentorAvailabilityRepository extends BaseRepository<IMentorAvailabi
     }).lean() as unknown as IMentorAvailability[]; 
   }
 
-  async deleteMany(filter: mongoose.FilterQuery<IMentorAvailability>, session?: mongoose.ClientSession): Promise<any> {
+  async deleteMany(filter: mongoose.FilterQuery<IMentorAvailability>, session?: mongoose.ClientSession): Promise<unknown> {
     return await this.model.deleteMany(filter).session(session || null).exec();
   }
 

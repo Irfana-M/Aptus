@@ -1,28 +1,32 @@
 import { injectable, inject } from 'inversify';
 import type {
   IMentorRepository,
-} from "../interfaces/repositories/IMentorRepository";
-import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository";
-import type { IMentorAuthRepository } from '@/interfaces/repositories/IMentorAuthRepository';
-import type { AuthUser } from "../interfaces/auth/auth.interface";
-import type { IEmailService } from "../interfaces/services/IEmailService";
-import type { MentorProfile } from "../interfaces/models/mentor.interface";
-import type { IMentorService } from "../interfaces/services/IMentorService";
-import type { ISessionRepository } from '../interfaces/repositories/ISessionRepository';
-import type { ISchedulingService } from '../interfaces/services/ISchedulingService';
-import type { ICourseRepository } from '../interfaces/repositories/ICourseRepository';
-import type { IMentorAvailabilityRepository } from '../interfaces/repositories/IMentorAvailabilityRepository';
-import type { ITimeSlotRepository } from '../interfaces/repositories/ITimeSlotRepository';
-import { logger } from "../utils/logger";
-import { getErrorMessage } from "../utils/errorUtils";
-import { uploadFileToS3 } from "../utils/s3Upload";
-import { TYPES } from '../types';
+} from "../interfaces/repositories/IMentorRepository.js";
+import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository.js";
+import type { IMentorAuthRepository } from '@/interfaces/repositories/IMentorAuthRepository.js';
+import type { AuthUser } from "../interfaces/auth/auth.interface.js";
+import type { IEmailService } from "../interfaces/services/IEmailService.js";
+import type { MentorProfile } from "../interfaces/models/mentor.interface.js";
+import type { IMentorService } from "../interfaces/services/IMentorService.js";
+import type { ISessionRepository } from '../interfaces/repositories/ISessionRepository.js';
+import type { ISchedulingService } from '../interfaces/services/ISchedulingService.js';
+import type { ICourseRepository } from '../interfaces/repositories/ICourseRepository.js';
+import type { IMentorAvailabilityRepository } from '../interfaces/repositories/IMentorAvailabilityRepository.js';
+import type { ITimeSlotRepository } from '../interfaces/repositories/ITimeSlotRepository.js';
+import { logger } from "../utils/logger.js";
+import { getErrorMessage } from "../utils/errorUtils.js";
+import { uploadFileToS3 } from "../utils/s3Upload.js";
+import { TYPES } from '../types.js';
 import { Types } from 'mongoose';
-import type { RegisterUserDto } from '@/dtos/auth/RegisteruserDTO';
-import type { MentorResponseDto } from '@/dtos/mentor/MentorResponseDTO';
-import { MentorMapper } from '@/mappers/MentorMapper';
-import { TrialClassMapper } from '@/mappers/trialClassMapper';
-import type { TrialClassResponseDto } from "@/dtos/student/trialClassDTO";
+import { MESSAGES } from '../constants/messages.constants.js';
+import type { RegisterUserDto } from '@/dtos/auth/RegisteruserDTO.js';
+import type { MentorResponseDto } from '@/dtos/mentor/MentorResponseDTO.js';
+import { MentorMapper } from '@/mappers/MentorMapper.js';
+import { TrialClassMapper } from '@/mappers/trialClassMapper.js';
+import type { TrialClassResponseDto } from "@/dtos/student/trialClassDTO.js";
+import { AppError } from '../utils/AppError.js';
+import { HttpStatusCode } from '../constants/httpStatus.js';
+import { MENTOR_LEAVE_CUTOFF_HOURS } from '../config/leavePolicy.config.js';
 
 @injectable()
 export class MentorService implements IMentorService {
@@ -48,7 +52,7 @@ export class MentorService implements IMentorService {
         logger.warn(
           `Mentor registration failed - Email already exists: ${data.email}`
         );
-        throw new Error("Mentor with this email already exists");
+        throw new Error(MESSAGES.AUTH.USER_EXISTS);
       }
 
       const mentor = await this._mentorAuthRepo.createUser(data);
@@ -73,7 +77,7 @@ export class MentorService implements IMentorService {
       const mentor = await this._mentorRepo.findById(mentorId);
       if (!mentor) {
         logger.error(`Mentor not found for profile update: ${mentorId}`);
-        throw new Error("Mentor not found");
+        throw new Error(MESSAGES.AUTH.USER_NOT_FOUND);
       }
 
       const updateData: Partial<MentorProfile> = {} as Partial<MentorProfile>;
@@ -109,7 +113,7 @@ export class MentorService implements IMentorService {
           logger.error(
             `Error parsing academicQualifications for mentor ${mentorId}: ${parseError}`
           );
-          throw new Error("Invalid academic qualifications format");
+          throw new Error(MESSAGES.VALIDATION.FAILED);
         }
       }
 
@@ -124,7 +128,7 @@ export class MentorService implements IMentorService {
           logger.error(
             `Error parsing experiences for mentor ${mentorId}: ${parseError}`
           );
-          throw new Error("Invalid experiences format");
+          throw new Error(MESSAGES.VALIDATION.FAILED);
         }
       }
 
@@ -139,7 +143,7 @@ export class MentorService implements IMentorService {
           logger.error(
             `Error parsing subjectProficiency for mentor ${mentorId}: ${parseError}`
           );
-          throw new Error("Invalid subject proficiency format");
+          throw new Error(MESSAGES.VALIDATION.FAILED);
         }
       }
 
@@ -154,7 +158,7 @@ export class MentorService implements IMentorService {
           logger.error(
             `Error parsing certification for mentor ${mentorId}: ${parseError}`
           );
-          throw new Error("Invalid certification format");
+          throw new Error(MESSAGES.VALIDATION.FAILED);
         }
       }
 
@@ -169,7 +173,7 @@ export class MentorService implements IMentorService {
           logger.error(
             `Error parsing availability for mentor ${mentorId}: ${parseError}`
           );
-          throw new Error("Invalid availability format");
+          throw new Error(MESSAGES.VALIDATION.FAILED);
         }
       }
 
@@ -183,9 +187,7 @@ export class MentorService implements IMentorService {
           logger.error(
             `Error uploading profile picture for mentor ${mentorId}: ${getErrorMessage(uploadError)}`
           );
-          throw new Error(
-            `Failed to upload profile picture: ${getErrorMessage(uploadError)}`
-          );
+          throw new Error(MESSAGES.ADMIN.UPDATE_FAILED);
         }
       }
 
@@ -197,7 +199,7 @@ export class MentorService implements IMentorService {
         logger.error(
           `Failed to update mentor profile in repository: ${mentorId}`
         );
-        throw new Error("Failed to update mentor profile");
+        throw new Error(MESSAGES.ADMIN.UPDATE_FAILED);
       }
 
       logger.info(`Mentor profile updated successfully: ${mentorId}`);
@@ -215,13 +217,13 @@ export class MentorService implements IMentorService {
     _requestingUserId: string
   ): Promise<{ message: string }> {
     const mentor = await this._mentorRepo.findById(mentorId);
-    if (!mentor) throw new Error("Mentor not found");
+    if (!mentor) throw new Error(MESSAGES.AUTH.USER_NOT_FOUND);
     if (!mentor.isProfileComplete)
-      throw new Error("Complete profile before submitting for approval");
+      throw new Error(MESSAGES.MENTOR.PROFILE_INCOMPLETE);
 
     await this._mentorRepo.submitForApproval(mentorId);
 
-    return { message: "Profile submitted for approval" };
+    return { message: MESSAGES.MENTOR.PROFILE_SUBMITTED };
   }
 
   async getPendingMentors() {
@@ -241,7 +243,7 @@ export class MentorService implements IMentorService {
       );
       if (!updatedMentor) {
         logger.error(`Mentor not found for approval: ${mentorId}`);
-        throw new Error("Mentor not found");
+        throw new Error(MESSAGES.AUTH.USER_NOT_FOUND);
       }
 
       // Normalization of availability: One-time migration after approval
@@ -272,7 +274,7 @@ export class MentorService implements IMentorService {
       }
 
       logger.info(`Mentor approved successfully: ${mentorId}`);
-      return { message: "Mentor approved and notification sent" };
+      return { message: MESSAGES.ADMIN.UPDATE_SUCCESS };
     } catch (error: unknown) {
       logger.error(
         `Error in approveMentor for mentor ${mentorId}: ${getErrorMessage(error)}`
@@ -298,7 +300,7 @@ export class MentorService implements IMentorService {
       );
       if (!updatedMentor) {
         logger.error(`Mentor not found for rejection: ${mentorId}`);
-        throw new Error("Mentor not found");
+        throw new Error(MESSAGES.AUTH.USER_NOT_FOUND);
       }
 
       try {
@@ -323,7 +325,7 @@ export class MentorService implements IMentorService {
       }
 
       logger.info(`Mentor rejected successfully: ${mentorId}`);
-      return { message: "Mentor rejected and notification sent" };
+      return { message: MESSAGES.ADMIN.UPDATE_SUCCESS };
     } catch (error: unknown) {
       logger.error(
         `Error in rejectMentor for mentor ${mentorId}: ${getErrorMessage(error)}`
@@ -340,7 +342,7 @@ export class MentorService implements IMentorService {
         size: file.size,
       });
 
-      if (!file) throw new Error("No file provided for profile picture");
+      if (!file) throw new Error(MESSAGES.VALIDATION.FAILED);
 
       const allowedMimeTypes = [
         "image/jpeg",
@@ -349,11 +351,11 @@ export class MentorService implements IMentorService {
         "image/webp",
       ];
       if (!allowedMimeTypes.includes(file.mimetype)) {
-        throw new Error(`Invalid file type: ${file.mimetype}`);
+        throw new Error(MESSAGES.VALIDATION.FAILED);
       }
 
       const maxSize = 5 * 1024 * 1024;
-      if (file.size > maxSize) throw new Error("File too large (max 5MB)");
+      if (file.size > maxSize) throw new Error(MESSAGES.VALIDATION.FAILED);
 
       const imageUrl = await uploadFileToS3(file as unknown as Express.Multer.File);
 
@@ -361,7 +363,7 @@ export class MentorService implements IMentorService {
       return imageUrl;
     } catch (error: unknown) {
       logger.error(`Error uploading profile picture: ${getErrorMessage(error)}`);
-      throw new Error(`Failed to upload profile picture: ${getErrorMessage(error)}`);
+      throw new Error(MESSAGES.ADMIN.UPDATE_FAILED);
     }
   }
 
@@ -390,37 +392,37 @@ export class MentorService implements IMentorService {
         this._trialClassRepo.findTodayTrialClasses(mentorId)
       ]);
 
-      const formattedSessions = sessions.map(s => ({
+      const formattedSessions = sessions.map(session => ({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        id: (s as any)._id.toString(),
+        id: (session as any)._id.toString(),
         type: 'regular',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        subject: (s.subjectId as any).subjectName || 'Subject',
+        subject: (session.subjectId as any).subjectName || 'Subject',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        studentName: (s.studentId as any)?.fullName || ((s.participants && s.participants.find((p: any) => p.role === 'student')?.userId) as any)?.fullName || 'Student',
+        studentName: (session.studentId as any)?.fullName || ((session.participants && session.participants.find((participant: any) => participant.role === 'student')?.userId) as any)?.fullName || 'Student',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        studentImage: (s.studentId as any)?.profileImage || ((s.participants && s.participants.find((p: any) => p.role === 'student')?.userId) as any)?.profileImage || '',
-        startTime: s.startTime,
-        endTime: s.endTime,
-        status: s.status,
-        meetLink: s.webRTCId ? `/meet/${s.webRTCId}` : undefined // Assuming webRTCId is used for link
+        studentImage: (session.studentId as any)?.profileImage || ((session.participants && session.participants.find((participant: any) => participant.role === 'student')?.userId) as any)?.profileImage || '',
+        startTime: session.startTime,
+        endTime: session.endTime,
+        status: session.status,
+        meetLink: session.webRTCId ? `/meet/${session.webRTCId}` : undefined // Assuming webRTCId is used for link
       }));
 
-      const formattedTrials = trialClasses.map(t => ({
+      const formattedTrials = trialClasses.map(trial => ({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        id: (t as any)._id.toString(),
+        id: (trial as any)._id.toString(),
         type: 'trial',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        subject: (t.subject as any).subjectName || 'Trial Subject',
+        subject: (trial.subject as any).subjectName || 'Trial Subject',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        studentName: (t.student as any).fullName || 'Trial Student',
+        studentName: (trial.student as any).fullName || 'Trial Student',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        studentImage: (t.student as any).profilePicture || '',
+        studentImage: (trial.student as any).profilePicture || '',
         // Trial classes store preferredTime as string "HH:MM", construct Date
-        startTime: this._combineDateAndTime(t.preferredDate, t.preferredTime),
-        endTime: this._combineDateAndTime(t.preferredDate, t.preferredTime, 60), // Assume 1 hour for trial
-        status: t.status,
-        meetLink: t.meetLink
+        startTime: this._combineDateAndTime(trial.preferredDate, trial.preferredTime),
+        endTime: this._combineDateAndTime(trial.preferredDate, trial.preferredTime, 60), // Assume 1 hour for trial
+        status: trial.status,
+        meetLink: trial.meetLink
       }));
 
       const combined = [...formattedSessions, ...formattedTrials].sort((a, b) => 
@@ -469,7 +471,7 @@ export class MentorService implements IMentorService {
       logger.info(`Normalizing availability for mentor: ${mentorId}`);
       
       const mentor = await this._mentorRepo.findById(mentorId);
-      if (!mentor) throw new Error("Mentor not found for normalization");
+      if (!mentor) throw new Error(MESSAGES.AUTH.USER_NOT_FOUND);
 
       if (!mentor.availability || mentor.availability.length === 0) {
         logger.info(`No availability found to normalize for mentor: ${mentorId}`);
@@ -493,9 +495,9 @@ export class MentorService implements IMentorService {
           continue;
         }
 
-        const slots = avail.slots.map(s => ({
-          startTime: s.startTime,
-          endTime: s.endTime
+        const slots = avail.slots.map(slot => ({
+          startTime: slot.startTime,
+          endTime: slot.endTime
         }));
 
         await this._mentorAvailabilityRepo.findOneAndUpdate(
@@ -549,7 +551,7 @@ export class MentorService implements IMentorService {
       logger.info(`Fetching available slots for mentor: ${mentorId}`);
       
       const mentor = await this._mentorRepo.findById(mentorId);
-      if (!mentor) throw new Error("Mentor not found");
+      if (!mentor) throw new Error(MESSAGES.AUTH.USER_NOT_FOUND);
 
       const maxSessionsPerDay = mentor.maxSessionsPerDay || 5;
       const maxSessionsPerWeek = mentor.maxSessionsPerWeek || 25;
@@ -695,6 +697,23 @@ export class MentorService implements IMentorService {
   async requestLeave(mentorId: string, startDate: Date, endDate: Date, reason?: string): Promise<void> {
     try {
       logger.info(`Mentor ${mentorId} requesting leave from ${startDate} to ${endDate}`);
+      
+      // Cutoff Validation: Fetch affected upcoming sessions
+      const upcomingSessions = await this._sessionRepo.findByMentorAndDateRange(mentorId, startDate, endDate);
+      const now = new Date();
+      
+      for (const session of upcomingSessions) {
+          // Ignore past or already cancelled sessions
+          if (session.startTime <= now || session.status === 'cancelled') continue;
+          
+          const diffInHours = (session.startTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+          
+          if (diffInHours < MENTOR_LEAVE_CUTOFF_HOURS) {
+              logger.warn(`Mentor ${mentorId} leave request rejected: Session ${session._id} starts in ${diffInHours.toFixed(2)}h (Cutoff: ${MENTOR_LEAVE_CUTOFF_HOURS}h)`);
+              throw new AppError(MESSAGES.MENTOR.LEAVE_CUTOFF_ERROR, HttpStatusCode.BAD_REQUEST);
+          }
+      }
+
       const leaveData: { startDate: Date; endDate: Date; approved: boolean; reason?: string } = {
         startDate,
         endDate,
@@ -716,10 +735,10 @@ export class MentorService implements IMentorService {
 
       // Get the mentor to find the specific leave dates
       const mentor = await this._mentorRepo.findById(mentorId);
-      if (!mentor || !mentor.leaves) throw new Error("Mentor or leaves not found");
+      if (!mentor || !mentor.leaves) throw new Error(MESSAGES.MENTOR.NOT_FOUND);
 
       const leave = mentor.leaves.find(l => (l as unknown as { _id: Types.ObjectId })._id.toString() === leaveId);
-      if (!leave) throw new Error("Leave entry not found");
+      if (!leave) throw new Error(MESSAGES.MENTOR.NOT_FOUND);
 
       // Delegate cancellation of affected slots to SchedulingService
       await this._schedulingService.handleMentorLeave(mentorId, leave.startDate, leave.endDate);
@@ -766,6 +785,84 @@ export class MentorService implements IMentorService {
       return batches;
     } catch (error: unknown) {
       logger.error(`Error in getGroupBatches for mentor ${mentorId}: ${getErrorMessage(error)}`);
+      throw error;
+    }
+  }
+
+  async getMentorUpcomingSessionsWithEligibility(mentorId: string): Promise<{ sessions: unknown[], leaveWindowOpen: boolean }> {
+    try {
+      logger.info(`Fetching upcoming sessions with eligibility for mentor: ${mentorId}`);
+      
+      const now = new Date();
+      const nextWeek = new Date(now);
+      nextWeek.setDate(now.getDate() + 7);
+
+      const [sessions, trialClasses] = await Promise.all([
+        this._sessionRepo.findByMentorAndDateRange(mentorId, now, nextWeek),
+        this._trialClassRepo.findAllPaginated({ limit: 100 }) // Simple fetch for now, can be optimized
+      ]);
+
+      // Filter trial classes for the next week and correct mentor
+      const filteredTrials = (trialClasses.trialClasses || []).filter(trial => 
+        trial.mentor?.toString() === mentorId && 
+        trial.preferredDate >= now && 
+        trial.preferredDate <= nextWeek &&
+        trial.status === 'assigned'
+      );
+
+      const formattedSessions = sessions.map(session => {
+        const startTime = new Date(session.startTime);
+        const diffInHours = (startTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+        return {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          id: (session as any)._id?.toString() || (session as any).id,
+          type: 'regular',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          subject: (session.subjectId as any)?.subjectName || 'Subject',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          studentName: (session.studentId as any)?.fullName || 'Student',
+          startTime: session.startTime,
+          endTime: session.endTime,
+          status: session.status,
+          canApplyLeave: diffInHours >= MENTOR_LEAVE_CUTOFF_HOURS
+        };
+      });
+
+      const formattedTrials = filteredTrials.map(trial => {
+        const startTime = this._combineDateAndTime(trial.preferredDate, trial.preferredTime);
+        const diffInHours = (startTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+        return {
+          id: trial._id.toString(),
+          type: 'trial',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          subject: (trial.subject as any)?.subjectName || 'Trial Subject',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          studentName: (trial.student as any)?.fullName || 'Trial Student',
+          startTime: startTime,
+          endTime: this._combineDateAndTime(trial.preferredDate, trial.preferredTime, 60),
+          status: trial.status,
+          canApplyLeave: diffInHours >= MENTOR_LEAVE_CUTOFF_HOURS
+        };
+      });
+
+      const allSessions = [...formattedSessions, ...formattedTrials].sort((a, b) => 
+        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+      );
+
+      // Eligibility Rule: Leave window is open if NO sessions start within the next 24 hours
+      const hasSessionsInWindow = allSessions.some(s => {
+          const startTime = new Date(s.startTime);
+          const diffInHours = (startTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+          return diffInHours >= 0 && diffInHours < MENTOR_LEAVE_CUTOFF_HOURS;
+      });
+
+      return {
+        sessions: allSessions,
+        leaveWindowOpen: !hasSessionsInWindow
+      };
+
+    } catch (error: unknown) {
+      logger.error(`Error in getMentorUpcomingSessionsWithEligibility: ${getErrorMessage(error)}`);
       throw error;
     }
   }

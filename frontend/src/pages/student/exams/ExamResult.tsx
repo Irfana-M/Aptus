@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { Trophy, Clock } from 'lucide-react';
 import StudentLayout from '../../../components/students/StudentLayout';
+import { Loader } from '../../../components/ui/Loader';
+import { EmptyState } from '../../../components/ui/EmptyState';
 import { getStudentResults } from "../../../features/exam/examSlice";
 import type { IExam } from "../../../types/examTypes";
 import type { AppDispatch, RootState } from "../../../app/store";
@@ -22,13 +24,15 @@ const ExamResultPage: React.FC = () => {
                 <h1 className="text-3xl font-black text-slate-900 mb-8">Exam Results</h1>
 
                 {loading ? (
-                    <div className="flex justify-center py-20">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                    <div className="py-20">
+                        <Loader size="lg" text="Fetching your results..." />
                     </div>
                 ) : results.length === 0 ? (
-                    <div className="text-center py-20 bg-slate-50 rounded-[2.5rem]">
-                        <p className="text-slate-500">No exam results found.</p>
-                    </div>
+                    <EmptyState 
+                        icon={Trophy} 
+                        title="No exam results found" 
+                        description="Complete your assigned exams to see your results here." 
+                    />
                 ) : (
                     <div className="space-y-6">
                         {results.map((result) => {

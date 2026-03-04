@@ -1,10 +1,20 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types";
+import { TYPES } from "../types.js";
 import type { Request, Response } from "express";
-import type { ICourseService } from "../interfaces/services/ICourseService";
-import { HttpStatusCode } from "../constants/httpStatus";
-import { getPaginationParams } from "@/utils/pagination.util";
-import type { CoursePaginationParams } from "@/dtos/shared/paginationTypes";
+import type { ICourseService } from "../interfaces/services/ICourseService.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import { getPaginationParams } from "@/utils/pagination.util.js";
+import type { CoursePaginationParams } from "@/dtos/shared/paginationTypes.js";
+import { MESSAGES } from "@/constants/messages.constants.js";
+import { CourseStatus } from "@/enums/course.enum.js";
+import { UserRole } from "@/enums/user.enum.js";
+
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    role: UserRole;
+  };
+}
 
 @injectable()
 export class CourseController {
@@ -35,10 +45,9 @@ export class CourseController {
       res.status(HttpStatusCode.OK).json(result);
     } catch (error: unknown) {
       console.error("Error fetching available courses:", error);
-      const err = error as Error;
       res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ message: "Internal server error", error: err.message });
+        .json({ message: MESSAGES.COMMON.INTERNAL_SERVER_ERROR });
     }
   };
 
@@ -50,14 +59,14 @@ export class CourseController {
       const { id } = req.params;
       
       if (!id) {
-          res.status(HttpStatusCode.BAD_REQUEST).json({ message: "Course ID is required" });
+          res.status(HttpStatusCode.BAD_REQUEST).json({ message: MESSAGES.COMMON.ID_REQUIRED("Course") });
           return;
       }
 
       const course = await this._courseService.getCourseById(id);
 
       if (!course) {
-        res.status(HttpStatusCode.NOT_FOUND).json({ message: "Course not found" });
+        res.status(HttpStatusCode.NOT_FOUND).json({ message: MESSAGES.COURSE.NOT_FOUND });
         return;
       }
 
@@ -68,10 +77,9 @@ export class CourseController {
       });
     } catch (error: unknown) {
       console.error("Error fetching course:", error);
-      const err = error as Error;
       res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ message: "Internal server error", error: err.message });
+        .json({ message: MESSAGES.COMMON.INTERNAL_SERVER_ERROR });
     }
   };
 
@@ -80,10 +88,11 @@ export class CourseController {
     res: Response
   ): Promise<void> => {
     try {
-      const studentId = req.user?.id;
+      const authReq = req as AuthenticatedRequest;
+      const studentId = authReq.user?.id;
       
       if (!studentId) {
-        res.status(HttpStatusCode.UNAUTHORIZED).json({ message: "Student not authenticated" });
+        res.status(HttpStatusCode.UNAUTHORIZED).json({ message: MESSAGES.COMMON.UNAUTHORIZED });
         return;
       }
 
@@ -95,10 +104,9 @@ export class CourseController {
       });
     } catch (error: unknown) {
       console.error("Error fetching student courses:", error);
-      const err = error as Error;
       res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ message: "Internal server error", error: err.message });
+        .json({ message: MESSAGES.COMMON.INTERNAL_SERVER_ERROR });
     }
   };
 
@@ -107,10 +115,11 @@ export class CourseController {
     res: Response
   ): Promise<void> => {
     try {
-      const mentorId = req.user?.id;
+      const authReq = req as AuthenticatedRequest;
+      const mentorId = authReq.user?.id;
       
       if (!mentorId) {
-        res.status(HttpStatusCode.UNAUTHORIZED).json({ message: "Mentor not authenticated" });
+        res.status(HttpStatusCode.UNAUTHORIZED).json({ message: MESSAGES.COMMON.UNAUTHORIZED });
         return;
       }
 
@@ -122,10 +131,9 @@ export class CourseController {
       });
     } catch (error: unknown) {
       console.error("Error fetching mentor courses:", error);
-      const err = error as Error;
       res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ message: "Internal server error", error: err.message });
+        .json({ message: MESSAGES.COMMON.INTERNAL_SERVER_ERROR });
     }
   };
 }

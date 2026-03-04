@@ -1,8 +1,8 @@
 import type { Request, Response } from "express";
 import { injectable, inject } from "inversify";
-import type { IExampleService } from "../interfaces/services/IExampleService";
-import { TYPES } from "../types";
-import { HttpStatusCode } from "../constants/httpStatus";
+import type { IExampleService } from "../interfaces/services/IExampleService.js";
+import { TYPES } from "../types.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
 
 @injectable()
 export class ExampleController {

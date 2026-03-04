@@ -1,15 +1,18 @@
 import type { Request, Response } from "express";
 import { inject, injectable } from "inversify";
-import { TYPES } from "../types";
-import type { ITrialClassService } from "@/interfaces/services/ITrialClassService";
-import { HttpStatusCode } from "@/constants/httpStatus";
-import { logger } from "@/utils/logger";
-import { AppError } from "@/utils/AppError";
+import { TYPES } from "../types.js";
+import type { ITrialClassService } from "@/interfaces/services/ITrialClassService.js";
+import { HttpStatusCode } from "@/constants/httpStatus.js";
+import { logger } from "@/utils/logger.js";
+import { AppError } from "@/utils/AppError.js";
+import { MESSAGES } from "@/constants/messages.constants.js";
+import { UserRole } from "@/enums/user.enum.js";
+import { TrialClassStatus } from "@/enums/trialClass.enum.js";
 
 interface ExtendedRequest extends Request {
   user?: {
     id: string;
-    role: 'admin' | 'mentor' | 'student';
+    role: UserRole;
   };
 }
 
@@ -17,7 +20,7 @@ interface ExtendedRequest extends Request {
 export class TrialClassController {
   constructor(
     @inject(TYPES.ITrialClassService)
-    private trialService: ITrialClassService
+    private _trialService: ITrialClassService
   ) {}
 
   async createTrialRequest(req: Request, res: Response): Promise<void> {
@@ -28,23 +31,23 @@ export class TrialClassController {
       if (!studentId) {
         res.status(HttpStatusCode.UNAUTHORIZED).json({
           success: false,
-          message: "Unauthorized: Student not logged in",
+          message: MESSAGES.TRIAL_CLASS.UNAUTHORIZED_STUDENT,
         });
         return;
       }
 
-      const trialClass = await this.trialService.requestTrialClass(
+      const trialClass = await this._trialService.requestTrialClass(
         { subject, preferredDate, preferredTime },
         studentId
       );
 
       res.status(HttpStatusCode.CREATED).json({
         success: true,
-        message: "Trial class requested successfully",
+        message: MESSAGES.TRIAL_CLASS.REQUEST_SUCCESS,
         data: trialClass, 
       });
     } catch (error: unknown) {
-      this.handleError(res, error, "Failed to create trial class request");
+      this.handleError(res, error, MESSAGES.TRIAL_CLASS.CREATE_FAILED);
     }
   }
 
@@ -55,20 +58,20 @@ export class TrialClassController {
       if (!studentId) {
         res.status(HttpStatusCode.UNAUTHORIZED).json({
           success: false,
-          message: "Unauthorized: Student not logged in",
+          message: MESSAGES.TRIAL_CLASS.UNAUTHORIZED_STUDENT,
         });
         return;
       }
 
-      const trialClasses = await this.trialService.getStudentTrialClasses(studentId);
+      const trialClasses = await this._trialService.getStudentTrialClasses(studentId);
       
       res.status(HttpStatusCode.OK).json({
         success: true,
-        message: "Trial classes fetched successfully",
+        message: MESSAGES.TRIAL_CLASS.FETCH_SUCCESS,
         data: trialClasses,
       });
     } catch (error: unknown) {
-      this.handleError(res, error, "Failed to fetch trial classes");
+      this.handleError(res, error, MESSAGES.TRIAL_CLASS.FETCH_FAILED);
     }
   }
 
@@ -80,7 +83,7 @@ export class TrialClassController {
       if (!id) {
         res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Trial class ID is required",
+          message: MESSAGES.TRIAL_CLASS.ID_REQUIRED,
         });
         return;
       }
@@ -88,20 +91,20 @@ export class TrialClassController {
       if (!studentId) {
         res.status(HttpStatusCode.UNAUTHORIZED).json({
           success: false,
-          message: "Unauthorized: Student not logged in",
+          message: MESSAGES.TRIAL_CLASS.UNAUTHORIZED_STUDENT,
         });
         return;
       }
 
-      const trialClass = await this.trialService.getTrialClassById(id, studentId);
+      const trialClass = await this._trialService.getTrialClassById(id, studentId);
       
       res.status(HttpStatusCode.OK).json({
         success: true,
-        message: "Trial class fetched successfully",
+        message: MESSAGES.TRIAL_CLASS.FETCH_SUCCESS,
         data: trialClass,
       });
     } catch (error: unknown) {
-      this.handleError(res, error, "Failed to fetch trial class");
+      this.handleError(res, error, MESSAGES.TRIAL_CLASS.FETCH_FAILED);
     }
   }
 
@@ -113,12 +116,12 @@ export class TrialClassController {
       if (!subject || !date) {
         res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Subject ID and date are required",
+          message: MESSAGES.TRIAL_CLASS.SUBJECT_DATE_REQUIRED,
         });
         return;
       }
 
-      const availableSlots = await this.trialService.getAvailableSlots(
+      const availableSlots = await this._trialService.getAvailableSlots(
         subject as string,
         date as string
       );
@@ -126,12 +129,12 @@ export class TrialClassController {
       res.status(HttpStatusCode.OK).json({
         success: true,
         message: availableSlots.hasAvailability 
-          ? "Available slots fetched successfully"
-          : "No slots available on this date",
+          ? MESSAGES.ADMIN.FETCH_SUCCESS
+          : MESSAGES.TRIAL_CLASS.NO_MENTORS_AVAILABLE,
         data: availableSlots,
       });
     } catch (error: unknown) {
-      this.handleError(res, error, "Failed to fetch available slots");
+      this.handleError(res, error, MESSAGES.TRIAL_CLASS.FETCH_FAILED);
     }
   }
 
@@ -161,7 +164,7 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
     if (!studentId) {
       res.status(HttpStatusCode.UNAUTHORIZED).json({
         success: false,
-        message: "Unauthorized: Student not logged in",
+        message: MESSAGES.TRIAL_CLASS.UNAUTHORIZED_STUDENT,
       });
       return;
     }
@@ -169,12 +172,12 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
     if (!id) {
       res.status(HttpStatusCode.BAD_REQUEST).json({
         success: false,
-        message: "Trial class ID is required",
+        message: MESSAGES.TRIAL_CLASS.ID_REQUIRED,
       });
       return;
     }
 
-    const trialClass = await this.trialService.updateTrialClass(
+    const trialClass = await this._trialService.updateTrialClass(
       id,
       studentId,
       { subject, preferredDate, preferredTime, notes }
@@ -182,11 +185,11 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
 
     res.status(HttpStatusCode.OK).json({
       success: true,
-      message: "Trial class updated successfully",
+      message: MESSAGES.TRIAL_CLASS.UPDATE_SUCCESS,
       data: trialClass,
     });
   } catch (error: unknown) {
-    this.handleError(res, error, "Failed to update trial class");
+    this.handleError(res, error, MESSAGES.TRIAL_CLASS.UPDATE_FAILED);
   }
   }
 
@@ -199,7 +202,7 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
       if (!studentId) {
         res.status(HttpStatusCode.UNAUTHORIZED).json({
           success: false,
-          message: "Unauthorized: Student not logged in",
+          message: MESSAGES.TRIAL_CLASS.UNAUTHORIZED_STUDENT,
         });
         return;
       }
@@ -207,7 +210,7 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
       if (!id) {
         res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Trial class ID is required",
+          message: MESSAGES.TRIAL_CLASS.ID_REQUIRED,
         });
         return;
       }
@@ -215,12 +218,12 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
       if (rating === undefined || rating < 1 || rating > 5) {
         res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Valid rating (1-5) is required",
+          message: MESSAGES.TRIAL_CLASS.RATING_REQUIRED,
         });
         return;
       }
 
-      const trialClass = await this.trialService.submitFeedback(
+      const trialClass = await this._trialService.submitFeedback(
         id,
         studentId,
         { rating, comment }
@@ -228,11 +231,11 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
 
       res.status(HttpStatusCode.OK).json({
         success: true,
-        message: "Feedback submitted successfully",
+        message: MESSAGES.TRIAL_CLASS.FEEDBACK_SUCCESS,
         data: trialClass,
       });
     } catch (error: unknown) {
-      this.handleError(res, error, "Failed to submit feedback");
+      this.handleError(res, error, MESSAGES.TRIAL_CLASS.FEEDBACK_FAILED);
     }
   }
 
@@ -244,7 +247,7 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
       if (!userId) {
         res.status(HttpStatusCode.UNAUTHORIZED).json({
           success: false,
-          message: "Unauthorized: User not logged in",
+          message: MESSAGES.TRIAL_CLASS.UNAUTHORIZED_USER,
         });
         return;
       }
@@ -252,23 +255,23 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
       if (!id) {
         res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Trial class ID is required",
+          message: MESSAGES.TRIAL_CLASS.ID_REQUIRED,
         });
         return;
       }
 
       // Verify user has access to this trial class (throws if denied)
-      await this.trialService.getTrialClassById(id, userId);
+      await this._trialService.getTrialClassById(id, userId);
 
-      const trialClass = await this.trialService.updateTrialClassStatus(id, "completed");
+      const trialClass = await this._trialService.updateTrialClassStatus(id, TrialClassStatus.COMPLETED);
 
       res.status(HttpStatusCode.OK).json({
         success: true,
-        message: "Trial class marked as completed",
+        message: MESSAGES.TRIAL_CLASS.MARKED_COMPLETED,
         data: trialClass,
       });
     } catch (error: unknown) {
-      this.handleError(res, error, "Failed to complete trial class");
+      this.handleError(res, error, MESSAGES.TRIAL_CLASS.UPDATE_FAILED);
     }
   }
 }

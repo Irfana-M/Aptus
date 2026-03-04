@@ -1,15 +1,15 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../../types";
-import type { IChatService } from "../../interfaces/services/IChatService";
-import type { IChatRoomRepository } from "../../interfaces/repositories/IChatRoomRepository";
-import type { ITrialClassRepository } from "../../interfaces/repositories/ITrialClassRepository";
-import type { IChatMessageRepository } from "../../interfaces/repositories/IChatMessageRepository";
-import type { ISessionRepository } from "../../interfaces/repositories/ISessionRepository";
-import type { ISocketService } from "../../interfaces/services/ISocketService";
-import type { IChatRoom, IChatMessage } from "../../interfaces/models/chat.interface";
-import { AppError } from "../../utils/AppError";
-import { HttpStatusCode } from "../../constants/httpStatus";
-import { logger } from "../../utils/logger";
+import { TYPES } from "../../types.js";
+import type { IChatService } from "../../interfaces/services/IChatService.js";
+import type { IChatRoomRepository } from "../../interfaces/repositories/IChatRoomRepository.js";
+import type { ITrialClassRepository } from "../../interfaces/repositories/ITrialClassRepository.js";
+import type { IChatMessageRepository } from "../../interfaces/repositories/IChatMessageRepository.js";
+import type { ISessionRepository } from "../../interfaces/repositories/ISessionRepository.js";
+import type { ISocketService } from "../../interfaces/services/ISocketService.js";
+import type { IChatRoom, IChatMessage } from "../../interfaces/models/chat.interface.js";
+import { AppError } from "../../utils/AppError.js";
+import { HttpStatusCode } from "../../constants/httpStatus.js";
+import { logger } from "../../utils/logger.js";
 
 @injectable()
 export class ChatService implements IChatService {
@@ -44,7 +44,7 @@ export class ChatService implements IChatService {
              return {
                  _id: s._id.toString(),
                  mentorId: s.mentorId ? s.mentorId.toString() : (s.mentor ? s.mentor.toString() : ''),
-                 participants: s.participants ? s.participants.map((p) => ({ studentId: p.studentId.toString() })) : [],
+                 participants: s.participants ? s.participants.map((participant) => ({ studentId: participant.studentId.toString() })) : [],
                  status: s.status,
                  title: s.title || 'Session'
              };
@@ -99,7 +99,7 @@ export class ChatService implements IChatService {
       room = await this._chatRoomRepo.create({
         sessionId: session._id as unknown as import('mongoose').Schema.Types.ObjectId,
         mentorId: session.mentorId as unknown as import('mongoose').Schema.Types.ObjectId,
-        participantIds: session.participants.map(p => p.studentId) as unknown as import('mongoose').Schema.Types.ObjectId[],
+        participantIds: session.participants.map(participant => participant.studentId) as unknown as import('mongoose').Schema.Types.ObjectId[],
         isActive: true
       });
       logger.info(`Chat room created for session: ${sessionId}`);
@@ -133,7 +133,7 @@ export class ChatService implements IChatService {
 
     // Permission Check: Must be mentor, enrolled student, or admin
     const isMentor = session.mentorId.toString() === senderId;
-    const isEnrolled = session.participants.some(p => p.studentId.toString() === senderId);
+    const isEnrolled = session.participants.some(participant => participant.studentId.toString() === senderId);
     
     if (!isMentor && !isEnrolled && senderRole !== 'admin') {
       throw new AppError("Access denied to this chat room", HttpStatusCode.FORBIDDEN);
@@ -159,7 +159,7 @@ export class ChatService implements IChatService {
 
     // Membership check for history access
     const isMentor = session.mentorId.toString() === userId;
-    const isEnrolled = session.participants.some(p => p.studentId.toString() === userId);
+    const isEnrolled = session.participants.some(participant => participant.studentId.toString() === userId);
     const isAdmin = userRole === 'admin';
     
     if (!isMentor && !isEnrolled && !isAdmin) {

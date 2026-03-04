@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Check, Loader2 } from 'lucide-react';
+import { BookOpen, Check } from 'lucide-react';
+import { Loader } from '../../components/ui/Loader';
 import { useAppSelector } from '../../app/hooks';
 import { getActivePlans } from '../../api/subscriptionApi';
 import { calculateMonthlyCost, validateSubjectCount, type SubscriptionPlan } from '../../utils/subscriptionCalculator';
+import { ROUTES } from '../../constants/routes.constants';
 
 const SubscriptionPlans: React.FC = () => {
   const navigate = useNavigate();
@@ -36,9 +38,9 @@ const SubscriptionPlans: React.FC = () => {
   // Check onboarding status
   useEffect(() => {
     if (status === 'subscribed') {
-      navigate('/student/preferences/subjects');
+      navigate(ROUTES.STUDENT.PREFERENCES.SUBJECTS);
     } else if (status === 'preferences_completed') {
-      navigate('/student/dashboard');
+      navigate(ROUTES.STUDENT.DASHBOARD);
     }
   }, [status, navigate]);
 
@@ -67,7 +69,7 @@ const SubscriptionPlans: React.FC = () => {
     const selectedPlan = plans.find(p => p.planCode === planCode);
     if (!selectedPlan) return;
 
-    navigate('/student/payment', { 
+    navigate(ROUTES.STUDENT.PAYMENT, { 
       state: { 
         planCode: selectedPlan.planCode,
         planType: planCode.toLowerCase(), // For backward compatibility
@@ -81,10 +83,7 @@ const SubscriptionPlans: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-indigo-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading subscription plans...</p>
-        </div>
+        <Loader size="lg" text="Loading subscription plans..." />
       </div>
     );
   }
@@ -150,12 +149,12 @@ const SubscriptionPlans: React.FC = () => {
                 <div className="mb-8">
                   <div className="flex items-baseline">
                     <span className="text-5xl font-extrabold text-gray-900">
-                      {basicPlan.currency}{basicCalc.monthlyCost}
+                      ₹{basicCalc.monthlyCost}
                     </span>
                     <span className="text-xl text-gray-500 ml-2">/mo</span>
                   </div>
                   <p className="text-xs text-gray-400 mt-2 font-medium">
-                    {subjectCount} subject{subjectCount > 1 ? 's' : ''} × {basicPlan.sessionsPerSubjectPerWeek} session/week × {basicPlan.currency}{basicPlan.pricePerSession} × 4 weeks
+                    {subjectCount} subject{subjectCount > 1 ? 's' : ''} × {basicPlan.sessionsPerSubjectPerWeek} session/week × ₹{basicPlan.pricePerSession} × 4 weeks
                   </p>
                 </div>
               )}
@@ -215,12 +214,12 @@ const SubscriptionPlans: React.FC = () => {
                 <div className="mb-8">
                   <div className="flex items-baseline">
                     <span className="text-5xl font-extrabold text-gray-900">
-                      {premiumPlan.currency}{premiumCalc.monthlyCost}
+                      ₹{premiumCalc.monthlyCost}
                     </span>
                     <span className="text-xl text-gray-500 ml-2">/mo</span>
                   </div>
                   <p className="text-xs text-gray-400 mt-2 font-medium">
-                    {subjectCount} subject{subjectCount > 1 ? 's' : ''} × {premiumPlan.sessionsPerSubjectPerWeek} sessions/week × {premiumPlan.currency}{premiumPlan.pricePerSession} × 4 weeks
+                    {subjectCount} subject{subjectCount > 1 ? 's' : ''} × {premiumPlan.sessionsPerSubjectPerWeek} sessions/week × ₹{premiumPlan.pricePerSession} × 4 weeks
                   </p>
                 </div>
               )}

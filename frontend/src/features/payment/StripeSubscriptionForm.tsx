@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { useAppSelector, useAppDispatch } from '../../app/hooks';
 import { updatePaymentStatus } from '../auth/authSlice';
 import { fetchStudentProfile } from '../student/studentThunk';
+import { ROUTES } from '../../constants/routes.constants';
 
 
 
@@ -63,10 +64,10 @@ const StripeSubscriptionForm: React.FC<Props> = ({
         
         // Update Redux state immediately to unlock sidebar
         dispatch(updatePaymentStatus({ hasPaid: true }));
-        dispatch(fetchStudentProfile());
+        await dispatch(fetchStudentProfile()).unwrap();
         
         toast.success('Subscription activated!');
-        navigate('/student/dashboard');
+        navigate(ROUTES.STUDENT.PREFERENCES.SUBJECTS);
       } catch (err) {
         console.error(err);
         toast.error(err instanceof Error ? err.message : 'Payment verified but activation failed. Contact support.');

@@ -1,5 +1,5 @@
-import type { IStudentSubscription, ISubscriptionPlan } from "../models/subscription.interface";
-import type { IBaseRepository } from "./IBaseRepository";
+import type { IStudentSubscription, ISubscriptionPlan } from "../models/subscription.interface.js";
+import type { IBaseRepository } from "./IBaseRepository.js";
 
 export interface ISubscriptionRepository extends IBaseRepository<IStudentSubscription> {
   findPlanById(planId: string): Promise<ISubscriptionPlan | null>;

@@ -1,15 +1,16 @@
 import type { Request, Response, NextFunction } from "express";
-import type { ISessionService } from "../interfaces/services/ISessionService";
-import { HttpStatusCode } from "../constants/httpStatus";
-import { AppError } from "../utils/AppError";
+import type { ISessionService } from "../interfaces/services/ISessionService.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import { AppError } from "../utils/AppError.js";
+import { MESSAGES } from "../constants/messages.constants.js";
 
 export class SessionController {
-  constructor(private sessionService: ISessionService) {}
+  constructor(private _sessionService: ISessionService) {}
 
   async getStudentUpcomingSessions(req: Request, res: Response, next: NextFunction) {
       try {
-        if (!req.user) throw new AppError('Unauthorized', HttpStatusCode.UNAUTHORIZED);
-        const sessions = await this.sessionService.getStudentUpcomingSessions(req.user.id);
+        if (!req.user) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
+        const sessions = await this._sessionService.getStudentUpcomingSessions(req.user.id);
         res.status(HttpStatusCode.OK).json({ success: true, data: sessions });
       } catch (error) {
           next(error);
@@ -18,8 +19,8 @@ export class SessionController {
 
   async getMentorUpcomingSessions(req: Request, res: Response, next: NextFunction) {
       try {
-          if (!req.user) throw new AppError('Unauthorized', HttpStatusCode.UNAUTHORIZED);
-          const sessions = await this.sessionService.getMentorUpcomingSessions(req.user.id);
+          if (!req.user) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
+          const sessions = await this._sessionService.getMentorUpcomingSessions(req.user.id);
           res.status(HttpStatusCode.OK).json({ success: true, data: sessions });
       } catch (error) {
           next(error);
@@ -28,8 +29,8 @@ export class SessionController {
 
   async getMentorTodaySessions(req: Request, res: Response, next: NextFunction) {
       try {
-          if (!req.user) throw new AppError('Unauthorized', HttpStatusCode.UNAUTHORIZED);
-          const sessions = await this.sessionService.getMentorTodaySessions(req.user.id);
+          if (!req.user) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
+          const sessions = await this._sessionService.getMentorTodaySessions(req.user.id);
           res.status(HttpStatusCode.OK).json({ success: true, data: sessions });
       } catch (error) {
           next(error);
@@ -38,14 +39,14 @@ export class SessionController {
 
   async reportAbsence(req: Request, res: Response, next: NextFunction) {
       try {
-          if (!req.user) throw new AppError('Unauthorized', HttpStatusCode.UNAUTHORIZED);
+          if (!req.user) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
           const sessionId = req.params.sessionId as string;
           const { reason } = req.body as { reason: string };
           
           const userId = req.user.id;
           
-          await this.sessionService.reportAbsence(sessionId, userId, reason);
-          res.status(HttpStatusCode.OK).json({ success: true, message: "Absence reported successfully" });
+          await this._sessionService.reportAbsence(sessionId, userId, reason);
+          res.status(HttpStatusCode.OK).json({ success: true, message: MESSAGES.SESSION.ABSENCE_REPORTED });
       } catch (error) {
           next(error);
       }
@@ -53,14 +54,14 @@ export class SessionController {
 
   async cancelSession(req: Request, res: Response, next: NextFunction) {
       try {
-          if (!req.user) throw new AppError('Unauthorized', HttpStatusCode.UNAUTHORIZED);
+          if (!req.user) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
           const sessionId = req.params.sessionId as string;
           const { reason } = req.body as { reason: string };
           
           const userId = req.user.id;
           
-          await this.sessionService.cancelSession(sessionId, userId, reason);
-          res.status(HttpStatusCode.OK).json({ success: true, message: "Session cancelled successfully" });
+          await this._sessionService.cancelSession(sessionId, userId, reason);
+          res.status(HttpStatusCode.OK).json({ success: true, message: MESSAGES.SESSION.CANCELLED });
       } catch (error) {
           next(error);
       }
@@ -68,7 +69,7 @@ export class SessionController {
 
   async resolveRescheduling(req: Request, res: Response, next: NextFunction) {
       try {
-          if (!req.user) throw new AppError('Unauthorized', HttpStatusCode.UNAUTHORIZED);
+          if (!req.user) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
           const sessionId = req.params.sessionId as string;
           // Extract newTimeSlotId and optional details for fallback creation
           const { newTimeSlotId, date, startTime, endTime } = req.body as { 
@@ -85,10 +86,10 @@ export class SessionController {
               slotDetails = { date, startTime, endTime };
           }
 
-          await this.sessionService.resolveRescheduling(sessionId, userId, newTimeSlotId, slotDetails);
+          await this._sessionService.resolveRescheduling(sessionId, userId, newTimeSlotId, slotDetails);
           res.status(HttpStatusCode.OK).json({ 
               success: true, 
-              message: (newTimeSlotId || slotDetails) ? "Session rescheduled successfully" : "Refund processed successfully" 
+              message: (newTimeSlotId || slotDetails) ? MESSAGES.SESSION.RESCHEDULED : MESSAGES.SESSION.REFUND_PROCESSED
           });
       } catch (error) {
           next(error);
@@ -97,14 +98,14 @@ export class SessionController {
 
   async completeSession(req: Request, res: Response, next: NextFunction) {
       try {
-          if (!req.user) throw new AppError('Unauthorized', HttpStatusCode.UNAUTHORIZED);
+          if (!req.user) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
           const sessionId = req.params.sessionId as string;
           const mentorId = req.user.id;
           
-          const session = await this.sessionService.completeSession(sessionId, mentorId);
+          const session = await this._sessionService.completeSession(sessionId, mentorId);
           res.status(HttpStatusCode.OK).json({ 
               success: true, 
-              message: "Session completed successfully",
+              message: MESSAGES.SESSION.COMPLETED,
               data: session 
           });
       } catch (error) {

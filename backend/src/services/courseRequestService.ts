@@ -1,13 +1,13 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "@/types";
-import type { ICourseRequestRepository } from "@/interfaces/repositories/ICourseRequestRepository";
-import type { ICourseRequestService } from "@/interfaces/services/ICourseRequestService";
-import type { CourseRequestDocument } from "@/models/courseRequest.model";
-import type { PaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes";
-import { formatPaginatedResult, getPaginationParams } from "@/utils/pagination.util";
+import { TYPES } from "@/types.js";
+import type { ICourseRequestRepository } from "@/interfaces/repositories/ICourseRequestRepository.js";
+import type { ICourseRequestService } from "@/interfaces/services/ICourseRequestService.js";
+import type { CourseRequestDocument } from "@/models/courseRequest.model.js";
+import type { PaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes.js";
+import { formatPaginatedResult, getPaginationParams } from "@/utils/pagination.util.js";
 
-import { InternalEventEmitter, EVENTS } from "@/utils/InternalEventEmitter";
-import { logger } from "@/utils/logger";
+import { InternalEventEmitter, EVENTS } from "@/utils/InternalEventEmitter.js";
+import { logger } from "@/utils/logger.js";
 
 @injectable()
 export class CourseRequestService implements ICourseRequestService {
@@ -42,7 +42,7 @@ export class CourseRequestService implements ICourseRequestService {
   }
 
   async getAllRequestsPaginated(params: PaginationParams): Promise<PaginatedResponse<CourseRequestDocument>> {
-    const { page, limit } = getPaginationParams(params as any);
+    const { page, limit } = getPaginationParams(params);
     logger.info(`Fetching paginated course requests - Page: ${page}, Limit: ${limit}`);
     
     const result = await this.repository.findPaginated({}, page, limit, { createdAt: -1 }, ['student']);

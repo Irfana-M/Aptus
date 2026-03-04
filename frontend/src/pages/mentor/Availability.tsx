@@ -2,10 +2,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../app/store';
-import { Check, Save, Clock } from 'lucide-react';
+import { Check, Save } from 'lucide-react';
+import { Loader } from '../../components/ui/Loader';
+import { Alert } from '../../components/ui/Alert';
 import toast from 'react-hot-toast';
-import api from '../../api/api'; 
-// import { adminAxios } from '../../api/axiosConfig'; // Removed unused
+import api from '../../api/api';
 
 
 
@@ -44,7 +45,7 @@ const MentorAvailabilityPage: React.FC = () => {
 
             if (data && Array.isArray(data)) {
                 data.forEach((dayData) => {
-                    initialAvailability[dayData.day] = dayData.slots.map((s) => `${s.startTime}-${s.endTime}`);
+                    initialAvailability[dayData.day] = dayData.slots.map((s: AvailabilitySlot) => `${s.startTime}-${s.endTime}`);
                 });
             }
             setAvailability(initialAvailability);
@@ -105,10 +106,16 @@ const MentorAvailabilityPage: React.FC = () => {
                 <button 
                     onClick={handleSave}
                     disabled={loading}
-                    className="flex items-center gap-2 bg-teal-600 text-white px-6 py-2.5 rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 bg-teal-600 text-white px-6 py-2.5 rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 min-w-[160px] justify-center"
                 >
-                    {loading ? <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"/> : <Save size={20} />}
-                    <span>Save Changes</span>
+                    {loading ? (
+                        <Loader size="sm" color="text-white" />
+                    ) : (
+                        <>
+                            <Save size={20} />
+                            <span>Save Changes</span>
+                        </>
+                    )}
                 </button>
             </div>
 
@@ -155,14 +162,12 @@ const MentorAvailabilityPage: React.FC = () => {
                 </div>
             </div>
             
-            <div className="mt-6 flex items-start gap-3 bg-blue-50 p-4 rounded-lg text-blue-800 text-sm">
-                <Clock className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <p>
-                    <strong>Note:</strong> Students will book you based on these recurring slots. 
-                    If you mark <strong>Monday 17:00-18:00</strong> as available, a student can book you for 
-                    every Monday at this time for the duration of the course.
-                </p>
-            </div>
+            <Alert 
+                variant="info" 
+                title="Instructional Note" 
+                message="Students will book you based on these recurring slots. If you mark Monday 17:00-18:00 as available, a student can book you for every Monday at this time for the duration of the course." 
+                className="mt-6"
+            />
         </div>
     );
 };

@@ -1,11 +1,13 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types";
+import { TYPES } from "../types.js";
 import type { Request, Response, NextFunction } from "express";
-import type { IExamService } from "../interfaces/services/IExamService";
-import { HttpStatusCode } from "../constants/httpStatus";
-import { AppError } from "../utils/AppError";
-import { ExamResponseDTO } from "../dtos/exam/ExamResponseDTO";
-import type { IStudentService } from "../interfaces/services/IStudentService";
+import type { IExamService } from "../interfaces/services/IExamService.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import { AppError } from "../utils/AppError.js";
+import { ExamResponseDTO } from "../dtos/exam/ExamResponseDTO.js";
+import type { IStudentService } from "../interfaces/services/IStudentService.js";
+import { MESSAGES } from "../constants/messages.constants.js";
+import { UserRole } from "../enums/user.enum.js";
 
 @injectable()
 export class ExamController {
@@ -16,9 +18,9 @@ export class ExamController {
 
   createExam = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (!req.user || req.user.role !== 'mentor') {
+      if (!req.user || req.user.role !== UserRole.MENTOR) {
           // Additional safety check, though middleware should handle this
-          throw new AppError("Only mentors can create exams", HttpStatusCode.FORBIDDEN);
+          throw new AppError(MESSAGES.EXAM.MENTOR_ONLY_CREATE, HttpStatusCode.FORBIDDEN);
       }
       
       const examData = {
@@ -39,7 +41,7 @@ export class ExamController {
   getExamsForStudent = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const studentId = req.user?.id;
-      if (!studentId) throw new AppError('Student ID not found', HttpStatusCode.UNAUTHORIZED);
+      if (!studentId) throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.UNAUTHORIZED);
       
       const exams = await this._examService.getExamsForStudent(studentId);
       return res.status(HttpStatusCode.OK).json({
@@ -54,7 +56,7 @@ export class ExamController {
   getExamsByMentor = async (req: Request, res: Response, next: NextFunction) => {
     try {
        const mentorId = req.user?.id; 
-       if (!mentorId) throw new AppError('Mentor ID not found', HttpStatusCode.UNAUTHORIZED);
+       if (!mentorId) throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.UNAUTHORIZED);
 
        const exams = await this._examService.getExamsByMentor(mentorId);
        return res.status(HttpStatusCode.OK).json({
@@ -75,7 +77,7 @@ export class ExamController {
       const exam = await this._examService.getExamById(id || "", userId, role);
       
       let isPremium = true;
-      if (role === 'student') {
+      if (role === UserRole.STUDENT) {
           const student = await this._studentService.getById(userId);
           isPremium = student?.subscription?.planType === 'premium';
       }
@@ -110,7 +112,7 @@ export class ExamController {
     try {
       console.log("➡️ [ExamController] getStudentResults hit!");
       const studentId = req.user?.id;
-      if (!studentId) throw new AppError("User not identified", HttpStatusCode.UNAUTHORIZED);
+      if (!studentId) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
       
       const results = await this._examService.getStudentResults(studentId);
       return res.status(HttpStatusCode.OK).json({
@@ -126,10 +128,10 @@ export class ExamController {
   getExamResults = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { examId } = req.params;
-      if (!examId) throw new AppError('Exam ID is required', HttpStatusCode.BAD_REQUEST);
+      if (!examId) throw new AppError(MESSAGES.COMMON.ID_REQUIRED("Exam"), HttpStatusCode.BAD_REQUEST);
 
       const mentorId = req.user?.id;
-      if (!mentorId) throw new AppError('Mentor ID not found', HttpStatusCode.UNAUTHORIZED);
+      if (!mentorId) throw new AppError(MESSAGES.MENTOR.ID_REQUIRED, HttpStatusCode.UNAUTHORIZED);
 
       const results = await this._examService.getExamResults(examId, mentorId);
       return res.status(HttpStatusCode.OK).json({
@@ -144,12 +146,12 @@ export class ExamController {
   gradeExam = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { resultId } = req.params;
-      if (!resultId) throw new AppError('Result ID is required', HttpStatusCode.BAD_REQUEST);
+      if (!resultId) throw new AppError(MESSAGES.COMMON.ID_REQUIRED("Result"), HttpStatusCode.BAD_REQUEST);
 
       const { grades } = req.body; 
       const mentorId = req.user?.id;
 
-      if (!mentorId) throw new AppError('Mentor ID not found', HttpStatusCode.UNAUTHORIZED);
+      if (!mentorId) throw new AppError(MESSAGES.MENTOR.ID_REQUIRED, HttpStatusCode.UNAUTHORIZED);
 
       const updatedResult = await this._examService.gradeStudentExam(resultId, mentorId, grades);
       return res.status(HttpStatusCode.OK).json({

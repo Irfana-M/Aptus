@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Upload, FileText, Loader2 } from 'lucide-react';
+import { X, Upload, FileText } from 'lucide-react';
+import { Loader } from '../../../components/ui/Loader';
 import { Button } from '../../../components/ui/Button';
 import { uploadStudyMaterial } from '../../../api/classroomApi';
 import { toast } from 'react-hot-toast';
@@ -133,10 +134,7 @@ const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({ sessionId, on
               className="w-full bg-[#1A1A80] hover:bg-[#2A2A90] text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 transition-all active:scale-[0.98] disabled:opacity-70"
             >
               {loading ? (
-                <>
-                  <Loader2 size={20} className="animate-spin" />
-                  Uploading...
-                </>
+                <Loader size="sm" color="text-white" text="Uploading..." className="flex-row gap-2" />
               ) : (
                 'Upload Material'
               )}

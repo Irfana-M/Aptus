@@ -1,7 +1,7 @@
 import { injectable } from 'inversify';
-import type { IProfileService } from "../interfaces/services/IProfileService";
-import type { MentorAuthUser } from "../interfaces/auth/auth.interface";
-import { logger } from "../utils/logger";
+import type { IProfileService } from "../interfaces/services/IProfileService.js";
+import type { MentorAuthUser } from "../interfaces/auth/auth.interface.js";
+import { logger } from "../utils/logger.js";
 
 @injectable()
 export class ProfileService implements IProfileService {

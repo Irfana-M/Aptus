@@ -3,8 +3,11 @@ import StudentLayout from '../../components/students/StudentLayout';
 import { fetchMyCourses } from '../../features/student/studentApi';
 import { BookOpen, Clock, CheckCircle, RefreshCcw, Calendar, Video } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { Loader } from '../../components/ui/Loader';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../constants/routes.constants';
 
 interface Course {
     _id: string;
@@ -72,11 +75,7 @@ const MyCourses: React.FC = () => {
                 </div>
 
                 {loading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {[1, 2].map(i => (
-                            <div key={i} className="h-48 bg-slate-50 rounded-3xl animate-pulse border-2 border-slate-100" />
-                        ))}
-                    </div>
+                    <Loader size="lg" text="Finding your courses..." />
                 ) : courses.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {courses.map((course) => (
@@ -116,14 +115,14 @@ const MyCourses: React.FC = () => {
                                     
                                     <div className="flex gap-2">
                                         <Button 
-                                            onClick={() => navigate('/student/classroom')}
+                                            onClick={() => navigate(ROUTES.STUDENT.CLASSROOM)}
                                             className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs"
                                         >
                                             <Video size={14} /> 
                                             JOIN
                                         </Button>
                                         <Button 
-                                            onClick={() => navigate(`/student/course/${course._id}/exams`)}
+                                            onClick={() => navigate(`${ROUTES.STUDENT.COURSE_EXAMS_BASE}/${course._id}/exams`)}
                                             className="flex-1 bg-white border-2 border-indigo-100 hover:bg-indigo-50 text-indigo-600 py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs"
                                         >
                                             <RefreshCcw size={14} className="rotate-90" /> 
@@ -135,19 +134,13 @@ const MyCourses: React.FC = () => {
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-20 bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
-                        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300">
-                            <BookOpen size={40} />
-                        </div>
-                        <h2 className="text-2xl font-black text-slate-400">No courses found</h2>
-                        <p className="text-slate-400 mt-2">Your enrolled courses will appear here once admin approves your requests.</p>
-                        <Button 
-                            onClick={() => window.location.href = '/student/dashboard'}
-                            className="mt-8 bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-4 rounded-2xl font-bold"
-                        >
-                            GO TO DASHBOARD
-                        </Button>
-                    </div>
+                    <EmptyState 
+                        icon={BookOpen} 
+                        title="No courses found" 
+                        description="Your enrolled courses will appear here once admin approves your requests." 
+                        actionLabel="GO TO DASHBOARD"
+                        onAction={() => navigate(ROUTES.STUDENT.DASHBOARD)}
+                    />
                 )}
             </div>
         </StudentLayout>

@@ -1,8 +1,8 @@
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import dotenv from "dotenv";
-import { StudentModel } from "../models/student/student.model";
-import { MentorModel } from "../models/mentor/mentor.model";
+import { StudentModel } from "../models/student/student.model.js";
+import { MentorModel } from "../models/mentor/mentor.model.js";
 
 dotenv.config();
 

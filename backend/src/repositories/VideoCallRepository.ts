@@ -1,11 +1,11 @@
 import { injectable } from "inversify";
-import { VideoCall } from "@/models/videoCall.model";
-import type { IVideoCallDocument } from "@/interfaces/models/videoCall.interface";
-import type { IVideoCallRepository } from "@/interfaces/repositories/IVideoCallRepository";
-import { logger } from "@/utils/logger";
+import { VideoCall } from "@/models/videoCall.model.js";
+import type { IVideoCallDocument } from "@/interfaces/models/videoCall.interface.js";
+import type { IVideoCallRepository } from "@/interfaces/repositories/IVideoCallRepository.js";
+import { logger } from "@/utils/logger.js";
 import { Types } from "mongoose";
-import { HttpStatusCode } from "@/constants/httpStatus";
-import { AppError } from "@/utils/AppError";
+import { HttpStatusCode } from "@/constants/httpStatus.js";
+import { AppError } from "@/utils/AppError.js";
 
 @injectable()
 export class VideoCallRepository implements IVideoCallRepository {

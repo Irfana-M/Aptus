@@ -1,19 +1,21 @@
 import type { Request, Response, NextFunction } from "express";
 import { injectable, inject } from "inversify";
-import type { ICourseAdminService } from "../interfaces/services/ICourseAdminService"
-import {TYPES} from "@/types";
-import { HttpStatusCode } from "@/constants/httpStatus";
-import { logger } from "@/utils/logger";
-import type { CoursePaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes";
-import type { SubjectResponseDto } from "@/dtos/student/subject.dto";
-import { AppError } from "@/utils/AppError";
-import { getPaginationParams } from "@/utils/pagination.util";
+import type { ICourseAdminService } from "../interfaces/services/ICourseAdminService.js"
+import {TYPES} from "@/types.js";
+import { HttpStatusCode } from "@/constants/httpStatus.js";
+import { logger } from "@/utils/logger.js";
+import type { CoursePaginationParams } from "@/dtos/shared/paginationTypes.js";
+import type { SubjectResponseDto } from "@/dtos/student/subject.dto.js";
+import { AppError } from "@/utils/AppError.js";
+import { getPaginationParams } from "@/utils/pagination.util.js";
+import { MESSAGES } from "@/constants/messages.constants.js";
+import { CourseStatus } from "@/enums/course.enum.js";
 
 @injectable()
 export class CourseAdminController {
   constructor(
     @inject(TYPES.ICourseAdminService)
-    private courseService: ICourseAdminService,
+    private _courseService: ICourseAdminService,
     
   ) {}
 
@@ -43,34 +45,34 @@ export class CourseAdminController {
         if (days) {
            params.days = Array.isArray(days) 
              ? (days as string[]) 
-             : (days as string).split(',').filter(d => d.trim().length > 0);
+             : (days as string).split(',').filter(day => day.trim().length > 0);
         }
 
-        const mentors = await this.courseService.getAvailableMentorsForCourse(params);
+        const mentors = await this._courseService.getAvailableMentorsForCourse(params);
         logger.info(`✅ [CourseAdminController] Found ${mentors.matches.length} matches and ${mentors.alternates.length} alternates for ${subjectId}`);
         res.json({ success: true, data: mentors });
-      } catch (err) {
-        next(err);
+      } catch (error) {
+        next(error);
       }
   };
 
   createEnrollment = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const course = await this.courseService.createEnrollment(req.body);
+      const course = await this._courseService.createEnrollment(req.body);
       res.status(HttpStatusCode.CREATED).json({ success: true, data: course });
-    } catch (err) {
-      next(err);
+    } catch (error) {
+      next(error);
     }
   };
 
   updateOneToOneCourse = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { courseId } = req.params;
-      if (!courseId) throw new AppError("Course ID is required", HttpStatusCode.BAD_REQUEST);
-      const course = await this.courseService.updateOneToOneCourse(courseId, req.body);
+      if (!courseId) throw new AppError(MESSAGES.COMMON.ID_REQUIRED("Course"), HttpStatusCode.BAD_REQUEST);
+      const course = await this._courseService.updateOneToOneCourse(courseId, req.body);
       res.status(HttpStatusCode.OK).json({ success: true, data: course });
-    } catch (err) {
-      next(err);
+    } catch (error) {
+      next(error);
     }
   };
 
@@ -78,7 +80,7 @@ getAllOneToOneCourses = async (req: Request, res: Response, next: NextFunction):
   try {
     const { page, limit } = getPaginationParams(req.query);
     const search = req.query.search as string | undefined;
-    const status = req.query.status as 'available' | 'booked' | 'ongoing' | 'completed' | 'cancelled' | '' | undefined;
+    const status = req.query.status as CourseStatus | '' | undefined;
     const gradeId = req.query.gradeId as string | undefined;
 
     logger.info("Admin: Fetching courses with pagination/filters", { page, limit, search, status, gradeId });
@@ -94,7 +96,7 @@ getAllOneToOneCourses = async (req: Request, res: Response, next: NextFunction):
       paginationParams.status = status;
     }
 
-    const result = await this.courseService.getAllCoursesPaginated(paginationParams);
+    const result = await this._courseService.getAllCoursesPaginated(paginationParams);
     res.status(HttpStatusCode.OK).json(result);
   } catch (error: unknown) {
     next(error);
@@ -103,11 +105,11 @@ getAllOneToOneCourses = async (req: Request, res: Response, next: NextFunction):
 
 getAllGrades = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const grades = await this.courseService.getAllGrades();
+    const grades = await this._courseService.getAllGrades();
     res.status(HttpStatusCode.OK).json({
       success: true,
       data: grades,
-      message: "Grades fetched successfully",
+      message: MESSAGES.COURSE.GRADES_FETCH_SUCCESS,
     });
   } catch (error) {
     next(error);
@@ -118,9 +120,9 @@ getSubjectsByGrade = async (req: Request, res: Response, next: NextFunction): Pr
   try {
     const { gradeId } = req.query;
     if (!gradeId || typeof gradeId !== 'string') {
-      throw new AppError("Grade ID is required", HttpStatusCode.BAD_REQUEST);
+      throw new AppError(MESSAGES.COMMON.ID_REQUIRED("Grade"), HttpStatusCode.BAD_REQUEST);
     }
-    const subjects = await this.courseService.getSubjectsByGrade(gradeId);
+    const subjects = await this._courseService.getSubjectsByGrade(gradeId);
     const subjectDtos: SubjectResponseDto[] = subjects.map(subject => ({
       id: subject.id.toString(),
       subjectName: subject.subjectName,
@@ -129,7 +131,7 @@ getSubjectsByGrade = async (req: Request, res: Response, next: NextFunction): Pr
     }));
     res.status(HttpStatusCode.OK).json({
       success: true,
-      message: "Subjects fetched successfully",
+      message: MESSAGES.COURSE.SUBJECTS_FETCH_SUCCESS,
       data: subjectDtos,
     });
   } catch (error) {
@@ -141,22 +143,22 @@ getSubjectsByGrade = async (req: Request, res: Response, next: NextFunction): Pr
     try {
       const { courseId } = req.params;
       const { studentId } = req.body;
-      if (!courseId || !studentId) throw new AppError("Course ID and Student ID are required", HttpStatusCode.BAD_REQUEST);
-      const result = await this.courseService.enrollStudentToCourse(courseId, studentId);
-      res.status(HttpStatusCode.OK).json({ success: true, data: result, message: "Student enrolled successfully" });
-    } catch (err) {
-      next(err);
+      if (!courseId || !studentId) throw new AppError(MESSAGES.COMMON.REQUIRED_FIELDS(["Course ID", "Student ID"]), HttpStatusCode.BAD_REQUEST);
+      const result = await this._courseService.enrollStudentToCourse(courseId, studentId);
+      res.status(HttpStatusCode.OK).json({ success: true, data: result, message: MESSAGES.COURSE.ENROLL_SUCCESS });
+    } catch (error) {
+      next(error);
     }
   };
 
   unenrollStudentFromCourse = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { courseId, studentId } = req.params;
-      if (!courseId || !studentId) throw new AppError("Course ID and Student ID are required", HttpStatusCode.BAD_REQUEST);
-      const result = await this.courseService.unenrollStudentFromCourse(courseId, studentId);
-      res.status(HttpStatusCode.OK).json({ success: true, data: result, message: "Student unenrolled successfully" });
-    } catch (err) {
-      next(err);
+      if (!courseId || !studentId) throw new AppError(MESSAGES.COMMON.REQUIRED_FIELDS(["Course ID", "Student ID"]), HttpStatusCode.BAD_REQUEST);
+      const result = await this._courseService.unenrollStudentFromCourse(courseId, studentId);
+      res.status(HttpStatusCode.OK).json({ success: true, data: result, message: MESSAGES.COURSE.UNENROLL_SUCCESS });
+    } catch (error) {
+      next(error);
     }
   };
 }

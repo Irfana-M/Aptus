@@ -1,18 +1,20 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types";
+import { TYPES } from "../types.js";
 import type { NextFunction, Request, Response } from "express";
-import type { IAuthService } from "../interfaces/services/IauthService";
-import { studentRegisterSchema } from "../validations/authValidation/signup.validation";
-import { loginSchema } from "../validations/authValidation/login.validation";
-import type { IOtpService } from "../interfaces/services/IOtpService";
-import { HttpStatusCode } from "../constants/httpStatus";
-import { logger } from "../utils/logger";
-import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO";
-import type { LoginUserDto } from "../dtos/auth/LoginUserDTO";
-import type { SendOtpDto } from "../dtos/auth/OtpDTO";
-import { generateAccessToken, verifyRefreshToken } from "@/utils/jwt.util";
-import { AppError } from "@/utils/AppError";
-import { config } from "../config/app.config";
+import type { IAuthService } from "../interfaces/services/IauthService.js";
+import { studentRegisterSchema } from "../validations/authValidation/signup.validation.js";
+import { loginSchema } from "../validations/authValidation/login.validation.js";
+import type { IOtpService } from "../interfaces/services/IOtpService.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import { MESSAGES } from "../constants/messages.constants.js";
+import { logger } from "../utils/logger.js";
+import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO.js";
+import type { LoginUserDto } from "../dtos/auth/LoginUserDTO.js";
+import type { SendOtpDto } from "../dtos/auth/OtpDTO.js";
+import { UserRole } from "../enums/user.enum.js";
+import { generateAccessToken, verifyRefreshToken } from "@/utils/jwt.util.js";
+import { AppError } from "@/utils/AppError.js";
+import { config } from "../config/app.config.js";
 
 @injectable()
 export class AuthController {
@@ -21,15 +23,9 @@ export class AuthController {
     @inject(TYPES.IOtpService) private _otpService: IOtpService
   ) {}
 
-  registerUser = async (req: Request, res: Response) => {
+  registerUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const parsedData = studentRegisterSchema.parse(req.body);
-
-      const { referralCode, ...restParsed } = parsedData;
-      const userData: RegisterUserDto = {
-        ...restParsed,
-        ...(referralCode !== undefined ? { referralCode } : {}),
-      };
+      const { referralCode, ...userData }: RegisterUserDto & { referralCode?: string } = req.body;
 
       const result = await this._authService.registerUser(userData);
 
@@ -40,21 +36,15 @@ export class AuthController {
         message: result.message,
       });
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      logger.error(`User registration failed: ${errorMessage}`);
-      return res.status(HttpStatusCode.BAD_REQUEST).json({
-        success: false,
-        message: errorMessage,
-      });
+      next(error);
     }
   };
 
-  login = async (req: Request, res: Response) => {
+  login = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const loginData: LoginUserDto = loginSchema.parse(req.body);
+      const { email, password, role }: LoginUserDto = req.body;
 
-      const result = await this._authService.loginUser(loginData);
+      const result = await this._authService.loginUser({ email, password, role });
 
       res.cookie(
         "refreshToken",
@@ -62,17 +52,15 @@ export class AuthController {
         config.cookie.refreshToken
       );
 
-      console.log(result);
-
       logger.info(
-        `User login success: ${loginData.email}, role: ${loginData.role}}`
+        `User login success: ${email}, role: ${role}}`
       );
 
       return res.status(HttpStatusCode.OK).json({
         success: true,
         user: {
           ...result.user,
-          role: loginData.role,
+          role,
           isProfileComplete: result.isProfileComplete,
           isPaid: result.isPaid,
           isTrialCompleted: result.isTrialCompleted,
@@ -83,13 +71,7 @@ export class AuthController {
         isTrialCompleted: result.isTrialCompleted,
       });
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      logger.error(`User login failed: ${req.body.email} - ${errorMessage}`);
-      return res.status(HttpStatusCode.BAD_REQUEST).json({
-        success: false,
-        message: errorMessage,
-      });
+      next(error);
     }
   };
 
@@ -102,7 +84,7 @@ export class AuthController {
       const refreshToken = req.cookies?.refreshToken;
       if (!refreshToken) {
         throw new AppError(
-          "No refresh token provided",
+          MESSAGES.AUTH.REFRESH_TOKEN_REQUIRED,
           HttpStatusCode.UNAUTHORIZED
         );
       }
@@ -110,7 +92,7 @@ export class AuthController {
       const payload = verifyRefreshToken(refreshToken);
       if (!payload) {
         throw new AppError(
-          "Invalid or expired refresh token",
+          MESSAGES.AUTH.INVALID_REFRESH_TOKEN,
           HttpStatusCode.FORBIDDEN
         );
       }
@@ -135,8 +117,8 @@ export class AuthController {
         isTrialCompleted: userData.isTrialCompleted,
       };
 
-      if (payload.role === 'student') {
-        // Explicitly pass subscription
+      if (payload.role === UserRole.STUDENT) {
+       
         userResponse.subscription = (userData.user as { subscription?: unknown }).subscription;
       }
 
@@ -147,60 +129,52 @@ export class AuthController {
         isProfileComplete: userData.isProfileComplete,
         isPaid: userData.isPaid,
         isTrialCompleted: userData.isTrialCompleted,
-        message: "Access token refreshed successfully",
+        message: MESSAGES.AUTH.REFRESH_SUCCESS,
       });
     } catch (error) {
-      // Clear cookie immediately on any refresh failure to prevent infinite loops
+      
       res.clearCookie("refreshToken", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
       });
 
-      // If user not found, strictly return 401 so frontend knows to logout
-      if (error instanceof AppError && error.message === "User not found") {
-         return next(new AppError("User account no longer exists", HttpStatusCode.UNAUTHORIZED));
+      
+      if (error instanceof AppError && error.message === MESSAGES.AUTH.USER_NOT_FOUND) {
+         return next(new AppError(MESSAGES.AUTH.USER_NOT_EXISTS, HttpStatusCode.UNAUTHORIZED));
       }
 
       next(
         error instanceof AppError
           ? error
           : new AppError(
-              "Token refresh failed",
+              MESSAGES.AUTH.REFRESH_FAILED,
               HttpStatusCode.INTERNAL_SERVER_ERROR
             )
       );
     }
   };
 
-  sendForgotPasswordOtp = async (req: Request, res: Response) => {
+  sendForgotPasswordOtp = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const data: SendOtpDto = req.body;
+      const otpData: SendOtpDto = req.body;
 
-      if (!data.email) throw new Error("Email is required");
-      if (!data.role || !["student", "mentor"].includes(data.role))
-        throw new Error("Role is required");
+      if (!otpData.email) throw new AppError(MESSAGES.AUTH.EMAIL_REQUIRED, HttpStatusCode.BAD_REQUEST);
+      if (!otpData.role || ![UserRole.STUDENT, UserRole.MENTOR].includes(otpData.role as UserRole))
+        throw new AppError(MESSAGES.AUTH.ROLE_REQUIRED, HttpStatusCode.BAD_REQUEST);
 
-      await this._authService.sendForgotPasswordOtp(data);
+      await this._authService.sendForgotPasswordOtp(otpData);
 
       logger.info(
-        `Forgot password OTP sent to: ${data.email}, role: ${data.role}`
+        `Forgot password OTP sent to: ${otpData.email}, role: ${otpData.role}`
       );
 
       return res.status(HttpStatusCode.OK).json({
         success: true,
-        message: "OTP sent successfully",
+        message: MESSAGES.AUTH.OTP_SENT,
       });
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      logger.error(
-        `Forgot password OTP failed: ${req.body.email} - ${errorMessage}`
-      );
-      return res.status(HttpStatusCode.BAD_REQUEST).json({
-        success: false,
-        message: errorMessage,
-      });
+      next(error);
     }
   };
 
@@ -213,19 +187,16 @@ export class AuthController {
 
     return res
       .status(HttpStatusCode.OK)
-      .json({ success: true, message: "Logged out successfully" });
+      .json({ success: true, message: MESSAGES.AUTH.LOGOUT_SUCCESS });
   };
 
-  getMe = async (req: Request, res: Response) => {
+  getMe = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // req.user is populated by the auth middleware
+      
       const user = req.user;
 
       if (!user) {
-        return res.status(HttpStatusCode.UNAUTHORIZED).json({
-          success: false,
-          message: "Not authenticated",
-        });
+        throw new AppError(MESSAGES.AUTH.NOT_AUTHENTICATED, HttpStatusCode.UNAUTHORIZED);
       }
 
       return res.status(HttpStatusCode.OK).json({
@@ -233,13 +204,7 @@ export class AuthController {
         user: user,
       });
     } catch (error: unknown) {
-      console.error("Error in getMe:", error);
-      const err = error as Error;
-      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "Failed to fetch user details",
-        error: err.message
-      });
+      next(error);
     }
   };
 }

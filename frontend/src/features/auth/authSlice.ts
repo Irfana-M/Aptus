@@ -66,6 +66,10 @@ const authSlice = createSlice({
       state.hasPaid = action.payload.hasPaid;
       if (state.user) {
         state.user.hasPaid = action.payload.hasPaid;
+        // Immediately set the onboarding status so guards work before profile fetch
+        if (action.payload.hasPaid) {
+          state.user.onboardingStatus = 'subscribed';
+        }
       }
     },
   },

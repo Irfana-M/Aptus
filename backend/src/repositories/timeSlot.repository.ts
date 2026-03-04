@@ -1,10 +1,10 @@
 import { injectable } from 'inversify';
 import { Types } from 'mongoose';
-import type { ClientSession, FilterQuery, QueryOptions } from 'mongoose';
-import { BaseRepository } from './baseRepository';
-import type { ITimeSlotRepository } from '../interfaces/repositories/ITimeSlotRepository';
-import type { ITimeSlot } from '../interfaces/models/timeSlot.interface';
-import { TimeSlotModel } from '../models/scheduling/timeSlot.model';
+import type { ClientSession, FilterQuery, QueryOptions, UpdateQuery } from 'mongoose';
+import { BaseRepository } from './baseRepository.js';
+import type { ITimeSlotRepository } from '../interfaces/repositories/ITimeSlotRepository.js';
+import type { ITimeSlot } from '../interfaces/models/timeSlot.interface.js';
+import { TimeSlotModel } from '../models/scheduling/timeSlot.model.js';
 
 @injectable()
 export class TimeSlotRepository extends BaseRepository<ITimeSlot> implements ITimeSlotRepository {
@@ -141,15 +141,15 @@ export class TimeSlotRepository extends BaseRepository<ITimeSlot> implements ITi
     }).lean() as unknown as ITimeSlot[];
   }
 
-  async updateMany(filter: FilterQuery<ITimeSlot>, update: any, session?: ClientSession): Promise<any> {
+  async updateMany(filter: FilterQuery<ITimeSlot>, update: UpdateQuery<ITimeSlot>, session?: ClientSession): Promise<unknown> {
     return await this.model.updateMany(filter, update).session(session || null).exec();
   }
 
-  async deleteMany(filter: FilterQuery<ITimeSlot>, session?: ClientSession): Promise<any> {
+  async deleteMany(filter: FilterQuery<ITimeSlot>, session?: ClientSession): Promise<unknown> {
     return await this.model.deleteMany(filter).session(session || null).exec();
   }
 
-  async insertMany(docs: any[], session?: ClientSession): Promise<ITimeSlot[]> {
+  async insertMany(docs: Partial<ITimeSlot>[], session?: ClientSession): Promise<ITimeSlot[]> {
     return await this.model.insertMany(docs, { session: session || null }) as unknown as ITimeSlot[];
   }
 }

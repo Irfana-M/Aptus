@@ -5,6 +5,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchStudentPaymentHistory } from '../../features/payment/paymentThunk';
 import { fetchStudentProfile } from '../../features/student/studentThunk';
 import type { RootState, AppDispatch } from '../../app/store';
+import { Loader } from '../../components/ui/Loader';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 interface Payment {
     _id: string;
@@ -108,7 +110,7 @@ Thank you for choosing Aptus for your learning!
          return (
             <StudentLayout title="Payment History">
                 <div className="flex justify-center items-center h-64">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+                    <Loader size="md" text="Loading transaction history..." />
                 </div>
             </StudentLayout>
         );
@@ -238,13 +240,11 @@ Thank you for choosing Aptus for your learning!
                         </table>
                     </div>
                 ) : (
-                    <div className="p-12 text-center">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <CreditCard className="w-8 h-8 text-gray-400" />
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-1">No payment history</h3>
-                        <p className="text-gray-500">You haven't made any transactions yet.</p>
-                    </div>
+                    <EmptyState 
+                        icon={CreditCard} 
+                        title="No payment history" 
+                        description="You haven't made any transactions yet." 
+                    />
                 )}
             </div>
         </StudentLayout>

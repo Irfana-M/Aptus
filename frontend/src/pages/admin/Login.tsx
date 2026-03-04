@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { Eye, EyeOff } from "lucide-react";
+import { ROUTES } from "../../constants/routes.constants";
 
 import type { AppDispatch } from "../../app/store";
 import { adminLoginThunk } from "../../features/admin/adminThunk";
@@ -39,7 +40,7 @@ export default function AdminLoginPage() {
   useEffect(() => {
     if (loginAttempted && accessToken && admin && !loading) {
       console.log("✅ Login successful, redirecting to dashboard...");
-      navigate("/admin/dashboard");
+      navigate(ROUTES.ADMIN.DASHBOARD);
     }
   }, [loginAttempted, accessToken, admin, loading, navigate]);
 
@@ -62,7 +63,7 @@ export default function AdminLoginPage() {
       setLoginAttempted(true);
       
       toast.success("Admin logged in successfully!");
-      navigate("/admin/dashboard");
+      navigate(ROUTES.ADMIN.DASHBOARD);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Login failed!";
       toast.error(errorMessage);

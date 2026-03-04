@@ -1,15 +1,15 @@
 import { injectable, inject } from "inversify";
 import mongoose from "mongoose";
-import { TYPES } from "../../types";
-import { logger } from "../../utils/logger";
-import { getErrorMessage } from "../../utils/errorUtils";
-import { AppError } from "../../utils/AppError";
-import { HttpStatusCode } from "../../constants/httpStatus";
-import type { ILeaveManagementService } from "../../interfaces/services/ILeaveManagementService";
-import type { INotificationService } from "../../interfaces/services/INotificationService";
-import type { ITimeSlotRepository } from "../../interfaces/repositories/ITimeSlotRepository";
-import type { IBookingRepository } from "../../interfaces/repositories/IBookingRepository";
-import type { IStudentRepository } from "../../interfaces/repositories/IStudentRepository";
+import { TYPES } from "../../types.js";
+import { logger } from "../../utils/logger.js";
+import { getErrorMessage } from "../../utils/errorUtils.js";
+import { AppError } from "../../utils/AppError.js";
+import { HttpStatusCode } from "../../constants/httpStatus.js";
+import type { ILeaveManagementService } from "../../interfaces/services/ILeaveManagementService.js";
+import type { INotificationService } from "../../interfaces/services/INotificationService.js";
+import type { ITimeSlotRepository } from "../../interfaces/repositories/ITimeSlotRepository.js";
+import type { IBookingRepository } from "../../interfaces/repositories/IBookingRepository.js";
+import type { IStudentRepository } from "../../interfaces/repositories/IStudentRepository.js";
 
 @injectable()
 export class LeaveManagementService implements ILeaveManagementService {

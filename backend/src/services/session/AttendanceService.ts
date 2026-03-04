@@ -1,14 +1,14 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../../types";
-import { logger } from "../../utils/logger";
-import { AppError } from "../../utils/AppError";
-import { HttpStatusCode } from "../../constants/httpStatus";
-import type { IAttendanceService } from "../../interfaces/services/IAttendanceService";
-import type { ISessionRepository } from "../../interfaces/repositories/ISessionRepository";
-import type { IAttendanceRepository } from "../../interfaces/repositories/IAttendanceRepository";
-import type { IAttendance } from "../../interfaces/models/attendance.interface";
-import { SessionStatus } from "../../domain/session/constants";
-import type { SessionAttendancePolicy } from "../../domain/policy/SessionAttendancePolicy";
+import { TYPES } from "../../types.js";
+import { logger } from "../../utils/logger.js";
+import { AppError } from "../../utils/AppError.js";
+import { HttpStatusCode } from "../../constants/httpStatus.js";
+import type { IAttendanceService } from "../../interfaces/services/IAttendanceService.js";
+import type { ISessionRepository } from "../../interfaces/repositories/ISessionRepository.js";
+import type { IAttendanceRepository } from "../../interfaces/repositories/IAttendanceRepository.js";
+import type { IAttendance } from "../../interfaces/models/attendance.interface.js";
+import { SessionStatus } from "../../domain/session/constants.js";
+import type { SessionAttendancePolicy } from "../../domain/policy/SessionAttendancePolicy.js";
 import { Types } from "mongoose";
 
 @injectable()
@@ -30,14 +30,14 @@ export class AttendanceService implements IAttendanceService {
     } else {
         // Simple existence check for TrialClass (could be improved with a TrialRepo if needed, 
         // but for now we follow the user's logic)
-        const { TrialClass } = await import("../../models/student/trialClass.model");
+        const { TrialClass } = await import("../../models/student/trialClass.model.js");
         session = await TrialClass.findById(sessionId);
     }
 
     if (!session) throw new AppError(`${sessionModel} not found`, HttpStatusCode.NOT_FOUND);
 
     // Apply policy (Policy expects IBooking, which both Session and TrialClass mostly satisfy)
-    this._policy.canMarkPresent(session as unknown as import('../../interfaces/models/booking.interface').IBooking);
+    this._policy.canMarkPresent(session as unknown as import('../../interfaces/models/booking.interface.js').IBooking);
 
     let attendance = await this._attendanceRepo.findBySessionAndUser(sessionId, userId, sessionModel);
     if (attendance) {
@@ -73,12 +73,12 @@ export class AttendanceService implements IAttendanceService {
     if (sessionModel === 'Session') {
         session = await this._sessionRepo.findById(sessionId);
     } else {
-        const { TrialClass } = await import("../../models/student/trialClass.model");
+        const { TrialClass } = await import("../../models/student/trialClass.model.js");
         session = await TrialClass.findById(sessionId);
     }
     if (!session) throw new AppError(`${sessionModel} not found`, HttpStatusCode.NOT_FOUND);
 
-    this._policy.canMarkAbsent(session as unknown as import('../../interfaces/models/booking.interface').IBooking);
+    this._policy.canMarkAbsent(session as unknown as import('../../interfaces/models/booking.interface.js').IBooking);
 
     let attendance = await this._attendanceRepo.findBySessionAndUser(sessionId, userId, sessionModel);
     if (attendance) {
@@ -116,7 +116,7 @@ export class AttendanceService implements IAttendanceService {
     ];
 
     for (const p of participants) {
-      let attendance = await this._attendanceRepo.findBySessionAndUser(sessionId, p.userId, 'Session');
+      const attendance = await this._attendanceRepo.findBySessionAndUser(sessionId, p.userId, 'Session');
       if (!attendance) {
         await this._attendanceRepo.create({
           sessionId: new Types.ObjectId(sessionId) as unknown as import('mongoose').Schema.Types.ObjectId,
@@ -146,7 +146,7 @@ export class AttendanceService implements IAttendanceService {
     ];
 
     for (const p of participants) {
-      let attendance = await this._attendanceRepo.findBySessionAndUser(trialClassId, p.userId, 'TrialClass');
+      const attendance = await this._attendanceRepo.findBySessionAndUser(trialClassId, p.userId, 'TrialClass');
       if (!attendance) {
         await this._attendanceRepo.create({
           sessionId: new Types.ObjectId(trialClassId) as unknown as import('mongoose').Schema.Types.ObjectId,

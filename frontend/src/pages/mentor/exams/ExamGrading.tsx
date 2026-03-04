@@ -5,6 +5,7 @@ import { getExamResults, getExamById, gradeExam } from '../../../features/exam/e
 import type { AppDispatch, RootState } from '../../../app/store';
 import { ChevronLeft, Save, CheckCircle, XCircle } from 'lucide-react';
 import { QuestionType } from '../../../types/examTypes';
+import { Loader } from '../../../components/ui/Loader';
 import toast from 'react-hot-toast';
 
 const ExamGrading: React.FC = () => {
@@ -46,11 +47,7 @@ const ExamGrading: React.FC = () => {
     }, [result, currentExam]);
 
     if (loading || !result || !currentExam) {
-        return (
-            <div className="flex justify-center items-center h-screen bg-gray-50">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
-            </div>
-        );
+        return <Loader fullPage text="Loading Exam Data..." />;
     }
 
     const handleGradeChange = (questionId: string, field: 'marks' | 'feedback', value: number | string) => {

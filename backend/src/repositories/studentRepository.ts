@@ -1,23 +1,24 @@
-import type { IStudentRepository, StudentPaginatedResult } from "@/interfaces/repositories/IStudentRepository";
+import type { IStudentRepository, StudentPaginatedResult } from "@/interfaces/repositories/IStudentRepository.js";
 import type {
   StudentAuthUser,
   AuthUser,
-} from "@/interfaces/auth/auth.interface";
-import type { StudentProfile } from "@/interfaces/models/student.interface";
+} from "@/interfaces/auth/auth.interface.js";
+import type { StudentProfile } from "@/interfaces/models/student.interface.js";
 // BaseRepository import removed
-import { StudentModel } from "@/models/student/student.model";
-import { StudentMapper } from "@/mappers/StudentMapper";
-import { AppError } from "@/utils/AppError";
-import { HttpStatusCode } from "@/constants/httpStatus";
-import { logger } from "@/utils/logger";
+import { StudentModel } from "@/models/student/student.model.js";
+import { StudentMapper } from "@/mappers/StudentMapper.js";
+import { AppError } from "@/utils/AppError.js";
+import { MESSAGES } from "@/constants/messages.constants.js";
+import { HttpStatusCode } from "@/constants/httpStatus.js";
+import { logger } from "@/utils/logger.js";
 import { injectable } from "inversify";
-import { getSignedFileUrl } from "@/utils/s3Upload";
+import { getSignedFileUrl } from "@/utils/s3Upload.js";
 import type { FilterQuery, PipelineStage } from "mongoose";
-import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
-import { BaseRepository } from "./baseRepository";
-import { getPaginationParams } from "@/utils/pagination.util";
+import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO.js";
+import { BaseRepository } from "./baseRepository.js";
+import { getPaginationParams } from "@/utils/pagination.util.js";
 import type { Document, ClientSession, Model } from "mongoose";
-import type { StudentPaginationParams } from "@/dtos/shared/paginationTypes";
+import type { StudentPaginationParams } from "@/dtos/shared/paginationTypes.js";
 
 export interface DetailedStudentProfile extends Partial<StudentAuthUser> {
   trialClasses: unknown[];
@@ -68,7 +69,7 @@ export class StudentRepository
     } catch (error) {
       logger.error("Error finding student by email:", error);
       throw new AppError(
-        "Failed to find student by email",
+        MESSAGES.STUDENT.FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -104,7 +105,7 @@ export class StudentRepository
     } catch (error) {
       logger.error("Error finding student by ID:", error);
       throw new AppError(
-        "Failed to find student by ID",
+        MESSAGES.STUDENT.FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -128,13 +129,13 @@ export class StudentRepository
         .lean()
         .exec();
 
-      if (!result) throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
+      if (!result) throw new AppError(MESSAGES.STUDENT.NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
       return StudentMapper.toResponseDto(result as unknown as StudentAuthUser);
     } catch (error) {
       logger.error(`Error updating student profile: ${id}`, error);
       throw new AppError(
-        "Failed to update student profile",
+        MESSAGES.STUDENT.UPDATE_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -153,7 +154,7 @@ export class StudentRepository
         .lean()
         .exec();
 
-      if (!blockedStudent) throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
+      if (!blockedStudent) throw new AppError(MESSAGES.STUDENT.NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
       logger.info(`Student blocked successfully: ${id}`);
       return StudentMapper.toStudentAuthUser(blockedStudent as unknown as StudentAuthUser);
@@ -161,7 +162,7 @@ export class StudentRepository
     logger.error(`Error blocking student: ${id}`, error);
     if (error instanceof AppError) throw error;
     throw new AppError(
-      "Failed to block student",
+      MESSAGES.STUDENT.BLOCK_FAILED,
       HttpStatusCode.INTERNAL_SERVER_ERROR
     );
   }
@@ -181,7 +182,7 @@ async unblockStudent(id: string): Promise<StudentAuthUser> {
       .lean()
       .exec();
 
-    if (!unblockedStudent) throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
+    if (!unblockedStudent) throw new AppError(MESSAGES.STUDENT.NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
     logger.info(`Student unblocked successfully: ${id}`);
     
@@ -190,7 +191,7 @@ async unblockStudent(id: string): Promise<StudentAuthUser> {
     logger.error(`Error unblocking student: ${id}`, error);
     if (error instanceof AppError) throw error;
     throw new AppError(
-      "Failed to unblock student",
+      MESSAGES.STUDENT.UNBLOCK_FAILED,
       HttpStatusCode.INTERNAL_SERVER_ERROR
     );
   }
@@ -215,7 +216,7 @@ async unblockStudent(id: string): Promise<StudentAuthUser> {
       if (!result) {
         logger.warn(`Student not found for verification: ${email}`);
         throw new AppError(
-          "Student not found with the provided email",
+          MESSAGES.STUDENT.NOT_FOUND,
           HttpStatusCode.NOT_FOUND
         );
       }
@@ -225,7 +226,7 @@ async unblockStudent(id: string): Promise<StudentAuthUser> {
       logger.error("Error marking student as verified:", error);
       if (error instanceof AppError) throw error;
       throw new AppError(
-        "Failed to mark student as verified",
+        MESSAGES.STUDENT.VERIFY_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -236,13 +237,13 @@ async unblockStudent(id: string): Promise<StudentAuthUser> {
       logger.debug(`Creating new student`, { email: data.email });
       const result = await this.model.create([data], { session });
       const student = result[0];
-      if (!student) throw new AppError("Failed to create student", HttpStatusCode.BAD_REQUEST);
+      if (!student) throw new AppError(MESSAGES.STUDENT.CREATE_FAILED, HttpStatusCode.BAD_REQUEST);
       logger.info(`Student created successfully: ${student._id}`);
       return student as unknown as StudentAuthUser & Document;
     } catch (error) {
       logger.error(`Error creating student:`, error);
       if (error instanceof AppError) throw error;
-      throw new AppError("Failed to create student", HttpStatusCode.INTERNAL_SERVER_ERROR);
+      throw new AppError(MESSAGES.STUDENT.CREATE_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -251,13 +252,13 @@ async unblockStudent(id: string): Promise<StudentAuthUser> {
       logger.debug(`Updating student with ID: ${id}`);
       const cleanData = this.removeUndefinedProperties(data);
       const result = await this.model.findByIdAndUpdate(id, cleanData, { new: true, runValidators: true, session: session || null }).lean().exec();
-      if (!result) throw new AppError(`Student update failed: ${id}`, HttpStatusCode.NOT_FOUND);
+      if (!result) throw new AppError(MESSAGES.STUDENT.UPDATE_FAILED, HttpStatusCode.NOT_FOUND);
       logger.info(`Student updated successfully: ${id}`);
       return result as unknown as StudentAuthUser & Document;
     } catch (error) {
       logger.error(`Error updating student with ID ${id}:`, error);
       if (error instanceof AppError) throw error;
-      throw new AppError("Failed to update student", HttpStatusCode.INTERNAL_SERVER_ERROR);
+      throw new AppError(MESSAGES.STUDENT.UPDATE_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -265,13 +266,13 @@ async unblockStudent(id: string): Promise<StudentAuthUser> {
     try {
       logger.debug(`Deleting student with ID: ${id}`);
       const result = await this.model.findByIdAndDelete(id).exec();
-      if (!result) throw new AppError(`Student delete failed: ${id}`, HttpStatusCode.NOT_FOUND);
+      if (!result) throw new AppError(MESSAGES.STUDENT.DELETE_FAILED, HttpStatusCode.NOT_FOUND);
       logger.info(`Student deleted successfully: ${id}`);
       return true;
     } catch (error) {
       logger.error(`Error deleting student with ID ${id}:`, error);
       if (error instanceof AppError) throw error;
-      throw new AppError("Failed to delete student", HttpStatusCode.INTERNAL_SERVER_ERROR);
+      throw new AppError(MESSAGES.STUDENT.DELETE_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -283,7 +284,7 @@ async unblockStudent(id: string): Promise<StudentAuthUser> {
       return results as unknown as (StudentAuthUser & Document)[];
     } catch (error) {
       logger.error(`Error finding all students:`, error);
-      throw new AppError("Failed to retrieve students", HttpStatusCode.INTERNAL_SERVER_ERROR);
+      throw new AppError(MESSAGES.STUDENT.FETCH_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -294,7 +295,7 @@ async unblockStudent(id: string): Promise<StudentAuthUser> {
       return result as unknown as (StudentAuthUser & Document) || null;
     } catch (error) {
       logger.error(`Error finding student with filter:`, error);
-      throw new AppError("Failed to find student", HttpStatusCode.INTERNAL_SERVER_ERROR);
+      throw new AppError(MESSAGES.STUDENT.FETCH_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -304,7 +305,7 @@ async unblockStudent(id: string): Promise<StudentAuthUser> {
       return count;
     } catch (error) {
       logger.error(`Error counting student records:`, error);
-      throw new AppError("Failed to count student records", HttpStatusCode.INTERNAL_SERVER_ERROR);
+      throw new AppError(MESSAGES.STUDENT.FETCH_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -319,12 +320,12 @@ async unblockStudent(id: string): Promise<StudentAuthUser> {
   async isBlocked(id: string): Promise<boolean> {
     try {
       const user = await this.model.findById(id).select('isBlocked').lean().exec();
-      if (!user) throw new AppError(`Student not found: ${id}`, HttpStatusCode.NOT_FOUND);
+      if (!user) throw new AppError(MESSAGES.STUDENT.NOT_FOUND, HttpStatusCode.NOT_FOUND);
       return !!(user as { isBlocked?: boolean }).isBlocked;
     } catch (error) {
       logger.error(`Error checking blocked status for student with ID ${id}:`, error);
       if (error instanceof AppError) throw error;
-      throw new AppError("Failed to check blocked status", HttpStatusCode.INTERNAL_SERVER_ERROR);
+      throw new AppError(MESSAGES.STUDENT.FETCH_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -349,7 +350,7 @@ async unblockStudent(id: string): Promise<StudentAuthUser> {
       logger.error("Error creating student user:", error);
       if (error instanceof AppError) throw error;
       throw new AppError(
-        "Failed to create student user",
+        MESSAGES.STUDENT.CREATE_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -372,7 +373,7 @@ async unblockStudent(id: string): Promise<StudentAuthUser> {
     } catch (error) {
       logger.error("Error finding all students:", error);
       throw new AppError(
-        "Failed to retrieve students",
+        MESSAGES.STUDENT.FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -453,7 +454,7 @@ async findAllWithTrialStats(page: number, limit: number) {
 
   async findAllStudentsPaginated(params: StudentPaginationParams): Promise<StudentPaginatedResult> {
     try {
-      const { page, limit, skip } = getPaginationParams(params as any);
+      const { page, limit, skip } = getPaginationParams(params as unknown as Record<string, unknown>);
       const search = params.search?.trim() || '';
       const status = params.status || '';
       const verification = params.verification || '';
@@ -565,7 +566,7 @@ async findAllWithTrialStats(page: number, limit: number) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       logger.error(`Error in findAllStudentsPaginated: ${errorMessage}`);
       throw new AppError(
-        'Failed to fetch paginated students',
+        MESSAGES.STUDENT.FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -603,7 +604,7 @@ async findAllWithTrialStats(page: number, limit: number) {
       }
 
       // Fetch trial classes separately
-      const { TrialClass } = await import("../models/student/trialClass.model");
+      const { TrialClass } = await import("../models/student/trialClass.model.js");
       const trialClasses = await TrialClass
         .find({ student: id })
         .populate('subject', 'subjectName')
@@ -613,7 +614,7 @@ async findAllWithTrialStats(page: number, limit: number) {
         .exec();
 
       // Fetch enrollments separately
-      const { Enrollment } = await import("../models/enrollment.model");
+      const { Enrollment } = await import("../models/enrollment.model.js");
       const enrollments = await Enrollment
         .find({ student: id })
         .populate({
@@ -667,7 +668,7 @@ async findAllWithTrialStats(page: number, limit: number) {
     } catch (error) {
       logger.error(`Error finding student profile by ID: ${id}`, error);
       throw new AppError(
-        "Failed to find student profile",
+        MESSAGES.STUDENT.FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -709,7 +710,7 @@ async findAllWithTrialStats(page: number, limit: number) {
       logger.info(`Updated time slot status for student ${studentId} to ${status}`);
     } catch (error) {
       logger.error(`Error updating time slot status:`, error);
-      throw new AppError("Failed to update time slot status", HttpStatusCode.INTERNAL_SERVER_ERROR);
+      throw new AppError(MESSAGES.STUDENT.UPDATE_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -751,7 +752,7 @@ async findAllWithTrialStats(page: number, limit: number) {
       return studentsWithImages;
     } catch (error) {
       logger.error("Error searching students:", error);
-      throw new AppError("Failed to search students", HttpStatusCode.INTERNAL_SERVER_ERROR);
+      throw new AppError(MESSAGES.STUDENT.FETCH_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -762,4 +763,6 @@ async findAllWithTrialStats(page: number, limit: number) {
       { session: session || null }
     ).exec();
   }
+
+  
 }

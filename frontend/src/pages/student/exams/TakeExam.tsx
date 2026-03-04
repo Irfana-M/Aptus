@@ -1,12 +1,14 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../constants/routes.constants';
 import { Clock, ChevronLeft, ChevronRight, Save } from 'lucide-react';
 import { getExamById, submitExam } from "../../../features/exam/examSlice";
 import type { AppDispatch, RootState } from "../../../app/store";
 import { QuestionType } from "../../../types/examTypes";
 import type { SubmitAnswerDTO } from "../../../types/examTypes";
 import toast from 'react-hot-toast';
+import { Loader } from '../../../components/ui/Loader';
 
 const TakeExam: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -69,7 +71,7 @@ const TakeExam: React.FC = () => {
                 error: 'Failed to submit exam.'
             }
         ).then(() => {
-           navigate('/student/results'); 
+           navigate(ROUTES.STUDENT.RESULTS); 
         });
     }, [dispatch, examId, answers, navigate]);
 
@@ -95,7 +97,7 @@ const TakeExam: React.FC = () => {
     if (loading || !currentExam) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                <Loader size="lg" text="Preparing your exam..." />
             </div>
         );
     }

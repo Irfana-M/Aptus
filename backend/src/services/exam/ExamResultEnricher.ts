@@ -1,7 +1,7 @@
 import { injectable } from "inversify";
-import type { IExam } from "../../models/exam.model";
-import type { IExamResult } from "../../models/examResult.model";
-import type { IEnrichedExam } from "../../interfaces/services/IExamService";
+import type { IExam } from "../../models/exam.model.js";
+import type { IExamResult } from "../../models/examResult.model.js";
+import type { IEnrichedExam } from "../../interfaces/services/IExamService.js";
 
 @injectable()
 export class ExamResultEnricher {

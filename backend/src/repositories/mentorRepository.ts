@@ -1,18 +1,19 @@
-import { MentorModel } from "../models/mentor/mentor.model";
-import type { IMentorRepository, MentorPaginatedResult } from "../interfaces/repositories/IMentorRepository";
-import type { MentorProfile } from "../interfaces/models/mentor.interface";
-import { BaseRepository } from "./baseRepository";
-import { Model, Types, type Document, type PipelineStage, type ClientSession } from "mongoose";
+import { MentorModel } from "../models/mentor/mentor.model.js";
+import type { IMentorRepository, MentorPaginatedResult } from "../interfaces/repositories/IMentorRepository.js";
+import type { MentorProfile } from "../interfaces/models/mentor.interface.js";
+import { BaseRepository } from "./baseRepository.js";
+import { Model, type Document, type PipelineStage, type ClientSession, type UpdateQuery } from "mongoose";
 import type { FilterQuery } from "mongoose";
-import { logger } from "../utils/logger";
-import { HttpStatusCode } from "../constants/httpStatus";
-import { getSignedFileUrl } from "../utils/s3Upload";
+import { logger } from "../utils/logger.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import { getSignedFileUrl } from "../utils/s3Upload.js";
 import { injectable } from "inversify";
-import { AppError } from "../utils/AppError";
-import { Subject } from "../models/subject.model";
-import { normalizeTimeTo24h } from "../utils/time.util";
-import type { MentorPaginationParams } from "@/dtos/shared/paginationTypes";
-import { getPaginationParams } from "@/utils/pagination.util";
+import { AppError } from "../utils/AppError.js";
+import { MESSAGES } from "../constants/messages.constants.js";
+import { Subject } from "../models/subject.model.js";
+import { normalizeTimeTo24h } from "../utils/time.util.js";
+import type { MentorPaginationParams } from "@/dtos/shared/paginationTypes.js";
+import { getPaginationParams } from "@/utils/pagination.util.js";
 
 @injectable()
 export class MentorRepository
@@ -42,7 +43,7 @@ export class MentorRepository
     } catch (error: unknown) {
       logger.error(`Error finding mentor by email - ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw new AppError(
-        "Failed to find mentor by email",
+        MESSAGES.MENTOR.FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -114,7 +115,7 @@ export class MentorRepository
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       logger.error(`Error fetching all mentors - ${errorMessage}`);
       throw new AppError(
-        "Failed to fetch mentors",
+        MESSAGES.MENTOR.FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -125,7 +126,7 @@ export class MentorRepository
     data: Partial<MentorProfile>,
     session?: ClientSession
   ): Promise<MentorProfile | null> {
-    return await this.updateById(id, data as any, session);
+    return await this.updateById(id, data as UpdateQuery<MentorProfile & Document>, session);
   }
 
   async submitForApproval(id: string): Promise<MentorProfile> {
@@ -139,7 +140,7 @@ export class MentorRepository
         .lean()
         .exec() as unknown as MentorProfile | null;
       if (!updatedMentor) {
-        throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.MENTOR.NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
       logger.info(`Mentor submitted for approval: ${id}`);
       return updatedMentor;
@@ -149,7 +150,7 @@ export class MentorRepository
         `Error submitting mentor for approval: ${id} - ${errorMessage}`
       );
       throw new AppError(
-        "Failed to submit mentor for approval",
+        MESSAGES.MENTOR.SUBMIT_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -167,7 +168,7 @@ export class MentorRepository
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error(`Error fetching pending approvals - ${errorMessage}`);
       throw new AppError(
-        "Failed to fetch pending approvals",
+        MESSAGES.MENTOR.FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -190,7 +191,7 @@ export class MentorRepository
         .lean()
         .exec() as unknown as MentorProfile | null;
       if (!updatedMentor) {
-        throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.MENTOR.NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
 
       logger.info(`Mentor approval status updated: ${id}, status=${status}`);
@@ -201,7 +202,7 @@ export class MentorRepository
         `Error updating approval status for mentor: ${id} - ${errorMessage}`
       );
       throw new AppError(
-        "Failed to update approval status",
+        MESSAGES.MENTOR.APPROVAL_UPDATE_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -302,7 +303,7 @@ export class MentorRepository
       // Handle potential undefined subjectId
       if (!subjectId) {
          logger.error('❌ Subject ID is required but was not provided');
-         throw new AppError("Subject ID is required", HttpStatusCode.BAD_REQUEST);
+         throw new AppError(MESSAGES.COMMON.ID_REQUIRED("Subject"), HttpStatusCode.BAD_REQUEST);
       }
 
       // Check if subjectId is a valid ObjectId
@@ -470,7 +471,7 @@ export class MentorRepository
           let startTime = '';
           
           if (!isBatchTime && timeSlot) {
-              const [start] = timeSlot.split('-').map(s => s.trim());
+              const [start] = timeSlot.split('-').map(part => part.trim());
               startTime = normalizeTimeTo24h(start || '');
               logger.debug(`✓ Normalized specific time slot: ${start} -> ${startTime}`);
           } else {
@@ -577,7 +578,7 @@ export class MentorRepository
       const errorStack = error instanceof Error ? error.stack : undefined;
       logger.error(`CRITICAL: Error in findAvailableMentors: ${errorMessage}`, { stack: errorStack });
       throw new AppError(
-        `Failed to find available mentors: ${errorMessage}`,
+        MESSAGES.MENTOR.FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -585,7 +586,7 @@ export class MentorRepository
 
   async findAllMentorsPaginated(params: MentorPaginationParams): Promise<MentorPaginatedResult> {
     try {
-      const { page, limit } = getPaginationParams(params as any);
+      const { page, limit } = getPaginationParams(params as unknown as Record<string, unknown>);
       const search = params.search?.trim() || '';
       const status = params.status || '';
       const subject = params.subject || '';
@@ -655,7 +656,7 @@ export class MentorRepository
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error(`Error in findAllMentorsPaginated: ${errorMessage}`);
       throw new AppError(
-        'Failed to fetch paginated mentors',
+        MESSAGES.MENTOR.FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }

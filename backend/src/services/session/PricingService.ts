@@ -1,10 +1,10 @@
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../../types';
-import { AppError } from '../../utils/AppError';
-import { HttpStatusCode } from '../../constants/httpStatus';
-import type { IPricingService } from '../../interfaces/services/IPricingService';
-import type { IStudentRepository } from '../../interfaces/repositories/IStudentRepository';
-import type { ISubscriptionRepository } from '../../interfaces/repositories/ISubscriptionRepository';
+import { TYPES } from "../../types.js";
+import { AppError } from "../../utils/AppError.js";
+import { HttpStatusCode } from "../../constants/httpStatus.js";
+import type { IPricingService } from "../../interfaces/services/IPricingService.js";
+import type { IStudentRepository } from "../../interfaces/repositories/IStudentRepository.js";
+import type { ISubscriptionRepository } from "../../interfaces/repositories/ISubscriptionRepository.js";
 
 @injectable()
 export class PricingService implements IPricingService {

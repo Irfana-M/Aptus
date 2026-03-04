@@ -1,24 +1,24 @@
 import { injectable, inject } from "inversify";
 import mongoose from "mongoose";
-import { TYPES } from "../types";
-import type { IExamService, IEnrichedExam } from "../interfaces/services/IExamService";
-import type { IExamRepository } from "../interfaces/repositories/IExamRepository";
-import type { ICourseRepository } from "../interfaces/repositories/ICourseRepository";
-import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
-import type { CreateExamDTO } from "../dtos/exam/CreateExamDTO";
-import type { UpdateExamDTO } from "../dtos/exam/UpdateExamDTO";
-import type { SubmitExamDTO } from "../dtos/exam/SubmitExamDTO";
-import type { IExam } from "../models/exam.model";
-import type { IExamResult, IAnswer as _IAnswer } from "../models/examResult.model";
-import { ExamStatus } from "../models/examResult.model";
-import { AppError } from "../utils/AppError";
-import { HttpStatusCode } from "../constants/httpStatus";
-import { QuestionType as _QuestionType } from "../models/exam.model";
-import type { IQuestion } from "../models/exam.model";
+import { TYPES } from "../types.js";
+import type { IExamService, IEnrichedExam } from "../interfaces/services/IExamService.js";
+import type { IExamRepository } from "../interfaces/repositories/IExamRepository.js";
+import type { ICourseRepository } from "../interfaces/repositories/ICourseRepository.js";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository.js";
+import type { CreateExamDTO } from "../dtos/exam/CreateExamDTO.js";
+import type { UpdateExamDTO } from "../dtos/exam/UpdateExamDTO.js";
+import type { SubmitExamDTO } from "../dtos/exam/SubmitExamDTO.js";
+import type { IExam } from "../models/exam.model.js";
+import type { IExamResult, IAnswer as _IAnswer } from "../models/examResult.model.js";
+import { ExamStatus } from "../models/examResult.model.js";
+import { AppError } from "../utils/AppError.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import { QuestionType as _QuestionType } from "../models/exam.model.js";
+import type { IQuestion } from "../models/exam.model.js";
 
-import { ExamAccessPolicyService } from "./exam/ExamAccessPolicyService";
-import { ExamScoringService } from "./exam/ExamScoringService";
-import { ExamResultEnricher } from "./exam/ExamResultEnricher";
+import { ExamAccessPolicyService } from "./exam/ExamAccessPolicyService.js";
+import { ExamScoringService } from "./exam/ExamScoringService.js";
+import { ExamResultEnricher } from "./exam/ExamResultEnricher.js";
 
 @injectable()
 export class ExamService implements IExamService {

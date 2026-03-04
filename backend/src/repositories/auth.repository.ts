@@ -1,14 +1,14 @@
-import type { IAuthRepository } from "../interfaces/auth/IAuthRepository";
-import type { AuthUser } from "../interfaces/auth/auth.interface";
-import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO";
-import { logger } from "../utils/logger"; 
-import { HttpStatusCode } from "../constants/httpStatus"; 
+import type { IAuthRepository } from "../interfaces/auth/IAuthRepository.js";
+import type { AuthUser } from "../interfaces/auth/auth.interface.js";
+import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO.js";
+import { logger } from "../utils/logger.js"; 
+import { HttpStatusCode } from "../constants/httpStatus.js"; 
 
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types";
-import type { IMentorAuthRepository } from "@/interfaces/repositories/IMentorAuthRepository";
-import type { IStudentAuthRepository } from "@/interfaces/repositories/IStudentAuthRepository";
-import { MentorModel } from "@/models/mentor/mentor.model";
+import { TYPES } from "../types.js";
+import type { IMentorAuthRepository } from "@/interfaces/repositories/IMentorAuthRepository.js";
+import type { IStudentAuthRepository } from "@/interfaces/repositories/IStudentAuthRepository.js";
+import { MentorModel } from "@/models/mentor/mentor.model.js";
 
 @injectable()
 export class AuthRepository implements IAuthRepository<AuthUser> {

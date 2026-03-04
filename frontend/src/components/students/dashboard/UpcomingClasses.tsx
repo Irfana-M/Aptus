@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchStudentTrialClasses } from '../../../features/trial/student/studentTrialThunk';
 import { fetchMyEnrollments } from '../../../features/student/studentThunk';
+import { EmptyState } from '../../ui/EmptyState';
+import { Calendar } from 'lucide-react';
 import type { RootState, AppDispatch } from '../../../app/store';
 import { format, isAfter, startOfDay, addDays } from 'date-fns';
 import type { Course } from '../../../types/courseTypes';
@@ -116,7 +118,12 @@ const UpcomingClasses: React.FC = () => {
             </div>
             </div>
         ) : (
-            <p className="text-gray-500 text-sm">No upcoming classes scheduled.</p>
+            <EmptyState 
+              icon={Calendar} 
+              title="No upcoming classes" 
+              description="Stay tuned for your next session." 
+              className="py-4 border-none"
+            />
         )}
         </div>
     </div>

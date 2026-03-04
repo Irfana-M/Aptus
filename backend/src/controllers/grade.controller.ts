@@ -1,29 +1,30 @@
 import type { Request, Response } from "express";
 import { inject, injectable } from "inversify";
-import { TYPES } from "@/types";
-import type { IGradeService } from "@/interfaces/services/IGradeService";
-import { HttpStatusCode } from "@/constants/httpStatus";
-import { logger } from "@/utils/logger";
-import { AppError } from "@/utils/AppError";
+import { TYPES } from "@/types.js";
+import type { IGradeService } from "@/interfaces/services/IGradeService.js";
+import { HttpStatusCode } from "@/constants/httpStatus.js";
+import { logger } from "@/utils/logger.js";
+import { AppError } from "@/utils/AppError.js";
+import { MESSAGES } from "@/constants/messages.constants.js";
 
 @injectable()
 export class GradeController {
   constructor(
     @inject(TYPES.IGradeService)
-    private gradeService: IGradeService
+    private _gradeService: IGradeService
   ) {}
 
   async getAllGrades(req: Request, res: Response): Promise<void> {
     try {
-      const grades = await this.gradeService.getAllGrades();
+      const grades = await this._gradeService.getAllGrades();
 
       res.status(HttpStatusCode.OK).json({
         success: true,
-        message: "Grades fetched successfully",
+        message: MESSAGES.GRADE.FETCH_SUCCESS,
         data: grades,
       });
     } catch (error) {
-      this.handleError(res, error, "Failed to fetch grades");
+      this._handleError(res, error, MESSAGES.GRADE.FETCH_FAILED);
     }
   }
 
@@ -34,24 +35,24 @@ export class GradeController {
       if (!syllabus || typeof syllabus !== "string") {
         res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Syllabus query parameter is required",
+          message: MESSAGES.COMMON.REQUIRED_PARAMETER("Syllabus"),
         });
         return;
       }
 
-      const grades = await this.gradeService.getGradesBySyllabus(syllabus);
+      const grades = await this._gradeService.getGradesBySyllabus(syllabus);
 
       res.status(HttpStatusCode.OK).json({
         success: true,
-        message: "Grades fetched successfully",
+        message: MESSAGES.GRADE.FETCH_SUCCESS,
         data: grades,
       });
     } catch (error) {
-      this.handleError(res, error, "Failed to fetch grades by syllabus");
+      this._handleError(res, error, MESSAGES.GRADE.FETCH_FAILED);
     }
   }
 
-  private handleError(
+  private _handleError(
     res: Response,
     error: unknown,
     defaultMessage: string

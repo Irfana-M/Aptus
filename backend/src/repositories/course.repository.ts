@@ -1,17 +1,17 @@
-import { BaseRepository } from "./baseRepository";
+import { BaseRepository } from "./baseRepository.js";
 import { Model, type FilterQuery, type PipelineStage, type UpdateQuery } from "mongoose";
-import { Course, type ICourse } from "@/models/course.model";
-import { Enrollment } from "@/models/enrollment.model";
+import { Course, type ICourse } from "@/models/course.model.js";
+import { Enrollment } from "@/models/enrollment.model.js";
 import { injectable } from "inversify";
-import type { ICourseRepository, CreateOneToOneCourseDto, CoursePaginatedResult } from "@/interfaces/repositories/ICourseRepository";
-import type { CoursePaginationParams } from "@/dtos/shared/paginationTypes";
-import { logger } from "@/utils/logger";
-import { getSignedFileUrl } from "@/utils/s3Upload";
-import { getPaginationParams } from "@/utils/pagination.util";
+import type { ICourseRepository, CreateOneToOneCourseDto, CoursePaginatedResult } from "@/interfaces/repositories/ICourseRepository.js";
+import type { CoursePaginationParams } from "@/dtos/shared/paginationTypes.js";
+import { logger } from "@/utils/logger.js";
+import { getSignedFileUrl } from "@/utils/s3Upload.js";
+import { getPaginationParams } from "@/utils/pagination.util.js";
 import type { ClientSession } from "mongoose";
 
-import { AppError } from "@/utils/AppError";
-import { HttpStatusCode } from "@/constants/httpStatus";
+import { AppError } from "@/utils/AppError.js";
+import { HttpStatusCode } from "@/constants/httpStatus.js";
 
 
 interface PopulatedMentor {
@@ -169,8 +169,8 @@ export class CourseRepository extends BaseRepository<ICourse> implements ICourse
   // Refactor CourseRepository
   async findAllCoursesPaginated(params: CoursePaginationParams): Promise<CoursePaginatedResult> {
     try {
-      // Cast to any to satisfy getPaginationParams' index signature requirement
-      const { page, limit, skip } = getPaginationParams(params as any);
+      // Cast to Record<string, unknown> to satisfy getPaginationParams' index signature requirement
+      const { page, limit, skip } = getPaginationParams(params as unknown as Record<string, unknown>);
       const search = params.search?.trim() || '';
       const status = params.status || '';
       const gradeId = params.gradeId || '';
@@ -325,7 +325,7 @@ export class CourseRepository extends BaseRepository<ICourse> implements ICourse
         { $limit: limit }
       );
 
-      const courses = await Course.aggregate(pipeline);
+      const courses = await Course.aggregate(pipeline) as unknown[];
       
       // Sign URLs for mentor profile pictures
       const coursesWithSignedUrls = await Promise.all(
@@ -594,6 +594,7 @@ export class CourseRepository extends BaseRepository<ICourse> implements ICourse
       .populate("grade", "name grade syllabus")
       .populate("subject", "name subjectName")
       .populate("student", "fullName profileImage email phoneNumber")
+      .populate("students", "fullName profileImage email phoneNumber")
       .sort({ createdAt: -1 })
       .lean();
 
@@ -604,6 +605,23 @@ export class CourseRepository extends BaseRepository<ICourse> implements ICourse
       // Ensure subject.grade is populated from course.grade for consistency
       if (course.subject && !course.subject.grade && course.grade) {
           course.subject.grade = course.grade.name || course.grade.grade || 'N/A';
+      }
+
+      // Sign URLs for students in the students array (for group courses)
+      if (Array.isArray(course.students)) {
+        for (const student of course.students) {
+          if (student && student.profileImage) {
+            try {
+              if (student.profileImage.startsWith("http")) {
+                student.profileImageUrl = student.profileImage;
+              } else {
+                student.profileImageUrl = await getSignedFileUrl(student.profileImage);
+              }
+            } catch (error) {
+              logger.error(`Error signing URL for student in list:`, error);
+            }
+          }
+        }
       }
 
       const enrollments = await Enrollment.find({
@@ -701,7 +719,7 @@ export class CourseRepository extends BaseRepository<ICourse> implements ICourse
 
   // New method: Get only group courses (batches) for a mentor
   async findGroupBatchesByMentor(mentorId: string): Promise<unknown[]> {
-    const courses = await Course.find({ 
+    const courses = (await Course.find({ 
       mentor: mentorId, 
       isActive: true,
       courseType: 'group'
@@ -710,18 +728,20 @@ export class CourseRepository extends BaseRepository<ICourse> implements ICourse
       .populate("subject", "name subjectName")
       .populate("students", "fullName profileImage email phoneNumber")
       .sort({ createdAt: -1 })
-      .lean();
-
+      .lean()) as unknown[];
+    
     // Sign URLs for all students in each batch
-    for (const courseDoc of courses) {
-      const course = courseDoc as any;
+    for (const _batchCourse of (courses as Record<string, unknown>[])) {
       // Ensure subject.grade is populated from course.grade for consistency
-      if (course.subject && !course.subject.grade && course.grade) {
-          course.subject.grade = course.grade.name || course.grade.grade || 'N/A';
+      const subject = _batchCourse["subject"] as Record<string, unknown> | undefined;
+      const grade = _batchCourse["grade"] as Record<string, unknown> | undefined;
+      if (subject && subject["grade"] === undefined && grade) {
+          subject["grade"] = grade["name"] || grade["grade"] || 'N/A';
       }
-
-      if (Array.isArray(course.students)) {
-        for (const student of course.students as PopulatedStudent[]) {
+      
+      const students = _batchCourse["students"] as PopulatedStudent[] | undefined;
+      if (Array.isArray(students)) {
+        for (const student of students) {
           if (student && student.profileImage) {
             try {
               if (student.profileImage.startsWith("http")) {

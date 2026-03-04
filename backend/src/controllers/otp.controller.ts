@@ -1,56 +1,48 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types";
-import type { Request, Response } from "express";
-import type { IOtpService } from "../interfaces/services/IOtpService";
+import { TYPES } from "../types.js";
+import type { Request, Response, NextFunction } from "express";
+import type { IOtpService } from "../interfaces/services/IOtpService.js";
+import { AppError } from "../utils/AppError.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import { MESSAGES } from "../constants/messages.constants.js";
 
 @injectable()
 export class OtpController {
   constructor(@inject(TYPES.IOtpService) private _otpService: IOtpService) {}
 
-  verifySignupOtp = async (req: Request, res: Response): Promise<void> => {
+  verifySignupOtp = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { email, otp } = req.body;
 
       if (!email || !otp) {
-        res
-          .status(400)
-          .json({ success: false, message: "Email and OTP are required" });
-        return;
+        throw new AppError(MESSAGES.OTP.EMAIL_OTP_REQUIRED, HttpStatusCode.BAD_REQUEST);
       }
 
       const savedOtp = await this._otpService.verifyOtp(email, "signup", otp);
 
       if (!savedOtp) {
-        res
-          .status(400)
-          .json({ success: false, message: "Invalid or expired OTP" });
-        return;
+        throw new AppError(MESSAGES.OTP.INVALID_OR_EXPIRED, HttpStatusCode.BAD_REQUEST);
       }
 
       res
-        .status(200)
-        .json({ success: true, message: "OTP verified successfully" });
+        .status(HttpStatusCode.OK)
+        .json({ success: true, message: MESSAGES.OTP.VERIFY_SUCCESS });
     } catch (error: unknown) {
-      console.error("Error verifying OTP:", error);
-      const message = error instanceof Error ? error.message : "Internal server error";
-      res
-        .status(500)
-        .json({ success: false, message });
+      next(error);
     }
   };
 
-  resendOtp = async (req: Request, res: Response) => {
+  resendOtp = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { email } = req.body;
-      if (!email) throw new Error("Email is required");
+      if (!email) throw new AppError(MESSAGES.OTP.EMAIL_REQUIRED, HttpStatusCode.BAD_REQUEST);
 
       await this._otpService.resendOtp(email);
       res
-        .status(200)
-        .json({ success: true, message: "OTP resent successfully" });
+        .status(HttpStatusCode.OK)
+        .json({ success: true, message: MESSAGES.OTP.RESEND_SUCCESS });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      res.status(400).json({ success: false, message });
+      next(error);
     }
   };
 }

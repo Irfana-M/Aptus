@@ -15,13 +15,13 @@ import "reflect-metadata";
 import dotenv from "dotenv";
 dotenv.config();
 
-import app from "./app";
-import { container } from "./inversify.config";
+import app from "./app.js";
+import { container } from "./inversify.config.js";
 (global as unknown as { container: typeof container }).container = container;
-import { SocketService } from "./services/SocketService";
-import { CronService } from "./services/CronService";
-import { NotificationManager } from "./services/NotificationManager";
-import { TYPES } from "./types";
+import { SocketService } from "./services/SocketService.js";
+import { CronService } from "./services/CronService.js";
+import { NotificationManager } from "./services/NotificationManager.js";
+import { TYPES } from "./types.js";
 
 const PORT = 5000;
 

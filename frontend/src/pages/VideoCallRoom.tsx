@@ -12,6 +12,8 @@ import { verifyUserRole } from '../features/role/roleSlice';
 import { fetchStudentProfile } from '../features/student/studentThunk';
 import { VideoOff, AlertCircle } from 'lucide-react';
 import { sessionApi } from '../features/session/sessionApi';
+import { ROUTES } from '../constants/routes.constants';
+import { Loader } from '../components/ui/Loader';
 
 // Classroom Components
 import { ClassroomLayout } from '../features/classroom/components/ClassroomLayout';
@@ -132,7 +134,7 @@ export default function VideoCallRoom() {
   useEffect(() => {
     if (!currentUser) {
       const t = setTimeout(() => {
-        if (!currentUser) navigate('/login');
+        if (!currentUser) navigate(ROUTES.LOGIN);
       }, 600);
       return () => clearTimeout(t);
     }
@@ -189,9 +191,9 @@ export default function VideoCallRoom() {
                    const isTrial = !!(details.trialClassId || details.sessionType === 'trial' || (details as unknown as Record<string, Record<string, unknown>>).course?.isTrial);
 
                    if (userType === 'student' && details.status === 'completed' && isTrial) {
-                       navigate(`/trial-class/${trialClassId}/feedback`);
+                       navigate(ROUTES.COMMON.TRIAL_FEEDBACK.replace(':trialClassId', trialClassId));
                    } else {
-                       navigate(userType === 'mentor' ? '/mentor/dashboard' : '/student/dashboard');
+                       navigate(userType === 'mentor' ? ROUTES.MENTOR.DASHBOARD : ROUTES.STUDENT.DASHBOARD);
                    }
                    return;
                 }
@@ -418,16 +420,16 @@ export default function VideoCallRoom() {
       // ROLE-BASED REDIRECTION
       if (userType === 'student') {
         if (isTrialSession) {
-          navigate(`/trial-class/${trialClassId}/feedback`);
+          navigate(ROUTES.COMMON.TRIAL_FEEDBACK.replace(':trialClassId', trialClassId || ''));
         } else {
-          navigate('/student/dashboard');
+          navigate(ROUTES.STUDENT.DASHBOARD);
         }
       } else {
         // Mentor Redirection
         if (!isTrialSession && sessionId) {
-          navigate(`/mentor/study-materials?sessionId=${sessionId}`);
+          navigate(`${ROUTES.MENTOR.STUDY_MATERIALS}?sessionId=${sessionId}`);
         } else {
-          navigate('/mentor/dashboard');
+          navigate(ROUTES.MENTOR.DASHBOARD);
         }
       }
     }
@@ -479,14 +481,7 @@ export default function VideoCallRoom() {
   if (isPreparing) {
     return (
       <div className="min-h-screen bg-[#F4FBFB] flex items-center justify-center">
-        <div className="text-center animate-in fade-in zoom-in duration-500">
-          <div className="w-16 h-16 border-4 border-[#3CB4B4] border-t-transparent rounded-full animate-spin mx-auto mb-6" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2 font-outfit">Preparing Classroom</h2>
-          <p className="text-gray-500 flex items-center justify-center gap-2">
-            <AlertCircle size={14} className="text-[#3CB4B4] animate-pulse" />
-            Verifying secure connection...
-          </p>
-        </div>
+        <Loader size="lg" text="Preparing Classroom" color="teal" />
       </div>
     );
   }
@@ -511,7 +506,7 @@ export default function VideoCallRoom() {
 
   return (
     <ClassroomLayout
-      sidebar={userType === 'mentor' ? <ClassroomSidebar onLogout={() => navigate('/logout')} /> : null}
+      sidebar={userType === 'mentor' ? <ClassroomSidebar onLogout={() => navigate(ROUTES.LOGIN)} /> : null}
       header={<ClassroomHeader />}
       mainContent={
         <div className="space-y-8 animate-in fade-in duration-700">
@@ -563,7 +558,7 @@ export default function VideoCallRoom() {
             role: currentUser?.userType === 'mentor' ? 'Mentor' : 'Student',
           }}
           participants={participants}
-          onFeedback={userType === 'student' && isTrialSession ? () => navigate(`/trial-class/${trialClassId}/feedback`) : undefined}
+          onFeedback={userType === 'student' && isTrialSession ? () => navigate(ROUTES.COMMON.TRIAL_FEEDBACK.replace(':trialClassId', trialClassId || '')) : undefined}
           isSocketConnected={isSocketConnected}
         />
       }

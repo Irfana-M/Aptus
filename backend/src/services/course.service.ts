@@ -1,9 +1,9 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types";
-import type { ICourseService } from "../interfaces/services/ICourseService";
-import type { ICourseRepository } from "../interfaces/repositories/ICourseRepository";
-import type { CoursePaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes";
-import { formatPaginatedResult, getPaginationParams } from "@/utils/pagination.util";
+import { TYPES } from "../types.js";
+import type { ICourseService } from "../interfaces/services/ICourseService.js";
+import type { ICourseRepository } from "../interfaces/repositories/ICourseRepository.js";
+import type { CoursePaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes.js";
+import { formatPaginatedResult, getPaginationParams } from "@/utils/pagination.util.js";
 
 @injectable()
 export class CourseService implements ICourseService {

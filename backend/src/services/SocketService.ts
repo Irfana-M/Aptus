@@ -1,20 +1,20 @@
 import { injectable, inject } from "inversify";
 import { Server, Socket } from 'socket.io';
 import type { Server as HttpServer } from 'http';
-import { logger } from "@/utils/logger";
-import { TYPES } from "@/types";
-import type { IVideoCallService } from "@/interfaces/services/IVideoCallService";
-import type { ISocketService } from "@/interfaces/services/ISocketService";
+import { logger } from "@/utils/logger.js";
+import { TYPES } from "@/types.js";
+import type { IVideoCallService } from "@/interfaces/services/IVideoCallService.js";
+import type { ISocketService } from "@/interfaces/services/ISocketService.js";
 import type { 
   JoinCallRequestDto, 
   WebRTCOfferDto, 
   WebRTCAnswerDto, 
   WebRTCIceCandidateDto, 
   CallEndedDto 
-} from "../dtos/webrtcDTO";
+} from "../dtos/webrtcDTO.js";
 import fs from "fs";
 import jwt from 'jsonwebtoken';
-import type { IUserRoleService } from "@/interfaces/services/IUserRoleSrvice";
+import type { IUserRoleService } from "@/interfaces/services/IUserRoleSrvice.js";
 
 interface JwtPayload {
   id: string;
@@ -30,12 +30,12 @@ interface SocketWithUser extends Socket {
 
 @injectable()
 export class SocketService implements ISocketService {
-  private io!: Server;
+  private _io!: Server;
   private static httpServer: HttpServer | null = null;
 
   constructor(
-    @inject(TYPES.IVideoCallService) private videoCallService: IVideoCallService,
-    @inject(TYPES.IUserRoleService) private userRoleService: IUserRoleService
+    @inject(TYPES.IVideoCallService) private _videoCallService: IVideoCallService,
+    @inject(TYPES.IUserRoleService) private _userRoleService: IUserRoleService
   ) {}
 
   public static attach(server: HttpServer): void {
@@ -47,7 +47,7 @@ export class SocketService implements ISocketService {
       throw new Error("Call SocketService.attach(server) in server.ts first!");
     }
 
-    this.io = new Server(SocketService.httpServer, {
+    this._io = new Server(SocketService.httpServer, {
       cors: {
         origin: process.env.CLIENT_URL || "http://localhost:5173",
         methods: ["GET", "POST"],
@@ -59,7 +59,7 @@ export class SocketService implements ISocketService {
     });
 
     // ========== SOCKET AUTH MIDDLEWARE ==========
-    this.io.use(async (socket, next) => {
+    this._io.use(async (socket, next) => {
       
        try { fs.appendFileSync('debug_socket.log', `[SOCKET AUTH] Middleware triggered for socket ${socket.id}\n`); } catch { /* ignore */ } console.log('🔐 [SOCKET AUTH] Middleware triggered');
       
@@ -90,7 +90,7 @@ export class SocketService implements ISocketService {
         }
         
         // Verify user exists in database with correct role
-        const verification = await this.userRoleService.verifyUserRole(
+        const verification = await this._userRoleService.verifyUserRole(
           decoded.id, 
           decoded.role
         );
@@ -116,7 +116,7 @@ export class SocketService implements ISocketService {
     });
 
     // ========== SOCKET EVENT HANDLERS ==========
-    this.io.on('connection', (socket: Socket) => {
+    this._io.on('connection', (socket: Socket) => {
       const user = (socket as SocketWithUser).user;
       logger.info(`New client connected: ${socket.id}, user: ${user?.email} (${user?.role})`);
 
@@ -157,14 +157,14 @@ export class SocketService implements ISocketService {
           await socket.join(roomName);
           await socket.join(chatRoomName);
 
-          const clientsInRoom = Array.from(this.io.sockets.adapter.rooms.get(roomName) || []);
-          const clientsInChatRoom = Array.from(this.io.sockets.adapter.rooms.get(chatRoomName) || []);
+          const clientsInRoom = Array.from(this._io.sockets.adapter.rooms.get(roomName) || []);
+          const clientsInChatRoom = Array.from(this._io.sockets.adapter.rooms.get(chatRoomName) || []);
           console.log(`[JOIN-CALL] User ${socketUser.email} joined rooms: ${roomName}, ${chatRoomName}.`);
           console.log(`[JOIN-CALL] Clients in Video Room:`, clientsInRoom);
           console.log(`[JOIN-CALL] Clients in Chat Room:`, clientsInChatRoom);
 
           // Call video service to join call
-          const result = await this.videoCallService.joinCall({
+          const result = await this._videoCallService.joinCall({
             ...data,
             socketId: socket.id
           });
@@ -238,8 +238,8 @@ export class SocketService implements ISocketService {
 
       socket.on('end-call', async (data: CallEndedDto) => {
         console.log('📞 [END-CALL] Ending call:', data);
-        await this.videoCallService.endCall(data);
-        this.io.to(`trial-class-${data.trialClassId}`).emit('call-ended', data);
+        await this._videoCallService.endCall(data);
+        this._io.to(`trial-class-${data.trialClassId}`).emit('call-ended', data);
       });
 
       socket.on('disconnect', () => {
@@ -249,11 +249,11 @@ export class SocketService implements ISocketService {
     });
   }
 
-  public getIO(): Server { return this.io; }
+  public getIO(): Server { return this._io; }
   public emitToRoom(room: string, event: string, data: unknown) {
-    this.io.to(room).emit(event, data);
+    this._io.to(room).emit(event, data);
   }
   public emitToUser(socketId: string, event: string, data: unknown) {
-    this.io.to(socketId).emit(event, data);
+    this._io.to(socketId).emit(event, data);
   }
 }

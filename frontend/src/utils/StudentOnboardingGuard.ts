@@ -1,4 +1,5 @@
 import type { User } from '../types/authTypes';
+import { ROUTES } from '../constants/routes.constants';
 
 export const StudentOnboardingStatus = {
   REGISTERED: 'registered',
@@ -14,20 +15,20 @@ export type StudentOnboardingStatus = typeof StudentOnboardingStatus[keyof typeo
 
 class StudentOnboardingPolicy {
   private static readonly ROUTE_MAP: Record<StudentOnboardingStatus, string> = {
-    [StudentOnboardingStatus.REGISTERED]: '/student/profile-setup',
-    [StudentOnboardingStatus.PROFILE_COMPLETE]: '/student/book-free-trial', 
-    [StudentOnboardingStatus.TRIAL_BOOKED]: '/student/dashboard', // No dedicated pending page yet, use dashboard
-    [StudentOnboardingStatus.TRIAL_ATTENDED]: '/student/trial-feedback', 
-    [StudentOnboardingStatus.FEEDBACK_SUBMITTED]: '/student/subscription-plans',
-    [StudentOnboardingStatus.SUBSCRIBED]: '/student/preferences/subjects',
-    [StudentOnboardingStatus.PREFERENCES_COMPLETED]: '/student/dashboard',
+    [StudentOnboardingStatus.REGISTERED]: ROUTES.STUDENT.PROFILE_SETUP,
+    [StudentOnboardingStatus.PROFILE_COMPLETE]: ROUTES.STUDENT.BOOK_FREE_TRIAL, 
+    [StudentOnboardingStatus.TRIAL_BOOKED]: ROUTES.STUDENT.DASHBOARD, // No dedicated pending page yet, use dashboard
+    [StudentOnboardingStatus.TRIAL_ATTENDED]: ROUTES.COMMON.TRIAL_FEEDBACK, 
+    [StudentOnboardingStatus.FEEDBACK_SUBMITTED]: ROUTES.STUDENT.SUBSCRIPTION_PLANS,
+    [StudentOnboardingStatus.SUBSCRIBED]: ROUTES.STUDENT.PREFERENCES.SUBJECTS,
+    [StudentOnboardingStatus.PREFERENCES_COMPLETED]: ROUTES.STUDENT.DASHBOARD,
   };
 
   /**
    * Get the required route for a given status
    */
   static getRequiredRoute(status: StudentOnboardingStatus): string {
-    return this.ROUTE_MAP[status] || '/student/dashboard';
+    return this.ROUTE_MAP[status] || ROUTES.STUDENT.DASHBOARD;
   }
 }
 
@@ -66,30 +67,30 @@ export function getStudentRedirect(user: User): string | null {
 
   // 🔓 EXCEPTION: Allow payment page if they are in a state that requires subscription selection
   if ((status === StudentOnboardingStatus.TRIAL_ATTENDED || status === StudentOnboardingStatus.FEEDBACK_SUBMITTED) && 
-      currentPath === '/student/payment') {
+      currentPath === ROUTES.STUDENT.PAYMENT) {
       return null;
   }
   
   // Special exception: Allow logout
-  if (currentPath === '/login' || currentPath === '/register') return null;
+  if (currentPath === ROUTES.LOGIN || currentPath === ROUTES.REGISTER) return null;
 
   // If status is PREFERENCES_COMPLETED, they can go anywhere (mostly)
   if (status === StudentOnboardingStatus.PREFERENCES_COMPLETED) return null;
 
   // 🔒 SPECIAL GUARD: Subscribed students should NEVER see the subscription plans page again
   if (statusOrder.indexOf(status) >= statusOrder.indexOf(StudentOnboardingStatus.SUBSCRIBED) && 
-      currentPath === '/student/subscription-plans') {
+      currentPath === ROUTES.STUDENT.SUBSCRIPTION_PLANS) {
       return requiredPath;
   }
 
   // 🔓 EXCEPTION: Allow classroom and attendance for TRIAL_BOOKED and above
   if (statusOrder.indexOf(status) >= statusOrder.indexOf(StudentOnboardingStatus.TRIAL_BOOKED) && 
-      (currentPath.startsWith('/student/classroom') || currentPath.startsWith('/student/attendance'))) {
+      (currentPath.startsWith(ROUTES.STUDENT.CLASSROOM) || currentPath.startsWith(ROUTES.STUDENT.ATTENDANCE))) {
     return null;
   }
 
   // 🔓 EXCEPTION: Allow flow navigation for SUBSCRIBED users (Subjects -> Time Slots -> Mentors)
-  if (status === StudentOnboardingStatus.SUBSCRIBED && currentPath.startsWith('/student/preferences/')) {
+  if (status === StudentOnboardingStatus.SUBSCRIBED && currentPath.startsWith(ROUTES.STUDENT.PREFERENCES.SUBJECTS.split('/').slice(0, 3).join('/') + '/')) {
     return null;
   }
 

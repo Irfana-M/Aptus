@@ -1,5 +1,5 @@
-import { StudentOnboardingStatus } from '@/enums/studentOnboarding.enum';
-import type { OnboardingEvent } from '@/enums/studentOnboarding.enum';
+import { StudentOnboardingStatus } from "../../enums/studentOnboarding.enum.js";
+import type { OnboardingEvent } from "../../enums/studentOnboarding.enum.js";
 
 
 export class StudentOnboardingPolicy {

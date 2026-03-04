@@ -1,10 +1,10 @@
 import { Types } from "mongoose";
 import { injectable } from "inversify";
-import { Subject, type ISubject } from "@/models/subject.model";
-import { Grade } from "@/models/grade.model";
-import { logger } from "@/utils/logger";
-import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository";
-import { BaseRepository } from "./baseRepository";
+import { Subject, type ISubject } from "@/models/subject.model.js";
+import { Grade } from "@/models/grade.model.js";
+import { logger } from "@/utils/logger.js";
+import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository.js";
+import { BaseRepository } from "./baseRepository.js";
 
 @injectable()
 export class SubjectRepository extends BaseRepository<ISubject> implements ISubjectRepository {
@@ -55,8 +55,8 @@ export class SubjectRepository extends BaseRepository<ISubject> implements ISubj
         const results = await Subject.find(query).sort({ subjectName: 1 }).exec();
         console.log(`✅ [SubjectRepository] Found ${results.length} results.`);
         return results;
-    } catch (err) {
-        console.error(`❌ [SubjectRepository] Error in findByGrade:`, err);
+    } catch (error) {
+        console.error(`❌ [SubjectRepository] Error in findByGrade:`, error);
         // Fallback to string query if ObjectId casting fails for some reason
         return await Subject.find({ grade: gradeId, isActive: true }).sort({ subjectName: 1 }).exec();
     }

@@ -4,6 +4,7 @@ import Footer from "../components/layout/Footer";
 import { Button } from "../components/ui/Button";
 import heroImage from "../assets/images/mentora.png";
 import { useNavigate } from "react-router-dom";
+import { ROUTES } from "../constants/routes.constants";
 import { Users, Target, TrendingUp, Star, CheckCircle } from "lucide-react";
 
 export default function LandingPage() {
@@ -11,11 +12,11 @@ export default function LandingPage() {
 
   // Navigation handlers for Header buttons
   const handleLoginClick = () => {
-    navigate('/login');
+    navigate(ROUTES.LOGIN);
   };
 
   const handleGetStartedClick = () => {
-    navigate('/register');
+    navigate(ROUTES.REGISTER);
   };
 
   return (
@@ -43,7 +44,7 @@ export default function LandingPage() {
               schedules — designed to match your pace.
             </p>
             <div className="flex flex-wrap gap-4 mt-6">
-              <Button onClick={() => navigate("/register")}>Get Started</Button>
+              <Button onClick={() => navigate(ROUTES.REGISTER)}>Get Started</Button>
               <Button variant="secondary">View Courses</Button>
             </div>
           </div>

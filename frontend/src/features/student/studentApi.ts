@@ -94,9 +94,9 @@ export const fetchMyCourses = async (): Promise<ApiResponse<unknown[]>> => {
   return response.data;
 };
 
-export const fetchUpcomingSessions = async () => {
+export const getUpcomingSessions = async () => {
     const response = await api.get('/student/sessions/upcoming');
-    return response.data;
+    return response.data?.data || response.data;
 };
 
 export const fetchMyCourseRequests = async () => {
@@ -189,5 +189,6 @@ export const studentApi = {
     updateBasicPreferences,
     requestMentor,
     fetchMyMentorRequests,
-    getMentorAvailableSlots
+    getMentorAvailableSlots,
+    getUpcomingSessions
 };

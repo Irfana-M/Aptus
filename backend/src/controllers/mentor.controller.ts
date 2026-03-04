@@ -1,9 +1,10 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types";
+import { TYPES } from "../types.js";
 import type { Request, Response } from "express";
-import type { IMentorService } from "../interfaces/services/IMentorService";
-import { HttpStatusCode } from "../constants/httpStatus";
-import { logger } from "../utils/logger";
+import type { IMentorService } from "../interfaces/services/IMentorService.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import { logger } from "../utils/logger.js";
+import { MESSAGES } from "../constants/messages.constants.js";
 
 @injectable()
 export class MentorController {
@@ -18,7 +19,7 @@ export class MentorController {
         logger.error("updateProfile: Missing mentorId in request");
         return res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Invalid user authentication",
+          message: MESSAGES.COMMON.INVALID_AUTH,
         });
       }
 
@@ -41,18 +42,18 @@ export class MentorController {
       logger.info(`Mentor profile updated successfully: ${mentorId}`);
       return res.status(HttpStatusCode.OK).json({
         success: true,
-        message: "Profile updated successfully",
+        message: MESSAGES.STUDENT.PROFILE_UPDATE_SUCCESS,
         data: updatedProfile,
       });
-    } catch (err: unknown) {
-      const error = err as Error;
+    } catch (error: unknown) {
+      const err = error as Error;
       logger.error(
-        `Error in updateProfile for mentor ${req.user?.id}: ${error.message}`,
-        { error: error.stack }
+        `Error in updateProfile for mentor ${req.user?.id}: ${err.message}`,
+        { error: err.stack }
       );
       return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: error.message || "Failed to update profile",
+        message: err.message || MESSAGES.STUDENT.PROFILE_UPDATE_FAILED,
       });
     }
   };
@@ -64,7 +65,7 @@ export class MentorController {
         logger.error("getProfile: Missing mentorId in request");
         return res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Invalid user authentication",
+          message: MESSAGES.COMMON.INVALID_AUTH,
         });
       }
 
@@ -74,7 +75,7 @@ export class MentorController {
       if (!profile) {
         return res.status(HttpStatusCode.NOT_FOUND).json({
           success: false,
-          message: "Mentor profile not found",
+          message: MESSAGES.AUTH.USER_NOT_FOUND,
         });
       }
 
@@ -82,12 +83,12 @@ export class MentorController {
         success: true,
         data: profile,
       });
-    } catch (err: unknown) {
-      const error = err as Error;
-      logger.error(`Error in getProfile for mentor ${req.user?.id}: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error(`Error in getProfile for mentor ${req.user?.id}: ${err.message}`);
       return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: error.message || "Failed to fetch profile",
+        message: err.message || MESSAGES.STUDENT.FETCH_FAILED,
       });
     }
   };
@@ -100,7 +101,7 @@ export class MentorController {
         logger.error(`submitForApproval: Missing mentorId or requestingUserId`);
         return res
           .status(HttpStatusCode.BAD_REQUEST)
-          .json({ success: false, message: "Invalid user" });
+          .json({ success: false, message: MESSAGES.MENTOR.INVALID_USER });
       }
 
       const result = await this._mentorService.submitProfileForApproval(
@@ -109,12 +110,12 @@ export class MentorController {
       );
       logger.info(`Mentor ${mentorId} submitted profile for approval`);
       return res.status(HttpStatusCode.OK).json({ success: true, ...result });
-    } catch (err: unknown) {
-      const error = err as Error;
-      logger.error(`Error in submitForApproval: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error(`Error in submitForApproval: ${err.message}`);
       return res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: error.message });
+        .json({ success: false, message: err.message });
     }
   };
 
@@ -125,12 +126,12 @@ export class MentorController {
       return res
         .status(HttpStatusCode.OK)
         .json({ success: true, data: pending });
-    } catch (err: unknown) {
-      const error = err as Error;
-      logger.error(`Error in getPending: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error(`Error in getPending: ${err.message}`);
       return res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: error.message });
+        .json({ success: false, message: err.message });
     }
   };
 
@@ -143,18 +144,18 @@ export class MentorController {
         logger.error("approve: Missing mentorId or adminId");
         return res
           .status(HttpStatusCode.BAD_REQUEST)
-          .json({ success: false, message: "Invalid request" });
+          .json({ success: false, message: MESSAGES.MENTOR.INVALID_REQUEST });
       }
 
       const result = await this._mentorService.approveMentor(mentorId, adminId);
       logger.info(`Mentor approved: ${mentorId} by admin: ${adminId}`);
       return res.status(HttpStatusCode.OK).json({ success: true, ...result });
-    } catch (err: unknown) {
-      const error = err as Error;
-      logger.error(`approve error: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error(`approve error: ${err.message}`);
       return res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: error.message });
+        .json({ success: false, message: err.message });
     }
   };
 
@@ -168,7 +169,7 @@ export class MentorController {
         logger.error("reject: Missing mentorId, adminId, or reason");
         return res
           .status(HttpStatusCode.BAD_REQUEST)
-          .json({ success: false, message: "Invalid request" });
+          .json({ success: false, message: MESSAGES.MENTOR.INVALID_REQUEST });
       }
 
       const result = await this._mentorService.rejectMentor(
@@ -181,12 +182,12 @@ export class MentorController {
         `Mentor rejected: ${mentorId} by admin: ${adminId}, reason: ${reason}`
       );
       return res.status(HttpStatusCode.OK).json({ success: true, ...result });
-    } catch (err: unknown) {
-      const error = err as Error;
-      logger.error(`reject error: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error(`reject error: ${err.message}`);
       return res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: error.message });
+        .json({ success: false, message: err.message });
     }
   };
   getTrialClasses = async (req: Request, res: Response) => {
@@ -196,18 +197,18 @@ export class MentorController {
         logger.error("getTrialClasses: Missing mentorId");
         return res
           .status(HttpStatusCode.BAD_REQUEST)
-          .json({ success: false, message: "Invalid user" });
+          .json({ success: false, message: MESSAGES.MENTOR.INVALID_USER });
       }
 
       const trialClasses = await this._mentorService.getMentorTrialClasses(mentorId);
       logger.info(`Fetched ${trialClasses.length} trial classes for mentor ${mentorId}`);
       return res.status(HttpStatusCode.OK).json({ success: true, data: trialClasses });
-    } catch (err: unknown) {
-      const error = err as Error;
-      logger.error(`Error in getTrialClasses: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error(`Error in getTrialClasses: ${err.message}`);
       return res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: error.message });
+        .json({ success: false, message: err.message });
     }
   };
 
@@ -218,18 +219,18 @@ export class MentorController {
         logger.error("getAvailableSlots: Missing mentorId");
         return res
           .status(HttpStatusCode.BAD_REQUEST)
-          .json({ success: false, message: "Mentor ID is required" });
+          .json({ success: false, message: MESSAGES.MENTOR.ID_REQUIRED });
       }
 
       const slots = await this._mentorService.getMentorAvailableSlots(mentorId);
       logger.info(`Fetched available slots for mentor ${mentorId}`);
       return res.status(HttpStatusCode.OK).json({ success: true, data: slots });
-    } catch (err: unknown) {
-      const error = err as Error;
-      logger.error(`Error in getAvailableSlots: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error(`Error in getAvailableSlots: ${err.message}`);
       return res
         .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: error.message });
+        .json({ success: false, message: err.message });
     }
   };
 
@@ -237,19 +238,19 @@ export class MentorController {
     try {
       const mentorId = req.user?.id;
       if (!mentorId) {
-        return res.status(HttpStatusCode.UNAUTHORIZED).json({ success: false, message: "Unauthorized" });
+        return res.status(HttpStatusCode.UNAUTHORIZED).json({ success: false, message: MESSAGES.MENTOR.UNAUTHORIZED });
       }
 
       const { startDate, endDate, reason } = req.body;
       if (!startDate || !endDate) {
-        return res.status(HttpStatusCode.BAD_REQUEST).json({ success: false, message: "Dates are required" });
+        return res.status(HttpStatusCode.BAD_REQUEST).json({ success: false, message: MESSAGES.COMMON.REQUIRED_FIELDS(["startDate", "endDate"]) });
       }
 
       await this._mentorService.requestLeave(mentorId, new Date(startDate), new Date(endDate), reason);
-      return res.status(HttpStatusCode.OK).json({ success: true, message: "Leave requested successfully" });
-    } catch (err: unknown) {
-      const error = err as Error;
-      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: error.message });
+      return res.status(HttpStatusCode.OK).json({ success: true, message: MESSAGES.MENTOR.LEAVE_REQUEST_SUCCESS });
+    } catch (error: unknown) {
+      const err = error as Error;
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: err.message });
     }
   };
 
@@ -259,14 +260,14 @@ export class MentorController {
       const { mentorId, leaveId } = req.params;
 
       if (!adminId || !mentorId || !leaveId) {
-        return res.status(HttpStatusCode.BAD_REQUEST).json({ success: false, message: "Missing required params" });
+        return res.status(HttpStatusCode.BAD_REQUEST).json({ success: false, message: MESSAGES.MENTOR.MISSING_PARAMS });
       }
 
       await this._mentorService.approveLeave(mentorId, leaveId, adminId);
-      return res.status(HttpStatusCode.OK).json({ success: true, message: "Leave approved successfully" });
-    } catch (err: unknown) {
-      const error = err as Error;
-      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: error.message });
+      return res.status(HttpStatusCode.OK).json({ success: true, message: MESSAGES.MENTOR.LEAVE_APPROVE_SUCCESS });
+    } catch (error: unknown) {
+      const err = error as Error;
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: err.message });
     }
   };
 
@@ -274,7 +275,7 @@ export class MentorController {
     try {
       const mentorId = req.user?.id;
       if (!mentorId) {
-        return res.status(HttpStatusCode.UNAUTHORIZED).json({ success: false, message: "Unauthorized" });
+        return res.status(HttpStatusCode.UNAUTHORIZED).json({ success: false, message: MESSAGES.MENTOR.UNAUTHORIZED });
       }
 
       // Default to today if no date provided
@@ -282,16 +283,33 @@ export class MentorController {
       const date = dateParam ? new Date(dateParam) : new Date();
 
       if (isNaN(date.getTime())) {
-          return res.status(HttpStatusCode.BAD_REQUEST).json({ success: false, message: "Invalid date format" });
+          return res.status(HttpStatusCode.BAD_REQUEST).json({ success: false, message: MESSAGES.MENTOR.INVALID_DATE });
       }
 
       const sessions = await this._mentorService.getMentorDailySessions(mentorId, date);
       
       return res.status(HttpStatusCode.OK).json({ success: true, data: sessions });
-    } catch (err: unknown) {
-      const error = err as Error;
-      logger.error(`Error in getDailySessions: ${error.message}`);
-      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: error.message });
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error(`Error in getDailySessions: ${err.message}`);
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: err.message });
+    }
+  };
+
+  getUpcomingSessions = async (req: Request, res: Response) => {
+    try {
+      const mentorId = req.user?.id;
+      if (!mentorId) {
+        return res.status(HttpStatusCode.UNAUTHORIZED).json({ success: false, message: MESSAGES.MENTOR.UNAUTHORIZED });
+      }
+
+      const result = await this._mentorService.getMentorUpcomingSessionsWithEligibility(mentorId);
+      
+      return res.status(HttpStatusCode.OK).json({ success: true, data: result });
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error(`Error in getUpcomingSessions: ${err.message}`);
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: err.message });
     }
   };
 
@@ -300,15 +318,15 @@ export class MentorController {
     try {
       const mentorId = req.user?.id;
       if (!mentorId) {
-        return res.status(HttpStatusCode.UNAUTHORIZED).json({ success: false, message: "Unauthorized" });
+        return res.status(HttpStatusCode.UNAUTHORIZED).json({ success: false, message: MESSAGES.MENTOR.UNAUTHORIZED });
       }
 
       const students = await this._mentorService.getOneToOneStudents(mentorId);
       return res.status(HttpStatusCode.OK).json({ success: true, data: students });
-    } catch (err: unknown) {
-      const error = err as Error;
-      logger.error(`Error in getOneToOneStudents: ${error.message}`);
-      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: error.message });
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error(`Error in getOneToOneStudents: ${err.message}`);
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: err.message });
     }
   };
 
@@ -317,15 +335,15 @@ export class MentorController {
     try {
       const mentorId = req.user?.id;
       if (!mentorId) {
-        return res.status(HttpStatusCode.UNAUTHORIZED).json({ success: false, message: "Unauthorized" });
+        return res.status(HttpStatusCode.UNAUTHORIZED).json({ success: false, message: MESSAGES.MENTOR.UNAUTHORIZED });
       }
 
       const batches = await this._mentorService.getGroupBatches(mentorId);
       return res.status(HttpStatusCode.OK).json({ success: true, data: batches });
-    } catch (err: unknown) {
-      const error = err as Error;
-      logger.error(`Error in getGroupBatches: ${error.message}`);
-      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: error.message });
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error(`Error in getGroupBatches: ${err.message}`);
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: err.message });
     }
   };
 }

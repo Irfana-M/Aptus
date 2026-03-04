@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Video, Calendar as CalendarIcon } from 'luci
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchStudentTrialClasses } from '../../../features/trial/student/studentTrialThunk';
 import { fetchMyEnrollments } from '../../../features/student/studentThunk';
+import { EmptyState } from '../../ui/EmptyState';
 import type { RootState, AppDispatch } from '../../../app/store'; 
 import { format, addDays, startOfWeek, isSameDay } from 'date-fns';
 import type { Course } from '../../../types/courseTypes';
@@ -193,9 +194,12 @@ const ScheduleList: React.FC = () => {
                 </div>
                 ))
             ) : (
-                <div className="text-center py-8">
-                    <p className="text-gray-500 text-sm">No classes scheduled for this day.</p>
-                </div>
+                <EmptyState 
+                  icon={CalendarIcon} 
+                  title="No classes scheduled" 
+                  description="Enjoy your day off!" 
+                  className="py-4 border-none"
+                />
             )}
             </div>
         </div>

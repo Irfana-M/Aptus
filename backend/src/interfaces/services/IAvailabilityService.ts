@@ -1,5 +1,5 @@
 
-import type { Availability, MentorProfile } from "../models/mentor.interface";
+import type { Availability, MentorProfile } from "../models/mentor.interface.js";
 
 export interface IAvailabilityService {
   updateAvailability(mentorId: string, schedule: Availability[]): Promise<MentorProfile>;

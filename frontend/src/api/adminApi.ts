@@ -18,7 +18,7 @@ const adminApi = axios.create({
 
 adminApi.interceptors.request.use(
   (config) => {
-    // STRICT: Only use admin token, no fallbacks
+  
     const token = localStorage.getItem('admin_accessToken');
 
     if (token && config.headers) {

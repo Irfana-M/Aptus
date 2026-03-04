@@ -18,12 +18,13 @@ import {
 } from "../../features/admin/adminSelectors";
 import type { AppDispatch, RootState } from "../../app/store";
 import type { StudentBaseResponseDto } from "../../types/studentTypes";
-import { Users, CheckCircle, Clock, Search, UserPlus, X } from "lucide-react";
+import { Users, CheckCircle, Search, UserPlus, X } from "lucide-react";
 import { showToast } from "../../utils/toast";
 import { getErrorMessage } from "../../utils/errorUtils";
 import type { Course } from "../../types/courseTypes";
 import type { Grade } from "../../features/admin/adminSelectors";
 import type { Subject } from "../../types/adminTypes";
+import { Loader } from "../ui/Loader";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const TIME_SLOTS = [
@@ -544,7 +545,7 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, initialValues,
                   />
                   {isSearchingStudents && (
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                      <Clock size={16} className="text-blue-500 animate-spin" />
+                      <Loader size="sm" color="text-blue-500" />
                     </div>
                   )}
                 </div>
@@ -760,8 +761,8 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, initialValues,
 
             {/* Buttons */}
             <div className="flex gap-4 pt-6">
-              <button type="submit" disabled={creating || !form.mentorId || (mentors.matches?.find(m => m._id === form.mentorId)?.hasConflict)} className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-all font-bold">
-                {creating ? "Saving..." : course ? "Update Course" : "Create Course"}
+              <button type="submit" disabled={creating || !form.mentorId || (mentors.matches?.find(m => m._id === form.mentorId)?.hasConflict)} className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-all font-bold flex items-center justify-center gap-2">
+                {creating ? <Loader size="sm" color="text-white" text="Saving..." /> : (course ? "Update Course" : "Create Course")}
               </button>
               <button type="button" onClick={onClose} className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors" disabled={creating}>Cancel</button>
             </div>

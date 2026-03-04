@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import type { IStudyMaterial, IAssignmentSubmission } from "../interfaces/models/studyMaterial.interface";
+import type { IStudyMaterial, IAssignmentSubmission } from "../interfaces/models/studyMaterial.interface.js";
 
 const studyMaterialSchema = new Schema<IStudyMaterial>(
   {

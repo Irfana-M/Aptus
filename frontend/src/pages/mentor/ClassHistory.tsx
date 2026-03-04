@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../constants/routes.constants';
 import { Home, User, Users, Calendar, BookOpen, Clock, ClipboardList } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import type { NavItem } from '../../components/layout/DashboardSidebar';
 import { Table, type TableColumn } from '../../components/mentor/Table';
+import { Loader } from '../../components/ui/Loader';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { fetchMentorTrialClasses, fetchMentorProfile, fetchMentorCourses } from "../../features/mentor/mentorThunk";
 import { logoutUser } from "../../features/auth/authThunks";
 import type { AppDispatch, RootState } from "../../app/store";
@@ -49,7 +52,7 @@ const ClassHistory: React.FC = () => {
 
     const handleLogout = async () => {
         await dispatch(logoutUser());
-        navigate('/login');
+        navigate(ROUTES.LOGIN);
     };
 
     const mentorNavItems: NavItem[] = [
@@ -179,17 +182,20 @@ const ClassHistory: React.FC = () => {
 
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                     {loading ? (
-                        <div className="flex justify-center p-12">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
+                        <div className="p-12">
+                            <Loader size="md" />
                         </div>
                     ) : filteredData.length > 0 ? (
                         <div className="overflow-x-auto">
                             <Table data={filteredData} columns={columns} />
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center justify-center p-12 text-gray-500">
-                             <ClipboardList className="w-12 h-12 text-gray-200 mb-2" />
-                             <p>No completed classes found for this view.</p>
+                        <div className="p-12">
+                            <EmptyState 
+                                title="No classes found"
+                                description="No completed classes found for this view."
+                                icon={ClipboardList}
+                            />
                         </div>
                     )}
                 </div>

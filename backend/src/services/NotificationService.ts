@@ -1,12 +1,13 @@
 import { injectable, inject } from 'inversify';
 import { Types, Schema } from 'mongoose';
-import { TYPES } from '../types';
-import type { INotificationRepository } from '../interfaces/repositories/INotificationRepository';
-import type { INotificationService } from '../interfaces/services/INotificationService';
-import type { IEmailService } from '../interfaces/services/IEmailService';
-import type { ISocketService } from '../interfaces/services/ISocketService';
-import type { INotification, NotificationType, NotificationChannel } from '../interfaces/models/notification.interface';
-import { logger } from '../utils/logger';
+import { TYPES } from '../types.js';
+import type { INotificationRepository } from '../interfaces/repositories/INotificationRepository.js';
+import type { INotificationService } from '../interfaces/services/INotificationService.js';
+import type { IEmailService } from '../interfaces/services/IEmailService.js';
+import type { ISocketService } from '../interfaces/services/ISocketService.js';
+import type { INotification, NotificationType, NotificationChannel } from '../interfaces/models/notification.interface.js';
+import { logger } from '../utils/logger.js';
+import { MESSAGES } from '../constants/messages.constants.js';
 
 @injectable()
 export class NotificationService implements INotificationService {
@@ -65,32 +66,32 @@ export class NotificationService implements INotificationService {
     const p = payload as Record<string, string>;
     const templates: Record<NotificationType, { title: string, message: string }> = {
       session_booked: {
-        title: "Session Booked Successfully",
-        message: `Your session for ${p.subjectName} is scheduled for ${p.startTime}.`
+        title: MESSAGES.NOTIFICATION_TEMPLATES.session_booked.title,
+        message: MESSAGES.NOTIFICATION_TEMPLATES.session_booked.message(p.subjectName || 'Subject', p.startTime || 'TBD')
       },
       reminder_24h: {
-        title: "Reminder: Session Tomorrow",
-        message: `Don't forget your session for ${p.subjectName} tomorrow at ${p.startTime}.`
+        title: MESSAGES.NOTIFICATION_TEMPLATES.reminder_24h.title,
+        message: MESSAGES.NOTIFICATION_TEMPLATES.reminder_24h.message(p.subjectName || 'Subject', p.startTime || 'TBD')
       },
       reminder_1h: {
-        title: "Reminder: Session in 1 Hour",
-        message: `Your session for ${p.subjectName} starts in 1 hour.`
+        title: MESSAGES.NOTIFICATION_TEMPLATES.reminder_1h.title,
+        message: MESSAGES.NOTIFICATION_TEMPLATES.reminder_1h.message(p.subjectName || 'Subject')
       },
       session_starting: {
-        title: "Session Starting Now!",
-        message: `Your session for ${p.subjectName} is starting.`,
+        title: MESSAGES.NOTIFICATION_TEMPLATES.session_starting.title,
+        message: MESSAGES.NOTIFICATION_TEMPLATES.session_starting.message(p.subjectName || 'Subject'),
       },
       session_cancelled: {
-        title: "Session Cancelled",
-        message: `Your session for ${p.subjectName} has been cancelled.`
+        title: MESSAGES.NOTIFICATION_TEMPLATES.session_cancelled.title,
+        message: MESSAGES.NOTIFICATION_TEMPLATES.session_cancelled.message(p.subjectName || 'Subject')
       },
       session_rescheduled: {
-        title: "Session Rescheduled",
-        message: `Your session for ${p.subjectName} has been moved to ${p.startTime}.`
+        title: MESSAGES.NOTIFICATION_TEMPLATES.session_rescheduled.title,
+        message: MESSAGES.NOTIFICATION_TEMPLATES.session_rescheduled.message(p.subjectName || 'Subject', p.startTime || 'TBD')
       },
       preferences_saved: {
-        title: "Preferences Saved",
-        message: "Your learning preferences have been saved successfully. We are now matching you with the best mentor."
+        title: MESSAGES.NOTIFICATION_TEMPLATES.preferences_saved.title,
+        message: MESSAGES.NOTIFICATION_TEMPLATES.preferences_saved.message
       },
       preferences_admin_notify: {
         title: "New Student Preferences",
@@ -101,8 +102,8 @@ export class NotificationService implements INotificationService {
         message: `A student has expressed interest in ${p.subjectName}. Check if your availability matches.`
       },
       preferences_submitted: {
-        title: "Preferences Submitted",
-        message: "Preferences submitted successfully."
+        title: MESSAGES.NOTIFICATION_TEMPLATES.preferences_submitted.title,
+        message: MESSAGES.NOTIFICATION_TEMPLATES.preferences_submitted.message
       },
       mentor_request_submitted: {
         title: "Mentor Request Submitted",

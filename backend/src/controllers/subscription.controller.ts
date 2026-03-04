@@ -1,19 +1,19 @@
 import type { Request, Response } from 'express';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../types';
-import type { ISubscriptionService } from '../interfaces/services/ISubscriptionService';
-import { HttpStatusCode } from '../constants/httpStatus';
+import { TYPES } from '../types.js';
+import type { ISubscriptionService } from '../interfaces/services/ISubscriptionService.js';
+import { HttpStatusCode } from '../constants/httpStatus.js';
 
 @injectable()
 export class SubscriptionController {
   constructor(
-    @inject(TYPES.ISubscriptionService) private subscriptionService: ISubscriptionService
+    @inject(TYPES.ISubscriptionService) private _subscriptionService: ISubscriptionService
   ) {}
 
  
   async getActivePlans(req: Request, res: Response): Promise<void> {
     try {
-      const plans = await this.subscriptionService.getActivePlans();
+      const plans = await this._subscriptionService.getActivePlans();
       res.status(HttpStatusCode.OK).json({
         success: true,
         data: plans
@@ -40,7 +40,7 @@ export class SubscriptionController {
         return;
       }
 
-      const result = await this.subscriptionService.calculateMonthlyCost(
+      const result = await this._subscriptionService.calculateMonthlyCost(
         planCode,
         numberOfSubjects
       );

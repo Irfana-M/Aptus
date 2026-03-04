@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../../app/store";
 import { fetchDashboardData } from "../../features/admin/dashboardSlice";
 import { Sidebar } from "../../components/admin/Sidebar";
 import { Topbar } from "../../components/admin/Topbar";
-import { Users, BookOpen, DollarSign, TrendingUp, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Users, DollarSign, TrendingUp, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Loader } from "../../components/ui/Loader";
 
 const StatCard = ({
   title,
@@ -97,6 +98,9 @@ export default function Dashboard() {
   const {
     totalStudents,
     totalMentors,
+    activeSessions,
+    pendingApprovals,
+    finance,
     loading,
     error,
   } = useSelector((state: RootState) => state.dashboard);
@@ -112,10 +116,14 @@ export default function Dashboard() {
       });
   }, [dispatch]);
 
-  // Calculate additional stats (you can replace these with actual data from your API)
-  const pendingApprovals = 0; // This should come from your API
-  const activeCourses = 0;
-  const monthlyRevenue = 0;
+  // Calculate current month's revenue
+  const currentMonthRevenue = useMemo(() => {
+    if (!finance?.monthlyRevenue || finance.monthlyRevenue.length === 0) return 0;
+    // The backend sorts by year/month desc, so the first one is the most recent
+    return finance.monthlyRevenue[0].amount;
+  }, [finance]);
+
+  const totalRevenue = finance?.totalRevenue || 0;
   const completionRate = 0;
 
   if (loading) {
@@ -128,10 +136,7 @@ export default function Dashboard() {
           onClose={() => setSidebarOpen(false)}
         />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-cyan-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading dashboard...</p>
-          </div>
+          <Loader size="lg" text="Loading dashboard..." color="teal" />
         </div>
       </div>
     );
@@ -200,17 +205,17 @@ export default function Dashboard() {
               color="orange"
             />
             <StatCard
-              title="Active Courses"
-              value={activeCourses}
-              subtitle="Running currently"
-              icon={<BookOpen size={24} />}
+              title="Total Revenue"
+              value={`₹${totalRevenue.toLocaleString()}`}
+              subtitle="All time revenue"
+              icon={<DollarSign size={24} />}
               color="green"
             />
             <StatCard
               title="Monthly Revenue"
-              value={`$${monthlyRevenue.toLocaleString()}`}
-              subtitle="This month"
-              icon={<DollarSign size={24} />}
+              value={`₹${currentMonthRevenue.toLocaleString()}`}
+              subtitle="Current month"
+              icon={<TrendingUp size={24} />}
               color="purple"
             />
           </div>
@@ -231,9 +236,9 @@ export default function Dashboard() {
             />
             <QuickStatsCard
               title="Active Sessions"
-              value="0"
+              value={activeSessions || 0}
               icon={<Users size={20} />}
-              color="gray"
+              color="green"
             />
             <QuickStatsCard
               title="Issues Reported"

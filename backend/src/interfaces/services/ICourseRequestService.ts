@@ -1,5 +1,5 @@
-import type { CourseRequestDocument } from "../../models/courseRequest.model";
-import type { PaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes";
+import type { CourseRequestDocument } from "../../models/courseRequest.model.js";
+import type { PaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes.js";
 
 export interface ICourseRequestService {
   createRequest(studentId: string, data: Record<string, unknown>): Promise<CourseRequestDocument>;

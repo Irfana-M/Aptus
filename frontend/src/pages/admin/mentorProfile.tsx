@@ -25,6 +25,8 @@ import {
   Image,
 } from "lucide-react";
 import { showToast } from "../../utils/toast";
+import { Loader } from "../../components/ui/Loader";
+import { EmptyState } from "../../components/ui/EmptyState";
 
 const MentorProfilePage: React.FC = () => {
   const { mentorId } = useParams<{ mentorId: string }>();
@@ -76,10 +78,7 @@ const MentorProfilePage: React.FC = () => {
   if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading mentor profile...</p>
-        </div>
+        <Loader size="lg" text="Loading mentor profile..." />
       </div>
     );
 
@@ -96,9 +95,11 @@ const MentorProfilePage: React.FC = () => {
   if (!profile)
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-gray-600">No mentor profile found</p>
-        </div>
+        <EmptyState 
+          icon={User} 
+          title="Mentor not found" 
+          description="The requested mentor profile could not be found." 
+        />
       </div>
     );
 
@@ -156,7 +157,7 @@ const MentorProfilePage: React.FC = () => {
                 <div className="relative">
                   {imageLoading && (
                     <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-full">
-                      <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                      <Loader size="sm" color="teal" />
                     </div>
                   )}
                   <img

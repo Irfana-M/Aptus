@@ -4,6 +4,8 @@ import { Calendar, UserCheck, UserX, Clock } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { fetchAttendanceHistory } from '../../features/attendance/attendanceThunk';
 import { format } from 'date-fns';
+import { Loader } from '../../components/ui/Loader';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 const MentorAttendance: React.FC = () => {
     const dispatch = useAppDispatch();
@@ -60,11 +62,7 @@ const MentorAttendance: React.FC = () => {
                 </h2>
 
                 {loading ? (
-                    <div className="animate-pulse space-y-4">
-                        {[...Array(3)].map((_, i) => (
-                            <div key={i} className="h-20 bg-slate-50 rounded-2xl" />
-                        ))}
-                    </div>
+                    <Loader size="lg" text="Loading attendance history..." />
                 ) : history.length > 0 ? (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
@@ -115,13 +113,11 @@ const MentorAttendance: React.FC = () => {
                         </table>
                     </div>
                 ) : (
-                    <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-                            <Calendar size={32} />
-                        </div>
-                        <p className="text-slate-900 font-bold text-lg">No records found</p>
-                        <p className="text-slate-500 mt-1 max-w-sm mx-auto">Attendance records for your assigned students and sessions will appear here.</p>
-                    </div>
+                    <EmptyState 
+                        icon={Calendar} 
+                        title="No records found" 
+                        description="Attendance records for your assigned students and sessions will appear here." 
+                    />
                 )}
             </div>
         </MentorLayout>

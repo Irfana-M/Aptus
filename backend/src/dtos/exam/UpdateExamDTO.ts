@@ -1,4 +1,4 @@
-import type { CreateQuestionDTO } from "./CreateExamDTO";
+import type { CreateQuestionDTO } from "./CreateExamDTO.js";
 
 export interface UpdateExamDTO {
   title?: string;

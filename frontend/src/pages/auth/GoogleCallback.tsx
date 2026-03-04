@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { ROUTES } from "../../constants/routes.constants";
 import { toast } from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "../../features/auth/authSlice"; 
@@ -24,33 +25,33 @@ export default function GoogleCallback() {
       
       if (!profileComplete) {
         console.log('🚀 Redirecting mentor to profile setup');
-        return "/mentor/profile-setup";
+        return ROUTES.MENTOR.PROFILE_SETUP;
       }
       
      
       switch (approvalStatus) {
         case "pending":
-          return "/mentor/profile-setup";
+          return ROUTES.MENTOR.PROFILE_SETUP;
         case "rejected":
-          return "/mentor/rejected";
+          return ROUTES.MENTOR.REJECTED;
         case "approved":
-          return profileComplete ? "/mentor/dashboard" : "/mentor/profile-setup";
+          return profileComplete ? ROUTES.MENTOR.DASHBOARD : ROUTES.MENTOR.PROFILE_SETUP;
         default:
-          return "/mentor/profile-setup";
+          return ROUTES.MENTOR.PROFILE_SETUP;
       }
     }
 
     if (userRole === "student") {
       if (paid) {
-        return "/student/dashboard";
+        return ROUTES.STUDENT.DASHBOARD;
       }
       if (isTrialCompleted && !profileComplete) {
-        return "/student/profile";
+        return ROUTES.STUDENT.PROFILE;
       }
-      return "/student/book-free-trial";
+      return ROUTES.STUDENT.BOOK_FREE_TRIAL;
     }
 
-    return "/";
+    return ROUTES.HOME;
   };
 
   useEffect(() => {
@@ -86,7 +87,7 @@ export default function GoogleCallback() {
 
       if (error) {
         toast.error(`Google authentication failed: ${error}`);
-        navigate("/login");
+        navigate(ROUTES.LOGIN);
         return;
       }
 
@@ -140,12 +141,12 @@ export default function GoogleCallback() {
         } catch (error) {
           console.error("Google auth processing error:", error);
           toast.error("Failed to process Google login");
-          navigate("/login");
+          navigate(ROUTES.LOGIN);
         }
       } else {
         console.error("Incomplete Google auth data:", { token, email, role });
         toast.error("Google authentication failed - incomplete data received");
-        navigate("/signup");
+        navigate(ROUTES.REGISTER);
       }
     };
 

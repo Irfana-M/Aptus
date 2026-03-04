@@ -1,4 +1,4 @@
-import type { NotificationType, NotificationChannel, INotification } from '../models/notification.interface';
+import type { NotificationType, NotificationChannel, INotification } from '../models/notification.interface.js';
 
 export interface INotificationService {
   notifyUser(

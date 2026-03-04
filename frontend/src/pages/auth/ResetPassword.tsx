@@ -4,6 +4,7 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import { ROUTES } from "../../constants/routes.constants";
 import resetImage from "../../assets/images/register_banner.jpeg"; 
 
 type ResetPasswordFormValues = {
@@ -27,7 +28,7 @@ export default function ResetPassword() {
 
     if (!savedEmail) {
       toast.error("No email found. Please start over.");
-      navigate("/forgot-password");
+      navigate(ROUTES.FORGOT_PASSWORD);
       return;
     }
 
@@ -64,7 +65,7 @@ export default function ResetPassword() {
         toast.success("Password reset successfully!");
         localStorage.removeItem("resetPasswordEmail");
         localStorage.removeItem("resetPasswordRole");
-        navigate("/login");
+        navigate(ROUTES.LOGIN);
       } else {
         toast.error(result.message || "Failed to reset password");
       }
@@ -174,7 +175,7 @@ export default function ResetPassword() {
               Resend OTP
             </button>
             <button
-              onClick={() => navigate("/login")}
+              onClick={() => navigate(ROUTES.LOGIN)}
               className="text-gray-600 hover:underline block w-full"
             >
               Back to Login

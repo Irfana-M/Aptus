@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ROUTES } from '../../../constants/routes.constants';
 import { getStudentResults, getExamById } from '../../../features/exam/examSlice';
 import type { AppDispatch, RootState } from '../../../app/store';
 import { ChevronLeft, CheckCircle, XCircle, MessageCircle } from 'lucide-react';
 import StudentLayout from '../../../components/students/StudentLayout';
+import { Loader } from '../../../components/ui/Loader';
 import { QuestionType } from '../../../types/examTypes';
 
 const StudentExamAnalysis: React.FC = () => {
@@ -31,8 +33,8 @@ const StudentExamAnalysis: React.FC = () => {
     if (loading || !result || !currentExam) {
         return (
             <StudentLayout title="Exam Analysis">
-                <div className="flex justify-center items-center h-screen">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                <div className="flex justify-center items-center h-[60vh]">
+                    <Loader size="lg" text="Analyzing your performance..." />
                 </div>
             </StudentLayout>
         );
@@ -46,7 +48,7 @@ const StudentExamAnalysis: React.FC = () => {
                  {/* Header */}
                  <div className="flex items-center gap-4 mb-8">
                     <button 
-                        onClick={() => navigate('/results')}
+                        onClick={() => navigate(ROUTES.STUDENT.RESULTS)}
                         className="p-2 hover:bg-slate-100 rounded-full transition-colors"
                     >
                         <ChevronLeft size={24} className="text-slate-600" />

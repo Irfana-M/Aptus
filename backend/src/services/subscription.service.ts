@@ -1,22 +1,22 @@
 import { injectable, inject } from 'inversify';
 import mongoose from 'mongoose';
-import { TYPES } from '../types';
-import type { IStudentRepository } from '../interfaces/repositories/IStudentRepository';
-import type { IStudentService } from '../interfaces/services/IStudentService';
-import { InternalEventEmitter } from '../utils/InternalEventEmitter';
-import { EVENTS } from '../utils/InternalEventEmitter';
-import { logger } from '../utils/logger';
-import type { StudentDocument } from '../models/student/student.model';
-import type { ISubscriptionService } from '../interfaces/services/ISubscriptionService';
-import type { ISubscriptionRepository } from '../interfaces/repositories/ISubscriptionRepository';
+import { TYPES } from '../types.js';
+import type { IStudentRepository } from '../interfaces/repositories/IStudentRepository.js';
+import type { IStudentService } from '../interfaces/services/IStudentService.js';
+import { InternalEventEmitter } from '../utils/InternalEventEmitter.js';
+import { EVENTS } from '../utils/InternalEventEmitter.js';
+import { logger } from '../utils/logger.js';
+import type { StudentDocument } from '../models/student/student.model.js';
+import type { ISubscriptionService } from '../interfaces/services/ISubscriptionService.js';
+import type { ISubscriptionRepository } from '../interfaces/repositories/ISubscriptionRepository.js';
 
 @injectable()
 export class SubscriptionService implements ISubscriptionService {
   constructor(
-    @inject(TYPES.IStudentRepository) private studentRepository: IStudentRepository,
-    @inject(TYPES.IStudentService) private studentService: IStudentService,
-    @inject(TYPES.InternalEventEmitter) private eventEmitter: InternalEventEmitter,
-    @inject(TYPES.ISubscriptionRepository) private subscriptionRepository: ISubscriptionRepository
+    @inject(TYPES.IStudentRepository) private _studentRepository: IStudentRepository,
+    @inject(TYPES.IStudentService) private _studentService: IStudentService,
+    @inject(TYPES.InternalEventEmitter) private _eventEmitter: InternalEventEmitter,
+    @inject(TYPES.ISubscriptionRepository) private _subscriptionRepository: ISubscriptionRepository
   ) {}
 
   async activateSubscription(
@@ -29,7 +29,7 @@ export class SubscriptionService implements ISubscriptionService {
   ): Promise<StudentDocument> {
     logger.info(`Activating subscription for student: ${studentId}, planCode: ${planCode}, paymentId: ${paymentId}`);
 
-    const planDetails = await this.subscriptionRepository.findPlanByCode(planCode);
+    const planDetails = await this._subscriptionRepository.findPlanByCode(planCode);
     
     
     const planType = planDetails?.sessionType === 'GROUP' ? 'basic' : 'premium';
@@ -51,7 +51,7 @@ export class SubscriptionService implements ISubscriptionService {
     expiryDate.setTime(renewalDate.getTime());
     expiryDate.setDate(expiryDate.getDate() + 3);
 
-    const student = await this.studentRepository.updateById(studentId, {
+    const student = await this._studentRepository.updateById(studentId, {
       hasPaid: true,
       subscription: {
         plan: planDuration as "monthly" | "yearly",
@@ -69,16 +69,16 @@ export class SubscriptionService implements ISubscriptionService {
       }
     }) as unknown as StudentDocument;
 
-    // Advance onboarding state
+    
     try {
-        const { StudentOnboardingStatus } = await import('../enums/studentOnboarding.enum');
-        await this.studentService.advanceOnboarding(studentId, StudentOnboardingStatus.SUBSCRIBED as any);
-    } catch (e) {
-        logger.error(`Failed to advance onboarding for student ${studentId} to SUBSCRIBED`, e);
+        const { StudentOnboardingStatus } = await import('../enums/studentOnboarding.enum.js');
+        await this._studentService.advanceOnboarding(studentId, 'SUBSCRIBED' as any);
+    } catch (error) {
+        logger.error(`Failed to advance onboarding for student ${studentId} to SUBSCRIBED`, error);
     }
 
     // Emit event for notifications
-    this.eventEmitter.emit(EVENTS.SUBSCRIPTION_ACTIVATED, {
+    this._eventEmitter.emit(EVENTS.SUBSCRIPTION_ACTIVATED, {
       studentId,
       studentName: student?.fullName || "Student",
       plan: planCode,
@@ -92,7 +92,7 @@ export class SubscriptionService implements ISubscriptionService {
    * Get all active subscription plans
    */
   async getActivePlans(): Promise<unknown[]> {
-    return await this.subscriptionRepository.findActivePlans();
+    return await this._subscriptionRepository.findActivePlans();
   }
 
   /**
@@ -112,7 +112,7 @@ export class SubscriptionService implements ISubscriptionService {
     currency: string;
   }> {
     // Fetch plan via repository
-    const plan = await this.subscriptionRepository.findPlanByCode(planCode);
+    const plan = await this._subscriptionRepository.findPlanByCode(planCode);
     if (!plan) {
       throw new Error(`Subscription plan '${planCode}' not found or inactive`);
     }

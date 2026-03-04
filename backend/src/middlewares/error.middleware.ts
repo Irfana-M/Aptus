@@ -1,7 +1,7 @@
 import type { ErrorRequestHandler } from "express";
-import { AppError } from "../utils/AppError";
-import { logger } from "../utils/logger";
-import { HttpStatusCode } from "../constants/httpStatus";
+import { AppError } from "../utils/AppError.js";
+import { logger } from "../utils/logger.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
 import { ZodError } from "zod";
 
 export const errorHandler: ErrorRequestHandler = (

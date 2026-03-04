@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
-import type { ICourseRequest } from "../interfaces/models/courseRequest.interface";
+import type { ICourseRequest } from "../interfaces/models/courseRequest.interface.js";
 
 export interface CourseRequestDocument extends ICourseRequest, Document {}
 

@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { ZodError, type ZodSchema, type ZodIssue } from 'zod';
-import { AppError } from '../utils/AppError';
-import { HttpStatusCode } from '../constants/httpStatus';
+import { AppError } from '../utils/AppError.js';
+import { HttpStatusCode } from '../constants/httpStatus.js';
 
 
 export const validateBody = (schema: ZodSchema) => {

@@ -4,6 +4,8 @@ import { Calendar, CheckCircle2, XCircle } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { fetchAttendanceHistory } from '../../features/attendance/attendanceThunk';
 import { format } from 'date-fns';
+import { Loader } from '../../components/ui/Loader';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 const StudentAttendance: React.FC = () => {
     const dispatch = useAppDispatch();
@@ -58,11 +60,7 @@ const StudentAttendance: React.FC = () => {
                 </h2>
 
                 {loading ? (
-                    <div className="animate-pulse space-y-4">
-                        {[...Array(3)].map((_, i) => (
-                            <div key={i} className="h-20 bg-slate-50 rounded-2xl" />
-                        ))}
-                    </div>
+                    <Loader size="lg" text="Loading attendance data..." />
                 ) : history.length > 0 ? (
                     <div className="overflow-hidden">
                         <table className="w-full text-left">
@@ -102,13 +100,11 @@ const StudentAttendance: React.FC = () => {
                         </table>
                     </div>
                 ) : (
-                    <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-                            <Calendar size={32} />
-                        </div>
-                        <p className="text-slate-900 font-bold text-lg">No attendance records yet</p>
-                        <p className="text-slate-500 mt-1 max-w-sm mx-auto">Your attendance statistics will show up here once your classes begin.</p>
-                    </div>
+                    <EmptyState 
+                        icon={Calendar} 
+                        title="No attendance records yet" 
+                        description="Your attendance statistics will show up here once your classes begin." 
+                    />
                 )}
             </div>
         </StudentLayout>

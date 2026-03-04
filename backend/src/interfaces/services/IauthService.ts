@@ -1,8 +1,8 @@
-import type { LoginUserDto } from "@/dtos/auth/LoginUserDTO";
-import type { SendOtpDto } from "@/dtos/auth/OtpDTO";
-import type { RegisterUserDto } from "@/dtos/auth/RegisteruserDTO";
-import type { VerifyOtpDto } from "@/dtos/auth/VerifyOtpDTO";
-import type { AuthUser } from "../auth/auth.interface";
+import type { LoginUserDto } from "@/dtos/auth/LoginUserDTO.js";
+import type { SendOtpDto } from "@/dtos/auth/OtpDTO.js";
+import type { RegisterUserDto } from "@/dtos/auth/RegisteruserDTO.js";
+import type { VerifyOtpDto } from "@/dtos/auth/VerifyOtpDTO.js";
+import type { AuthUser } from "../auth/auth.interface.js";
 
 export interface UserContextResponse {
   user: AuthUser;

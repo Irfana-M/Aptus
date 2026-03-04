@@ -1,7 +1,8 @@
 import React, { useEffect } from "react";
 import { useAppDispatch } from "./app/hooks";
 import { Toaster } from "react-hot-toast";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Loader } from "./components/ui/Loader";
 
 import LandingPage from "./pages/LandingPage";
 import Register from "./pages/auth/Registration";
@@ -66,6 +67,7 @@ import { VideoCallProvider } from "./context/VideoCallContext";
 import FloatingCallOverlay from "./components/video/FloatingCallOverlay";
 import NotificationsPage from "./pages/common/NotificationsPage";
 
+import { ROUTES } from "./constants/routes.constants";
 
 const App: React.FC = () => {
   return (
@@ -120,9 +122,9 @@ const AppContent: React.FC = () => {
         const genericToken = localStorage.getItem("accessToken");
         
         // Prioritize refresh based on current path to avoid race conditions
-        const isAdminPath = path.startsWith('/admin');
-        const isStudentPath = path.startsWith('/student');
-        const isMentorPath = path.startsWith('/mentor');
+        const isAdminPath = path.startsWith(ROUTES.ADMIN.DASHBOARD.split('/')[1]);
+        const isStudentPath = path.startsWith(ROUTES.STUDENT.DASHBOARD.split('/')[1]);
+        const isMentorPath = path.startsWith(ROUTES.MENTOR.DASHBOARD.split('/')[1]);
         
         // 1. Refresh Admin if on admin path or generic refresh needed and we are admin
         if (adminToken && (isAdminPath || (!isStudentPath && !isMentorPath))) {
@@ -142,18 +144,18 @@ const AppContent: React.FC = () => {
 
   return (
       <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/verify-otp" element={<VerifyOtp />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/auth/google/callback" element={<GoogleCallback />} />
+        <Route path={ROUTES.HOME} element={<LandingPage />} />
+        <Route path={ROUTES.REGISTER} element={<Register />} />
+        <Route path={ROUTES.VERIFY_OTP} element={<VerifyOtp />} />
+        <Route path={ROUTES.LOGIN} element={<Login />} />
+        <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
+        <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
+        <Route path={ROUTES.AUTH.GOOGLE_CALLBACK} element={<GoogleCallback />} />
 
-        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path={ROUTES.ADMIN.LOGIN} element={<AdminLoginPage />} />
 
         <Route
-          path="/admin/dashboard"
+          path={ROUTES.ADMIN.DASHBOARD}
           element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
               <Dashboard />
@@ -161,7 +163,7 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-          path="/admin/mentors"
+          path={ROUTES.ADMIN.MENTORS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
               <MentorsManagement />
@@ -170,7 +172,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/admin/mentors/:mentorId"
+          path={ROUTES.ADMIN.MENTOR_DETAILS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
               <MentorProfilePage />
@@ -178,7 +180,7 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-          path="/admin/students"
+          path={ROUTES.ADMIN.STUDENTS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
               <StudentsManagement />
@@ -188,7 +190,7 @@ const AppContent: React.FC = () => {
 
         {/* Student Profile - plural path (primary) */}
         <Route
-          path="/admin/students/:studentId"
+          path={ROUTES.ADMIN.STUDENT_DETAILS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
               <StudentProfilePage />
@@ -198,7 +200,7 @@ const AppContent: React.FC = () => {
 
         {/* Student Profile - singular path (legacy support) */}
           <Route
-          path="/admin/student/:studentId"
+          path={ROUTES.ADMIN.STUDENT_PROFILE}
           element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
               <StudentProfilePage />
@@ -206,14 +208,14 @@ const AppContent: React.FC = () => {
           }
         />
 
-        <Route path="/admin/trial-classes" element={
+        <Route path={ROUTES.ADMIN.TRIAL_CLASSES} element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
               <TrialClassesManagement />
             </ProtectedRoute>
           }
         />
 
-        <Route path="/admin/students/:studentId/trial-classes" element={
+        <Route path={ROUTES.ADMIN.STUDENT_TRIAL_CLASSES} element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
               <StudentTrialClassesPage />
             </ProtectedRoute>
@@ -221,7 +223,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/admin/trial-class/:trialClassId"
+          path={ROUTES.ADMIN.TRIAL_CLASS_DETAILS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
               <TrialClassDetailsPage />
@@ -230,7 +232,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/trial-class/:trialClassId/call"
+          path={ROUTES.COMMON.VIDEO_CALL}
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR, ROLES.STUDENT]}>
               <VideoCallRoom />
@@ -239,7 +241,7 @@ const AppContent: React.FC = () => {
         />
         
         <Route
-          path="/session/:sessionId/call"
+          path={ROUTES.COMMON.SESSION_CALL}
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR, ROLES.STUDENT]}>
               <VideoCallRoom />
@@ -248,7 +250,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/classroom/:token"
+          path={ROUTES.COMMON.CLASSROOM_TOKEN}
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR, ROLES.STUDENT]}>
               <SessionJoin />
@@ -257,7 +259,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/trial-class/:trialClassId/feedback"
+          path={ROUTES.COMMON.TRIAL_FEEDBACK}
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <TrialClassFeedback />
@@ -266,7 +268,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/student/book-free-trial"
+          path={ROUTES.STUDENT.BOOK_FREE_TRIAL}
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <TrialBookingPage />
@@ -275,7 +277,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/student/time-slots"
+          path={ROUTES.STUDENT.TIME_SLOTS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <BookTuitionSessions />
@@ -284,7 +286,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/student/subscription-plans"
+          path={ROUTES.STUDENT.SUBSCRIPTION_PLANS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <SubscriptionPlans />
@@ -293,7 +295,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/student/payment"
+          path={ROUTES.STUDENT.PAYMENT}
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <React.Suspense fallback={<div className="flex justify-center p-8">Loading Payment Gateway...</div>}>
@@ -304,7 +306,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/student/preferences/subjects"
+          path={ROUTES.STUDENT.PREFERENCES.SUBJECTS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <SubjectsSelectionPage />
@@ -313,7 +315,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/student/preferences/time-slots"
+          path={ROUTES.STUDENT.PREFERENCES.TIME_SLOTS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <TimeSlotsSelectionPage />
@@ -322,7 +324,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/student/preferences/mentors"
+          path={ROUTES.STUDENT.PREFERENCES.MENTORS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <MentorSelectionPage />
@@ -332,7 +334,7 @@ const AppContent: React.FC = () => {
 
 
         <Route
-          path="/student/profile"
+          path={ROUTES.STUDENT.PROFILE}
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <StudentProfile />
@@ -340,7 +342,7 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-          path="/student/profile-setup"
+          path={ROUTES.STUDENT.PROFILE_SETUP}
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <StudentProfile />
@@ -351,7 +353,7 @@ const AppContent: React.FC = () => {
 
 
         <Route
-          path="/student/my-courses"
+          path={ROUTES.STUDENT.MY_COURSES}
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <MyCourses />
@@ -360,7 +362,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/student/dashboard"
+          path={ROUTES.STUDENT.DASHBOARD}
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <StudentDashboard />
@@ -369,7 +371,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/student/payments"
+          path={ROUTES.STUDENT.PAYMENTS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <PaymentHistory />
@@ -377,7 +379,7 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-          path="/student/attendance"
+          path={ROUTES.STUDENT.ATTENDANCE}
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <StudentAttendance />
@@ -385,7 +387,7 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-          path="/student/classroom"
+          path={ROUTES.STUDENT.CLASSROOM}
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <StudentClassroom />
@@ -393,7 +395,7 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-          path="/student/study-materials"
+          path={ROUTES.STUDENT.STUDY_MATERIALS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <StudentStudyMaterials />
@@ -401,7 +403,7 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-          path="/student/exams"
+          path={ROUTES.STUDENT.EXAMS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
                <StudentExamList />
@@ -409,7 +411,7 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-            path="/student/exam/:examId/take"
+            path={ROUTES.STUDENT.EXAM_TAKE}
             element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
                 <TakeExam />
@@ -417,7 +419,7 @@ const AppContent: React.FC = () => {
             }
         />
         <Route
-            path="/student/results"
+            path={ROUTES.STUDENT.RESULTS}
             element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
                 <ExamResultPage />
@@ -425,7 +427,7 @@ const AppContent: React.FC = () => {
             }
         />
         <Route
-            path="/student/results/:resultId"
+            path={ROUTES.STUDENT.RESULT_DETAILS}
             element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
                 <StudentExamAnalysis />
@@ -434,7 +436,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/mentor/profile-setup"
+          path={ROUTES.MENTOR.PROFILE_SETUP}
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
               <MentorProfileSetup />
@@ -443,7 +445,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/mentor/profile"
+          path={ROUTES.MENTOR.PROFILE}
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
               <MentorProfileSetup />
@@ -452,7 +454,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/mentor/dashboard"
+          path={ROUTES.MENTOR.DASHBOARD}
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
               <MentorDashboard />
@@ -460,7 +462,7 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-          path="/mentor/students"
+          path={ROUTES.MENTOR.STUDENTS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
               <MentorStudentsPage />
@@ -468,7 +470,7 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-          path="/mentor/availability"
+          path={ROUTES.MENTOR.AVAILABILITY}
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
               <MentorAvailabilityPage />
@@ -476,7 +478,7 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-          path="/mentor/attendance"
+          path={ROUTES.MENTOR.ATTENDANCE}
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
               <MentorAttendance />
@@ -484,7 +486,7 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-          path="/mentor/classroom"
+          path={ROUTES.MENTOR.CLASSROOM}
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
               <MentorClassroom />
@@ -492,7 +494,7 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-          path="/mentor/class-history"
+          path={ROUTES.MENTOR.CLASS_HISTORY}
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
               <ClassHistory />
@@ -500,7 +502,7 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-          path="/mentor/exams"
+          path={ROUTES.MENTOR.EXAMS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
               <MentorExamList />
@@ -508,7 +510,7 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-          path="/mentor/exams/create"
+          path={ROUTES.MENTOR.CREATE_EXAM}
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
               <CreateExam />
@@ -516,27 +518,27 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-          path="/mentor/exams/:examId/results"
+          path={ROUTES.MENTOR.EXAM_RESULTS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
-              <React.Suspense fallback={<div>Loading...</div>}>
+              <React.Suspense fallback={<Loader size="lg" text="Loading Dashboard..." />}>
                   <MentorExamResults />
               </React.Suspense>
             </ProtectedRoute>
           }
         />
         <Route
-          path="/mentor/exams/:examId/results/:resultId/grade"
+          path={ROUTES.MENTOR.EXAM_GRADING}
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
-               <React.Suspense fallback={<div>Loading...</div>}>
+               <React.Suspense fallback={<Loader size="lg" text="Loading Page..." />}>
                   <ExamGrading />
                </React.Suspense>
             </ProtectedRoute>
           }
         />
         <Route
-          path="/mentor/study-materials"
+          path={ROUTES.MENTOR.STUDY_MATERIALS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
               <MentorStudyMaterials />
@@ -545,7 +547,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/admin/courses"
+          path={ROUTES.ADMIN.COURSES}
           element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
               <CreateOneToOneCourse />
@@ -554,7 +556,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/admin/finance"
+          path={ROUTES.ADMIN.FINANCE}
           element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
               <Finance />
@@ -562,7 +564,7 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-          path="/admin/mentor-requests"
+          path={ROUTES.ADMIN.MENTOR_REQUESTS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
               <MentorRequestsPage />
@@ -571,7 +573,7 @@ const AppContent: React.FC = () => {
         />
         
         <Route
-          path="/admin/enrollments"
+          path={ROUTES.ADMIN.ENROLLMENTS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
               <AdminEnrollmentsPage />
@@ -579,10 +581,10 @@ const AppContent: React.FC = () => {
           }
         />
 
-        <Route path="/admin/logout" element={<AdminLoginPage />} />
+        <Route path={ROUTES.ADMIN.LOGOUT} element={<AdminLoginPage />} />
         
         <Route
-          path="/admin/attendance"
+          path={ROUTES.ADMIN.ATTENDANCE}
           element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
               <AdminAttendance />
@@ -592,7 +594,7 @@ const AppContent: React.FC = () => {
 
 
         <Route
-          path="/notifications"
+          path={ROUTES.COMMON.NOTIFICATIONS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT, ROLES.MENTOR, ROLES.ADMIN]}>
               <NotificationsPage />

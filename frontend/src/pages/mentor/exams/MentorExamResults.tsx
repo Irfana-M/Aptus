@@ -1,9 +1,12 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ROUTES } from '../../../constants/routes.constants';
 import { getExamResults } from '../../../features/exam/examSlice';
 import type { AppDispatch, RootState } from '../../../app/store';
-import { Eye, Edit, ChevronLeft } from 'lucide-react';
+import { Eye, Edit, ChevronLeft, ClipboardList } from 'lucide-react';
+import { Loader } from '../../../components/ui/Loader';
+import { EmptyState } from '../../../components/ui/EmptyState';
 
 const MentorExamResults: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -23,8 +26,8 @@ const MentorExamResults: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
+            <div className="py-12">
+                <Loader size="md" />
             </div>
         );
     }
@@ -32,7 +35,7 @@ const MentorExamResults: React.FC = () => {
     return (
         <div className="p-6 max-w-7xl mx-auto">
             <button 
-                onClick={() => navigate('/mentor/exams')}
+                onClick={() => navigate(ROUTES.MENTOR.EXAMS)}
                 className="flex items-center text-gray-600 hover:text-cyan-600 mb-6 transition-colors"
             >
                 <ChevronLeft size={20} />
@@ -61,8 +64,12 @@ const MentorExamResults: React.FC = () => {
                         <tbody className="divide-y divide-gray-200">
                             {results.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                                        No submissions found for this exam.
+                                    <td colSpan={5} className="px-6 py-8">
+                                        <EmptyState 
+                                            title="No submissions found"
+                                            description="No students have submitted this exam yet."
+                                            icon={ClipboardList}
+                                        />
                                     </td>
                                 </tr>
                             ) : (

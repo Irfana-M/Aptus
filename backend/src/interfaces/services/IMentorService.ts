@@ -1,6 +1,6 @@
-import type { RegisterUserDto } from "@/dtos/auth/RegisteruserDTO";
-import type { MentorProfile } from "../models/mentor.interface";
-import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO";
+import type { RegisterUserDto } from "@/dtos/auth/RegisteruserDTO.js";
+import type { MentorProfile } from "../models/mentor.interface.js";
+import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO.js";
 
 export interface IMentorService {
   registerMentor(data: RegisterUserDto): Promise<unknown>;
@@ -30,6 +30,7 @@ export interface IMentorService {
   requestLeave(mentorId: string, startDate: Date, endDate: Date, reason?: string): Promise<void>;
   approveLeave(mentorId: string, leaveId: string, adminId: string): Promise<void>;
   getMentorDailySessions(mentorId: string, date: Date): Promise<unknown[]>;
+  getMentorUpcomingSessionsWithEligibility(mentorId: string): Promise<{ sessions: unknown[], leaveWindowOpen: boolean }>;
   getOneToOneStudents(mentorId: string): Promise<unknown[]>;
   getGroupBatches(mentorId: string): Promise<unknown[]>;
 }

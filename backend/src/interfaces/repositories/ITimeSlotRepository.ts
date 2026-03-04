@@ -1,6 +1,6 @@
-import type { FilterQuery, ClientSession } from 'mongoose';
-import type { IBaseRepository } from './IBaseRepository';
-import type { ITimeSlot } from '../models/timeSlot.interface';
+import type { FilterQuery, ClientSession, UpdateQuery } from 'mongoose';
+import type { IBaseRepository } from './IBaseRepository.js';
+import type { ITimeSlot } from '../models/timeSlot.interface.js';
 
 export interface ITimeSlotRepository extends IBaseRepository<ITimeSlot> {
   reserveCapacity(slotId: string, session?: ClientSession): Promise<ITimeSlot | null>;
@@ -15,7 +15,7 @@ export interface ITimeSlotRepository extends IBaseRepository<ITimeSlot> {
   ensureSlot(filter: Partial<ITimeSlot>): Promise<ITimeSlot | null>;
   findAvailableSlotsWithMentor(filter: FilterQuery<ITimeSlot>): Promise<ITimeSlot[]>;
   findActiveSlotsByMentorAndDateRange(mentorId: string, startDate: Date, endDate: Date): Promise<ITimeSlot[]>;
-  updateMany(filter: FilterQuery<ITimeSlot>, update: any, session?: ClientSession): Promise<any>;
-  deleteMany(filter: FilterQuery<ITimeSlot>, session?: ClientSession): Promise<any>;
-  insertMany(docs: any[], session?: ClientSession): Promise<ITimeSlot[]>;
+  updateMany(filter: FilterQuery<ITimeSlot>, update: UpdateQuery<ITimeSlot>, session?: ClientSession): Promise<unknown>;
+  deleteMany(filter: FilterQuery<ITimeSlot>, session?: ClientSession): Promise<unknown>;
+  insertMany(docs: Partial<ITimeSlot>[], session?: ClientSession): Promise<ITimeSlot[]>;
 }

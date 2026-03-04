@@ -22,6 +22,7 @@ import { toast } from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../../app/store";
 import Layout from "../../components/layout/Layout";
+import { ROUTES } from "../../constants/routes.constants";
 
 interface ProfileState {
   personalDetails: {
@@ -37,7 +38,7 @@ interface ProfileState {
     graduationYear: string;
   };
   experiences: {
-    institution: string;
+    institution?: string;
     jobTitle: string;
     duration: string;
   }[];
@@ -275,7 +276,11 @@ export default function MentorProfileSetup() {
     ) {
       setProfileData((prev) => ({
         ...prev,
-        experiences: [...prev.experiences, currentExperience],
+        experiences: [...prev.experiences, {
+          institution: currentExperience.institution,
+          jobTitle: currentExperience.jobTitle,
+          duration: currentExperience.duration
+        }],
       }));
       setCurrentExperience({ institution: "", jobTitle: "", duration: "" });
     } else {
@@ -777,7 +782,7 @@ export default function MentorProfileSetup() {
             <Button
               variant="primary" 
               size="lg"
-              onClick={() => (window.location.href = "/mentor/dashboard")}
+              onClick={() => (window.location.href = ROUTES.MENTOR.DASHBOARD)}
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-8" 
             >
               <UserCheck className="w-4 h-4 mr-2" />

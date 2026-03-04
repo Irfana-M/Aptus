@@ -4,15 +4,15 @@ import type {
   Experience,
   SubjectProficency,
   Certification,
-} from "../interfaces/models/mentor.interface";
+} from "../interfaces/models/mentor.interface.js";
 import type {
   MentorResponseDto,
   AcademicQualificationDto,
   ExperienceDto,
   SubjectProficiencyDto,
   CertificationDto,
-} from "../dtos/mentor/MentorResponseDTO";
-import { ApprovalStatus } from "@/domain/enums/ApprovalStatus";
+} from "../dtos/mentor/MentorResponseDTO.js";
+import { ApprovalStatus } from "../domain/enums/ApprovalStatus.js";
 export class MentorMapper {
   static toResponseDto(mentor: MentorProfile): MentorResponseDto {
     const mentorData = (mentor && 'toObject' in mentor && typeof mentor.toObject === 'function') 

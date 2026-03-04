@@ -1,4 +1,4 @@
-import type { SubjectResponseDto } from "@/dtos/student/subject.dto";
+import type { SubjectResponseDto } from "../../dtos/student/subject.dto.js";
 
 export interface ISubjectService {
   getAllSubjects(): Promise<SubjectResponseDto[]>;

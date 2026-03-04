@@ -1,14 +1,8 @@
 import { injectable } from "inversify";
-import { logger } from "../utils/logger";
-import { BaseRepository } from "./baseRepository";
-import { AttendanceModel } from "../models/scheduling/attendance.model";
-import type { IAttendance } from "../interfaces/models/attendance.interface";
-import type { IAttendanceRepository } from "../interfaces/repositories/IAttendanceRepository";
-import { SessionModel } from "../models/scheduling/session.model";
-import { TrialClass } from "../models/student/trialClass.model";
-import { Subject } from "../models/subject.model";
-import { StudentModel } from "../models/student/student.model";
-import { MentorModel } from "../models/mentor/mentor.model";
+import { BaseRepository } from "./baseRepository.js";
+import { AttendanceModel } from "../models/scheduling/attendance.model.js";
+import type { IAttendance } from "../interfaces/models/attendance.interface.js";
+import type { IAttendanceRepository } from "../interfaces/repositories/IAttendanceRepository.js";
 
 @injectable()
 export class AttendanceRepository extends BaseRepository<IAttendance> implements IAttendanceRepository {
@@ -65,18 +59,18 @@ export class AttendanceRepository extends BaseRepository<IAttendance> implements
   private normalizeRecords(records: IAttendance[]): IAttendance[] {
     return records.map(record => {
       // Safely convert to object if it's a Mongoose document
-      const recordObj = (record as any).toObject ? (record as any).toObject() : record;
-      const sessionId = recordObj.sessionId;
+      const recordObj = (record.toObject ? record.toObject() : record) as Record<string, unknown>;
+      const sessionId = recordObj["sessionId"] as Record<string, unknown> | undefined;
       
       // Handle the case where sessionId might be an object (populated)
       if (sessionId && typeof sessionId === 'object') {
-        if (!sessionId.subjectId && sessionId.subject) {
+        if (!sessionId["subjectId"] && sessionId["subject"]) {
           // Normalize TrialClass to look like a Session for the frontend
-          sessionId.subjectId = sessionId.subject;
-          sessionId.sessionType = 'one-to-one';
+          sessionId["subjectId"] = sessionId["subject"];
+          sessionId["sessionType"] = 'one-to-one';
         }
       }
-      return recordObj;
+      return recordObj as unknown as IAttendance;
     });
   }
 }

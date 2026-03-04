@@ -1,15 +1,15 @@
 import { Router } from "express";
-import { MENTOR_ROUTES } from "../constants/routes";
-import { MentorController } from "../controllers/mentor.controller";
+import { MENTOR_ROUTES } from "../constants/routes.js";
+import { MentorController } from "../controllers/mentor.controller.js";
 
-import { requireAuth } from "../middlewares/authMiddleware";
-import { requireRole } from "../middlewares/role.middleware";
-import { upload } from "../middlewares/upload.middleware";
-import { container } from "@/inversify.config";
-import { TYPES } from "@/types";
-import { MentorTrialClassController } from "../controllers/mentorTrialClass.controller";
-import { CourseController } from "../controllers/course.controller";
-import { StudyMaterialController } from "../controllers/studyMaterial.controller";
+import { requireAuth } from "../middlewares/authMiddleware.js";
+import { requireRole } from "../middlewares/role.middleware.js";
+import { upload } from "../middlewares/upload.middleware.js";
+import { container } from "../inversify.config.js";
+import { TYPES } from "../types.js";
+import { MentorTrialClassController } from "../controllers/mentorTrialClass.controller.js";
+import { CourseController } from "../controllers/course.controller.js";
+import { StudyMaterialController } from "../controllers/studyMaterial.controller.js";
 
 const mentorRouter = Router();
 
@@ -62,6 +62,13 @@ mentorRouter.get(
   requireAuth,
   requireRole("mentor"),
   mentorController.getDailySessions
+);
+
+mentorRouter.get(
+  MENTOR_ROUTES.UPCOMING_SESSIONS,
+  requireAuth,
+  requireRole("mentor"),
+  mentorController.getUpcomingSessions
 );
 
 // Get only one-to-one students

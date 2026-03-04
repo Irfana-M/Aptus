@@ -1,4 +1,4 @@
-import type { PaginationMeta } from "@/dtos/shared/paginationTypes";
+import type { PaginationMeta } from "@/dtos/shared/paginationTypes.js";
 
 export interface PaginationParams {
   page: number;
@@ -6,9 +6,7 @@ export interface PaginationParams {
   skip: number;
 }
 
-/**
- * Extracts and normalizes page and limit from query parameters
- */
+
 export const getPaginationParams = (query: Record<string, unknown>): PaginationParams => {
   const page = Math.max(1, parseInt(query.page as string) || 1);
   const limit = Math.max(1, Math.min(100, parseInt(query.limit as string) || 10));
@@ -17,9 +15,7 @@ export const getPaginationParams = (query: Record<string, unknown>): PaginationP
   return { page, limit, skip };
 };
 
-/**
- * Formats data into a standardized paginated response structure
- */
+
 export const formatPaginatedResult = <T>(
   items: T[],
   total: number,

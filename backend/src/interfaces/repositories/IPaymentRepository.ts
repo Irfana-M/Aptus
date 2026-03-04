@@ -1,4 +1,4 @@
-import type { IPayment } from "../../models/payment.model";
+import type { IPayment } from "../../models/payment.model.js";
 
 export interface IPaymentRepository {
   create(data: Partial<IPayment>): Promise<IPayment>;
@@ -9,4 +9,5 @@ export interface IPaymentRepository {
   getTotalRevenue(): Promise<number>;
   getMonthlyRevenue(): Promise<{ month: string; amount: number }[]>;
   getRevenuePerStudent(): Promise<{ studentId: string; studentName: string; amount: number }[]>;
+  findLatestSubscriptionPayment(studentId: string): Promise<IPayment | null>;
 }

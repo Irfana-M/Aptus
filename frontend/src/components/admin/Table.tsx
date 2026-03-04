@@ -1,9 +1,6 @@
 import React from "react";
 
-interface Column<T> {
-  header: string;
-  accessor: keyof T | ((row: T) => React.ReactNode);
-}
+import type { Column } from "../../types/table.types";
 
 interface TableProps<T> {
   columns: Column<T>[];

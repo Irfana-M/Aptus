@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import StudentLayout from '../../components/students/StudentLayout';
 import { FileText, ClipboardList, Download, Clock, CheckCircle, AlertCircle, MessageSquare, Upload, Calendar } from 'lucide-react';
+import { Loader } from '../../components/ui/Loader';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { getStudentMaterials, getStudentAssignments, getMySubmission, getStudentDownloadUrl, type StudyMaterial, type AssignmentSubmission } from '../../api/classroomApi';
 import { toast } from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -142,9 +144,7 @@ const StudentStudyMaterials: React.FC = () => {
         {/* Content */}
         <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
           {loading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map(i => <div key={i} className="h-24 bg-slate-50 rounded-2xl animate-pulse" />)}
-            </div>
+            <Loader size="lg" text="Loading your materials..." />
           ) : activeTab === 'materials' ? (
             /* Study Materials */
             materials.length > 0 ? (
@@ -174,11 +174,11 @@ const StudentStudyMaterials: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12">
-                <FileText size={48} className="mx-auto text-slate-300 mb-4" />
-                <p className="text-slate-900 font-bold">No study materials available</p>
-                <p className="text-slate-500 text-sm mt-1">Materials from your mentors will appear here</p>
-              </div>
+              <EmptyState 
+                icon={FileText} 
+                title="No study materials available" 
+                description="Materials from your mentors will appear here." 
+              />
             )
           ) : (
             /* Assignments */
@@ -270,11 +270,11 @@ const StudentStudyMaterials: React.FC = () => {
                 })}
               </div>
             ) : (
-              <div className="text-center py-12">
-                <ClipboardList size={48} className="mx-auto text-slate-300 mb-4" />
-                <p className="text-slate-900 font-bold">No assignments yet</p>
-                <p className="text-slate-500 text-sm mt-1">Assignments from your mentors will appear here</p>
-              </div>
+              <EmptyState 
+                icon={ClipboardList} 
+                title="No assignments yet" 
+                description="Assignments from your mentors will appear here." 
+              />
             )
           )}
         </div>

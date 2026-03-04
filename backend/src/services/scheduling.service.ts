@@ -1,18 +1,18 @@
 import { injectable, inject } from "inversify";
 import mongoose from "mongoose";
-import { TYPES } from "../types";
+import { TYPES } from "../types.js";
+import { logger } from "../utils/logger.js";
+import { AppError } from "../utils/AppError.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import { STUDENT_CANCEL_CUTOFF_HOURS } from "../config/leavePolicy.config.js";
+import { MESSAGES } from "../constants/messages.constants.js";
 
-import { logger } from "../utils/logger";
-import { AppError } from "../utils/AppError";
-import { HttpStatusCode } from "../constants/httpStatus";
-
-
-import type { ISchedulingService } from "../interfaces/services/ISchedulingService";
-import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository";
-import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository";
-import type { IBookingRepository } from "../interfaces/repositories/IBookingRepository";
-import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
-import type { SchedulingOrchestrator } from "./scheduling/SchedulingOrchestrator";
+import type { ISchedulingService } from "../interfaces/services/ISchedulingService.js";
+import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository.js";
+import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository.js";
+import type { IBookingRepository } from "../interfaces/repositories/IBookingRepository.js";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository.js";
+import type { SchedulingOrchestrator } from "./scheduling/SchedulingOrchestrator.js";
 
 
 
@@ -25,10 +25,10 @@ export class SchedulingService implements ISchedulingService {
     @inject(TYPES.IBookingRepository) private _bookingRepo: IBookingRepository,
     @inject(TYPES.IStudentRepository) private _studentRepo: IStudentRepository,
     @inject(TYPES.SchedulingOrchestrator) private _orchestrator: SchedulingOrchestrator,
-    @inject(TYPES.IBookingSyncService) private _bookingSyncService: import("../interfaces/services/IBookingSyncService").IBookingSyncService,
-    @inject(TYPES.ILeaveManagementService) private _leaveManagementService: import("../interfaces/services/ILeaveManagementService").ILeaveManagementService,
-    @inject(TYPES.ITimeSlotQueryService) private _timeSlotQueryService: import("../interfaces/services/ITimeSlotQueryService").ITimeSlotQueryService,
-    @inject(TYPES.ISlotGenerationService) private _slotGenerationService: import("../interfaces/services/ISlotGenerationService").ISlotGenerationService
+    @inject(TYPES.IBookingSyncService) private _bookingSyncService: import("../interfaces/services/IBookingSyncService.js").IBookingSyncService,
+    @inject(TYPES.ILeaveManagementService) private _leaveManagementService: import("../interfaces/services/ILeaveManagementService.js").ILeaveManagementService,
+    @inject(TYPES.ITimeSlotQueryService) private _timeSlotQueryService: import("../interfaces/services/ITimeSlotQueryService.js").ITimeSlotQueryService,
+    @inject(TYPES.ISlotGenerationService) private _slotGenerationService: import("../interfaces/services/ISlotGenerationService.js").ISlotGenerationService
   ) {}
 
   async generateSlots(projectionDays: number): Promise<void> {
@@ -41,7 +41,7 @@ export class SchedulingService implements ISchedulingService {
     return this._slotGenerationService.generateMentorSlots(mentorId, projectionDays);
   }
 
-   async bookSlot(studentId: string, slotId: string, studentSubjectId: string): Promise<import("../interfaces/models/booking.interface").IBooking> {
+   async bookSlot(studentId: string, slotId: string, studentSubjectId: string): Promise<import("../interfaces/models/booking.interface.js").IBooking> {
     logger.info(`Delegating booking for slot ${slotId} to Orchestrator`);
     return await this._orchestrator.bookSession(studentId, slotId, studentSubjectId);
   }
@@ -54,6 +54,20 @@ export class SchedulingService implements ISchedulingService {
       if (!booking) throw new AppError("Booking not found", HttpStatusCode.NOT_FOUND);
 
       if (booking.status === 'cancelled') return;
+
+      // Cutoff Validation: only for students
+      if (initiator === 'student') {
+          const timeSlot = await this._timeSlotRepo.findById(booking.timeSlotId.toString(), session);
+          if (timeSlot) {
+              const now = new Date();
+              const diffInHours = (new Date(timeSlot.startTime).getTime() - now.getTime()) / (1000 * 60 * 60);
+              
+              if (diffInHours < STUDENT_CANCEL_CUTOFF_HOURS) {
+                  logger.warn(`Student cancellation rejected: Booking ${bookingId} starts in ${diffInHours.toFixed(2)}h (Cutoff: ${STUDENT_CANCEL_CUTOFF_HOURS}h)`);
+                  throw new AppError(MESSAGES.SESSION.CANCEL_CUTOFF_ERROR, HttpStatusCode.BAD_REQUEST);
+              }
+          }
+      }
 
       await this._bookingRepo.updateById(bookingId, { status: 'cancelled' }, session);
 
@@ -82,7 +96,7 @@ export class SchedulingService implements ISchedulingService {
     return this._leaveManagementService.handleMentorLeave(mentorId, startDate, endDate);
   }
 
-  async getAvailableSlots(filters: Record<string, unknown>): Promise<import("../interfaces/models/timeSlot.interface").ITimeSlot[]> {
+  async getAvailableSlots(filters: Record<string, unknown>): Promise<import("../interfaces/models/timeSlot.interface.js").ITimeSlot[]> {
     logger.info(`Delegating slot query to TimeSlotQueryService`);
     return this._timeSlotQueryService.getAvailableSlots(filters);
   }

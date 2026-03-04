@@ -1,8 +1,8 @@
 import Stripe from 'stripe';
 import { injectable, inject } from 'inversify';
-import type { IPaymentService } from '../interfaces/services/payment.service.interface';
-import { TYPES } from '../types';
-import type { IPaymentRepository } from '../interfaces/repositories/IPaymentRepository';
+import type { IPaymentService } from '../interfaces/services/payment.service.interface.js';
+import { TYPES } from '../types.js';
+import type { IPaymentRepository } from '../interfaces/repositories/IPaymentRepository.js';
 
 @injectable()
 export class PaymentService implements IPaymentService {
@@ -42,5 +42,9 @@ export class PaymentService implements IPaymentService {
 
   async getStudentPayments(studentId: string): Promise<any[]> {
     return await this._paymentRepo.findByStudentId(studentId);
+  }
+
+  async findLatestSubscriptionPayment(studentId: string): Promise<any | null> {
+    return await this._paymentRepo.findLatestSubscriptionPayment(studentId);
   }
 }

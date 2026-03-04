@@ -1,4 +1,4 @@
-import type { IVideoCallDocument } from "@/interfaces/models/videoCall.interface";
+import type { IVideoCallDocument } from "@/interfaces/models/videoCall.interface.js";
 
 export interface IVideoCallRepository {
   create(videoCallData: Partial<IVideoCallDocument>): Promise<IVideoCallDocument>;

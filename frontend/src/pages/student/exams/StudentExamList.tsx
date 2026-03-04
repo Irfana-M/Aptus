@@ -1,8 +1,11 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Clock, Award, ArrowRight, ArrowLeft, GraduationCap } from 'lucide-react';
+import { ROUTES } from '../../../constants/routes.constants';
+import { FileText, Clock, Award, ArrowRight, ArrowLeft, GraduationCap, Info } from 'lucide-react';
 import StudentLayout from '../../../components/students/StudentLayout';
+import { Loader } from '../../../components/ui/Loader';
+import { EmptyState } from '../../../components/ui/EmptyState';
 import { getExamsForStudent } from "../../../features/exam/examSlice";
 import type { IEnrichedExam } from "../../../types/examTypes";
 import type { AppDispatch, RootState } from "../../../app/store";
@@ -31,7 +34,7 @@ const StudentExamList: React.FC = () => {
     const handleTakeExam = (examId: string, isPremiumExam: boolean) => {
         if (isPremiumExam && !isPremium) {
             
-            navigate('/student/subscription-plans'); 
+            navigate(ROUTES.STUDENT.SUBSCRIPTION_PLANS); 
             return;
         }
         navigate(`/student/exam/${examId}/take`);
@@ -43,7 +46,7 @@ const StudentExamList: React.FC = () => {
         <StudentLayout title="My Exams">
             <div className="max-w-6xl mx-auto p-6">
                 <button 
-                    onClick={() => navigate('/student/dashboard')}
+                    onClick={() => navigate(ROUTES.STUDENT.DASHBOARD)}
                     className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 transition-colors"
                 >
                     <ArrowLeft size={20} />
@@ -86,20 +89,18 @@ const StudentExamList: React.FC = () => {
                 </div>
 
                 {loading ? (
-                    <div className="flex justify-center py-20">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                    <div className="py-20">
+                        <Loader size="lg" text="Loading your exams..." />
                     </div>
                 ) : (
                     <>
                         {activeTab === 'available' && (
                             exams.filter(e => !(e as IEnrichedExam).attemptStatus).length === 0 ? (
-                                <div className="text-center py-20 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200">
-                                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-                                        <FileText size={32} />
-                                    </div>
-                                    <h3 className="text-xl font-bold text-slate-700">No New Exams</h3>
-                                    <p className="text-slate-400 mt-2">You have completed all assigned exams or none are available.</p>
-                                </div>
+                                <EmptyState 
+                                    icon={FileText} 
+                                    title="No New Exams" 
+                                    description="You have completed all assigned exams or none are available." 
+                                />
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {exams.filter(e => !(e as IEnrichedExam).attemptStatus).map((exam) => (
@@ -169,13 +170,11 @@ const StudentExamList: React.FC = () => {
 
                         {activeTab === 'history' && (
                             exams.filter(e => (e as IEnrichedExam).attemptStatus).length === 0 ? (
-                                <div className="text-center py-20 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200">
-                                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-                                        <GraduationCap size={32} />
-                                    </div>
-                                    <h3 className="text-xl font-bold text-slate-700">No Exam History</h3>
-                                    <p className="text-slate-400 mt-2">You haven't attempted any exams yet.</p>
-                                </div>
+                                <EmptyState 
+                                    icon={GraduationCap} 
+                                    title="No Exam History" 
+                                    description="You haven't attempted any exams yet." 
+                                />
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {exams.filter(e => (e as IEnrichedExam).attemptStatus).map((exam) => (

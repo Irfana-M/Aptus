@@ -1,4 +1,4 @@
-import type { CoursePaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes";
+import type { CoursePaginationParams, PaginatedResponse } from "../../dtos/shared/paginationTypes.js";
 
 export interface ICourseService {
   getAvailableCourses(params: CoursePaginationParams): Promise<PaginatedResponse<unknown>>;

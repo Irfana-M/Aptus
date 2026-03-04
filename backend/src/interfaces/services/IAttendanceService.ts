@@ -1,4 +1,4 @@
-import type { IAttendance } from "../models/attendance.interface";
+import type { IAttendance } from "../models/attendance.interface.js";
 
 export interface IAttendanceService {
   markPresent(sessionId: string, userId: string, sessionModel: 'Session' | 'TrialClass'): Promise<IAttendance>;

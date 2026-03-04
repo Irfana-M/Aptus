@@ -1,6 +1,6 @@
 import { injectable } from "inversify";
-import { PaymentModel, type IPayment } from "../models/payment.model";
-import type { IPaymentRepository } from "../interfaces/repositories/IPaymentRepository";
+import { PaymentModel, type IPayment } from "../models/payment.model.js";
+import type { IPaymentRepository } from "../interfaces/repositories/IPaymentRepository.js";
 
 @injectable()
 export class PaymentRepository implements IPaymentRepository {
@@ -89,6 +89,16 @@ export class PaymentRepository implements IPaymentRepository {
         }
       }
     ]);
-    return res as any;
+    return res as unknown as { studentId: string; studentName: string; amount: number }[];
+  }
+
+  async findLatestSubscriptionPayment(studentId: string): Promise<IPayment | null> {
+    return await PaymentModel.findOne({
+      studentId,
+      status: 'completed',
+      type: 'SUBSCRIPTION'
+    })
+    .sort({ createdAt: -1 })
+    .exec() as unknown as IPayment | null;
   }
 }

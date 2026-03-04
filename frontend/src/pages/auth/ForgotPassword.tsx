@@ -4,6 +4,7 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import { ROUTES } from "../../constants/routes.constants";
 import forgotImage from "../../assets/images/register_banner.jpeg"; 
 
 type ForgotPasswordFormValues = {
@@ -93,7 +94,7 @@ export default function ForgotPassword() {
                 We've sent a password reset OTP to <strong>{email}</strong>
               </p>
               <Button
-                onClick={() => navigate("/reset-password")}
+                onClick={() => navigate(ROUTES.RESET_PASSWORD)}
                 className="w-full"
               >
                 Enter Reset Code
@@ -159,7 +160,7 @@ export default function ForgotPassword() {
 
           <div className="text-center mt-6 space-y-2">
             <button
-              onClick={() => navigate("/login")}
+              onClick={() => navigate(ROUTES.LOGIN)}
               className="text-blue-600 hover:underline"
             >
               Back to Login

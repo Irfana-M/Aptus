@@ -1,5 +1,5 @@
-import type { ICourse } from "../../models/course.model";
-import type { CoursePaginationParams, CoursePaginatedResult } from "@/dtos/shared/paginationTypes";
+import type { ICourse } from "../../models/course.model.js";
+import type { CoursePaginationParams, CoursePaginatedResult } from "../../dtos/shared/paginationTypes.js";
 
 export interface CreateEnrollmentDto {
   grade: string;

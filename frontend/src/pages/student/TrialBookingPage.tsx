@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { ROUTES } from "../../constants/routes.constants";
 import {
   BookOpen,
   User,
@@ -14,6 +15,7 @@ import {
 import Header from "../../components/layout/Header";
 import FormField from "../../components/ui/FormField";
 import { Calendar } from "../../components/ui/Calendar";
+import { Loader } from "../../components/ui/Loader";
 import {
   requestTrialClass,
   fetchGrades,
@@ -607,11 +609,11 @@ const TrialBookingPage: React.FC = () => {
   };
 
   const handleLoginClick = (): void => {
-    navigate("/login");
+    navigate(ROUTES.LOGIN);
   };
 
   const handleGetStartedClick = (): void => {
-    navigate("/register");
+    navigate(ROUTES.REGISTER);
   };
 
   // Render Functions
@@ -802,7 +804,7 @@ const TrialBookingPage: React.FC = () => {
               {subjectsLoading
                 ? "Loading subjects..."
                 : subjects.length === 0
-                ? "No subjects available for this combination"
+                ? "No subjects available"
                 : "Select a subject"}
             </option>
             {subjects.map((subject) => (
@@ -855,9 +857,9 @@ const TrialBookingPage: React.FC = () => {
             ))}
           </select>
           {availabilityLoading && (
-            <p className="mt-1 text-xs text-teal-600 animate-pulse font-medium">
-              Checking available mentors...
-            </p>
+            <div className="mt-2 text-teal-600 font-medium">
+              <Loader size="sm" text="Checking available mentors..." color="teal" className="flex-row gap-2" />
+            </div>
           )}
           {errors.time && (
             <p className="mt-1 text-sm text-red-500">{errors.time}</p>
@@ -881,10 +883,7 @@ const TrialBookingPage: React.FC = () => {
           className="w-full bg-gradient-to-r from-teal-500 to-teal-600 text-white py-4 px-6 rounded-xl hover:from-teal-600 hover:to-teal-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
         >
           {isSubmitting ? (
-            <span className="flex items-center justify-center gap-3">
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              {isEditing ? 'Updating Booking...' : 'Booking Your Class...'}
-            </span>
+            <Loader size="sm" color="text-white" text={isEditing ? 'Updating Booking...' : 'Booking Your Class...'} className="flex-row gap-3" />
           ) : (
             <span className="flex items-center justify-center gap-3">
               <Video className="w-5 h-5" />

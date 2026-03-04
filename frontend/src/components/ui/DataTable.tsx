@@ -1,11 +1,7 @@
 import React from "react";
-
-interface Column<T> {
-  header: string;
-  accessor: keyof T | ((row: T) => React.ReactNode);
-  sortable?: boolean;
-  className?: string;
-}
+import type { Column } from "../../types/table.types";
+import { Loader } from "./Loader";
+import { EmptyState } from "./EmptyState";
 
 interface DataTableProps<T> {
   columns: Column<T>[];
@@ -79,21 +75,19 @@ export function DataTable<
 
   if (loading) {
     return (
-      <div className="animate-pulse">
-        <div className="bg-gray-200 h-6 rounded mb-4"></div>
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="bg-gray-200 h-12 rounded mb-2"></div>
-        ))}
+      <div className="py-20">
+        <Loader size="lg" text="Fetching data..." />
       </div>
     );
   }
 
   if (!data || data.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-500 bg-white rounded-lg border border-gray-200">
-        <div className="text-lg font-medium mb-2">No data found</div>
-        <p className="text-sm">{emptyMessage}</p>
-      </div>
+      <EmptyState 
+        title="No records found" 
+        description={emptyMessage} 
+        icon="database"
+      />
     );
   }
 

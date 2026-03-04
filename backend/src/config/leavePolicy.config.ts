@@ -1,0 +1,2 @@
+export const MENTOR_LEAVE_CUTOFF_HOURS = 24;
+export const STUDENT_CANCEL_CUTOFF_HOURS = 12;

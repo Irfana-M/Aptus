@@ -67,12 +67,7 @@ const TabButton: React.FC<TabButtonProps> = ({ id, label, active, onClick, icon 
   </button>
 );
 
-interface Column<T> {
-  header: string;
-  accessor: keyof T | ((row: T) => React.ReactNode);
-  sortable?: boolean;
-  className?: string;
-}
+import type { Column } from "../../types/table.types";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 

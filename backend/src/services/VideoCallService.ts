@@ -1,32 +1,32 @@
 import { injectable, inject } from "inversify";
-import type { ITrialClassDocument } from "../models/student/trialClass.model";
-import { TYPES } from "@/types";
-import type { IVideoCallService } from "@/interfaces/services/IVideoCallService";
-import type { IVideoCallRepository } from "@/interfaces/repositories/IVideoCallRepository";
-import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
+import type { ITrialClassDocument } from "../models/student/trialClass.model.js";
+import { TYPES } from "@/types.js";
+import type { IVideoCallService } from "@/interfaces/services/IVideoCallService.js";
+import type { IVideoCallRepository } from "@/interfaces/repositories/IVideoCallRepository.js";
+import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository.js";
 import type {
   JoinCallRequestDto,
   CallEndedDto,
-} from "../dtos/webrtcDTO";
-import { logger } from "@/utils/logger";
-import { HttpStatusCode } from "@/constants/httpStatus";
-import { AppError } from "@/utils/AppError";
+} from "../dtos/webrtcDTO.js";
+import { logger } from "@/utils/logger.js";
+import { HttpStatusCode } from "@/constants/httpStatus.js";
+import { AppError } from "@/utils/AppError.js";
 import { Types } from "mongoose";
-import type { IUserRoleService } from "@/interfaces/services/IUserRoleSrvice";
-import type { IAttendanceService } from "@/interfaces/services/IAttendanceService";
+import type { IUserRoleService } from "@/interfaces/services/IUserRoleSrvice.js";
+import type { IAttendanceService } from "@/interfaces/services/IAttendanceService.js";
 
-import { fileLogger } from "@/utils/fileLogger";
+import { fileLogger } from "@/utils/fileLogger.js";
 
 @injectable()
 export class VideoCallService implements IVideoCallService {
   constructor(
     @inject(TYPES.IVideoCallRepository)
-    private videoCallRepo: IVideoCallRepository,
+    private _videoCallRepo: IVideoCallRepository,
     @inject(TYPES.ITrialClassRepository)
-    private trialClassRepo: ITrialClassRepository,
-    @inject(TYPES.IUserRoleService) private userRoleService: IUserRoleService,
-    @inject(TYPES.ISessionRepository) private sessionRepo: import("../interfaces/repositories/ISessionRepository").ISessionRepository,
-    @inject(TYPES.IAttendanceService) private attendanceService: IAttendanceService
+    private _trialClassRepo: ITrialClassRepository,
+    @inject(TYPES.IUserRoleService) private _userRoleService: IUserRoleService,
+    @inject(TYPES.ISessionRepository) private _sessionRepo: import("../interfaces/repositories/ISessionRepository.js").ISessionRepository,
+    @inject(TYPES.IAttendanceService) private _attendanceService: IAttendanceService
   ) {}
 
 
@@ -36,12 +36,12 @@ export class VideoCallService implements IVideoCallService {
     userRole: 'mentor' | 'student'
   ): Promise<{ success: boolean; meetLink?: string }> {
     try {
-      let trialClass = await this.trialClassRepo.findById(trialClassId);
+      let trialClass = await this._trialClassRepo.findById(trialClassId);
       let isSession = false;
 
       if (!trialClass) {
          // Try finding a session
-         const session = await this.sessionRepo.findById(trialClassId);
+         const session = await this._sessionRepo.findById(trialClassId);
          if (session) {
              isSession = true;
              // Mock trial class structure
@@ -51,7 +51,7 @@ export class VideoCallService implements IVideoCallService {
          }
       }
 
-      let videoCall = await this.videoCallRepo.findByTrialClassId(trialClassId);
+      let videoCall = await this._videoCallRepo.findByTrialClassId(trialClassId);
       
       if (videoCall) {
         return { success: true, meetLink: videoCall.meetLink };
@@ -60,18 +60,18 @@ export class VideoCallService implements IVideoCallService {
       let meetLink = trialClass.meetLink;
 
       if (!meetLink) {
-        meetLink = this.generateMeetLink(trialClassId);
+        meetLink = this._generateMeetLink(trialClassId);
         // Fallback: If not found in Trial Repo (unlikely as we just found it), update it.
         // But if we modify logic to support Session, we need to handle it.
         // Only update Trial Class if it is NOT a session
         if (!isSession) {
-          await this.trialClassRepo.updateById(trialClassId, { meetLink });
+          await this._trialClassRepo.updateById(trialClassId, { meetLink });
         } else {
           logger.info(`ℹ️ Session detected in initializeCall, skipping TrialClass update for ${trialClassId}`);
         }
       }
 
-      videoCall = await this.videoCallRepo.create({
+      videoCall = await this._videoCallRepo.create({
         trialClassId: new Types.ObjectId(trialClassId),
         callStatus: "active",
         meetLink,
@@ -105,7 +105,7 @@ export class VideoCallService implements IVideoCallService {
       
       // ========== NEW: USE IUserRoleService for verification ==========
       // Step 1: Verify user exists and has correct role
-      const userVerification = await this.userRoleService.verifyUserRole(
+      const userVerification = await this._userRoleService.verifyUserRole(
         data.userId,
         data.userType
       );
@@ -122,7 +122,7 @@ export class VideoCallService implements IVideoCallService {
       logger.info(`✅ User verified: ${userVerification.user?.email} as ${data.userType}`);
 
       // Step 2: Verify trial class authorization
-      const authCheck = await this.userRoleService.verifyTrialClassAuthorization(
+      const authCheck = await this._userRoleService.verifyTrialClassAuthorization(
         data.trialClassId,
         data.userId,
         data.userType
@@ -140,7 +140,7 @@ export class VideoCallService implements IVideoCallService {
 
       // ========== ORIGINAL LOGIC FOR VIDEO CALL ==========
       // Find or create video call - allow BOTH student and mentor to create
-      let videoCall = await this.videoCallRepo.findByTrialClassId(
+      let videoCall = await this._videoCallRepo.findByTrialClassId(
         data.trialClassId
       );
       
@@ -151,10 +151,10 @@ export class VideoCallService implements IVideoCallService {
         let meetLink = (authCheck.trialClass as { meetLink?: string })?.meetLink;
         
         if (!meetLink) {
-          meetLink = this.generateMeetLink(data.trialClassId);
+          meetLink = this._generateMeetLink(data.trialClassId);
           // Only update Trial Class if it IS a trial class
           if (!(authCheck as unknown as { isSession?: boolean }).isSession) {
-             await this.trialClassRepo.updateById(data.trialClassId, { meetLink });
+             await this._trialClassRepo.updateById(data.trialClassId, { meetLink });
           } else {
              logger.info(`ℹ️ Session detected, skipping TrialClass update for ${data.trialClassId}`);
           }
@@ -162,7 +162,7 @@ export class VideoCallService implements IVideoCallService {
         }
 
         // Create new video call
-        videoCall = await this.videoCallRepo.create({
+        videoCall = await this._videoCallRepo.create({
           trialClassId: new Types.ObjectId(data.trialClassId),
           callStatus: "active",
           meetLink,
@@ -187,7 +187,7 @@ export class VideoCallService implements IVideoCallService {
       };
 
       logger.info(`👤 Adding participant ${data.userId} (${data.userType}) to call ${videoCall._id}`);
-      await this.videoCallRepo.addParticipant(
+      await this._videoCallRepo.addParticipant(
         data.trialClassId,
         participantData
       );
@@ -198,7 +198,7 @@ export class VideoCallService implements IVideoCallService {
       try {
           const sessionModel = (authCheck as unknown as { isSession?: boolean }).isSession ? 'Session' : 'TrialClass';
           // We use data.trialClassId as sessionId here because effectiveId logic treats them same
-          await this.attendanceService.markPresent(data.trialClassId, data.userId, sessionModel);
+          await this._attendanceService.markPresent(data.trialClassId, data.userId, sessionModel);
           logger.info(`📝 Attendance marked for ${data.userId} in ${sessionModel} ${data.trialClassId}`);
       } catch (attError) {
           logger.error(`⚠️ Failed to auto-mark attendance for ${data.trialClassId}: ${attError}`);
@@ -225,7 +225,7 @@ export class VideoCallService implements IVideoCallService {
   //   try {
   //     logger.info(`🎥 JOIN CALL REQUEST - User: ${data.userId}, Type: ${data.userType}, Trial: ${data.trialClassId}`);
       
-  //     const trialClass = await this.trialClassRepo.findById(data.trialClassId);
+  //     const trialClass = await this._trialClassRepo.findById(data.trialClassId);
   //     if (!trialClass) {
   //       logger.warn(`❌ Trial class not found: ${data.trialClassId}`);
   //       return { success: false, error: "Trial class not found" };
@@ -242,15 +242,15 @@ export class VideoCallService implements IVideoCallService {
   //     }
 
   //     // Find or create video call - allow BOTH student and mentor to create
-  //     let videoCall = await this.videoCallRepo.findByTrialClassId(
+  //     let videoCall = await this._videoCallRepo.findByTrialClassId(
   //       data.trialClassId
   //     );
       
   //     if (!videoCall) {
   //       logger.info(`📹 No existing call found - creating new VideoCall for trial class ${data.trialClassId}`);
   //       // Create call if it doesn't exist (either user can create)
-  //       const meetLink = this.generateMeetLink(data.trialClassId);
-  //       videoCall = await this.videoCallRepo.create({
+  //       const meetLink = this._generateMeetLink(data.trialClassId);
+  //       videoCall = await this._videoCallRepo.create({
   //         trialClassId: new Types.ObjectId(data.trialClassId),
   //         callStatus: "active",
   //         meetLink,
@@ -272,7 +272,7 @@ export class VideoCallService implements IVideoCallService {
   //     };
 
   //     logger.info(`👤 Adding participant ${data.userId} (${data.userType}) to call ${videoCall._id}`);
-  //     await this.videoCallRepo.addParticipant(
+  //     await this._videoCallRepo.addParticipant(
   //       data.trialClassId,
   //       participantData
   //     );
@@ -288,7 +288,7 @@ export class VideoCallService implements IVideoCallService {
 
   async endCall(data: CallEndedDto): Promise<{ success: boolean }> {
     try {
-      const videoCall = await this.videoCallRepo.findByTrialClassId(
+      const videoCall = await this._videoCallRepo.findByTrialClassId(
         data.trialClassId
       );
       
@@ -304,7 +304,7 @@ export class VideoCallService implements IVideoCallService {
       )
         return { success: true };
 
-      await this.videoCallRepo.updateCallStatus(
+      await this._videoCallRepo.updateCallStatus(
         data.trialClassId,
         "completed",
         { callEndedAt: new Date() }
@@ -325,7 +325,7 @@ export class VideoCallService implements IVideoCallService {
   ): Promise<{ status: string; participants: Record<string, unknown>[]; meetLink?: string }> {
     try {
       // First check if there's an active video call
-      const videoCall = await this.videoCallRepo.findByTrialClassId(
+      const videoCall = await this._videoCallRepo.findByTrialClassId(
         trialClassId
       );
       
@@ -345,7 +345,7 @@ export class VideoCallService implements IVideoCallService {
       }
       
       // If no video call exists, check if trial class has a meetLink
-      const trialClass = await this.trialClassRepo.findById(trialClassId);
+      const trialClass = await this._trialClassRepo.findById(trialClassId);
       if (trialClass?.meetLink) {
         // Trial class has a meet link but call hasn't started yet
         return { 
@@ -366,7 +366,7 @@ export class VideoCallService implements IVideoCallService {
     }
   }
 
-  private verifyUserAuthorization(
+  private _verifyUserAuthorization(
     trialClass: { mentor: unknown; student: unknown },
     userId: string,
     userType: string
@@ -395,7 +395,7 @@ export class VideoCallService implements IVideoCallService {
     return false;
   }
 
-  private generateMeetLink(trialClassId: string): string {
+  private _generateMeetLink(trialClassId: string): string {
     const baseUrl = process.env.FRONTEND_URL || "http://localhost:5173";
     return `${baseUrl}/trial-class/${trialClassId}/call`;
   }

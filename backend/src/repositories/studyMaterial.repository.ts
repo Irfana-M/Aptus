@@ -1,10 +1,10 @@
 import { injectable } from "inversify";
-import { BaseRepository } from "./baseRepository";
-import type { IStudyMaterial, IAssignmentSubmission } from "../interfaces/models/studyMaterial.interface";
-import { StudyMaterialModel, AssignmentSubmissionModel } from "../models/studyMaterial.model";
-import type { IStudyMaterialRepository } from "../interfaces/repositories/IStudyMaterialRepository";
+import { BaseRepository } from "./baseRepository.js";
+import type { IStudyMaterial, IAssignmentSubmission } from "../interfaces/models/studyMaterial.interface.js";
+import { StudyMaterialModel, AssignmentSubmissionModel } from "../models/studyMaterial.model.js";
+import type { IStudyMaterialRepository } from "../interfaces/repositories/IStudyMaterialRepository.js";
 import { Types, type FilterQuery } from "mongoose";
-import type { IAssignmentSubmissionRepository } from "../interfaces/repositories/IAssignmentSubmissionRepository";
+import type { IAssignmentSubmissionRepository } from "../interfaces/repositories/IAssignmentSubmissionRepository.js";
 
 @injectable()
 export class StudyMaterialRepository extends BaseRepository<IStudyMaterial> implements IStudyMaterialRepository {

@@ -8,6 +8,9 @@ import { Book, Check, ChevronRight, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../../components/ui/Button';
 import type { Subject } from '../../../types/adminTypes';
+import { ROUTES } from '../../../constants/routes.constants';
+import { Loader } from '../../../components/ui/Loader';
+import { EmptyState } from '../../../components/ui/EmptyState';
 
 const SubjectsSelectionPage: React.FC = () => {
     const navigate = useNavigate();
@@ -76,10 +79,10 @@ const SubjectsSelectionPage: React.FC = () => {
         
         // Premium Flow: Subjects -> Mentors -> Time Slots
         if (!isBasicPlan) {
-            navigate('/student/preferences/mentors', { state: { selectedSubjects: selectedSubjectDetails } });
+            navigate(ROUTES.STUDENT.PREFERENCES.MENTORS, { state: { selectedSubjects: selectedSubjectDetails } });
         } else {
             // Basic Flow: Subjects -> Time Slots (Shifts)
-            navigate('/student/preferences/time-slots', { state: { selectedSubjects: selectedSubjectDetails } });
+            navigate(ROUTES.STUDENT.PREFERENCES.TIME_SLOTS, { state: { selectedSubjects: selectedSubjectDetails } });
         }
     };
 
@@ -87,7 +90,7 @@ const SubjectsSelectionPage: React.FC = () => {
         return (
             <StudentLayout title="Choose Subjects">
                 <div className="min-h-[60vh] flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+                    <Loader size="lg" text="Fetching subjects for your grade..." />
                 </div>
             </StudentLayout>
         );
@@ -140,11 +143,11 @@ const SubjectsSelectionPage: React.FC = () => {
                     </div>
 
                     {subjects.length === 0 && !fetchingSubjects && (
-                        <div className="text-center py-20 bg-slate-50 rounded-[2.5rem] border border-dashed border-slate-200">
-                            <Info size={64} className="mx-auto text-slate-200 mb-4" />
-                            <p className="text-slate-400 font-bold text-xl">No subjects found for your grade.</p>
-                            <p className="text-slate-400 text-sm mt-2">Please contact our support team for assistance.</p>
-                        </div>
+                        <EmptyState 
+                            icon={Info} 
+                            title="No subjects found for your grade" 
+                            description="Please contact our support team for assistance." 
+                        />
                     )}
 
                     <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-6">

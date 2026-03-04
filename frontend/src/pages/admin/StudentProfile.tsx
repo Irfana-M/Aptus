@@ -3,11 +3,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../../app/store";
 import { fetchStudentProfile, fetchAllEnrollmentsAdmin, assignMentorToStudent, reassignMentorToStudent } from "../../features/admin/adminThunk";
+import { ROUTES } from "../../constants/routes.constants";
 import type { SubjectPreference } from "../../types/student.types";
 import { Sidebar } from "../../components/admin/Sidebar";
 import { Topbar } from "../../components/admin/Topbar";
 import FindMatchModal from "./components/FindMatchModal";
 import toast from "react-hot-toast";
+import { Loader } from "../../components/ui/Loader";
+import { EmptyState } from "../../components/ui/EmptyState";
 import {
   User,
   Mail,
@@ -111,10 +114,7 @@ export const StudentProfilePage: React.FC = () => {
           onClose={() => setSidebarOpen(false)}
         />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading student profile...</p>
-          </div>
+          <Loader size="lg" text="Loading student profile..." />
         </div>
       </div>
     );
@@ -130,9 +130,11 @@ export const StudentProfilePage: React.FC = () => {
           onClose={() => setSidebarOpen(false)}
         />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-gray-600">Student not found</p>
-          </div>
+          <EmptyState 
+            icon={User} 
+            title="Student not found" 
+            description="The requested student profile could not be found." 
+          />
         </div>
       </div>
     );
@@ -182,7 +184,7 @@ export const StudentProfilePage: React.FC = () => {
         <div className="flex-1 overflow-y-auto p-6">
           {/* Back Button */}
           <button
-            onClick={() => navigate("/admin/students")}
+            onClick={() => navigate(ROUTES.ADMIN.STUDENTS)}
             className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
@@ -605,8 +607,8 @@ export const StudentProfilePage: React.FC = () => {
                                 <span className="text-xs text-purple-600 font-bold block mb-1">ASSIGNED MENTOR</span>
                                 <div className="text-sm font-medium text-gray-800">
                                     {activeEnrollment?.course?.mentor?.fullName || 
-                                     (typeof (pref as { assignedMentorId?: unknown }).assignedMentorId === 'object' && (pref as { assignedMentorId?: { fullName?: string } }).assignedMentorId 
-                                        ? (pref as { assignedMentorId: { fullName: string } }).assignedMentorId.fullName 
+                                     (typeof (pref as any).assignedMentorId === 'object' && (pref as any).assignedMentorId?.fullName 
+                                        ? (pref as any).assignedMentorId.fullName 
                                         : 'Mentor Assigned')}
                                 </div>
                             </div>

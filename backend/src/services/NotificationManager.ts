@@ -1,11 +1,11 @@
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../types';
-import type { INotificationService } from '../interfaces/services/INotificationService';
-import type { InternalEventEmitter } from '../utils/InternalEventEmitter';
-import { EVENTS } from '../utils/InternalEventEmitter';
-import { logger } from '../utils/logger';
-import type { IAdminRepository } from '@/interfaces/repositories/IAdminRepository';
-import type { NotificationType } from '@/interfaces/models/notification.interface';
+import { TYPES } from '../types.js';
+import type { INotificationService } from '../interfaces/services/INotificationService.js';
+import type { InternalEventEmitter } from '../utils/InternalEventEmitter.js';
+import { EVENTS } from '../utils/InternalEventEmitter.js';
+import { logger } from '../utils/logger.js';
+import type { IAdminRepository } from '@/interfaces/repositories/IAdminRepository.js';
+import type { NotificationType } from '@/interfaces/models/notification.interface.js';
 
 @injectable()
 export class NotificationManager {

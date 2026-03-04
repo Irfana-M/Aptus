@@ -1,4 +1,4 @@
-import { type IMentorAssignmentRequest } from "../../models/mentorAssignmentRequest.model";
+import { type IMentorAssignmentRequest } from "../../models/mentorAssignmentRequest.model.js";
 import mongoose from "mongoose";
 
 export interface IMentorAssignmentRequestRepository {

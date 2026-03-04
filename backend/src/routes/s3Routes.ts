@@ -28,8 +28,8 @@ router.get("/signed-url", async (req: Request, res: Response) => {
 
     const signedUrl = await getSignedUrl(s3, command, { expiresIn: 3600 }); // 1 hour
     return res.json({ signedUrl });
-  } catch (err) {
-    console.error("Error generating signed URL:", err);
+  } catch (error) {
+    console.error("Error generating signed URL:", error);
     return res.status(500).json({ error: "Failed to generate signed URL" });
   }
 });

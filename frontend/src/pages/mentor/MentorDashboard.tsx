@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../constants/routes.constants';
 import { Users, Calendar, FileText, ChevronLeft, ChevronRight, MessageSquare, Video, Clock, Home, User, BookOpen, ClipboardList } from 'lucide-react';
+import { Loader } from '../../components/ui/Loader';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
-import type { NavItem } from '../../components/layout/DashboardSidebar';
+import type { NavItem } from '../../types/layout.types';
 import { Table, type TableColumn } from '../../components/mentor/Table';
 import { fetchMentorTrialClasses, fetchMentorProfile, updateTrialClassStatus, fetchMentorCourses } from "../../features/mentor/mentorThunk";
 import { logoutUser } from "../../features/auth/authThunks";
@@ -11,7 +14,6 @@ import type { AppDispatch, RootState } from "../../app/store";
 import { isClassOverdue } from '../../utils/timeUtils';
 import { toast } from 'react-hot-toast';
 import { MentorSidebarProfile } from './MentorSidebarProfile';
-import { ReportAbsenceModal } from '../../components/common/ReportAbsenceModal';
 
 interface Student {
   id: string;
@@ -65,9 +67,6 @@ const MentorDashboard: React.FC = () => {
   // ... existing hooks
   
   // Modal State
-  const [isAbsenceModalOpen, setIsAbsenceModalOpen] = useState(false);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-  const [isSubmittingAbsence, setIsSubmittingAbsence] = useState(false);
   const { trialClasses, courses, loading, profile } = useSelector((state: RootState) => state.mentor);
   const { user } = useSelector((state: RootState) => state.auth);
   
@@ -75,13 +74,12 @@ const MentorDashboard: React.FC = () => {
   const [showNotificationDetails, setShowNotificationDetails] = useState(false);
   
   const [todaySessions, setTodaySessions] = useState<Session[]>([]);
-  const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
 
   const refreshSessions = async () => {
     setSessionsLoading(true);
     try {
-        // Fetch sessions for today using the new generic endpoint
+        // Fetch sessions for today using the generic daily endpoint
         const sessions = await mentorApi.getDailySessions(new Date().toISOString());
         
         // Map to Session interface
@@ -102,9 +100,6 @@ const MentorDashboard: React.FC = () => {
         }));
 
         setTodaySessions(mappedSessions);
-        // We can keep upcoming empty or implement a separate call if needed, 
-        // but for now the requirement is "All sessions scheduled for today"
-        setUpcomingSessions([]); 
     } catch (error) {
         console.error("Failed to fetch daily sessions", error);
         toast.error("Failed to load today's sessions");
@@ -142,32 +137,6 @@ const MentorDashboard: React.FC = () => {
     };
   }, [dispatch, profile]);
 
-  const handleCancelSessionClick = (sessionId: string) => {
-    if (!sessionId) {
-        toast.error("Invalid session ID");
-        return;
-    }
-    setSelectedSessionId(sessionId);
-    setIsAbsenceModalOpen(true);
-  };
-
-  const handleModalSubmit = async (reason: string) => {
-    if (!selectedSessionId) return;
-
-    try {
-        setIsSubmittingAbsence(true);
-        await sessionApi.cancelSession(selectedSessionId, reason);
-        toast.success("Absence reported. Student will be notified to reschedule or request a refund.");
-        setIsAbsenceModalOpen(false);
-        refreshSessions();
-    } catch (error: unknown) {
-        const err = error as { response?: { data?: { message?: string } } };
-        toast.error(err.response?.data?.message || "Failed to cancel session");
-    } finally {
-        setIsSubmittingAbsence(false);
-    }
-  };
-
   // Debugging logs
   useEffect(() => {
     console.log("DEBUG MentorDashboard: Trial Classes:", trialClasses);
@@ -176,7 +145,7 @@ const MentorDashboard: React.FC = () => {
 
   const handleLogout = async () => {
     await dispatch(logoutUser());
-    navigate('/login');
+    navigate(ROUTES.LOGIN);
   };
 
   const mentorNavItems: NavItem[] = [
@@ -309,7 +278,7 @@ const MentorDashboard: React.FC = () => {
         )}
         {students.length > 5 && (
             <button 
-                onClick={() => navigate('/mentor/students')}
+                onClick={() => navigate(ROUTES.MENTOR.STUDENTS)}
                 className="text-[10px] text-cyan-300 hover:text-white px-2 mt-1 transition-colors"
             >
                 View all students...
@@ -470,11 +439,13 @@ const MentorDashboard: React.FC = () => {
                   <h3 className="text-lg font-semibold mb-4">Assigned Students</h3>
                   <div className="space-y-3">
                     {loading ? (
-                        <div className="flex justify-center p-4">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
-                        </div>
+                        <Loader size="md" text="Loading students..." />
                     ) : students.length === 0 ? (
-                        <p className="text-sm text-gray-500 text-center py-4">No assigned students yet.</p>
+                        <EmptyState 
+                          icon={Users} 
+                          title="No assigned students" 
+                          description="Your assigned students will appear here." 
+                        />
                     ) : (
                         students.map((student) => (
                         <div key={student.id} className={`${student.color} rounded-lg p-4 flex items-center justify-between`}>
@@ -505,19 +476,17 @@ const MentorDashboard: React.FC = () => {
                 {/* Today & Upcoming Sessions */}
                 <div className="bg-white rounded-lg p-6 shadow-sm min-h-[300px] flex flex-col border border-indigo-50">
                   <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center justify-between">
-                    <span>Upcoming Live Sessions</span>
+                    <span>Today's Live Sessions</span>
                     {todaySessions.length > 0 && (
-                      <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full uppercase tracking-wider">Today</span>
+                      <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full uppercase tracking-wider">Active</span>
                     )}
                   </h3>
                   
                   {sessionsLoading ? (
-                      <div className="flex justify-center p-4">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
-                      </div>
-                  ) : (todaySessions.length > 0 || upcomingSessions.length > 0) ? (
+                      <Loader size="md" text="Loading today's sessions..." />
+                  ) : todaySessions.length > 0 ? (
                         <div className="space-y-6 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                            {(todaySessions.length > 0 ? todaySessions : upcomingSessions.slice(0, 5)).map((session) => (
+                            {todaySessions.map((session) => (
                               <div key={session.id || (session as unknown as { _id: string })._id} className="relative pl-6 pb-4 border-b border-slate-50 last:border-0 last:pb-0">
                                 {/* Purple indicator line */}
                                 <div className="absolute left-0 top-0 bottom-6 w-1 bg-indigo-500 rounded-full"></div>
@@ -527,8 +496,8 @@ const MentorDashboard: React.FC = () => {
                                   <div className="flex items-center gap-2 text-indigo-600 font-bold text-sm">
                                     <Clock size={14} />
                                     <span>
-                                      {new Date(session.startTime).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} @
-                                      {" "}{new Date(session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      Today @ {" "}
+                                      {new Date(session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                   </div>
                                   
@@ -548,11 +517,11 @@ const MentorDashboard: React.FC = () => {
                                   </p>
                                   
                                   {/* Action Buttons */}
-                                  <div className="pt-2 flex items-center justify-between">
+                                  <div className="pt-2 flex items-center">
                                     <button 
                                       disabled={session.status === 'cancelled'}
                                       onClick={() => handleJoinSession(session)}
-                                      className={`px-8 py-2.5 rounded-xl font-black uppercase tracking-widest text-xs transition-transform active:scale-95 shadow-lg ${
+                                      className={`px-10 py-2.5 rounded-xl font-black uppercase tracking-widest text-xs transition-transform active:scale-95 shadow-lg ${
                                         session.status === 'cancelled' 
                                           ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none' 
                                           : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'
@@ -561,26 +530,17 @@ const MentorDashboard: React.FC = () => {
                                       {session.status === 'cancelled' ? 'Cancelled' : 'Enter Classroom'}
                                       {session.status !== 'cancelled' && <Video size={14} className="inline ml-2" />}
                                     </button>
-                                    
-                                    {session.status !== 'cancelled' && (
-                                      <button 
-                                        onClick={() => handleCancelSessionClick(session.id || (session as unknown as { _id: string })._id)}
-                                        className="text-[11px] font-bold text-rose-400 hover:text-rose-600 uppercase tracking-wider transition-colors bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-100"
-                                      >
-                                        Report Absence
-                                      </button>
-                                    )}
                                   </div>
                                 </div>
                               </div>
                             ))}
                         </div>
                   ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-gray-400 text-sm py-12">
-                      <Calendar size={48} className="text-slate-100 mb-4" />
-                      <p className="font-medium text-slate-500 text-lg">No sessions scheduled</p>
-                      <p className="mt-1">Your upcoming sessions will appear here.</p>
-                    </div>
+                    <EmptyState 
+                      icon={Calendar} 
+                      title="No sessions scheduled" 
+                      description="Your upcoming sessions will appear here." 
+                    />
                   )}
                 </div>
               </div>
@@ -610,10 +570,10 @@ const MentorDashboard: React.FC = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-7 gap-2 text-center">
-                  {['Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed'].map((day, i) => (
+                  {['Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'].map((day, i) => (
                     <div key={day}>
                       <div className="text-xs text-gray-500 mb-1">{day}</div>
-                      <div className="text-sm py-1">{i + 3}</div>
+                      <div className="text-sm py-1 font-bold">{i + 3}</div>
                     </div>
                   ))}
                 </div>
@@ -623,24 +583,20 @@ const MentorDashboard: React.FC = () => {
               <div className="bg-white rounded-lg p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold">Schedule</h3>
-                  <button className="text-sm text-blue-600">See all</button>
+                  <button onClick={() => navigate('/mentor/classroom')} className="text-sm text-blue-600 hover:underline">See all</button>
                 </div>
                 
                 <div className="space-y-4">
-                  {/* Dynamic schedule based on assignments/classes */}
-                  {upcomingSessions.slice(0, 5).map((session, idx) => (
+                  {todaySessions.slice(0, 5).map((session, idx) => (
                       <div key={session.id || idx}>
-                        <h4 className="font-semibold text-sm mb-3">
-                            {new Date(session.startTime).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-                        </h4>
                         <div className="space-y-3">
                         <div className="flex gap-3">
-                            <Users className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                            <Video className="w-5 h-5 text-indigo-400 flex-shrink-0" />
                             <div>
                             <p className="text-sm font-medium">
-                                Session with {session.studentId && typeof session.studentId === 'object' ? (session.studentId as { fullName?: string }).fullName || 'Student' : 'Student'}
+                                {session.studentId && typeof session.studentId === 'object' ? (session.studentId as { fullName?: string }).fullName || 'Student' : 'Student'}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-[10px] text-gray-500 font-bold uppercase">
                                 {new Date(session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
                             </div>
@@ -648,20 +604,12 @@ const MentorDashboard: React.FC = () => {
                         </div>
                     </div>
                   ))}
-                  {upcomingSessions.length === 0 && (
-                      <p className="text-sm text-gray-500">No upcoming schedule.</p>
+                  {todaySessions.length === 0 && (
+                      <p className="text-sm text-gray-500 italic">No sessions for today.</p>
                   )}
                 </div>
               </div>
 
-              {/* Requests */}
-              <div className="bg-white rounded-lg p-6 shadow-sm">
-                <h3 className="text-lg font-semibold mb-3">Requests</h3>
-                <p className="text-sm text-gray-600 mb-4">You have any request to admin</p>
-                <button className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
-                  Request to admin
-                </button>
-              </div>
 
               {/* Recent Activities */}
               <div className="bg-white rounded-lg p-6 shadow-sm">
@@ -685,14 +633,6 @@ const MentorDashboard: React.FC = () => {
             </div>
           </div>
         </div>
-        <ReportAbsenceModal 
-            isOpen={isAbsenceModalOpen}
-            onClose={() => setIsAbsenceModalOpen(false)}
-            onSubmit={handleModalSubmit}
-            isLoading={isSubmittingAbsence}
-            title="Cancel Session & Report Absence"
-            description="Please provide a reason for cancelling this session. This will be shared with the student."
-        />
     </DashboardLayout>
   );
 };

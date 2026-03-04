@@ -1,19 +1,22 @@
 import type { Request, Response } from 'express';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '@/types';
-import type { IUserRoleService } from '@/interfaces/services/IUserRoleSrvice';
+import { TYPES } from '@/types.js';
+import type { IUserRoleService } from '@/interfaces/services/IUserRoleSrvice.js';
 import { 
   verifyAccessToken 
-} from '../utils/jwt.util'; 
-import { logger } from '@/utils/logger';
-import type { MentorResponseDto } from '@/dtos/mentor/MentorResponseDTO';
-import type { StudentBaseResponseDto } from '@/dtos/auth/UserResponseDTO';
+} from '../utils/jwt.util.js'; 
+import { logger } from '@/utils/logger.js';
+import type { MentorResponseDto } from '@/dtos/mentor/MentorResponseDTO.js';
+import type { StudentBaseResponseDto } from '@/dtos/auth/UserResponseDTO.js';
+import { MESSAGES } from '@/constants/messages.constants.js';
+import { HttpStatusCode } from '@/constants/httpStatus.js';
+import { UserRole } from '@/enums/user.enum.js';
 
 @injectable()
 export class RoleController {
   constructor(
     @inject(TYPES.IUserRoleService) 
-    private userRoleService: IUserRoleService
+    private _userRoleService: IUserRoleService
   ) {}
 
  
@@ -24,18 +27,18 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
     
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      res.status(401).json({ 
+      res.status(HttpStatusCode.UNAUTHORIZED).json({ 
         success: false, 
-        error: 'No token provided. Format: Bearer <token>' 
+        error: MESSAGES.AUTH.NO_TOKEN 
       });
       return;
     }
 
     const token = authHeader.split(' ')[1];
     if (!token) {
-      res.status(401).json({ 
+      res.status(HttpStatusCode.UNAUTHORIZED).json({ 
         success: false, 
-        error: 'No token provided' 
+        error: MESSAGES.AUTH.NO_TOKEN 
       });
       return;
     }
@@ -49,25 +52,25 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
       logger.info(`[ROLE CONTROLLER] Token decoded for user: ${decoded.email} (${decoded.role})`);
 
       
-      if (decoded.role !== 'mentor' && decoded.role !== 'student') {
-        res.status(403).json({ 
+      if (decoded.role !== UserRole.MENTOR && decoded.role !== UserRole.STUDENT) {
+        res.status(HttpStatusCode.FORBIDDEN).json({ 
           success: false, 
-          error: 'Invalid user role. Must be mentor or student.' 
+          error: MESSAGES.AUTH.INVALID_ROLE 
         });
         return;
       }
 
       
-      const userVerification = await this.userRoleService.verifyUserRole(
+      const userVerification = await this._userRoleService.verifyUserRole(
         decoded.id,
         decoded.role
       );
       
       if (!userVerification.success || !userVerification.user) {
         logger.warn(`[ROLE CONTROLLER] User not found in database: ${decoded.id}`);
-        res.status(404).json({ 
+        res.status(HttpStatusCode.NOT_FOUND).json({ 
           success: false, 
-          error: userVerification.error || 'User not found in database' 
+          error: userVerification.error || MESSAGES.AUTH.USER_NOT_FOUND 
         });
         return;
       }
@@ -76,14 +79,14 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
       const user = userVerification.user;
       
       
-      if (decoded.role === 'mentor') {
+      if (decoded.role === UserRole.MENTOR) {
         const mentorDetails = user as MentorResponseDto;
         res.json({
           success: true,
           user: {
             id: mentorDetails.id,
             email: mentorDetails.email,
-            role: 'mentor',
+            role: UserRole.MENTOR,
             fullName: mentorDetails.fullName,
             phoneNumber: mentorDetails.phoneNumber,
             approvalStatus: mentorDetails.approvalStatus,
@@ -102,7 +105,7 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
           user: {
             id: studentDetails.id,
             email: studentDetails.email,
-            role: 'student',
+            role: UserRole.STUDENT,
             fullName: studentDetails.fullName,
             phoneNumber: studentDetails.phoneNumber,
             isPaid: (studentDetails as unknown as { isPaid: boolean }).isPaid,
@@ -121,15 +124,15 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
       const jwtError = error as Error;
       
       if (jwtError.name === 'TokenExpiredError') {
-        res.status(401).json({ 
+        res.status(HttpStatusCode.UNAUTHORIZED).json({ 
           success: false, 
-          error: 'Token expired',
+          error: MESSAGES.AUTH.TOKEN_EXPIRED,
           code: 'TOKEN_EXPIRED'
         });
       } else if (jwtError.name === 'JsonWebTokenError') {
-        res.status(401).json({ 
+        res.status(HttpStatusCode.UNAUTHORIZED).json({ 
           success: false, 
-          error: 'Invalid token',
+          error: MESSAGES.AUTH.INVALID_TOKEN,
           code: 'INVALID_TOKEN'
         });
       } else {
@@ -140,9 +143,9 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
 
   } catch (error: unknown) {
     logger.error('[ROLE CONTROLLER] Error in verifyRole:', error);
-    res.status(500).json({ 
+    res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ 
       success: false, 
-      error: 'Internal server error',
+      error: MESSAGES.COMMON.INTERNAL_SERVER_ERROR,
       code: 'SERVER_ERROR'
     });
   }
@@ -154,17 +157,17 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
       
      
       if (!userId || !role) {
-        res.status(400).json({ 
+        res.status(HttpStatusCode.BAD_REQUEST).json({ 
           success: false, 
-          error: 'Missing parameters: userId and role are required' 
+          error: MESSAGES.COMMON.REQUIRED_FIELDS(['userId', 'role']) 
         });
         return;
       }
 
-      if (!['mentor', 'student'].includes(role)) {
-        res.status(400).json({ 
+      if (![UserRole.MENTOR, UserRole.STUDENT].includes(role as UserRole)) {
+        res.status(HttpStatusCode.BAD_REQUEST).json({ 
           success: false, 
-          error: 'Invalid role. Must be "mentor" or "student"' 
+          error: MESSAGES.AUTH.INVALID_ROLE 
         });
         return;
       }
@@ -172,45 +175,45 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
       logger.info(`[ROLE CONTROLLER] getUserInfo called for: ${userId} (${role})`);
 
       
-      const userRole = role as 'mentor' | 'student';
+      const userRole = role as UserRole.MENTOR | UserRole.STUDENT;
 
      
-      const userVerification = await this.userRoleService.verifyUserRole(
+      const userVerification = await this._userRoleService.verifyUserRole(
         userId,
         userRole
       );
       
       if (!userVerification.success) {
         logger.warn(`[ROLE CONTROLLER] User not found: ${userId} as ${role}`);
-        res.status(404).json({ 
+        res.status(HttpStatusCode.NOT_FOUND).json({ 
           success: false, 
-          error: userVerification.error || 'User not found' 
+          error: userVerification.error || MESSAGES.AUTH.USER_NOT_FOUND 
         });
         return;
       }
 
       
-      const user = await this.userRoleService.getUserByIdAndRole(
+      const userData = await this._userRoleService.getUserByIdAndRole(
         userId,
         userRole
       );
 
-      if (!user) {
-        res.status(404).json({ 
+      if (!userData) {
+        res.status(HttpStatusCode.NOT_FOUND).json({ 
           success: false, 
-          error: 'User details not found' 
+          error: MESSAGES.AUTH.USER_NOT_FOUND 
         });
         return;
       }
 
       
-      const publicInfo = {
-        id: user.id?.toString() || user.id,
-        email: user.email,
+      const publicProfileInfo = {
+        id: userData.id?.toString() || userData.id,
+        email: userData.email,
         role: role,
-        fullName: user.fullName,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
+        fullName: userData.fullName,
+        createdAt: userData.createdAt,
+        updatedAt: userData.updatedAt,
       };
 
    
@@ -230,7 +233,7 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
 
       res.json({
         success: true,
-        user: publicInfo,
+        user: publicProfileInfo,
         timestamp: new Date().toISOString()
       });
 
@@ -238,9 +241,9 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
 
     } catch (error: unknown) {
       logger.error('[ROLE CONTROLLER] Error in getUserInfo:', error);
-      res.status(500).json({ 
+      res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ 
         success: false, 
-        error: 'Internal server error' 
+        error: MESSAGES.COMMON.INTERNAL_SERVER_ERROR 
       });
     }
   };
@@ -253,40 +256,40 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
       
       
       if (!trialClassId) {
-        res.status(400).json({ 
+        res.status(HttpStatusCode.BAD_REQUEST).json({ 
           success: false, 
-          error: 'Missing trialClassId parameter' 
+          error: MESSAGES.COMMON.ID_REQUIRED('trialClass') 
         });
         return;
       }
       
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        res.status(401).json({ 
+        res.status(HttpStatusCode.UNAUTHORIZED).json({ 
           success: false, 
-          error: 'No token provided' 
+          error: MESSAGES.AUTH.NO_TOKEN 
         });
         return;
       }
 
-      const token = authHeader.split(' ')[1];
-      if (!token) {
-        res.status(401).json({ 
+      const tokenValue = authHeader.split(' ')[1];
+      if (!tokenValue) {
+        res.status(HttpStatusCode.UNAUTHORIZED).json({ 
           success: false, 
-          error: 'No token provided' 
+          error: MESSAGES.AUTH.NO_TOKEN 
         });
         return;
       }
       
       try {
         
-        const decoded = verifyAccessToken(token);
+        const decoded = verifyAccessToken(tokenValue);
         
        
-        if (decoded.role !== 'mentor' && decoded.role !== 'student') {
-          res.status(403).json({ 
+        if (decoded.role !== UserRole.MENTOR && decoded.role !== UserRole.STUDENT) {
+          res.status(HttpStatusCode.FORBIDDEN).json({ 
             success: false, 
             authorized: false,
-            error: 'Invalid user role. Must be mentor or student.',
+            error: MESSAGES.AUTH.INVALID_ROLE,
             user: {
               id: decoded.id,
               email: decoded.email,
@@ -297,14 +300,14 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
         }
 
   
-        const authCheck = await this.userRoleService.verifyTrialClassAuthorization(
+        const authCheck = await this._userRoleService.verifyTrialClassAuthorization(
           trialClassId,
           decoded.id,
           decoded.role
         );
 
         if (!authCheck.authorized) {
-          res.status(403).json({ 
+          res.status(HttpStatusCode.FORBIDDEN).json({ 
             success: false, 
             authorized: false,
             error: authCheck.error,
@@ -334,14 +337,14 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
         const jwtError = error as Error;
         
         if (jwtError.name === 'TokenExpiredError') {
-          res.status(401).json({ 
+          res.status(HttpStatusCode.UNAUTHORIZED).json({ 
             success: false, 
-            error: 'Token expired' 
+            error: MESSAGES.AUTH.TOKEN_EXPIRED 
           });
         } else {
-          res.status(401).json({ 
+          res.status(HttpStatusCode.UNAUTHORIZED).json({ 
             success: false, 
-            error: 'Invalid token' 
+            error: MESSAGES.AUTH.INVALID_TOKEN 
           });
         }
         return;
@@ -349,9 +352,9 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
 
     } catch (error: unknown) {
       logger.error('[ROLE CONTROLLER] Error in verifyTrialClassAccess:', error);
-      res.status(500).json({ 
+      res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ 
         success: false, 
-        error: 'Internal server error' 
+        error: MESSAGES.COMMON.INTERNAL_SERVER_ERROR 
       });
     }
   };
@@ -362,25 +365,25 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
       const authHeader = req.headers.authorization;
       
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        res.status(401).json({ 
+        res.status(HttpStatusCode.UNAUTHORIZED).json({ 
           success: false, 
-          error: 'No token provided' 
+          error: MESSAGES.AUTH.NO_TOKEN 
         });
         return;
       }
 
-      const token = authHeader.split(' ')[1];
-      if (!token) {
-        res.status(401).json({ 
+      const authToken = authHeader.split(' ')[1];
+      if (!authToken) {
+        res.status(HttpStatusCode.UNAUTHORIZED).json({ 
           success: false, 
-          error: 'No token provided' 
+          error: MESSAGES.AUTH.NO_TOKEN 
         });
         return;
       }
       
       try {
         
-        const decoded = verifyAccessToken(token);
+        const decoded = verifyAccessToken(authToken);
         
         res.json({
           success: true,
@@ -391,23 +394,23 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
       } catch (error: unknown) {
         const err = error as Error;
         if (err.name === 'TokenExpiredError') {
-          res.status(401).json({ 
+          res.status(HttpStatusCode.UNAUTHORIZED).json({ 
             success: false, 
-            error: 'Token expired' 
+            error: MESSAGES.AUTH.TOKEN_EXPIRED 
           });
         } else {
-          res.status(401).json({ 
+          res.status(HttpStatusCode.UNAUTHORIZED).json({ 
             success: false, 
-            error: 'Invalid token' 
+            error: MESSAGES.AUTH.INVALID_TOKEN 
           });
         }
       }
 
     } catch (error) {
       logger.error('[ROLE CONTROLLER] Error in getUserRole:', error);
-      res.status(500).json({ 
+      res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ 
         success: false, 
-        error: 'Internal server error' 
+        error: MESSAGES.COMMON.INTERNAL_SERVER_ERROR 
       });
     }
   };
@@ -418,14 +421,14 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
       const { userId } = req.params;
       
       if (!userId) {
-        res.status(400).json({ 
+        res.status(HttpStatusCode.BAD_REQUEST).json({ 
           success: false, 
-          error: 'Missing userId parameter' 
+          error: MESSAGES.COMMON.ID_REQUIRED('user') 
         });
         return;
       }
 
-      const existsCheck = await this.userRoleService.userExists(userId);
+      const existsCheck = await this._userRoleService.userExists(userId);
       
       res.json({
         success: true,
@@ -436,9 +439,9 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
 
     } catch (error) {
       logger.error('[ROLE CONTROLLER] Error in checkUserExists:', error);
-      res.status(500).json({ 
+      res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ 
         success: false, 
-        error: 'Internal server error' 
+        error: MESSAGES.COMMON.INTERNAL_SERVER_ERROR 
       });
     }
   };
@@ -449,20 +452,20 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
     const { userId } = req.params;
     
     if (!userId) {
-      res.status(400).json({ 
+      res.status(HttpStatusCode.BAD_REQUEST).json({ 
         success: false, 
-        error: 'Missing userId parameter' 
+        error: MESSAGES.COMMON.ID_REQUIRED('user') 
       });
       return;
     }
 
    
-    const existsCheck = await this.userRoleService.userExists(userId);
+    const existsCheck = await this._userRoleService.userExists(userId);
     
     if (!existsCheck.exists) {
-      res.status(404).json({ 
+      res.status(HttpStatusCode.NOT_FOUND).json({ 
         success: false, 
-        error: 'User not found' 
+        error: MESSAGES.AUTH.USER_NOT_FOUND 
       });
       return;
     }
@@ -476,9 +479,9 @@ public verifyRole = async (req: Request, res: Response): Promise<void> => {
 
   } catch (error: unknown) {
     logger.error('[ROLE CONTROLLER] Error in getUserRoleById:', error);
-    res.status(500).json({ 
+    res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ 
       success: false, 
-      error: 'Internal server error' 
+      error: MESSAGES.COMMON.INTERNAL_SERVER_ERROR 
     });
   }
 };

@@ -5,6 +5,8 @@ import { Sidebar } from "../../components/admin/Sidebar";
 import { Topbar } from "../../components/admin/Topbar";
 import { Check, X, Clock, User, BookOpen } from "lucide-react";
 import toast from "react-hot-toast";
+import { Loader } from "../../components/ui/Loader";
+import { EmptyState } from "../../components/ui/EmptyState";
 
 const MentorRequestsPage = () => {
   const dispatch = useAppDispatch();
@@ -56,9 +58,12 @@ const MentorRequestsPage = () => {
       </div>
       
       {requests.length === 0 ? (
-        <div className="p-12 text-center text-slate-400">
-           <BookOpen className="mx-auto mb-3 opacity-20" size={48} />
-           <p>No requests found</p>
+        <div className="p-12">
+           <EmptyState 
+              icon={BookOpen} 
+              title="No requests found" 
+              description={`There are no ${title.toLowerCase()} at the moment.`} 
+           />
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -168,9 +173,8 @@ const MentorRequestsPage = () => {
                 </div>
 
                 {loading && !mentorAssignmentRequests.length ? (
-                    <div className="text-center py-20">
-                        <div className="animate-spin w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto" />
-                        <p className="mt-4 text-slate-400 font-medium">Loading requests...</p>
+                    <div className="py-20">
+                        <Loader size="lg" text="Loading requests..." />
                     </div>
                 ) : (
                     <>

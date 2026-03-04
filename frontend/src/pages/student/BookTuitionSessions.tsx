@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../constants/routes.constants';
 import Header from '../../components/layout/Header';
 import { Search, BookOpen, Clock, Calendar } from "lucide-react";
+import { Loader } from '../../components/ui/Loader';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { fetchAvailableCourses } from "../../features/student/studentThunk";
 import type { AppDispatch, RootState } from "../../app/store";
 import CustomTimeRequestModal from "../../features/student/components/CustomTimeRequestModal";
@@ -37,7 +40,7 @@ const BookTuitionSessions = () => {
       
       if (response.success) {
         toast.success('Successfully enrolled in course!');
-        navigate('/student/subscription-plans');
+        navigate(ROUTES.STUDENT.SUBSCRIPTION_PLANS);
       } else {
         toast.error(response.message || 'Failed to enroll in course');
       }
@@ -122,8 +125,8 @@ const BookTuitionSessions = () => {
 
         {/* Course Grid */}
         {loading ? (
-             <div className="flex justify-center items-center h-64">
-                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+             <div className="py-24">
+                 <Loader size="lg" text="Finding available sessions..." />
              </div>
         ) : courses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -179,18 +182,14 @@ const BookTuitionSessions = () => {
              
           </div>
         ) : (
-             <div className="text-center py-12 bg-white rounded-xl shadow-sm">
-                 <BookOpen size={48} className="mx-auto text-gray-300 mb-4" />
-                 <h3 className="text-lg font-medium text-gray-900">No sessions found for your grade</h3>
-                 <p className="text-gray-500 mt-2 mb-6">
-                    We couldn't find any available slots for Grade {gradeDisplay} {studentSyllabus}.
-                 </p>
-                 <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="text-teal-600 font-medium hover:text-teal-700 underline"
-                  >
-                    Request a custom time slot
-                  </button>
+             <div className="bg-white rounded-xl shadow-sm p-12">
+                 <EmptyState 
+                    title="No sessions found for your grade"
+                    description={`We couldn't find any available slots for Grade ${gradeDisplay} ${studentSyllabus}.`}
+                    icon={BookOpen}
+                    actionLabel="Request a custom time slot"
+                    onAction={() => setIsModalOpen(true)}
+                 />
              </div>
         )}
         

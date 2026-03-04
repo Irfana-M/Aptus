@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import type { AppDispatch } from '../../app/store';
+import { useAppDispatch, useAppSelector } from '../../app/hooks';
+import { ROUTES } from '../../constants/routes.constants';
 import { fetchStudentTrialClasses } from '../../features/admin/adminThunk';
 import { selectAdminLoading } from '../../features/admin/adminSelectors';
 import { Sidebar } from '../../components/admin/Sidebar';
 import { Topbar } from '../../components/admin/Topbar';
 import { DataTable } from '../../components/ui/DataTable';
 import { showToast } from '../../utils/toast';
+import { Loader } from '../../components/ui/Loader';
 import {
   Clock,
   CheckCircle,
@@ -20,18 +21,13 @@ import {
 } from 'lucide-react';
 import type { TrialClass, TrialClassStudent } from '../../types/trialTypes';
 
-interface Column<T> {
-  header: string;
-  accessor: keyof T | ((row: T) => React.ReactNode);
-  sortable?: boolean;
-  className?: string;
-}
+import type { Column } from "../../types/table.types";
 
 export const StudentTrialClassesPage: React.FC = () => {
   const { studentId } = useParams<{ studentId: string }>();
   const navigate = useNavigate();
-  const dispatch = useDispatch<AppDispatch>();
-  const loading = useSelector(selectAdminLoading);
+  const dispatch = useAppDispatch();
+  const loading = useAppSelector(selectAdminLoading);
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("Students");
@@ -178,10 +174,7 @@ export const StudentTrialClassesPage: React.FC = () => {
           onClose={() => setSidebarOpen(false)}
         />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading trial classes...</p>
-          </div>
+          <Loader size="lg" text="Loading trial classes..." />
         </div>
       </div>
     );
@@ -211,7 +204,7 @@ export const StudentTrialClassesPage: React.FC = () => {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => navigate('/admin/students')}
+                onClick={() => navigate(ROUTES.ADMIN.STUDENTS)}
                 className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 <ArrowLeft size={20} />

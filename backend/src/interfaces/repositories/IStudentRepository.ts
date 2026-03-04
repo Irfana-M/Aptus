@@ -1,9 +1,9 @@
 import type { ClientSession } from "mongoose";
-import type { IBaseRepository } from "./IBaseRepository";
-import type { AuthUser, StudentAuthUser } from "../auth/auth.interface";
-import type { StudentProfile } from "../models/student.interface";
-import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
-import type { StudentPaginationParams } from "@/dtos/shared/paginationTypes";
+import type { IBaseRepository } from "./IBaseRepository.js";
+import type { AuthUser, StudentAuthUser } from "../auth/auth.interface.js";
+import type { StudentProfile } from "../models/student.interface.js";
+import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO.js";
+import type { StudentPaginationParams } from "@/dtos/shared/paginationTypes.js";
 
 export interface StudentPaginatedResult {
   students: unknown[];

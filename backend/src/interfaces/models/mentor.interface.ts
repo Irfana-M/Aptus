@@ -1,4 +1,4 @@
-import { ApprovalStatus } from '../../domain/enums/ApprovalStatus';
+import { ApprovalStatus } from '../../domain/enums/ApprovalStatus.js';
 
 export interface MentorRegisterInput {
   fullName: string;

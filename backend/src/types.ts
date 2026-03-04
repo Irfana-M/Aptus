@@ -71,6 +71,8 @@ const TYPES = {
   ILeaveManagementService: Symbol.for("ILeaveManagementService"),
   ITimeSlotQueryService: Symbol.for("ITimeSlotQueryService"),
   ISlotGenerationService: Symbol.for("ISlotGenerationService"),
+  ISessionPolicyService: Symbol.for("ISessionPolicyService"),
+  ILeaveEligibilityService: Symbol.for("ILeaveEligibilityService"),
   ExamAccessPolicyService: Symbol.for("ExamAccessPolicyService"),
   ExamScoringService: Symbol.for("ExamScoringService"),
   ExamResultEnricher: Symbol.for("ExamResultEnricher"),

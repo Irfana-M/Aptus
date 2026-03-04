@@ -1,6 +1,15 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { fetchFinanceData } from "./financeThunk";
 
+interface PaginationMeta {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
 interface Payment {
   _id: string;
   studentId: {
@@ -19,12 +28,14 @@ interface Payment {
 
 interface FinanceState {
   payments: Payment[];
+  pagination: PaginationMeta | null;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: FinanceState = {
   payments: [],
+  pagination: null,
   loading: false,
   error: null,
 };
@@ -45,7 +56,8 @@ const financeSlice = createSlice({
       })
       .addCase(fetchFinanceData.fulfilled, (state, action) => {
         state.loading = false;
-        state.payments = action.payload;
+        state.payments = action.payload.data;
+        state.pagination = action.payload.pagination;
       })
       .addCase(fetchFinanceData.rejected, (state, action) => {
         state.loading = false;

@@ -1,4 +1,4 @@
-import type { IStudyMaterial, IAssignmentSubmission } from "../models/studyMaterial.interface";
+import type { IStudyMaterial, IAssignmentSubmission } from "../models/studyMaterial.interface.js";
 
 export interface IStudyMaterialService {
   uploadMaterial(data: {

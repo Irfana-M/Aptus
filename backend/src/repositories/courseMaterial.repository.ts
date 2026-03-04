@@ -1,6 +1,6 @@
 import { injectable } from 'inversify';
-import { CourseMaterial, type ICourseMaterial } from '../models/courseMaterial.model';
-import type { ICourseMaterialRepository } from '../interfaces/repositories/ICourseMaterialRepository';
+import { CourseMaterial, type ICourseMaterial } from '../models/courseMaterial.model.js';
+import type { ICourseMaterialRepository } from '../interfaces/repositories/ICourseMaterialRepository.js';
 import type { FilterQuery } from 'mongoose';
 
 @injectable()

@@ -1,5 +1,5 @@
-import type { IEnrollment } from "../../models/enrollment.model";
-import type { IBaseRepository } from "./IBaseRepository";
+import type { IEnrollment } from "../../models/enrollment.model.js";
+import type { IBaseRepository } from "./IBaseRepository.js";
 
 export interface IEnrollmentLinkRepository extends IBaseRepository<IEnrollment> {
   findByStudentAndCourse(studentId: string, courseId: string): Promise<IEnrollment | null>;

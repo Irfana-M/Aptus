@@ -1,13 +1,13 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../../types";
-import { logger } from "../../utils/logger";
-import type { ISessionService, CreateSessionDto } from "../../interfaces/services/ISessionService";
-import type { ISessionRepository } from "../../interfaces/repositories/ISessionRepository";
-import type { SchedulingOrchestrator } from "../scheduling/SchedulingOrchestrator";
-import type { IBooking } from "../../interfaces/models/booking.interface";
-import type { SessionStatusType } from "../../domain/session/constants";
-import { SessionStatus } from "../../domain/session/constants";
-import type { SchedulingService } from "../scheduling.service";
+import { TYPES } from "../../types.js";
+import { logger } from "../../utils/logger.js";
+import type { ISessionService, CreateSessionDto } from "../../interfaces/services/ISessionService.js";
+import type { ISessionRepository } from "../../interfaces/repositories/ISessionRepository.js";
+import type { SchedulingOrchestrator } from "../scheduling/SchedulingOrchestrator.js";
+import type { IBooking } from "../../interfaces/models/booking.interface.js";
+import type { SessionStatusType } from "../../domain/session/constants.js";
+import { SessionStatus } from "../../domain/session/constants.js";
+import type { SchedulingService } from "../scheduling.service.js";
 
 @injectable()
 export class SessionService implements ISessionService {
@@ -18,7 +18,7 @@ export class SessionService implements ISessionService {
     @inject(TYPES.ISchedulingService) private _schedulingService: SchedulingService
   ) {}
 
-  async createSession(data: any): Promise<import('../../interfaces/models/session.interface').ISession> {
+  async createSession(data: any): Promise<import('../../interfaces/models/session.interface.js').ISession> {
     logger.info(`Creating session for student ${data.studentId}`);
     // Extracting fields from CreateSessionDto or ISession partial
     const sessionData = {
@@ -45,16 +45,16 @@ export class SessionService implements ISessionService {
     await this._sessionRepo.updateStatus(sessionId, 'cancelled');
   }
 
-  async updateSessionStatus(sessionId: string, status: string): Promise<import('../../interfaces/models/session.interface').ISession | null> {
+  async updateSessionStatus(sessionId: string, status: string): Promise<import('../../interfaces/models/session.interface.js').ISession | null> {
     logger.info(`Updating session ${sessionId} status to ${status}`);
     return await this._sessionRepo.updateStatus(sessionId, status);
   }
 
-  async getSessionById(sessionId: string): Promise<import('../../interfaces/models/session.interface').ISession | null> {
+  async getSessionById(sessionId: string): Promise<import('../../interfaces/models/session.interface.js').ISession | null> {
     return await this._sessionRepo.findById(sessionId);
   }
 
-  async getStudentUpcomingSessions(studentId: string): Promise<import('../../interfaces/models/session.interface').ISession[]> {
+  async getStudentUpcomingSessions(studentId: string): Promise<import('../../interfaces/models/session.interface.js').ISession[]> {
     return await this._sessionRepo.findUpcomingByStudent(studentId);
   }
 

@@ -4,6 +4,9 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import StripeSubscriptionForm from '../../features/payment/StripeSubscriptionForm';
 import { createPaymentIntent } from '../../features/payment/paymentApi';
+import { useAppSelector } from '../../app/hooks';
+import { toast } from 'react-hot-toast';
+import { ROUTES } from '../../constants/routes.constants';
 
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
@@ -26,24 +29,31 @@ const PaymentPage: React.FC = () => {
 
   const [clientSecret, setClientSecret] = useState('');
 
+  const { user } = useAppSelector((state) => state.auth);
+
   useEffect(() => {
     if (!activePlanCode || !amount) {
-      navigate('/student/subscription-plans'); 
+      navigate(ROUTES.STUDENT.SUBSCRIPTION_PLANS); 
       return;
     }
 
     const initPayment = async () => {
       try {
-        
-        const data = await createPaymentIntent(activePlanCode, amount, subjectCount);
+        const studentId = user?._id;
+        const data = await createPaymentIntent(activePlanCode, amount, subjectCount, studentId);
         setClientSecret(data.clientSecret);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to init payment', error);
+        const message = error.response?.data?.message || 'Failed to initialize payment';
+        toast.error(message);
+        if (error.response?.data?.code === 'ALREADY_SUBSCRIBED' || error.response?.data?.code === 'MONTHLY_PAYMENT_LIMIT') {
+          navigate(ROUTES.STUDENT.SUBSCRIPTION_PLANS);
+        }
       }
     };
 
     initPayment();
-  }, [activePlanCode, amount, subjectCount, navigate]);
+  }, [activePlanCode, amount, subjectCount, navigate, user?._id]);
 
   if (!activePlanCode || !clientSecret) {
     return (

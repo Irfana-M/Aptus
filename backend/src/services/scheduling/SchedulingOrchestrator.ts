@@ -1,17 +1,17 @@
 import { injectable, inject } from 'inversify';
 import mongoose from 'mongoose';
-import { TYPES } from '../../types';
-import type { ITimeSlotRepository } from '../../interfaces/repositories/ITimeSlotRepository';
-import type { IBookingRepository } from '../../interfaces/repositories/IBookingRepository';
-import type { IMentorRepository } from '../../interfaces/repositories/IMentorRepository';
-import type { IStudentRepository } from '../../interfaces/repositories/IStudentRepository';
-import { SchedulingPolicy } from '../../domain/scheduling/SchedulingPolicy';
-import { AppError } from '../../utils/AppError';
-import { HttpStatusCode } from '../../constants/httpStatus';
-import { logger } from '../../utils/logger';
-import { EVENTS, type InternalEventEmitter } from '../../utils/InternalEventEmitter';
-import type { IChatService } from '../../interfaces/services/IChatService';
-import type { IPricingService } from '../../interfaces/services/IPricingService';
+import { TYPES } from '../../types.js';
+import type { ITimeSlotRepository } from '../../interfaces/repositories/ITimeSlotRepository.js';
+import type { IBookingRepository } from '../../interfaces/repositories/IBookingRepository.js';
+import type { IMentorRepository } from '../../interfaces/repositories/IMentorRepository.js';
+import type { IStudentRepository } from '../../interfaces/repositories/IStudentRepository.js';
+import { SchedulingPolicy } from '../../domain/scheduling/SchedulingPolicy.js';
+import { AppError } from '../../utils/AppError.js';
+import { HttpStatusCode } from '../../constants/httpStatus.js';
+import { logger } from '../../utils/logger.js';
+import { EVENTS, type InternalEventEmitter } from '../../utils/InternalEventEmitter.js';
+import type { IChatService } from '../../interfaces/services/IChatService.js';
+import type { IPricingService } from '../../interfaces/services/IPricingService.js';
 
 @injectable()
 export class SchedulingOrchestrator {
@@ -26,7 +26,7 @@ export class SchedulingOrchestrator {
     @inject(TYPES.IPricingService) private _pricingService: IPricingService
   ) {}
 
-  async bookSession(studentId: string, slotId: string, subjectId: string): Promise<import('../../interfaces/models/booking.interface').IBooking> {
+  async bookSession(studentId: string, slotId: string, subjectId: string): Promise<import('../../interfaces/models/booking.interface.js').IBooking> {
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -46,7 +46,7 @@ export class SchedulingOrchestrator {
         session
       );
 
-      const policyCheck = this._policy.canStudentBook(student as unknown as import('../../interfaces/models/student.interface').StudentProfile, slot, studentBookings);
+      const policyCheck = this._policy.canStudentBook(student as unknown as import('../../interfaces/models/student.interface.js').StudentProfile, slot, studentBookings);
       if (!policyCheck.allowed) {
         throw new AppError(policyCheck.reason || "Booking rejected by policy", HttpStatusCode.CONFLICT);
       }

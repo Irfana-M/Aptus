@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import type { INotification } from '../interfaces/models/notification.interface';
+import type { INotification } from '../interfaces/models/notification.interface.js';
 
 const NotificationSchema = new Schema<INotification>({
   userId: { type: Schema.Types.ObjectId, required: true, refPath: 'userRole' },

@@ -1,8 +1,8 @@
-import type { IAdmin } from "../interfaces/models/admin.interface";
+import type { IAdmin } from "../interfaces/models/admin.interface.js";
 import type {
   AdminLoginResponseDto,
   AdminResponseDto,
-} from "@/dtos/admin/AdminLoginResponseDTO";
+} from "../dtos/admin/AdminLoginResponseDTO.js";
 
 export class AdminMapper {
   static toResponseDto(admin: IAdmin): AdminResponseDto {

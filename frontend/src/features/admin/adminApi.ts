@@ -314,7 +314,20 @@ export const adminCourseApi = {
 };
 
 export const adminRequestsApi = {
-  getAllRequests: (): Promise<AxiosResponse<{ success: boolean; data: CourseRequest[] }>> => adminApi.get(API_ROUTES.COURSE_REQUESTS.ALL),
+  getAllRequests: (params?: { page?: number; limit?: number; search?: string; status?: string }): Promise<AxiosResponse<PaginatedResponse<CourseRequest> | { success: boolean; data: CourseRequest[] }>> => {
+      if (params && Object.keys(params).some(key => params[key as keyof typeof params] !== undefined)) {
+          const queryParams = new URLSearchParams();
+          if (params.page) queryParams.append('page', params.page.toString());
+          if (params.limit) queryParams.append('limit', params.limit.toString());
+          if (params.search) queryParams.append('search', params.search);
+          if (params.status) queryParams.append('status', params.status);
+          
+          const queryString = queryParams.toString();
+          logger.api(`${API_ROUTES.COURSE_REQUESTS.ALL}?${queryString}`, "GET");
+          return adminApi.get<PaginatedResponse<CourseRequest>>(`${API_ROUTES.COURSE_REQUESTS.ALL}?${queryString}`);
+      }
+      return adminApi.get(API_ROUTES.COURSE_REQUESTS.ALL);
+  },
   updateRequestStatus: (requestId: string, status: string): Promise<AxiosResponse<{ success: boolean; message: string }>> => 
     adminApi.patch(API_ROUTES.COURSE_REQUESTS.STATUS.replace(":requestId", requestId), { status }),
 };
@@ -325,7 +338,20 @@ export const adminStudentProfileApi = {
 };
 
 export const adminEnrollmentApi = {
-  fetchAllEnrollments: (): Promise<AxiosResponse<{ success: boolean; data: Enrollment[] }>> => adminApi.get(API_ROUTES.ADMIN.ALL_ENROLLMENTS),
+  fetchAllEnrollments: (params?: { page?: number; limit?: number; search?: string; status?: string }): Promise<AxiosResponse<PaginatedResponse<Enrollment> | { success: boolean; data: Enrollment[] }>> => {
+      if (params && Object.keys(params).some(key => params[key as keyof typeof params] !== undefined)) {
+          const queryParams = new URLSearchParams();
+          if (params.page) queryParams.append('page', params.page.toString());
+          if (params.limit) queryParams.append('limit', params.limit.toString());
+          if (params.search) queryParams.append('search', params.search);
+          if (params.status) queryParams.append('status', params.status);
+          
+          const queryString = queryParams.toString();
+          logger.api(`${API_ROUTES.ADMIN.ALL_ENROLLMENTS}?${queryString}`, "GET");
+          return adminApi.get<PaginatedResponse<Enrollment>>(`${API_ROUTES.ADMIN.ALL_ENROLLMENTS}?${queryString}`);
+      }
+      return adminApi.get(API_ROUTES.ADMIN.ALL_ENROLLMENTS);
+  },
 };
 
 export const adminMentorRequestApi = {

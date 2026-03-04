@@ -1,10 +1,10 @@
 import { injectable } from "inversify";
-import { BaseRepository } from "./baseRepository";
-import type { IExam } from "../models/exam.model";
-import { Exam } from "../models/exam.model";
-import type { IExamResult } from "../models/examResult.model";
-import { ExamResult } from "../models/examResult.model";
-import type { IExamRepository } from "../interfaces/repositories/IExamRepository";
+import { BaseRepository } from "./baseRepository.js";
+import type { IExam } from "../models/exam.model.js";
+import { Exam } from "../models/exam.model.js";
+import type { IExamResult } from "../models/examResult.model.js";
+import { ExamResult } from "../models/examResult.model.js";
+import type { IExamRepository } from "../interfaces/repositories/IExamRepository.js";
 
 @injectable()
 export class ExamRepository extends BaseRepository<IExam> implements IExamRepository {

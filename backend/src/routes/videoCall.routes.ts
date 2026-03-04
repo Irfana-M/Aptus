@@ -1,11 +1,11 @@
 import express from 'express';
-import { requireAuth } from '@/middlewares/authMiddleware';
-import { requireRole } from '@/middlewares/role.middleware';
-import { container } from '@/inversify.config';
-import { TYPES } from '@/types';
+import { requireAuth } from '../middlewares/authMiddleware.js';
+import { requireRole } from '../middlewares/role.middleware.js';
+import { container } from '../inversify.config.js';
+import { TYPES } from '../types.js';
 
 
-import type { VideoCallController } from '@/controllers/videoCall.controller';
+import type { VideoCallController } from '../controllers/videoCall.controller.js';
 
 const videoRouter = express.Router();
 

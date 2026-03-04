@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ROUTES } from '../../constants/routes.constants';
 import { Video, ShieldCheck, AlertCircle } from 'lucide-react';
 import { AuthContext } from '../../utils/authContext';
 
@@ -61,7 +62,7 @@ const SessionJoin: React.FC = () => {
         <h1 className="text-3xl font-bold mb-2 text-gray-900">Access Denied</h1>
         <p className="text-gray-600 mb-8 max-w-md">{error}</p>
         <button 
-          onClick={() => navigate('/')}
+          onClick={() => navigate(ROUTES.HOME)}
           className="px-8 py-3 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition-colors"
         >
           Back to Home

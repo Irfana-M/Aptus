@@ -1,8 +1,8 @@
-import type { IAdminRepository } from "../interfaces/repositories/IAdminRepository";
-import { Admin } from "../models/admin/admin.model";
+import type { IAdminRepository } from "../interfaces/repositories/IAdminRepository.js";
+import { Admin } from "../models/admin/admin.model.js";
 
-import type { IAdmin } from "../interfaces/models/admin.interface";
-import { BaseRepository } from "./baseRepository";
+import type { IAdmin } from "../interfaces/models/admin.interface.js";
+import { BaseRepository } from "./baseRepository.js";
 import { injectable } from "inversify";
 
 @injectable()

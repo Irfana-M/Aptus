@@ -1,6 +1,6 @@
-import type { MentorProfile } from "../models/mentor.interface";
-import type { IBaseRepository } from "./IBaseRepository";
-import type { MentorPaginationParams } from "@/dtos/shared/paginationTypes";
+import type { MentorProfile } from "../models/mentor.interface.js";
+import type { IBaseRepository } from "./IBaseRepository.js";
+import type { MentorPaginationParams } from "@/dtos/shared/paginationTypes.js";
 import type { ClientSession } from "mongoose";
 
 export interface MentorPaginatedResult {

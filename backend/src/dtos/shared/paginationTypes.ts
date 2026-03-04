@@ -1,3 +1,8 @@
+import { ApprovalStatus } from "../../domain/enums/ApprovalStatus.js";
+import { StudentStatus } from "../../enums/student.enum.js";
+import { CourseStatus } from "../../enums/course.enum.js";
+import { UserVerificationStatus } from "../../enums/userVerification.enum.js";
+
 export interface PaginationParams {
   page?: number | undefined;
   limit?: number | undefined;
@@ -8,18 +13,18 @@ export interface PaginationParams {
 }
 
 export interface MentorPaginationParams extends PaginationParams {
-  status?: 'pending' | 'approved' | 'rejected' | '';
+  status?: ApprovalStatus | '';
   subject?: string;
 }
 
 export interface StudentPaginationParams extends PaginationParams {
-  status?: 'active' | 'blocked' | '';
-  verification?: 'verified' | 'pending' | '';
+  status?: StudentStatus | '';
+  verification?: UserVerificationStatus | '';
   trialClasses?: 'with_trial' | 'pending' | 'none' | '';
 }
 
 export interface CoursePaginationParams extends PaginationParams {
-  status?: 'available' | 'booked' | 'ongoing' | 'completed' | 'cancelled' | '' | undefined;
+  status?: CourseStatus | '' | undefined;
   gradeId?: string | undefined;
   subjectId?: string | undefined;
   dayOfWeek?: number | undefined;

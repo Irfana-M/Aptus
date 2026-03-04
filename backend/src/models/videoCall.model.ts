@@ -1,5 +1,5 @@
 import { Schema, model } from "mongoose";
-import type { IVideoCallDocument } from "@/interfaces/models/videoCall.interface";
+import type { IVideoCallDocument } from "@/interfaces/models/videoCall.interface.js";
 
 const VideoCallParticipantSchema = new Schema({
   userId: { 

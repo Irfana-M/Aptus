@@ -3,10 +3,12 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import type { RootState, AppDispatch } from "../app/store";
 import { ROLES } from "../constants/roles";
+import { ROUTES } from "../constants/routes.constants";
 import { AuthContext } from "../utils/authContext";
 import { fetchStudentProfile } from "../features/student/studentThunk";
 import { getStudentRedirect } from "../utils/StudentOnboardingGuard";
 import type { User } from "../types/authTypes";
+import { Loader } from "../components/ui/Loader";
 
 interface ProtectedRouteProps {
   children: JSX.Element;
@@ -35,10 +37,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     if (path.startsWith('/mentor')) return ROLES.MENTOR;
     
     // Shared routes mapping
-    const sharedRoutes = ['/trial-class/', '/session/', '/notifications', '/classroom/'];
-    if (sharedRoutes.some(p => path.startsWith(p))) {
+    const sharedRoutes = [
+      ROUTES.STUDENT.BOOK_FREE_TRIAL.split('/')[1], 
+      ROUTES.COMMON.VIDEO_CALL.split('/')[1], 
+      ROUTES.COMMON.NOTIFICATIONS, 
+      ROUTES.COMMON.CLASSROOM_TOKEN.split('/')[1]
+    ];
+    if (sharedRoutes.some(p => path.includes(p))) {
         // SPECIAL CASE: Classroom link with token in URL
-        if (path.startsWith('/classroom/')) {
+        if (path.includes(ROUTES.COMMON.CLASSROOM_TOKEN.split('/')[1])) {
             const urlToken = path.split('/').pop();
             if (urlToken && urlToken.includes('.')) {
                 try {
@@ -112,13 +119,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   useEffect(() => {
     const storedUserRole = localStorage.getItem('userRole');
     
-    if (path.startsWith('/student') && storedUserRole === 'admin') {
+      if (path.startsWith(ROUTES.STUDENT.DASHBOARD.split('/')[1]) && storedUserRole === 'admin') {
       console.log('🧹 Clearing admin userRole for student path');
       localStorage.removeItem('userRole');
-    } else if (path.startsWith('/admin') && storedUserRole && storedUserRole !== 'admin') {
+    } else if (path.startsWith(ROUTES.ADMIN.DASHBOARD.split('/')[1]) && storedUserRole && storedUserRole !== 'admin') {
       console.log(`🧹 Clearing ${storedUserRole} userRole for admin path`);
       localStorage.removeItem('userRole');
-    } else if (path.startsWith('/mentor') && storedUserRole === 'admin') {
+    } else if (path.startsWith(ROUTES.MENTOR.DASHBOARD.split('/')[1]) && storedUserRole === 'admin') {
       console.log('🧹 Clearing admin userRole for mentor path');
       localStorage.removeItem('userRole');
     }
@@ -129,7 +136,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     if (!pathRole) return null;
 
     // SPECIAL CASE: Classroom link with token in URL
-    if (path.startsWith('/classroom/')) {
+    if (path.includes(ROUTES.COMMON.CLASSROOM_TOKEN.split('/')[1])) {
         const urlToken = path.split('/').pop();
         if (urlToken && urlToken.includes('.')) {
             return urlToken;
@@ -167,7 +174,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
   
   // BYPASS for call routes - those components handle their own loading and data fetching
-  const isCallPath = (path.includes('/trial-class/') || path.includes('/session/')) && path.endsWith('/call');
+  const isCallPath = (path.includes(ROUTES.STUDENT.BOOK_FREE_TRIAL.split('/')[1]) || path.includes(ROUTES.COMMON.VIDEO_CALL.split('/')[1])) && path.endsWith('/call');
   if (isCallPath) {
     return children;
   }
@@ -176,7 +183,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (pathRole === ROLES.STUDENT && studentLoading && !studentProfile) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-500"></div>
+        <Loader size="lg" color="teal" text="Verifying your session..." />
       </div>
     );
   }
@@ -184,7 +191,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (pathRole === ROLES.ADMIN && adminState.loading && !adminState.admin) {
      return (
       <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-500"></div>
+        <Loader size="lg" color="teal" text="Loading admin console..." />
       </div>
     );
   }
@@ -196,13 +203,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     // Redirect to current role's dashboard
     const currentRole = authContext.getCurrentRole();
     if (currentRole === ROLES.ADMIN) {
-      return <Navigate to="/admin/dashboard" replace />;
+      return <Navigate to={ROUTES.ADMIN.DASHBOARD} replace />;
     }
     if (currentRole === ROLES.STUDENT) {
-      return <Navigate to="/student/dashboard" replace />;
+      return <Navigate to={ROUTES.STUDENT.DASHBOARD} replace />;
     }
     if (currentRole === ROLES.MENTOR) {
-      return <Navigate to="/mentor/dashboard" replace />;
+      return <Navigate to={ROUTES.MENTOR.DASHBOARD} replace />;
     }
   }
   
@@ -217,15 +224,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         // If it's a call link and we have NO tokens at all, then redirect
         if (!localStorage.getItem('student_accessToken') && !localStorage.getItem('mentor_accessToken')) {
             console.log(`❌ No tokens found for shared path ${path}`);
-            return <Navigate to="/login" replace state={{ from: location }} />;
+            return <Navigate to={ROUTES.LOGIN} replace state={{ from: location }} />;
         }
     } else {
         console.log(`❌ No ${pathRole} token found for ${path}`);
         
         if (pathRole === ROLES.ADMIN) {
-          return <Navigate to="/admin/login" replace state={{ from: location }} />;
+          return <Navigate to={ROUTES.ADMIN.LOGIN} replace state={{ from: location }} />;
         }
-        return <Navigate to="/login" replace state={{ from: location }} />;
+        return <Navigate to={ROUTES.LOGIN} replace state={{ from: location }} />;
     }
   }
   
@@ -235,16 +242,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     
     // Redirect based on detected role
     if (pathRole === ROLES.ADMIN) {
-      return <Navigate to="/admin/dashboard" replace />;
+      return <Navigate to={ROUTES.ADMIN.DASHBOARD} replace />;
     }
     if (pathRole === ROLES.STUDENT) {
-      return <Navigate to="/student/dashboard" replace />;
+      return <Navigate to={ROUTES.STUDENT.DASHBOARD} replace />;
     }
     if (pathRole === ROLES.MENTOR) {
-      return <Navigate to="/mentor/dashboard" replace />;
+      return <Navigate to={ROUTES.MENTOR.DASHBOARD} replace />;
     }
     
-    return <Navigate to="/" replace />;
+    return <Navigate to={ROUTES.HOME} replace />;
   }
   
   // Get user from appropriate Redux state
@@ -294,9 +301,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (pathRole === ROLES.MENTOR && user) {
     const approvalStatus = (user as { approvalStatus?: string })?.approvalStatus;
     
-    if (path.includes("/mentor/dashboard")) {
+    if (path.includes(ROUTES.MENTOR.DASHBOARD)) {
       if (approvalStatus !== "approved") {
-        return <Navigate to="/mentor/profile-setup" replace />;
+        return <Navigate to={ROUTES.MENTOR.PROFILE_SETUP} replace />;
       }
     }
   }

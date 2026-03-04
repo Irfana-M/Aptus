@@ -1,12 +1,12 @@
 import { inject, injectable } from "inversify";
-import type { IGradeRepository } from "@/interfaces/repositories/IGradeRepository";
-import type { GradeResponseDto } from "@/dtos/student/grade.dto";
-import { TYPES } from "@/types";
-import { logger } from "@/utils/logger";
-import { AppError } from "@/utils/AppError";
-import { HttpStatusCode } from "@/constants/httpStatus";
-import type { IGradeService } from "@/interfaces/services/IGradeService";
-import type { IGrade } from "@/models/grade.model";
+import type { IGradeRepository } from "@/interfaces/repositories/IGradeRepository.js";
+import type { GradeResponseDto } from "@/dtos/student/grade.dto.js";
+import { TYPES } from "@/types.js";
+import { logger } from "@/utils/logger.js";
+import { AppError } from "@/utils/AppError.js";
+import { HttpStatusCode } from "@/constants/httpStatus.js";
+import type { IGradeService } from "@/interfaces/services/IGradeService.js";
+import type { IGrade } from "@/models/grade.model.js";
 
 @injectable()
 export class GradeService implements IGradeService {
@@ -19,8 +19,8 @@ export class GradeService implements IGradeService {
     try {
       const grades = await this.gradeRepo.findAllActive();
       return grades.map(this.toResponseDto);
-    } catch (err) {
-      logger.error("Error fetching all grades", err);
+    } catch (error) {
+      logger.error("Error fetching all grades", error);
       throw new AppError(
         "Unable to fetch grades",
         HttpStatusCode.INTERNAL_SERVER_ERROR
@@ -40,10 +40,10 @@ export class GradeService implements IGradeService {
 
       const grades = await this.gradeRepo.findBySyllabus(syllabus);
       return grades.map(this.toResponseDto);
-    } catch (err) {
-      logger.error(`Error fetching grades for syllabus: ${syllabus}`, err);
-      if (err instanceof AppError) {
-        throw err;
+    } catch (error) {
+      logger.error(`Error fetching grades for syllabus: ${syllabus}`, error);
+      if (error instanceof AppError) {
+        throw error;
       }
       throw new AppError(
         "Unable to fetch grades",

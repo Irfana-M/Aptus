@@ -1,29 +1,30 @@
 import type { Request, Response } from "express";
 import { inject, injectable } from "inversify";
-import { TYPES } from "@/types";
-import type { ISubjectService } from "@/interfaces/services/ISubjectService";
-import { HttpStatusCode } from "@/constants/httpStatus";
-import { logger } from "@/utils/logger";
-import { AppError } from "@/utils/AppError";
+import { TYPES } from "@/types.js";
+import type { ISubjectService } from "@/interfaces/services/ISubjectService.js";
+import { HttpStatusCode } from "@/constants/httpStatus.js";
+import { logger } from "@/utils/logger.js";
+import { AppError } from "@/utils/AppError.js";
+import { MESSAGES } from "@/constants/messages.constants.js";
 
 @injectable()
 export class SubjectController {
   constructor(
     @inject(TYPES.ISubjectService)
-    private subjectService: ISubjectService
+    private _subjectService: ISubjectService
   ) {}
 
   async getAllSubjects(req: Request, res: Response): Promise<void> {
     try {
-      const subjects = await this.subjectService.getAllSubjects();
+      const subjects = await this._subjectService.getAllSubjects();
       
       res.status(HttpStatusCode.OK).json({
         success: true,
-        message: "Subjects fetched successfully",
+        message: MESSAGES.COURSE.SUBJECTS_FETCH_SUCCESS,
         data: subjects,
       });
     } catch (error) {
-      this.handleError(res, error, "Failed to fetch subjects");
+      this.handleError(res, error, MESSAGES.COURSE.SUBJECTS_FETCH_FAILED);
     }
   }
 
@@ -34,20 +35,20 @@ export class SubjectController {
       if (!grade || typeof grade !== 'string') {
         res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Grade query parameter is required",
+          message: MESSAGES.COURSE.GRADE_REQUIRED,
         });
         return;
       }
 
-      const subjects = await this.subjectService.getSubjectsByGrade(grade, syllabus as string);
+      const subjects = await this._subjectService.getSubjectsByGrade(grade, syllabus as string);
       
       res.status(HttpStatusCode.OK).json({
         success: true,
-        message: "Subjects fetched successfully",
+        message: MESSAGES.COURSE.SUBJECTS_FETCH_SUCCESS,
         data: subjects,
       });
     } catch (error) {
-      this.handleError(res, error, "Failed to fetch subjects by grade");
+      this.handleError(res, error, MESSAGES.COURSE.SUBJECTS_FETCH_FAILED);
     }
   }
 
@@ -58,7 +59,7 @@ export class SubjectController {
       if (!grade || !syllabus) {
         res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Grade and syllabus query parameters are required",
+          message: MESSAGES.COURSE.GRADE_SYLLABUS_REQUIRED,
         });
         return;
       }
@@ -67,23 +68,23 @@ export class SubjectController {
       if (isNaN(gradeNumber)) {
         res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
-          message: "Grade must be a valid number",
+          message: MESSAGES.COURSE.INVALID_GRADE,
         });
         return;
       }
 
-      const subjects = await this.subjectService.getSubjectsByGradeAndSyllabus(
+      const subjects = await this._subjectService.getSubjectsByGradeAndSyllabus(
         gradeNumber, 
         syllabus as string
       );
       
       res.status(HttpStatusCode.OK).json({
         success: true,
-        message: "Subjects fetched successfully",
+        message: MESSAGES.COURSE.SUBJECTS_FETCH_SUCCESS,
         data: subjects,
       });
     } catch (error) {
-      this.handleError(res, error, "Failed to fetch subjects by grade and syllabus");
+      this.handleError(res, error, MESSAGES.COURSE.SUBJECTS_FETCH_FAILED);
     }
   }
 

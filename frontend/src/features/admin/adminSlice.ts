@@ -38,8 +38,10 @@ import {
   fetchGradesAdmin,
   fetchAllCourseRequestsAdmin,
   updateCourseRequestStatusAdmin,
+  fetchCourseRequestsPaginated,
   fetchStudentProfile,
   fetchAllEnrollmentsAdmin,
+  fetchEnrollmentsPaginated,
   fetchAllMentorRequestsAdmin,
 } from "./adminThunk";
 import { loginUser, refreshAccessToken } from "../auth/authThunks";
@@ -111,11 +113,15 @@ interface AdminState {
   courseRequests: CourseRequest[]; 
   courseRequestsLoading: boolean;
   courseRequestsError: string | null;
+  courseRequestsPagination: PaginationState;
+
   selectedStudentProfile: StudentProfile | null;
   studentProfileLoading: boolean;
+  
   enrollmentsList: Enrollment[];
   enrollmentsLoading: boolean;
   enrollmentsError: string | null;
+  enrollmentsPagination: PaginationState;
   studentsLoading: boolean;
   mentorsLoading: boolean;
   mentorProfileLoading: boolean;
@@ -178,10 +184,24 @@ const initialState: AdminState = {
   courseRequests: [],
   courseRequestsLoading: false,
   courseRequestsError: null,
+  courseRequestsPagination: {
+    currentPage: 1,
+    totalPages: 0,
+    totalStudents: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  },
   selectedStudentProfile: null,
   enrollmentsList: [],
   enrollmentsLoading: false,
   enrollmentsError: null,
+  enrollmentsPagination: {
+    currentPage: 1,
+    totalPages: 0,
+    totalStudents: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  },
   studentProfileLoading: false,
   studentsLoading: false,
   mentorsLoading: false,
@@ -244,6 +264,12 @@ const adminSlice = createSlice({
     },
     setMentorsPagination(state, action: PayloadAction<Partial<MentorPaginationState>>) {
       state.mentorsPagination = { ...state.mentorsPagination, ...action.payload };
+    },
+    setCourseRequestsPagination(state, action: PayloadAction<Partial<PaginationState>>) {
+      state.courseRequestsPagination = { ...state.courseRequestsPagination, ...action.payload };
+    },
+    setEnrollmentsPagination(state, action: PayloadAction<Partial<PaginationState>>) {
+      state.enrollmentsPagination = { ...state.enrollmentsPagination, ...action.payload };
     },
      clearTrialClassDetails: (state) => {
       state.trialClassDetails = null;
@@ -797,6 +823,27 @@ builder
         state.courseRequestsError = action.payload as string;
       })
       
+      // Paginated Course Requests
+      .addCase(fetchCourseRequestsPaginated.pending, (state) => {
+        state.courseRequestsLoading = true;
+        state.courseRequestsError = null;
+      })
+      .addCase(fetchCourseRequestsPaginated.fulfilled, (state, action) => {
+        state.courseRequestsLoading = false;
+        state.courseRequests = action.payload.requests;
+        state.courseRequestsPagination = {
+          currentPage: action.payload.pagination.currentPage,
+          totalPages: action.payload.pagination.totalPages,
+          totalStudents: action.payload.pagination.totalItems,
+          hasNextPage: action.payload.pagination.hasNextPage,
+          hasPrevPage: action.payload.pagination.hasPrevPage,
+        };
+      })
+      .addCase(fetchCourseRequestsPaginated.rejected, (state, action) => {
+        state.courseRequestsLoading = false;
+        state.courseRequestsError = action.payload as string;
+      })
+      
       
       .addCase(updateCourseRequestStatusAdmin.fulfilled, (state) => {
         state.loading = false;
@@ -863,6 +910,27 @@ builder
       .addCase(fetchAllEnrollmentsAdmin.rejected, (state, action) => {
         state.enrollmentsLoading = false;
         state.enrollmentsError = action.payload as string;
+      })
+
+      // Paginated Enrollments
+      .addCase(fetchEnrollmentsPaginated.pending, (state) => {
+        state.enrollmentsLoading = true;
+        state.enrollmentsError = null;
+      })
+      .addCase(fetchEnrollmentsPaginated.fulfilled, (state, action) => {
+        state.enrollmentsLoading = false;
+        state.enrollmentsList = action.payload.enrollments;
+        state.enrollmentsPagination = {
+          currentPage: action.payload.pagination.currentPage,
+          totalPages: action.payload.pagination.totalPages,
+          totalStudents: action.payload.pagination.totalItems,
+          hasNextPage: action.payload.pagination.hasNextPage,
+          hasPrevPage: action.payload.pagination.hasPrevPage,
+        };
+      })
+      .addCase(fetchEnrollmentsPaginated.rejected, (state, action) => {
+        state.enrollmentsLoading = false;
+        state.enrollmentsError = action.payload as string;
       });
   },
 });
@@ -878,6 +946,8 @@ export const {
   clearAvailableMentors,
   setStudentsPagination,
   setMentorsPagination,
+  setCourseRequestsPagination,
+  setEnrollmentsPagination,
   clearTrialClassDetails,
   clearTrialClasses,
   updateTrialClassInList,

@@ -1,0 +1,253 @@
+﻿src/app.ts(6,27): error TS2307: Cannot find module './config/db.config' or its corresponding type declarations.
+src/app.ts(7,30): error TS2307: Cannot find module './middlewares/error.middleware' or its corresponding type declarations.
+src/app.ts(8,20): error TS2307: Cannot find module './routes/auth.routes' or its corresponding type declarations.
+src/app.ts(9,25): error TS2307: Cannot find module './routes/admin.routes' or its corresponding type declarations.
+src/app.ts(10,22): error TS2307: Cannot find module './config/passport.config' or its corresponding type declarations.
+src/app.ts(11,26): error TS2307: Cannot find module './routes/mentor.routes' or its corresponding type declarations.
+src/app.ts(13,22): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './routes/s3Routes.js'?
+src/app.ts(14,27): error TS2307: Cannot find module './routes/student.routes' or its corresponding type declarations.
+src/app.ts(15,24): error TS2307: Cannot find module './routes/role.routes' or its corresponding type declarations.
+src/app.ts(16,25): error TS2307: Cannot find module './routes/videoCall.routes' or its corresponding type declarations.
+src/app.ts(17,33): error TS2307: Cannot find module './routes/courseRequest.routes' or its corresponding type declarations.
+src/app.ts(18,26): error TS2307: Cannot find module './routes/course.routes' or its corresponding type declarations.
+src/app.ts(19,30): error TS2307: Cannot find module './routes/enrollment.routes' or its corresponding type declarations.
+src/app.ts(20,27): error TS2307: Cannot find module './routes/payment.routes' or its corresponding type declarations.
+src/app.ts(21,32): error TS2307: Cannot find module './routes/availability.routes' or its corresponding type declarations.
+src/app.ts(22,30): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './routes/trialClassRoutes.js'?
+src/app.ts(23,24): error TS2307: Cannot find module './routes/chat.routes' or its corresponding type declarations.
+src/app.ts(24,32): error TS2307: Cannot find module './routes/notification.routes' or its corresponding type declarations.
+src/app.ts(25,27): error TS2307: Cannot find module './routes/session.routes' or its corresponding type declarations.
+src/app.ts(26,32): error TS2307: Cannot find module './routes/subscription.routes' or its corresponding type declarations.
+src/app.ts(27,34): error TS2307: Cannot find module './routes/attendance.routes' or its corresponding type declarations.
+src/app.ts(28,24): error TS2307: Cannot find module './routes/exam.routes' or its corresponding type declarations.
+src/check-trial.ts(3,28): error TS2307: Cannot find module './models/student/trialClass.model' or its corresponding type declarations.
+src/config/passport.config.ts(4,30): error TS2307: Cannot find module '../models/student/student.model' or its corresponding type declarations.
+src/config/passport.config.ts(5,29): error TS2307: Cannot find module '../models/mentor/mentor.model' or its corresponding type declarations.
+src/domain/policy/SessionAttendancePolicy.ts(2,26): error TS2307: Cannot find module '@/utils/AppError' or its corresponding type declarations.
+src/domain/policy/SessionAttendancePolicy.ts(3,32): error TS2307: Cannot find module '@/constants/httpStatus' or its corresponding type declarations.
+src/domain/policy/SessionAttendancePolicy.ts(4,31): error TS2307: Cannot find module '@/interfaces/models/booking.interface' or its corresponding type declarations.
+src/domain/policy/StudentOnboardingPolicy.ts(1,41): error TS2307: Cannot find module '@/enums/studentOnboarding.enum' or its corresponding type declarations.
+src/domain/policy/StudentOnboardingPolicy.ts(2,38): error TS2307: Cannot find module '@/enums/studentOnboarding.enum' or its corresponding type declarations.
+src/domain/policy/StudentOnboardingPolicy.ts(41,12): error TS18048: 'transitions' is possibly 'undefined'.
+src/domain/policy/StudentOnboardingPolicy.ts(50,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/domain/policy/TrialEligibilityPolicy.ts(2,26): error TS2307: Cannot find module '@/utils/AppError' or its corresponding type declarations.
+src/domain/policy/TrialEligibilityPolicy.ts(3,32): error TS2307: Cannot find module '@/constants/httpStatus' or its corresponding type declarations.
+src/domain/policy/TrialEligibilityPolicy.ts(4,43): error TS2307: Cannot find module '@/dtos/student/trialClassDTO' or its corresponding type declarations.
+src/domain/policy/TrialEligibilityPolicy.ts(5,42): error TS2307: Cannot find module '@/models/student/trialClass.model' or its corresponding type declarations.
+src/domain/scheduling/ReschedulePolicy.ts(1,35): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean '../../constants/schedulingDecision.js'?
+src/domain/scheduling/SchedulingDecisionResolver.ts(1,37): error TS2307: Cannot find module '../../interfaces/models/student.interface' or its corresponding type declarations.
+src/domain/scheduling/SchedulingDecisionResolver.ts(2,32): error TS2307: Cannot find module '../../interfaces/models/timeSlot.interface' or its corresponding type declarations.
+src/domain/scheduling/SchedulingDecisionResolver.ts(3,62): error TS2307: Cannot find module '../../interfaces/models/subscription.interface' or its corresponding type declarations.
+src/domain/scheduling/SchedulingDecisionResolver.ts(4,55): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean '../../constants/schedulingDecision.js'?
+src/domain/scheduling/SchedulingDecisionResolver.ts(5,31): error TS2307: Cannot find module '../../interfaces/models/booking.interface' or its corresponding type declarations.
+src/domain/scheduling/SchedulingDecisionResolver.ts(6,36): error TS2307: Cannot find module '../../interfaces/models/mentor.interface' or its corresponding type declarations.
+src/domain/scheduling/SchedulingPolicy.ts(2,32): error TS2307: Cannot find module '../../interfaces/models/timeSlot.interface' or its corresponding type declarations.
+src/domain/scheduling/SchedulingPolicy.ts(3,31): error TS2307: Cannot find module '../../interfaces/models/booking.interface' or its corresponding type declarations.
+src/domain/scheduling/SchedulingPolicy.ts(4,37): error TS2307: Cannot find module '../../interfaces/models/student.interface' or its corresponding type declarations.
+src/domain/scheduling/SchedulingPolicy.ts(5,36): error TS2307: Cannot find module '../../interfaces/models/mentor.interface' or its corresponding type declarations.
+src/dtos/shared/paginationTypes.ts(1,32): error TS2307: Cannot find module '@/domain/enums/ApprovalStatus' or its corresponding type declarations.
+src/dtos/shared/paginationTypes.ts(2,31): error TS2307: Cannot find module '@/enums/student.enum' or its corresponding type declarations.
+src/dtos/shared/paginationTypes.ts(3,30): error TS2307: Cannot find module '@/enums/course.enum' or its corresponding type declarations.
+src/dtos/shared/paginationTypes.ts(4,40): error TS2307: Cannot find module '@/enums/userVerification.enum' or its corresponding type declarations.
+src/find-mentor-trials.ts(2,28): error TS2307: Cannot find module './models/student/trialClass.model' or its corresponding type declarations.
+src/find-mentor-trials.ts(12,20): error TS7006: Parameter 'trial' implicitly has an 'any' type.
+src/interfaces/auth/auth.interface.ts(92,19): error TS2307: Cannot find module '../models/student.interface' or its corresponding type declarations.
+src/interfaces/repositories/IEnrollmentRepository.ts(1,30): error TS2307: Cannot find module '../../models/course.model' or its corresponding type declarations.
+src/interfaces/repositories/IExamRepository.ts(1,38): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './IBaseRepository.js'?
+src/interfaces/repositories/IExamRepository.ts(2,28): error TS2307: Cannot find module '../../models/exam.model' or its corresponding type declarations.
+src/interfaces/repositories/IExamRepository.ts(3,34): error TS2307: Cannot find module '../../models/examResult.model' or its corresponding type declarations.
+src/interfaces/services/ICourseAdminService.ts(1,36): error TS2307: Cannot find module '@/dtos/mentor/AvailableMentorDTO' or its corresponding type declarations.
+src/interfaces/services/ICourseAdminService.ts(2,39): error TS2307: Cannot find module '@/dtos/student/grade.dto' or its corresponding type declarations.
+src/interfaces/services/ICourseAdminService.ts(3,41): error TS2307: Cannot find module '@/dtos/student/subject.dto' or its corresponding type declarations.
+src/interfaces/services/ICourseAdminService.ts(4,63): error TS2307: Cannot find module '@/dtos/shared/paginationTypes' or its corresponding type declarations.
+src/interfaces/services/ICourseService.ts(1,64): error TS2307: Cannot find module '@/dtos/shared/paginationTypes' or its corresponding type declarations.
+src/interfaces/services/IGradeService.ts(1,39): error TS2307: Cannot find module '@/dtos/student/grade.dto' or its corresponding type declarations.
+src/interfaces/services/ISubjectService.ts(1,41): error TS2307: Cannot find module '@/dtos/student/subject.dto' or its corresponding type declarations.
+src/interfaces/services/ITrialClassService.ts(4,8): error TS2307: Cannot find module '@/dtos/student/trialClassDTO' or its corresponding type declarations.
+src/interfaces/services/ITrialClassService.ts(28,21): error TS2307: Cannot find module '../models/mentor.interface' or its corresponding type declarations.
+src/interfaces/services/IUserRoleSrvice.ts(1,46): error TS2307: Cannot find module '@/dtos/auth/UserResponseDTO' or its corresponding type declarations.
+src/interfaces/services/IUserRoleSrvice.ts(2,40): error TS2307: Cannot find module '@/dtos/mentor/MentorResponseDTO' or its corresponding type declarations.
+src/interfaces/services/IVideoCallService.ts(1,55): error TS2307: Cannot find module '@/dtos/webrtcDTO' or its corresponding type declarations.
+src/inversify.config.ts(3,23): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './types.js'?
+src/inversify.config.ts(6,32): error TS2307: Cannot find module './repositories/auth.repository' or its corresponding type declarations.
+src/inversify.config.ts(7,33): error TS2307: Cannot find module './repositories/admin.repository' or its corresponding type declarations.
+src/inversify.config.ts(8,34): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './repositories/mentorRepository.js'?
+src/inversify.config.ts(9,35): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './repositories/studentRepository.js'?
+src/inversify.config.ts(10,31): error TS2307: Cannot find module './repositories/otp.repository' or its corresponding type declarations.
+src/inversify.config.ts(11,39): error TS2307: Cannot find module './repositories/studentAuth.repository' or its corresponding type declarations.
+src/inversify.config.ts(12,38): error TS2307: Cannot find module './repositories/mentorAuth.repository' or its corresponding type declarations.
+src/inversify.config.ts(13,38): error TS2307: Cannot find module './repositories/trialClass.repository' or its corresponding type declarations.
+src/inversify.config.ts(14,33): error TS2307: Cannot find module '@/repositories/grade.repository' or its corresponding type declarations.
+src/inversify.config.ts(15,35): error TS2307: Cannot find module '@/repositories/subject.repository' or its corresponding type declarations.
+src/inversify.config.ts(16,47): error TS2307: Cannot find module '@/interfaces/repositories/ICourseRequestRepository' or its corresponding type declarations.
+src/inversify.config.ts(19,41): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/services/IAttendanceService.js'?
+src/inversify.config.ts(20,35): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/session/AttendanceService.js'?
+src/inversify.config.ts(21,37): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './repositories/VideoCallRepository.js'?
+src/inversify.config.ts(22,36): error TS2307: Cannot find module './repositories/timeSlot.repository' or its corresponding type declarations.
+src/inversify.config.ts(23,35): error TS2307: Cannot find module './repositories/booking.repository' or its corresponding type declarations.
+src/inversify.config.ts(24,37): error TS2307: Cannot find module './services/subscription.service' or its corresponding type declarations.
+src/inversify.config.ts(25,40): error TS2307: Cannot find module './repositories/notification.repository' or its corresponding type declarations.
+src/inversify.config.ts(26,36): error TS2307: Cannot find module './repositories/chatRoom.repository' or its corresponding type declarations.
+src/inversify.config.ts(27,39): error TS2307: Cannot find module './repositories/chatMessage.repository' or its corresponding type declarations.
+src/inversify.config.ts(28,40): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/scheduling/SchedulingOrchestrator.js'?
+src/inversify.config.ts(29,34): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './domain/scheduling/SchedulingPolicy.js'?
+src/inversify.config.ts(30,40): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './domain/policy/TrialEligibilityPolicy.js'?
+src/inversify.config.ts(31,41): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './domain/policy/SessionAttendancePolicy.js'?
+src/inversify.config.ts(32,37): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/NotificationService.js'?
+src/inversify.config.ts(33,37): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/NotificationManager.js'?
+src/inversify.config.ts(34,38): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/scheduling/SessionAccessService.js'?
+src/inversify.config.ts(35,29): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/CronService.js'?
+src/inversify.config.ts(36,38): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './utils/InternalEventEmitter.js'?
+src/inversify.config.ts(37,48): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/repositories/IEnrollmentLinkRepository.js'?
+src/inversify.config.ts(38,42): error TS2307: Cannot find module './repositories/enrollmentLink.repository' or its corresponding type declarations.
+src/inversify.config.ts(39,46): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/repositories/IAvailabilityRepository.js'?
+src/inversify.config.ts(40,40): error TS2307: Cannot find module './repositories/availability.repository' or its corresponding type declarations.
+src/inversify.config.ts(41,51): error TS2307: Cannot find module './repositories/mentorAssignmentRequest.repository' or its corresponding type declarations.
+src/inversify.config.ts(42,38): error TS2307: Cannot find module './repositories/attendance.repository' or its corresponding type declarations.
+src/inversify.config.ts(43,44): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/repositories/IAttendanceRepository.js'?
+src/inversify.config.ts(45,29): error TS2307: Cannot find module './services/auth.service' or its corresponding type declarations.
+src/inversify.config.ts(46,30): error TS2307: Cannot find module './services/admin.service' or its corresponding type declarations.
+src/inversify.config.ts(47,31): error TS2307: Cannot find module './services/mentor.services' or its corresponding type declarations.
+src/inversify.config.ts(48,28): error TS2307: Cannot find module './services/otp.services' or its corresponding type declarations.
+src/inversify.config.ts(49,35): error TS2307: Cannot find module './services/email.service' or its corresponding type declarations.
+src/inversify.config.ts(50,32): error TS2307: Cannot find module './services/profile.service' or its corresponding type declarations.
+src/inversify.config.ts(51,32): error TS2307: Cannot find module './services/student.services' or its corresponding type declarations.
+src/inversify.config.ts(52,35): error TS2307: Cannot find module './services/trialClass.service' or its corresponding type declarations.
+src/inversify.config.ts(53,30): error TS2307: Cannot find module '@/services/grade.service' or its corresponding type declarations.
+src/inversify.config.ts(54,32): error TS2307: Cannot find module '@/services/subject.service' or its corresponding type declarations.
+src/inversify.config.ts(55,34): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/VideoCallService.js'?
+src/inversify.config.ts(56,31): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/SocketService.js'?
+src/inversify.config.ts(57,33): error TS2307: Cannot find module './services/userRole.service' or its corresponding type declarations.
+src/inversify.config.ts(58,35): error TS2307: Cannot find module './services/scheduling.service' or its corresponding type declarations.
+src/inversify.config.ts(59,37): error TS2307: Cannot find module './services/availability.service' or its corresponding type declarations.
+src/inversify.config.ts(60,29): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/scheduling/ChatService.js'?
+src/inversify.config.ts(61,30): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/imageService.js'?
+src/inversify.config.ts(63,32): error TS2307: Cannot find module './controllers/auth.controller' or its corresponding type declarations.
+src/inversify.config.ts(64,33): error TS2307: Cannot find module './controllers/admin.controller' or its corresponding type declarations.
+src/inversify.config.ts(65,34): error TS2307: Cannot find module './controllers/mentor.controller' or its corresponding type declarations.
+src/inversify.config.ts(66,31): error TS2307: Cannot find module './controllers/otp.controller' or its corresponding type declarations.
+src/inversify.config.ts(67,38): error TS2307: Cannot find module './controllers/trialClass.controller' or its corresponding type declarations.
+src/inversify.config.ts(68,33): error TS2307: Cannot find module '@/controllers/grade.controller' or its corresponding type declarations.
+src/inversify.config.ts(69,35): error TS2307: Cannot find module '@/controllers/subject.controller' or its corresponding type declarations.
+src/inversify.config.ts(70,32): error TS2307: Cannot find module './controllers/role.controller' or its corresponding type declarations.
+src/inversify.config.ts(71,37): error TS2307: Cannot find module './controllers/videoCall.controller' or its corresponding type declarations.
+src/inversify.config.ts(72,44): error TS2307: Cannot find module './controllers/mentorTrialClass.controller' or its corresponding type declarations.
+src/inversify.config.ts(73,38): error TS2307: Cannot find module './controllers/attendance.controller' or its corresponding type declarations.
+src/inversify.config.ts(74,32): error TS2307: Cannot find module './controllers/chat.controller' or its corresponding type declarations.
+src/inversify.config.ts(75,39): error TS2307: Cannot find module './controllers/courseAdmin.controller' or its corresponding type declarations.
+src/inversify.config.ts(76,40): error TS2307: Cannot find module './controllers/availability.controller' or its corresponding type declarations.
+src/inversify.config.ts(77,34): error TS2307: Cannot find module './repositories/course.repository' or its corresponding type declarations.
+src/inversify.config.ts(78,36): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/courseAdminService.js'?
+src/inversify.config.ts(79,31): error TS2307: Cannot find module './services/course.service' or its corresponding type declarations.
+src/inversify.config.ts(82,38): error TS2307: Cannot find module './services/mentorRequest.service' or its corresponding type declarations.
+src/inversify.config.ts(83,41): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/repositories/ISessionRepository.js'?
+src/inversify.config.ts(84,35): error TS2307: Cannot find module './repositories/session.repository' or its corresponding type declarations.
+src/inversify.config.ts(85,38): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/services/ISessionService.js'?
+src/inversify.config.ts(86,32): error TS2307: Cannot find module './services/session.service' or its corresponding type declarations.
+src/inversify.config.ts(88,41): error TS2307: Cannot find module './repositories/studyMaterial.repository' or its corresponding type declarations.
+src/inversify.config.ts(89,38): error TS2307: Cannot find module './services/studyMaterial.service' or its corresponding type declarations.
+src/inversify.config.ts(90,41): error TS2307: Cannot find module './controllers/studyMaterial.controller' or its corresponding type declarations.
+src/inversify.config.ts(91,47): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/repositories/IStudyMaterialRepository.js'?
+src/inversify.config.ts(92,44): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/services/IStudyMaterialService.js'?
+src/inversify.config.ts(93,35): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './repositories/ExampleRepository.js'?
+src/inversify.config.ts(94,32): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/ExampleService.js'?
+src/inversify.config.ts(95,35): error TS2307: Cannot find module './controllers/example.controller' or its corresponding type declarations.
+src/inversify.config.ts(96,35): error TS2307: Cannot find module './repositories/payment.repository' or its corresponding type declarations.
+src/inversify.config.ts(97,40): error TS2307: Cannot find module './repositories/subscription.repository' or its corresponding type declarations.
+src/inversify.config.ts(98,41): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/repositories/IPaymentRepository.js'?
+src/inversify.config.ts(99,46): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/repositories/ISubscriptionRepository.js'?
+src/inversify.config.ts(132,48): error TS2307: Cannot find module './repositories/studyMaterial.repository' or its corresponding type declarations.
+src/inversify.config.ts(133,54): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/repositories/IAssignmentSubmissionRepository.js'?
+src/inversify.config.ts(136,42): error TS2307: Cannot find module './repositories/studentSubject.repository' or its corresponding type declarations.
+src/inversify.config.ts(137,48): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/repositories/IStudentSubjectRepository.js'?
+src/inversify.config.ts(140,46): error TS2307: Cannot find module './repositories/mentorAvailability.repository' or its corresponding type declarations.
+src/inversify.config.ts(141,52): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/repositories/IMentorAvailabilityRepository.js'?
+src/inversify.config.ts(144,45): error TS2307: Cannot find module './repositories/studentEnrollment.repository' or its corresponding type declarations.
+src/inversify.config.ts(145,51): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/repositories/IStudentEnrollmentRepository.js'?
+src/inversify.config.ts(198,32): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/session/PricingService.js'?
+src/inversify.config.ts(203,36): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/scheduling/BookingSyncService.js'?
+src/inversify.config.ts(204,42): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/services/IBookingSyncService.js'?
+src/inversify.config.ts(207,40): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/scheduling/LeaveManagementService.js'?
+src/inversify.config.ts(208,46): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/services/ILeaveManagementService.js'?
+src/inversify.config.ts(211,38): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/scheduling/TimeSlotQueryService.js'?
+src/inversify.config.ts(212,44): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/services/ITimeSlotQueryService.js'?
+src/inversify.config.ts(215,39): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/scheduling/SlotGenerationService.js'?
+src/inversify.config.ts(216,45): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/services/ISlotGenerationService.js'?
+src/inversify.config.ts(227,35): error TS2307: Cannot find module './controllers/student.controller' or its corresponding type declarations.
+src/inversify.config.ts(241,40): error TS2307: Cannot find module './controllers/subscription.controller' or its corresponding type declarations.
+src/inversify.config.ts(250,41): error TS2307: Cannot find module '@/repositories/courseRequestRepository' or its corresponding type declarations.
+src/inversify.config.ts(251,38): error TS2307: Cannot find module '@/services/courseRequestService' or its corresponding type declarations.
+src/inversify.config.ts(252,41): error TS2307: Cannot find module '@/controllers/courseRequest.controller' or its corresponding type declarations.
+src/inversify.config.ts(254,44): error TS2307: Cannot find module '@/interfaces/services/ICourseRequestService' or its corresponding type declarations.
+src/inversify.config.ts(255,38): error TS2307: Cannot find module '@/interfaces/services/ISubjectService' or its corresponding type declarations.
+src/inversify.config.ts(265,34): error TS2307: Cannot find module '@/controllers/course.controller' or its corresponding type declarations.
+src/inversify.config.ts(276,32): error TS2307: Cannot find module './services/payment.service' or its corresponding type declarations.
+src/inversify.config.ts(277,35): error TS2307: Cannot find module './controllers/payment.controller' or its corresponding type declarations.
+src/inversify.config.ts(283,38): error TS2307: Cannot find module './repositories/enrollment.repository' or its corresponding type declarations.
+src/inversify.config.ts(284,35): error TS2307: Cannot find module './services/enrollment.service' or its corresponding type declarations.
+src/inversify.config.ts(285,38): error TS2307: Cannot find module './controllers/enrollment.controller' or its corresponding type declarations.
+src/inversify.config.ts(292,40): error TS2307: Cannot find module './services/mentorDashboard.service' or its corresponding type declarations.
+src/inversify.config.ts(293,43): error TS2307: Cannot find module './controllers/mentorDashboard.controller' or its corresponding type declarations.
+src/inversify.config.ts(300,44): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/services/IMentorRequestService.js'?
+src/inversify.config.ts(308,38): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/repositories/IExamRepository.js'?
+src/inversify.config.ts(309,32): error TS2307: Cannot find module './repositories/exam.repository' or its corresponding type declarations.
+src/inversify.config.ts(310,35): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './interfaces/services/IExamService.js'?
+src/inversify.config.ts(311,29): error TS2307: Cannot find module './services/exam.service' or its corresponding type declarations.
+src/inversify.config.ts(312,32): error TS2307: Cannot find module './controllers/exam.controller' or its corresponding type declarations.
+src/inversify.config.ts(313,41): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/exam/ExamAccessPolicyService.js'?
+src/inversify.config.ts(314,36): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/exam/ExamScoringService.js'?
+src/inversify.config.ts(315,36): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/exam/ExamResultEnricher.js'?
+src/mappers/AdminMapper.ts(1,29): error TS2307: Cannot find module '../interfaces/models/admin.interface' or its corresponding type declarations.
+src/mappers/AdminMapper.ts(5,8): error TS2307: Cannot find module '@/dtos/admin/AdminLoginResponseDTO' or its corresponding type declarations.
+src/mappers/MentorMapper.ts(7,8): error TS2307: Cannot find module '../interfaces/models/mentor.interface' or its corresponding type declarations.
+src/mappers/MentorMapper.ts(14,8): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean '../dtos/mentor/MentorResponseDTO.js'?
+src/mappers/MentorMapper.ts(15,32): error TS2307: Cannot find module '@/domain/enums/ApprovalStatus' or its corresponding type declarations.
+src/mappers/StudentMapper.ts(9,8): error TS2307: Cannot find module '@/interfaces/models/student.interface' or its corresponding type declarations.
+src/mappers/StudentMapper.ts(13,8): error TS2307: Cannot find module '@/interfaces/auth/auth.interface' or its corresponding type declarations.
+src/mappers/StudentMapper.ts(14,45): error TS2307: Cannot find module '@/dtos/auth/UserResponseDTO' or its corresponding type declarations.
+src/mappers/StudentMapper.ts(15,41): error TS2307: Cannot find module '@/enums/studentOnboarding.enum' or its corresponding type declarations.
+src/mappers/StudentMapper.ts(16,32): error TS2307: Cannot find module '@/domain/enums/ApprovalStatus' or its corresponding type declarations.
+src/mappers/StudentMapper.ts(65,54): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/mappers/StudentMapper.ts(66,57): error TS7006: Parameter 'slot' implicitly has an 'any' type.
+src/mappers/StudentMapper.ts(225,51): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/mappers/StudentMapper.ts(226,54): error TS7006: Parameter 'slot' implicitly has an 'any' type.
+src/mappers/trialClassMapper.ts(1,42): error TS2307: Cannot find module '@/models/student/trialClass.model' or its corresponding type declarations.
+src/mappers/trialClassMapper.ts(2,44): error TS2307: Cannot find module '@/dtos/student/trialClassDTO' or its corresponding type declarations.
+src/mappers/userMapper.ts(5,8): error TS2307: Cannot find module '../interfaces/auth/auth.interface' or its corresponding type declarations.
+src/mappers/userMapper.ts(6,68): error TS2307: Cannot find module '@/dtos/auth/UserResponseDTO' or its corresponding type declarations.
+src/scripts/migrate_payments.ts(3,30): error TS2307: Cannot find module '../models/student/student.model' or its corresponding type declarations.
+src/scripts/migrate_payments.ts(4,30): error TS2307: Cannot find module '../models/payment.model' or its corresponding type declarations.
+src/scripts/seedCurriculum.ts(4,23): error TS2307: Cannot find module '../models/grade.model' or its corresponding type declarations.
+src/scripts/seedCurriculum.ts(5,25): error TS2307: Cannot find module '../models/subject.model' or its corresponding type declarations.
+src/scripts/seedPlans.ts(3,39): error TS2307: Cannot find module '../models/subscription/subscriptionPlan.model' or its corresponding type declarations.
+src/server.ts(18,17): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './app.js'?
+src/server.ts(19,27): error TS2307: Cannot find module './inversify.config' or its corresponding type declarations.
+src/server.ts(21,31): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/SocketService.js'?
+src/server.ts(22,29): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/CronService.js'?
+src/server.ts(23,37): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './services/NotificationManager.js'?
+src/server.ts(24,23): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './types.js'?
+src/services/courseAdminService.ts(361,45): error TS2307: Cannot find module '../interfaces/models/timeSlot.interface' or its corresponding type declarations.
+src/services/courseAdminService.ts(622,123): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean '../interfaces/repositories/ICourseRepository.js'?
+src/services/exam.service.ts(47,33): error TS2339: Property 'create' does not exist on type 'IExamRepository'.
+src/services/exam.service.ts(51,45): error TS2339: Property 'findById' does not exist on type 'IExamRepository'.
+src/services/exam.service.ts(124,52): error TS2339: Property 'updateById' does not exist on type 'IExamRepository'.
+src/services/exam.service.ts(132,32): error TS2339: Property 'deleteById' does not exist on type 'IExamRepository'.
+src/services/exam.service.ts(136,45): error TS2339: Property 'findById' does not exist on type 'IExamRepository'.
+src/services/exam.service.ts(166,45): error TS2339: Property 'findById' does not exist on type 'IExamRepository'.
+src/services/mentorRequest.service.ts(110,68): error TS2307: Cannot find module '../interfaces/models/student.interface' or its corresponding type declarations.
+src/services/mentorRequest.service.ts(111,14): error TS7006: Parameter 'slot' implicitly has an 'any' type.
+src/services/mentorRequest.service.ts(143,67): error TS2307: Cannot find module '../interfaces/models/student.interface' or its corresponding type declarations.
+src/services/mentorRequest.service.ts(192,68): error TS2307: Cannot find module '../interfaces/models/student.interface' or its corresponding type declarations.
+src/services/mentorRequest.service.ts(193,65): error TS2307: Cannot find module '../interfaces/models/student.interface' or its corresponding type declarations.
+src/services/mentorRequest.service.ts(304,67): error TS2307: Cannot find module '../models/course.model' or its corresponding type declarations.
+src/services/mentorRequest.service.ts(305,78): error TS18048: 'course' is possibly 'undefined'.
+src/services/mentorRequest.service.ts(310,36): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean '../interfaces/repositories/ICourseRepository.js'?
+src/services/mentorRequest.service.ts(331,34): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean '../interfaces/repositories/ICourseRepository.js'?
+src/services/mentorRequest.service.ts(331,118): error TS2307: Cannot find module '../models/course.model' or its corresponding type declarations.
+src/services/mentorRequest.service.ts(344,42): error TS2307: Cannot find module '../models/enrollment.model' or its corresponding type declarations.
+src/services/mentorRequest.service.ts(359,30): error TS18048: 'course' is possibly 'undefined'.
+src/services/mentorRequest.service.ts(614,44): error TS2307: Cannot find module '../interfaces/models/timeSlot.interface' or its corresponding type declarations.
+src/services/mentorRequest.service.ts(656,76): error TS2307: Cannot find module '../interfaces/models/session.interface' or its corresponding type declarations.
+src/test-mentor-query.ts(3,29): error TS2307: Cannot find module './models/mentor/mentor.model' or its corresponding type declarations.
+src/test-time-util.ts(2,69): error TS2307: Cannot find module './utils/time.util' or its corresponding type declarations.

@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Bell, Check, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { ROUTES } from '../../constants/routes.constants';
 import { getUserNotifications, markNotificationAsRead, type UserNotification } from "../../api/userApi";
 import socketService from "../../services/socketService";
 
@@ -59,7 +60,7 @@ export const NotificationBell: React.FC = () => {
         handleMarkAsRead(null, n._id);
     }
     setIsOpen(false);
-    navigate('/notifications');
+    navigate(ROUTES.COMMON.NOTIFICATIONS);
   };
 
   return (
@@ -140,7 +141,7 @@ export const NotificationBell: React.FC = () => {
                 <button 
                     onClick={() => {
                         setIsOpen(false);
-                        navigate('/notifications'); 
+                        navigate(ROUTES.COMMON.NOTIFICATIONS); 
                     }}
                     className="w-full py-2 text-xs font-semibold text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 rounded-lg transition-colors"
                 >

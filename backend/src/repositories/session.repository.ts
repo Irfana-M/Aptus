@@ -1,9 +1,9 @@
 
 import { injectable } from "inversify";
-import { BaseRepository } from "./baseRepository";
-import type { ISession } from "../interfaces/models/session.interface";
-import { SessionModel } from "../models/scheduling/session.model";
-import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository";
+import { BaseRepository } from "./baseRepository.js";
+import type { ISession } from "../interfaces/models/session.interface.js";
+import { SessionModel } from "../models/scheduling/session.model.js";
+import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository.js";
 import type { FilterQuery } from "mongoose";
 
 @injectable()

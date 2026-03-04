@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { ROUTES } from "../../../constants/routes.constants";
 import {
   Users,
   Clock,
@@ -23,6 +24,7 @@ import type { AppDispatch, RootState } from "../../../app/store";
 import { logoutUser } from "../../../features/auth/authThunks";
 import { QuestionType } from "../../../types/examTypes";
 import type { CreateQuestionDTO } from "../../../types/examTypes";
+import { Loader } from "../../../components/ui/Loader";
 import toast from "react-hot-toast";
 
 const CreateExam: React.FC = () => {
@@ -93,7 +95,7 @@ const CreateExam: React.FC = () => {
 
   const handleLogout = async () => {
     await dispatch(logoutUser());
-    navigate("/login");
+    navigate(ROUTES.LOGIN);
   };
 
   const handleAddQuestion = () => {
@@ -219,37 +221,37 @@ const CreateExam: React.FC = () => {
 
     if (createExam.fulfilled.match(result)) {
       toast.success("Exam created successfully!");
-      navigate("/mentor/exams");
+      navigate(ROUTES.MENTOR.EXAMS);
     } else {
       toast.error("Failed to create exam");
     }
   };
 
   const mentorNavItems: NavItem[] = [
-    { icon: <Home size={20} />, label: "Dashboard", path: "/mentor/dashboard" },
-    { icon: <User size={20} />, label: "Profile", path: "/mentor/profile" },
+    { icon: <Home size={20} />, label: "Dashboard", path: ROUTES.MENTOR.DASHBOARD },
+    { icon: <User size={20} />, label: "Profile", path: ROUTES.MENTOR.PROFILE },
     {
       icon: <Users size={20} />,
       label: "Students/Batches",
-      path: "/mentor/students",
+      path: ROUTES.MENTOR.STUDENTS,
     },
     {
       icon: <Calendar size={20} />,
       label: "Attendance",
-      path: "/mentor/attendance",
+      path: ROUTES.MENTOR.ATTENDANCE,
     },
     {
       icon: <BookOpen size={20} />,
       label: "Classroom",
-      path: "/mentor/classroom",
+      path: ROUTES.MENTOR.CLASSROOM,
     },
-      { icon: <ClipboardList size={20} />, label: 'Class History', path: '/mentor/class-history' },
+      { icon: <ClipboardList size={20} />, label: 'Class History', path: ROUTES.MENTOR.CLASS_HISTORY },
     {
       icon: <Clock size={20} />,
       label: "Availability",
-      path: "/mentor/availability",
+      path: ROUTES.MENTOR.AVAILABILITY,
     },
-    { icon: <FileText size={20} />, label: "Exams", path: "/mentor/exams" },
+    { icon: <FileText size={20} />, label: "Exams", path: ROUTES.MENTOR.EXAMS },
   ];
 
   const dashboardUser = {
@@ -270,7 +272,7 @@ const CreateExam: React.FC = () => {
       <div className="p-6 max-w-4xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
           <button
-            onClick={() => navigate("/mentor/exams")}
+            onClick={() => navigate(ROUTES.MENTOR.EXAMS)}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft size={20} className="text-gray-600" />
@@ -592,7 +594,7 @@ const CreateExam: React.FC = () => {
               className={`flex items-center gap-2 px-8 py-3 bg-cyan-600 text-white rounded-lg font-medium transition-colors ${loading ? "opacity-70 cursor-not-allowed" : "hover:bg-cyan-700"}`}
             >
               {loading ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <Loader color="border-white" size="sm" />
               ) : (
                 <Save size={20} />
               )}

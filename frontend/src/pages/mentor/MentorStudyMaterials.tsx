@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { MentorLayout } from '../../components/mentor/MentorLayout';
-import { FileText, ClipboardList, Plus, Download, MessageSquare, Users, Calendar } from 'lucide-react';
+import { FileText, ClipboardList, Plus, Download, MessageSquare, Users, Calendar, History } from 'lucide-react';
+import { Loader } from '../../components/ui/Loader';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { getMentorMaterials, getAssignmentSubmissions, provideFeedback, getMentorDownloadUrl, type StudyMaterial, type AssignmentSubmission } from '../../api/classroomApi';
 import { toast } from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -179,9 +181,7 @@ const MentorStudyMaterials: React.FC = () => {
       {/* Content */}
       <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
         {loading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map(i => <div key={i} className="h-24 bg-slate-50 rounded-2xl animate-pulse" />)}
-          </div>
+          <Loader size="lg" text="Loading content..." />
         ) : showSubmissions && selectedAssignment ? (
           /* Submissions View */
           <div>
@@ -237,9 +237,11 @@ const MentorStudyMaterials: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 bg-slate-50 rounded-2xl">
-                <p className="text-slate-500">No submissions yet</p>
-              </div>
+              <EmptyState 
+                icon={History} 
+                title="No submissions yet" 
+                description="Check back later for student submissions." 
+              />
             )}
           </div>
         ) : activeTab === 'materials' ? (
@@ -270,11 +272,13 @@ const MentorStudyMaterials: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="text-center py-12">
-              <FileText size={48} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-slate-900 font-bold">No study materials uploaded</p>
-              <p className="text-slate-500 text-sm mt-1">Upload materials after completing sessions</p>
-            </div>
+            <EmptyState 
+              icon={FileText} 
+              title="No study materials uploaded" 
+              description="Upload materials after completing sessions." 
+              actionLabel="Upload Now"
+              onAction={() => setShowUploadModal(true)}
+            />
           )
         ) : (
           /* Assignments View */
@@ -330,11 +334,13 @@ const MentorStudyMaterials: React.FC = () => {
               })}
             </div>
           ) : (
-            <div className="text-center py-12">
-              <ClipboardList size={48} className="mx-auto text-slate-300 mb-4" />
-              <p className="text-slate-900 font-bold">No assignments created</p>
-              <p className="text-slate-500 text-sm mt-1">Create your first assignment to get started</p>
-            </div>
+            <EmptyState 
+              icon={ClipboardList} 
+              title="No assignments created" 
+              description="Create your first assignment to get started." 
+              actionLabel="Create Assignment"
+              onAction={() => setShowCreateModal(true)}
+            />
           )
         )}
       </div>

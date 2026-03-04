@@ -29,12 +29,8 @@ import {
 } from "lucide-react";
 import { MentorAssignmentModal } from "../../components/admin/MentorAssignmentModal";
 import type { TrialClassResponse } from "../../types/trialTypes";
-interface Column<T> {
-  header: string;
-  accessor: keyof T | ((row: T) => React.ReactNode);
-  sortable?: boolean;
-  className?: string;
-}
+import type { Column } from "../../types/table.types";
+import { Loader } from "../../components/ui/Loader";
 
 export const TrialClassesManagement: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -298,10 +294,7 @@ export const TrialClassesManagement: React.FC = () => {
           onClose={() => setSidebarOpen(false)}
         />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading trial classes...</p>
-          </div>
+          <Loader size="lg" text="Loading trial classes..." />
         </div>
       </div>
     );

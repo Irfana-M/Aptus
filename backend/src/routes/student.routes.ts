@@ -1,19 +1,19 @@
 import { Router } from "express";
-import { STUDENT_ROUTES } from "../constants/routes";
-import { container } from "@/inversify.config";
-import { TYPES } from "@/types";
-import { TrialClassController } from "@/controllers/trialClass.controller";
-import { GradeController } from "@/controllers/grade.controller";
-import { SubjectController } from "@/controllers/subject.controller";
-import { requireAuth } from "../middlewares/authMiddleware";
-import { requireRole } from "@/middlewares/role.middleware";
-import { requireAccess } from "@/middlewares/studentAccessMiddleware";
-import { AccessState } from "@/constants/accessControl";
-import type { ISessionService } from "@/interfaces/services/ISessionService";
-import type { ITimeSlotRepository } from "@/interfaces/repositories/ITimeSlotRepository";
-import type { ITimeSlot } from "@/interfaces/models/timeSlot.interface";
+import { STUDENT_ROUTES } from "../constants/routes.js";
+import { container } from "../inversify.config.js";
+import { TYPES } from "../types.js";
+import { TrialClassController } from "../controllers/trialClass.controller.js";
+import { GradeController } from "../controllers/grade.controller.js";
+import { SubjectController } from "../controllers/subject.controller.js";
+import { requireAuth } from "../middlewares/authMiddleware.js";
+import { requireRole } from "../middlewares/role.middleware.js";
+import { requireAccess } from "../middlewares/studentAccessMiddleware.js";
+import { AccessState } from "../constants/accessControl.js";
+import type { ISessionService } from "../interfaces/services/ISessionService.js";
+import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository.js";
+import type { ITimeSlot } from "../interfaces/models/timeSlot.interface.js";
 
-import { StudyMaterialController } from "@/controllers/studyMaterial.controller";
+import { StudyMaterialController } from "../controllers/studyMaterial.controller.js";
 
 const studentRouter = Router();
 
@@ -96,7 +96,7 @@ studentRouter.get(
 );
 
 // === FULL ACCESS ROUTES (Requires Active Subscription) ===
-import { CourseRequestController } from "@/controllers/courseRequest.controller";
+import { CourseRequestController } from "../controllers/courseRequest.controller.js";
 const courseRequestController = container.get<CourseRequestController>(TYPES.CourseRequestController);
 
 studentRouter.post(
@@ -107,7 +107,7 @@ studentRouter.post(
   courseRequestController.createRequest.bind(courseRequestController)
 );
 
-import { CourseController } from "@/controllers/course.controller";
+import { CourseController } from "../controllers/course.controller.js";
 const courseController = container.get<CourseController>(TYPES.CourseController);
 
 studentRouter.get(
@@ -127,8 +127,8 @@ studentRouter.get(
 );
 
 // === ACCOUNT & PROFILE ROUTES ===
-import { StudentController } from "@/controllers/student.controller";
-import { upload } from "../middlewares/upload.middleware";
+import { StudentController } from "../controllers/student.controller.js";
+import { upload } from "../middlewares/upload.middleware.js";
 const studentController = container.get<StudentController>(TYPES.StudentController);
 const sessionService = container.get<ISessionService>(TYPES.ISessionService);
 
@@ -137,18 +137,7 @@ studentRouter.get(
   requireAuth,
   requireRole("student"),
   requireAccess(AccessState.FULLY_QUALIFIED),
-  async (req, res) => {
-    try {
-      if (!req.user?.id) {
-        return res.status(401).json({ success: false, message: "Unauthorized" });
-      }
-      const studentId = req.user.id;
-      const sessions = await sessionService.getStudentUpcomingSessions(studentId);
-      res.status(200).json({ success: true, data: sessions });
-    } catch (_error) {
-      res.status(500).json({ success: false, message: "Failed to fetch sessions" });
-    }
-  }
+  studentController.getUpcomingSessions.bind(studentController)
 );
 
 studentRouter.get(
@@ -234,7 +223,7 @@ studentRouter.get(
             const now = new Date();
             const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
             
-            const bookings = await import("@/models/scheduling/booking.model").then(m => m.BookingModel.find({ studentId, status: 'scheduled' }).lean());
+            const bookings = await import("../models/scheduling/booking.model.js").then(m => m.BookingModel.find({ studentId, status: 'scheduled' }).lean());
             
             const debugInfo = {
                 studentId,
@@ -311,5 +300,4 @@ studentRouter.get(
   requireRole("student"),
   studyMaterialController.getDownloadUrl.bind(studyMaterialController)
 );
-
 export default studentRouter;

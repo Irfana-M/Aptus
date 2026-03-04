@@ -1,48 +1,52 @@
 import { injectable, inject } from "inversify";
-import { Types } from "mongoose";
-import { TYPES } from "../types";
-import type { IAdminRepository } from "../interfaces/repositories/IAdminRepository";
-import { generateAccessToken, generateRefreshToken } from "../utils/jwt.util";
-import { comparePasswords } from "../utils/password.utils";
-import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository";
-import { logger } from "../utils/logger";
-import type { MentorProfile } from "../interfaces/models/mentor.interface";
-import type { IStudentRepository } from "@/interfaces/repositories/IStudentRepository";
-import { AppError } from "../utils/AppError";
-import { HttpStatusCode } from "../constants/httpStatus";
-import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO";
-import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
-import type { IAdminService } from "@/interfaces/services/IAdminService";
-import { AdminMapper } from "@/mappers/AdminMapper";
-import { MentorMapper } from "@/mappers/MentorMapper";
-import type { ICourseRepository } from "@/interfaces/repositories/ICourseRepository";
-import type { IEnrollmentLinkRepository } from "@/interfaces/repositories/IEnrollmentLinkRepository";
+import { TYPES } from "../types.js";
+import type { IAdminRepository } from "../interfaces/repositories/IAdminRepository.js";
+import { generateAccessToken, generateRefreshToken } from "../utils/jwt.util.js";
+import { comparePasswords } from "../utils/password.utils.js";
+import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository.js";
+import { logger } from "../utils/logger.js";
+import type { MentorProfile } from "../interfaces/models/mentor.interface.js";
+import type { IStudentRepository } from "@/interfaces/repositories/IStudentRepository.js";
+import { AppError } from "../utils/AppError.js";
+import { HttpStatusCode } from "../constants/httpStatus.js";
+import { MESSAGES } from "../constants/messages.constants.js";
+import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO.js";
+import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO.js";
+import type { IAdminService } from "@/interfaces/services/IAdminService.js";
+import { AdminMapper } from "@/mappers/AdminMapper.js";
+import { MentorMapper } from "@/mappers/MentorMapper.js";
+import type { ICourseRepository } from "@/interfaces/repositories/ICourseRepository.js";
+import type { IEnrollmentLinkRepository } from "@/interfaces/repositories/IEnrollmentLinkRepository.js";
 import type {
   AdminLoginResponseDto,
   DashboardDataDto,
-} from "@/dtos/admin/AdminLoginResponseDTO";
-import { getSignedFileUrl } from "@/utils/s3Upload";
-import type { IEmailService } from "@/interfaces/services/IEmailService";
-import { StudentMapper } from "@/mappers/StudentMapper";
+} from "@/dtos/admin/AdminLoginResponseDTO.js";
+import { getSignedFileUrl } from "@/utils/s3Upload.js";
+import type { IEmailService } from "@/interfaces/services/IEmailService.js";
+import { StudentMapper } from "@/mappers/StudentMapper.js";
 import bcrypt from "bcryptjs";
-import type { SubscriptionDetails } from "@/dtos/auth/UserResponseDTO";
-import { TrialClassMapper } from "@/mappers/trialClassMapper";
-import { type ITrialClassDocument } from "@/models/student/trialClass.model";
-import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
-import type { TrialClassResponseDto } from "@/dtos/student/trialClassDTO";
-import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository";
-import type { MentorPaginationParams, StudentPaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes";
-import { formatPaginatedResult } from "@/utils/pagination.util";
-import { InternalEventEmitter } from "@/utils/InternalEventEmitter";
-import { EVENTS } from "@/utils/InternalEventEmitter";
-import { normalizeTimeTo24h, isSlotMatching } from "../utils/time.util";
-import { ApprovalStatus } from "@/domain/enums/ApprovalStatus";
-import type { IPaymentRepository } from "@/interfaces/repositories/IPaymentRepository";
-import type { FinanceDashboardDataDto } from "@/dtos/admin/AdminLoginResponseDTO";
+import type { SubscriptionDetails } from "@/dtos/auth/UserResponseDTO.js";
+import { TrialClassMapper } from "@/mappers/trialClassMapper.js";
+import { type ITrialClassDocument } from "@/models/student/trialClass.model.js";
+import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository.js";
+import type { TrialClassResponseDto } from "@/dtos/student/trialClassDTO.js";
+import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository.js";
+import type { MentorPaginationParams, StudentPaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes.js";
+import { formatPaginatedResult } from "@/utils/pagination.util.js";
+import { InternalEventEmitter } from "@/utils/InternalEventEmitter.js";
+import { EVENTS } from "@/utils/InternalEventEmitter.js";
+import { normalizeTimeTo24h, isSlotMatching } from "../utils/time.util.js";
+import { ApprovalStatus } from "@/domain/enums/ApprovalStatus.js";
+import type { IPaymentRepository } from "@/interfaces/repositories/IPaymentRepository.js";
+import type { FinanceDashboardDataDto } from "@/dtos/admin/AdminLoginResponseDTO.js";
 
 
 
-import type { IMentorRequestService } from "../interfaces/services/IMentorRequestService";
+import type { IMentorRequestService } from "../interfaces/services/IMentorRequestService.js";
+import type { IMentorAssignmentRequestRepository } from "@/interfaces/repositories/IMentorAssignmentRequestRepository.js";
+import type { ISessionRepository } from "@/interfaces/repositories/ISessionRepository.js";
+import type { ITimeSlotRepository } from "@/interfaces/repositories/ITimeSlotRepository.js";
+import type { INotificationService } from "@/interfaces/services/INotificationService.js";
 
 @injectable()
 export class AdminService implements IAdminService {
@@ -56,11 +60,11 @@ export class AdminService implements IAdminService {
     @inject(TYPES.ICourseRepository) private _courseRepo: ICourseRepository,
     @inject(TYPES.IEnrollmentLinkRepository) private _enrollmentLinkRepo: IEnrollmentLinkRepository,
     @inject(TYPES.IMentorRequestService) private _mentorRequestService: IMentorRequestService,
-    @inject(TYPES.IMentorAssignmentRequestRepository) private _requestRepo: import("../interfaces/repositories/IMentorAssignmentRequestRepository").IMentorAssignmentRequestRepository,
+    @inject(TYPES.IMentorAssignmentRequestRepository) private _requestRepo: IMentorAssignmentRequestRepository,
     @inject(TYPES.InternalEventEmitter) private _eventEmitter: InternalEventEmitter,
-    @inject(TYPES.ISessionRepository) private _sessionRepo: import("../interfaces/repositories/ISessionRepository").ISessionRepository,
-    @inject(TYPES.ITimeSlotRepository) private _timeSlotRepo: import("../interfaces/repositories/ITimeSlotRepository").ITimeSlotRepository,
-    @inject(TYPES.INotificationService) private _notificationService: import("../interfaces/services/INotificationService").INotificationService,
+    @inject(TYPES.ISessionRepository) private _sessionRepo: ISessionRepository,
+    @inject(TYPES.ITimeSlotRepository) private _timeSlotRepo: ITimeSlotRepository,
+    @inject(TYPES.INotificationService) private _notificationService: INotificationService,
     @inject(TYPES.IPaymentRepository) private _paymentRepo: IPaymentRepository,
   ) {}
 
@@ -69,12 +73,12 @@ export class AdminService implements IAdminService {
       const admin = await this._adminRepo.findByEmail(email);
 
       if (!admin) {
-        throw new AppError("Invalid credentials", HttpStatusCode.UNAUTHORIZED);
+        throw new AppError(MESSAGES.AUTH.INVALID_CREDENTIALS, HttpStatusCode.UNAUTHORIZED);
       }
 
       const isPasswordValid = await comparePasswords(password, admin.password);
       if (!isPasswordValid) {
-        throw new AppError("Invalid credentials", HttpStatusCode.UNAUTHORIZED);
+        throw new AppError(MESSAGES.AUTH.INVALID_CREDENTIALS, HttpStatusCode.UNAUTHORIZED);
       }
 
       const accessToken = generateAccessToken({
@@ -93,15 +97,17 @@ export class AdminService implements IAdminService {
     } catch (error: unknown) {
       logger.error("Admin login error:", error);
       if (error instanceof AppError) throw error;
-      throw new AppError("Login failed", HttpStatusCode.INTERNAL_SERVER_ERROR);
+      throw new AppError(MESSAGES.AUTH.LOGIN_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
   async getDashboardData(): Promise<DashboardDataDto> {
     try {
-      const [students, mentors] = await Promise.all([
+      const [students, mentors, activeSessionsCount, pendingApprovalsCount] = await Promise.all([
         this._studentRepo.findAllStudents(),
         this._mentorRepo.getAllMentors(),
+        this._sessionRepo.count({ status: 'in_progress' }),
+        this._mentorRepo.count({ approvalStatus: ApprovalStatus.PENDING })
       ]);
 
       const recentStudents = students.slice(-5).reverse();
@@ -114,6 +120,8 @@ export class AdminService implements IAdminService {
         totalMentors: mentors.length,
         recentStudents: recentStudents.length,
         recentMentors: recentMentors.length,
+        activeSessions: activeSessionsCount,
+        pendingApprovals: pendingApprovalsCount
       });
 
       const financeStats = await this.getFinanceStats().catch(err => {
@@ -127,11 +135,13 @@ export class AdminService implements IAdminService {
         recentStudents,
         recentMentors,
         finance: financeStats,
+        activeSessions: activeSessionsCount,
+        pendingApprovals: pendingApprovalsCount
       };
     } catch (error: unknown) {
       logger.error("Error fetching dashboard data:", error);
       throw new AppError(
-        "Failed to fetch dashboard data",
+        MESSAGES.ADMIN.DASHBOARD_FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -146,7 +156,7 @@ export class AdminService implements IAdminService {
     } catch (error: unknown) {
       logger.error("Error fetching all mentors:", error);
       throw new AppError(
-        "Failed to fetch mentors",
+        MESSAGES.MENTOR.FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -168,7 +178,7 @@ export class AdminService implements IAdminService {
     } catch (error: unknown) {
       logger.error("Error fetching paginated mentors:", error);
       throw new AppError(
-        "Failed to fetch mentors",
+        MESSAGES.MENTOR.FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -182,7 +192,7 @@ export class AdminService implements IAdminService {
     } catch (error: unknown) {
       logger.error("Error fetching all students:", error);
       throw new AppError(
-        "Failed to fetch students",
+        MESSAGES.STUDENT.FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -238,7 +248,7 @@ export class AdminService implements IAdminService {
     } catch (error: unknown) {
       logger.error("Error fetching paginated students:", error);
       throw new AppError(
-        "Failed to fetch students",
+        MESSAGES.STUDENT.FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -249,7 +259,7 @@ export class AdminService implements IAdminService {
       const mentor = await this._mentorRepo.findById(mentorId);
 
       if (!mentor) {
-        throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
 
       if (mentor.profilePicture) {
@@ -263,7 +273,7 @@ export class AdminService implements IAdminService {
       logger.error(`Error fetching mentor profile ${mentorId}:`, error);
       if (error instanceof AppError) throw error;
       throw new AppError(
-        "Failed to fetch mentor profile",
+        MESSAGES.MENTOR.FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -285,7 +295,7 @@ export class AdminService implements IAdminService {
 
       if (status === "rejected" && (!reason || reason.trim().length === 0)) {
         throw new AppError(
-          "Reason is required when rejecting a mentor",
+          MESSAGES.ADMIN.REJECTION_REASON_REQUIRED,
           HttpStatusCode.BAD_REQUEST
         );
       }
@@ -297,7 +307,7 @@ export class AdminService implements IAdminService {
       );
 
       if (!updatedMentor) {
-        throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
 
       await this.sendApprovalEmail(updatedMentor, status, reason);
@@ -321,7 +331,7 @@ export class AdminService implements IAdminService {
       logger.error(`Error updating mentor approval status ${mentorId}:`, error);
       if (error instanceof AppError) throw error;
       throw new AppError(
-        "Failed to update mentor approval status",
+        MESSAGES.ADMIN.UPDATE_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -380,13 +390,13 @@ export class AdminService implements IAdminService {
 
       const blocked = await this._mentorRepo.block(mentorId);
       if (!blocked) {
-        throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
 
       const mentor = await this._mentorRepo.findById(mentorId);
       if (!mentor) {
         throw new AppError(
-          "Mentor not found after blocking",
+          MESSAGES.AUTH.USER_NOT_FOUND,
           HttpStatusCode.NOT_FOUND
         );
       }
@@ -399,7 +409,7 @@ export class AdminService implements IAdminService {
       logger.error(`Error blocking mentor: ${mentorId}`, error);
       if (error instanceof AppError) throw error;
       throw new AppError(
-        "Failed to block mentor",
+        MESSAGES.ADMIN.BLOCK_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -411,13 +421,13 @@ export class AdminService implements IAdminService {
 
       const unblocked = await this._mentorRepo.unblock(mentorId);
       if (!unblocked) {
-        throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
 
       const mentor = await this._mentorRepo.findById(mentorId);
       if (!mentor) {
         throw new AppError(
-          "Mentor not found after unblocking",
+          MESSAGES.AUTH.USER_NOT_FOUND,
           HttpStatusCode.NOT_FOUND
         );
       }
@@ -430,7 +440,7 @@ export class AdminService implements IAdminService {
       logger.error(`Error unblocking mentor: ${mentorId}`, error);
       if (error instanceof AppError) throw error;
       throw new AppError(
-        "Failed to unblock mentor",
+        MESSAGES.ADMIN.UNBLOCK_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -449,7 +459,7 @@ async blockStudent(studentId: string): Promise<StudentBaseResponseDto> {
     logger.error(`Error blocking student: ${studentId}`, error);
     if (error instanceof AppError) throw error;
     throw new AppError(
-      "Failed to block student",
+      MESSAGES.ADMIN.BLOCK_FAILED,
       HttpStatusCode.INTERNAL_SERVER_ERROR
     );
   }
@@ -467,7 +477,7 @@ async unblockStudent(studentId: string): Promise<StudentBaseResponseDto> {
     logger.error(`Error unblocking student: ${studentId}`, error);
     if (error instanceof AppError) throw error;
     throw new AppError(
-      "Failed to unblock student",
+      MESSAGES.ADMIN.UNBLOCK_FAILED,
       HttpStatusCode.INTERNAL_SERVER_ERROR
     );
   }
@@ -495,7 +505,7 @@ async updateMentor(mentorId: string, data: Partial<MentorProfile>): Promise<Ment
     logger.error(`Error updating mentor: ${mentorId}`, error);
     if (error instanceof AppError) throw error;
     throw new AppError(
-      "Failed to update mentor",
+      MESSAGES.ADMIN.UPDATE_FAILED,
       HttpStatusCode.INTERNAL_SERVER_ERROR
     );
   }
@@ -510,7 +520,7 @@ async updateStudent(studentId: string, data: Partial<StudentBaseResponseDto>): P
     const updatedStudent = await this._studentRepo.updateById(studentId, studentUpdateData);
     
     if (!updatedStudent) {
-      throw new AppError("Student not found", HttpStatusCode.NOT_FOUND);
+      throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
     }
 
     const studentDto = StudentMapper.toStudentResponseDto(updatedStudent);
@@ -521,7 +531,7 @@ async updateStudent(studentId: string, data: Partial<StudentBaseResponseDto>): P
     logger.error(`Error updating student: ${studentId}`, error);
     if (error instanceof AppError) throw error;
     throw new AppError(
-      "Failed to update student",
+      MESSAGES.ADMIN.UPDATE_FAILED,
       HttpStatusCode.INTERNAL_SERVER_ERROR
     );
   }
@@ -541,7 +551,7 @@ async updateStudent(studentId: string, data: Partial<StudentBaseResponseDto>): P
       );
       if (existingStudent) {
         throw new AppError(
-          "Student with this email already exists",
+          MESSAGES.AUTH.USER_EXISTS,
           HttpStatusCode.CONFLICT
         );
       }
@@ -573,7 +583,7 @@ async updateStudent(studentId: string, data: Partial<StudentBaseResponseDto>): P
       logger.error(`Error adding student: ${studentData.email}`, error);
       if (error instanceof AppError) throw error;
       throw new AppError(
-        "Failed to add student",
+        MESSAGES.ADMIN.CREATE_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -593,7 +603,7 @@ async updateStudent(studentId: string, data: Partial<StudentBaseResponseDto>): P
 
     const existingMentor = await this._mentorRepo.findByEmail(mentorData.email);
     if (existingMentor) {
-      throw new AppError("Mentor with this email already exists", HttpStatusCode.CONFLICT);
+      throw new AppError(MESSAGES.AUTH.USER_EXISTS, HttpStatusCode.CONFLICT);
     }
 
     const temporaryPassword = Math.random().toString(36).slice(-8);
@@ -623,7 +633,7 @@ async updateStudent(studentId: string, data: Partial<StudentBaseResponseDto>): P
     const newMentor = await this._mentorRepo.create(mentorAuthData);
     
     if (!newMentor) {
-      throw new AppError("Failed to create mentor", HttpStatusCode.INTERNAL_SERVER_ERROR);
+      throw new AppError(MESSAGES.ADMIN.CREATE_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
 
     const mentorDto = MentorMapper.toResponseDto(newMentor);
@@ -634,7 +644,7 @@ async updateStudent(studentId: string, data: Partial<StudentBaseResponseDto>): P
     logger.error(`Error adding mentor: ${mentorData.email}`, error);
     if (error instanceof AppError) throw error;
     throw new AppError(
-      "Failed to add mentor",
+      MESSAGES.ADMIN.CREATE_FAILED,
       HttpStatusCode.INTERNAL_SERVER_ERROR
     );
   }
@@ -652,8 +662,8 @@ async getStudentsWithTrialStats(page: number, limit: number) {
       return {
         success: true,
         data: {
-          students: (result.students as unknown as import('../interfaces/models/student.interface').StudentProfile[]).map(s => {
-            const authUser = { ...s, role: 'student' as const } as unknown as import('../interfaces/auth/auth.interface').StudentAuthUser;
+          students: (result.students as unknown as import('../interfaces/models/student.interface.js').StudentProfile[]).map(student => {
+            const authUser = { ...student, role: 'student' as const } as unknown as import('../interfaces/auth/auth.interface.js').StudentAuthUser;
             return StudentMapper.toStudentResponseDto(authUser);
           }),
           pagination: {
@@ -689,7 +699,7 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
     if (error instanceof AppError) throw error;
     logger.error(`AdminService: Error fetching trial classes for student ${studentId}`, error);
     throw new AppError(
-      "Failed to fetch student trial classes",
+      MESSAGES.TRIAL_CLASS.FETCH_FAILED,
       HttpStatusCode.INTERNAL_SERVER_ERROR
     );
   }
@@ -713,7 +723,7 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
 
       const mentor = await this._mentorRepo.findById(mentorId);
       if (!mentor) {
-        throw new AppError("Mentor not found", HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
 
       const baseUrl = process.env.FRONTEND_URL || "http://localhost:5173";
@@ -728,37 +738,38 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
       const updatedTrialClass = await this._trialClassRepo.assignMentor(
         trialClassId, 
         mentorId, 
-        updates as any
+        updates as Partial<ITrialClassDocument>
       );
 
       if (!updatedTrialClass) {
-        throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.TRIAL_CLASS.NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
 
       const trialClassDto = TrialClassMapper.toResponseDto(updatedTrialClass);
 
       this._eventEmitter.emit(EVENTS.TRIAL_MENTOR_ASSIGNED, {
         trialClassId,
-        studentId: (updatedTrialClass as any).student?.toString() as string,
+        studentId: (updatedTrialClass as unknown as { student: { toString(): string } }).student.toString(),
         mentorId,
         mentorName: mentor.fullName,
-        subjectName: (updatedTrialClass.subject as any).subjectName || "Subject",
+        subjectName: (updatedTrialClass.subject as unknown as { subjectName?: string }).subjectName || "Subject",
         scheduledDate,
         scheduledTime,
         meetLink
       });
 
       // Send Notification to Student and Mentor
-      const studentId = (updatedTrialClass.student as any)._id?.toString() || (updatedTrialClass.student as any).toString();
-      const studentName = (updatedTrialClass.student as any).fullName || "Student";
-      const subjectName = (updatedTrialClass.subject as any).subjectName || "Subject";
+      const rawStudent = updatedTrialClass.student as unknown as { _id?: { toString(): string }, fullName?: string };
+      const studentIdForEmail = rawStudent._id?.toString() || (rawStudent as unknown as { toString(): string }).toString();
+      const studentName = rawStudent.fullName || "Student";
+      const subjectNameForEmail = (updatedTrialClass.subject as unknown as { subjectName?: string }).subjectName || "Subject";
 
       await this._notificationService.notifyMentorAssigned(
-          studentId,
+          studentIdForEmail,
           studentName,
           mentorId,
           mentor.fullName,
-          subjectName
+          subjectNameForEmail
       );
 
       logger.info(`AdminService: Successfully assigned mentor to trial class ${trialClassId} with meet link: ${meetLink}`);
@@ -768,7 +779,7 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
       if (error instanceof AppError) throw error;
       logger.error(`AdminService: Error assigning mentor to trial class ${trialClassId}`, error);
       throw new AppError(
-        "Failed to assign mentor to trial class",
+        MESSAGES.ADMIN.ASSIGN_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -781,7 +792,7 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
       const updatedTrialClass = await this._trialClassRepo.updateStatus(trialClassId, status, reason);
 
       if (!updatedTrialClass) {
-        throw new AppError("Trial class not found", HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.TRIAL_CLASS.NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
 
       const trialClassDto = TrialClassMapper.toResponseDto(updatedTrialClass);
@@ -793,7 +804,7 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
       if (error instanceof AppError) throw error;
       logger.error(`AdminService: Error updating trial class status ${trialClassId}`, error);
       throw new AppError(
-        "Failed to update trial class status",
+        MESSAGES.ADMIN.UPDATE_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -828,7 +839,7 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
     logger.error("AdminService: Error fetching all trial classes", error);
     if (error instanceof AppError) throw error;
     throw new AppError(
-      "Failed to fetch trial classes",
+      MESSAGES.TRIAL_CLASS.FETCH_FAILED,
       HttpStatusCode.INTERNAL_SERVER_ERROR
     );
   }
@@ -839,7 +850,7 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
     logger.info(`AdminService: Fetching trial class details - ${trialClassId}`);
 
     if (!trialClassId || trialClassId.trim() === '') {
-      throw new AppError("Trial class ID is required", HttpStatusCode.BAD_REQUEST);
+      throw new AppError(MESSAGES.TRIAL_CLASS.ID_REQUIRED, HttpStatusCode.BAD_REQUEST);
     }
 
     const trialClass = await this._trialClassRepo.findById(trialClassId);
@@ -857,7 +868,7 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
     if (error instanceof AppError) throw error;
     logger.error(`AdminService: Error fetching trial class details ${trialClassId}`, error);
     throw new AppError(
-      "Failed to fetch trial class details",
+      MESSAGES.TRIAL_CLASS.FETCH_FAILED,
       HttpStatusCode.INTERNAL_SERVER_ERROR
     );
   }
@@ -891,7 +902,7 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
         if ((!days || days.length === 0) && !timeSlot && !preferredDate) return true;
         if (!mentor.availability || mentor.availability.length === 0) return false;
 
-        const requestedDays = days ? days.map(d => d.toLowerCase()) : [];
+        const requestedDays = days ? days.map(day => day.toLowerCase()) : [];
         if (preferredDate) {
           const dayName = new Date(preferredDate).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
           if (!requestedDays.includes(dayName)) requestedDays.push(dayName);
@@ -903,7 +914,7 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
         if (!daysMatch) return false;
 
         if (timeSlot) {
-          const [reqStart, reqEnd] = timeSlot.split('-').map(t => t.trim());
+          const [reqStart, reqEnd] = timeSlot.split('-').map(part => part.trim());
 
           for (const day of requestedDays) {
             const daySlots = mentor.availability?.find(a => a.day.toLowerCase() === day)?.slots || [];
@@ -930,7 +941,7 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
       logger.error(`AdminService: Error fetching available mentors for subject ${subjectId}`, error);
       if (error instanceof AppError) throw error;
       throw new AppError(
-        "Failed to fetch available mentors",
+        MESSAGES.ADMIN.FETCH_FAILED,
         HttpStatusCode.INTERNAL_SERVER_ERROR
       );
     }
@@ -951,16 +962,16 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
       logger.info(`AdminService: Assigning mentor ${mentorId} to student ${studentId} for subject ${subjectId}`);
 
       let request = await this._requestRepo.findOne({
-        studentId: studentId as any,
-        subjectId: subjectId as any,
+        studentId: studentId as unknown as import('mongoose').Types.ObjectId,
+        subjectId: subjectId as unknown as import('mongoose').Types.ObjectId,
         status: 'pending'
       });
 
       if (!request) {
         request = await this._requestRepo.create({
-          studentId: studentId as any,
-          subjectId: subjectId as any,
-          mentorId: mentorId as any,
+          studentId: studentId as unknown as import('mongoose').Types.ObjectId,
+          subjectId: subjectId as unknown as import('mongoose').Types.ObjectId,
+          mentorId: mentorId as unknown as import('mongoose').Types.ObjectId,
           status: 'pending'
         });
       }
@@ -1000,13 +1011,13 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
       
       // STEP 1: Find existing course for this student and subject
       const existingCourses = await this._courseRepo.findByStudent(studentId);
-      const course = existingCourses.find((c: import('../models/course.model').ICourse) => 
+      const course = existingCourses.find((c: import('../models/course.model.js').ICourse) => 
         (c.subject.toString() === subjectId) &&
         c.isActive && c.status !== 'cancelled'
       );
 
       if (!course) {
-        throw new AppError("No active course found for this student and subject", HttpStatusCode.NOT_FOUND);
+        throw new AppError(MESSAGES.COURSE.NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
       
       const courseIdStr = (course as unknown as { _id: { toString(): string } })._id.toString();
@@ -1017,8 +1028,8 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
       const now = new Date();
       
       const futureSessions = await this._sessionRepo.find({
-          studentId: studentId as any,
-          subjectId: subjectId as any,
+          studentId: studentId as unknown as import('mongoose').Types.ObjectId,
+          subjectId: subjectId as unknown as import('mongoose').Types.ObjectId,
           startTime: { $gt: now },
           status: 'scheduled'
       });
@@ -1059,16 +1070,16 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
       const targetTimeSlot = overrides?.timeSlot || course.schedule?.timeSlot;
   
       if (!targetTimeSlot) {
-          throw new AppError("Cannot determine time slot for reassignment", HttpStatusCode.BAD_REQUEST);
+          throw new AppError(MESSAGES.SESSION.INVALID_STATE, HttpStatusCode.BAD_REQUEST);
       }
   
-      const [rawStart, rawEnd] = targetTimeSlot.split('-').map(s => s.trim());
+      const [rawStart, rawEnd] = targetTimeSlot.split('-').map(part => part.trim());
       const startTimeStr = normalizeTimeTo24h(rawStart || "00:00");
       const endTimeStr = normalizeTimeTo24h(rawEnd || "00:00");
   
       // Construct slots array
-      const newSlots = targetDays.map((d: string) => ({
-          day: d,
+      const newSlots = targetDays.map((targetDay: string) => ({
+          day: targetDay,
           startTime: startTimeStr,
           endTime: endTimeStr
       }));
@@ -1088,11 +1099,11 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
       
        if (!enrollmentId) {
             const enrollment = await this._enrollmentLinkRepo.findOne({ 
-                studentId: studentId as any,
+                studentId: studentId as unknown as import('mongoose').Types.ObjectId,
                 courseId: (course._id as unknown as string),
                 isActive: true
             });
-            enrollmentId = (enrollment as any)?._id?.toString() || "";
+            enrollmentId = (enrollment as unknown as { _id?: { toString(): string } })?._id?.toString() || "";
        }
   
       await this._mentorRequestService.generateSessionsForWeeks(
@@ -1127,8 +1138,8 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
 
       // STEP 5: Update mentor assignment request
       const request = await this._requestRepo.findOne({
-        studentId: studentId as any,
-        subjectId: subjectId as any
+        studentId: studentId as unknown as import('mongoose').Types.ObjectId,
+        subjectId: subjectId as unknown as import('mongoose').Types.ObjectId
       });
 
       if (request) {
@@ -1201,8 +1212,8 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
     try {
       logger.info(`AdminService: Searching students with query: ${query}`);
       const students = await this._studentRepo.searchStudents(query);
-      return students.map(s => {
-        const authUser = { ...(s as unknown as Record<string, unknown>), role: 'student' as const } as unknown as import('../interfaces/auth/auth.interface').StudentAuthUser;
+      return students.map(student => {
+        const authUser = { ...(student as unknown as Record<string, unknown>), role: 'student' as const } as unknown as import('../interfaces/auth/auth.interface.js').StudentAuthUser;
         return StudentMapper.toStudentResponseDto(authUser);
       });
     } catch (error: unknown) {

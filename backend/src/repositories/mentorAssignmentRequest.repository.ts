@@ -1,9 +1,9 @@
 import { injectable } from "inversify";
-import { MentorAssignmentRequest, type IMentorAssignmentRequest } from "../models/mentorAssignmentRequest.model";
-import { type IMentorAssignmentRequestRepository } from "../interfaces/repositories/IMentorAssignmentRequestRepository";
-import { AppError } from "@/utils/AppError";
-import { HttpStatusCode } from "@/constants/httpStatus";
-import { logger } from "@/utils/logger";
+import { MentorAssignmentRequest, type IMentorAssignmentRequest } from "../models/mentorAssignmentRequest.model.js";
+import { type IMentorAssignmentRequestRepository } from "../interfaces/repositories/IMentorAssignmentRequestRepository.js";
+import { AppError } from "@/utils/AppError.js";
+import { HttpStatusCode } from "@/constants/httpStatus.js";
+import { logger } from "@/utils/logger.js";
 import mongoose, { type FilterQuery } from "mongoose";
 
 @injectable()
@@ -40,12 +40,12 @@ export class MentorAssignmentRequestRepository implements IMentorAssignmentReque
       if (session) query.session(session);
       const result = await query.exec();
       if (result) {
-        const obj = result.toObject();
+        const requestObject = result.toObject();
         return {
-          ...obj,
-          student: obj.studentId,
-          mentor: obj.mentorId,
-          subject: obj.subjectId
+          ...requestObject,
+          student: requestObject.studentId,
+          mentor: requestObject.mentorId,
+          subject: requestObject.subjectId
         } as unknown as IMentorAssignmentRequest;
       }
       return null;

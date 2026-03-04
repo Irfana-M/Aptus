@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { container } from '../inversify.config';
-import { TYPES } from '../types';
-import { PaymentController } from '../controllers/payment.controller';
+import { container } from '../inversify.config.js';
+import { TYPES } from '../types.js';
+import { PaymentController } from '../controllers/payment.controller.js';
 
 const router = Router();
 const paymentController = container.get<PaymentController>(TYPES.PaymentController);

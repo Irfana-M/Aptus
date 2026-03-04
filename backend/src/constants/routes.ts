@@ -76,6 +76,7 @@ export const MENTOR_ROUTES = {
   STUDY_MATERIAL_DELETE: "/study-materials/:materialId",
   LEAVE_REQUEST: "/me/leave",
   SESSIONS: "/sessions",
+  UPCOMING_SESSIONS: "/me/sessions/upcoming",
   STUDENTS_ONE_TO_ONE: "/students/one-to-one",
   BATCHES: "/batches",
 };

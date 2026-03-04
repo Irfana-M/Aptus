@@ -1,8 +1,8 @@
-import type { CreateExamDTO } from "@/dtos/exam/CreateExamDTO";
-import type { UpdateExamDTO } from "@/dtos/exam/UpdateExamDTO";
-import type { SubmitExamDTO } from "@/dtos/exam/SubmitExamDTO";
-import type { IExam } from "../../models/exam.model";
-import type { IExamResult, ExamStatus } from "../../models/examResult.model";
+import type { CreateExamDTO } from "@/dtos/exam/CreateExamDTO.js";
+import type { UpdateExamDTO } from "@/dtos/exam/UpdateExamDTO.js";
+import type { SubmitExamDTO } from "@/dtos/exam/SubmitExamDTO.js";
+import type { IExam } from "../../models/exam.model.js";
+import type { IExamResult, ExamStatus } from "../../models/examResult.model.js";
 
 export interface IEnrichedExam extends IExam {
   attemptStatus: ExamStatus | null;

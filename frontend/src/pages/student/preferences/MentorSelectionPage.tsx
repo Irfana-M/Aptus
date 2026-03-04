@@ -8,8 +8,10 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../../components/ui/Button';
+import { Loader } from '../../../components/ui/Loader';
 import MentorDetailModal from '../../../components/students/MentorDetailModal';
 import type { MentorProfile } from '../../../features/mentor/mentorSlice';
+import { ROUTES } from '../../../constants/routes.constants';
 
 interface SelectedSubject {
     id: string;
@@ -90,7 +92,7 @@ const MentorSelectionPage: React.FC = () => {
 
         if (!selectedSubjects.length) {
             console.warn('Redirecting from MentorSelection: Missing subjects');
-            navigate('/student/preferences/subjects');
+            navigate(ROUTES.STUDENT.PREFERENCES.SUBJECTS);
             return;
         }
 
@@ -149,7 +151,7 @@ const MentorSelectionPage: React.FC = () => {
             return;
         }
 
-        navigate('/student/preferences/time-slots', { 
+        navigate(ROUTES.STUDENT.PREFERENCES.TIME_SLOTS, { 
             state: { 
                 selectedSubjects,
                 selectedMentors // Pass selected mentors to the next page
@@ -164,7 +166,7 @@ const MentorSelectionPage: React.FC = () => {
     useEffect(() => {
         if (isBasicPlan && profile) {
             console.log('🛡️ Basic plan detected, redirecting from mentor selection');
-            navigate('/student/dashboard');
+            navigate(ROUTES.STUDENT.DASHBOARD);
         }
     }, [isBasicPlan, profile, navigate]);
 
@@ -212,8 +214,8 @@ const MentorSelectionPage: React.FC = () => {
     if (localLoading || (profileLoading && !selectedSubjects.length)) {
         return (
             <StudentLayout title="Select Your Mentors">
-                <div className="min-h-[60vh] flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+                <div className="min-h-[60vh]">
+                    <Loader size="lg" text="Finding the best mentors for you..." />
                 </div>
             </StudentLayout>
         );
@@ -386,7 +388,7 @@ const MentorSelectionPage: React.FC = () => {
 
                     <div className="pt-8 mt-10 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-6">
                         <button
-                            onClick={() => navigate('/student/preferences/time-slots', { 
+                            onClick={() => navigate(ROUTES.STUDENT.PREFERENCES.TIME_SLOTS, { 
                                 state: { 
                                     selectedSubjects, 
                                     savedPreferences: pendingPreferences // Pass back as savedPreferences to restore state

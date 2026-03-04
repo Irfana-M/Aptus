@@ -63,4 +63,9 @@ export const mentorApi = {
     });
     return response.data.data;
   },
+  
+  getUpcomingSessions: async () => {
+    const response = await api.get(API_ROUTES.MENTOR.UPCOMING_SESSIONS);
+    return response.data.data;
+  },
 };

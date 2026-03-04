@@ -1,18 +1,13 @@
 import axios from "axios";
 import { AuthContext } from "../utils/authContext";
 
-/**
- * Standard API Response structure
- */
+
 export interface ApiResponse<T = unknown> {
   success: boolean;
   message?: string;
   data: T;
 }
 
-/**
- * Paginated API Response structure
- */
 export interface PaginatedResponse<T = unknown> {
   success: boolean;
   data: T[];
@@ -43,7 +38,7 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
       
-      // Send the active role as a hint to the backend
+
       if (activeRole) {
         config.headers['X-User-Role'] = activeRole;
       }

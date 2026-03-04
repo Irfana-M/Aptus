@@ -1,48 +1,55 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../../app/store";
-import { fetchAllEnrollmentsAdmin } from "../../features/admin/adminThunk";
+import { fetchEnrollmentsPaginated } from "../../features/admin/adminThunk";
+import { setEnrollmentsPagination } from "../../features/admin/adminSlice";
 import { DataTable } from "../../components/ui/DataTable";
 import { SearchAndFilters, type FilterConfig } from "../../components/ui/SearchAndFilters";
 import { CheckCircle, Clock, XCircle, User, Calendar } from "lucide-react";
 import type { Enrollment } from "../../types/enrollmentTypes";
+import { useDebounce } from "../../hooks/useDebounce";
+import { Pagination } from "../../components/ui/Pagination";
 
 const AdminEnrollmentsPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { enrollmentsList, enrollmentsLoading, enrollmentsError } = useSelector(
-    (state: RootState) => state.admin
-  );
+  const { 
+    enrollmentsList, 
+    enrollmentsLoading, 
+    enrollmentsError,
+    enrollmentsPagination 
+  } = useSelector((state: RootState) => state.admin);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 500);
   const [statusFilter, setStatusFilter] = useState("");
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const { currentPage, totalPages, totalStudents } = enrollmentsPagination;
 
   useEffect(() => {
-    dispatch(fetchAllEnrollmentsAdmin());
-  }, [dispatch]);
+    dispatch(fetchEnrollmentsPaginated({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: debouncedSearch,
+        status: statusFilter
+    }));
+  }, [dispatch, currentPage, itemsPerPage, debouncedSearch, statusFilter]);
 
-  const filteredEnrollments = useMemo(() => {
-    return enrollmentsList.filter((enrollment) => {
-      const studentName = enrollment.student?.fullName?.toLowerCase() || "";
-      const subjectName = enrollment.course?.subject?.subjectName?.toLowerCase() || "";
-      const mentorName = enrollment.course?.mentor?.fullName?.toLowerCase() || "";
-      const search = searchTerm.toLowerCase();
+  const handlePageChange = (page: number) => {
+    dispatch(setEnrollmentsPagination({ currentPage: page }));
+  };
 
-      const matchesSearch =
-        studentName.includes(search) ||
-        subjectName.includes(search) ||
-        mentorName.includes(search);
-
-      const matchesStatus = statusFilter === "" || enrollment.status === statusFilter;
-
-      return matchesSearch && matchesStatus;
-    });
-  }, [enrollmentsList, searchTerm, statusFilter]);
+  const handleItemsPerPageChange = (limit: number) => {
+    setItemsPerPage(limit);
+    dispatch(setEnrollmentsPagination({ currentPage: 1 }));
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
         return "bg-green-100 text-green-800";
       case "pending_payment":
+      case "pending":
         return "bg-yellow-100 text-yellow-800";
       case "cancelled":
         return "bg-red-100 text-red-800";
@@ -56,6 +63,7 @@ const AdminEnrollmentsPage: React.FC = () => {
       case "active":
         return <CheckCircle className="w-4 h-4" />;
       case "pending_payment":
+      case "pending":
         return <Clock className="w-4 h-4" />;
       case "cancelled":
         return <XCircle className="w-4 h-4" />;
@@ -168,13 +176,20 @@ const AdminEnrollmentsPage: React.FC = () => {
 
       <SearchAndFilters
         searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
+        onSearchChange={(value) => {
+          setSearchTerm(value);
+          dispatch(setEnrollmentsPagination({ currentPage: 1 }));
+        }}
         filters={{ status: statusFilter }}
-        onFilterChange={(_key, value) => setStatusFilter(value)}
+        onFilterChange={(_key, value) => {
+            setStatusFilter(value);
+            dispatch(setEnrollmentsPagination({ currentPage: 1 }));
+        }}
         filterConfigs={filterConfigs}
         onClearFilters={() => {
           setSearchTerm("");
           setStatusFilter("");
+          dispatch(setEnrollmentsPagination({ currentPage: 1 }));
         }}
         searchPlaceholder="Search by student, subject, or mentor..."
       />
@@ -182,11 +197,25 @@ const AdminEnrollmentsPage: React.FC = () => {
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <DataTable<Enrollment>
           columns={columns}
-          data={filteredEnrollments}
+          data={enrollmentsList}
           loading={enrollmentsLoading}
           emptyMessage="No enrollments found matching your criteria."
         />
       </div>
+
+      {totalPages > 0 && (
+        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalStudents}
+            itemsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+            variant="detailed"
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { getUserNotifications, markNotificationAsRead } from "../../api/userApi";
 import { Bell, CheckCircle, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Loader } from "../../components/ui/Loader";
+import { EmptyState } from "../../components/ui/EmptyState";
 import {type  NotificationDTO,type NotificationUI, mapNotificationDTOToUI } from "../../types/notificationTypes";
 
 const NotificationsPage: React.FC = () => {
@@ -79,17 +81,16 @@ const fetchNotifications = async () => {
         </div>
 
         {loading ? (
-            <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600 mx-auto"></div>
-                <p className="mt-4 text-gray-500 text-sm">Loading notifications...</p>
+            <div className="py-12">
+                <Loader size="md" text="Loading notifications..." />
             </div>
         ) : notifications.length === 0 ? (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Bell className="text-gray-300" size={32} />
-                </div>
-                <h3 className="text-gray-800 font-medium mb-1">No notifications</h3>
-                <p className="text-gray-500 text-sm">You're all caught up!</p>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12">
+                <EmptyState 
+                    title="No notifications"
+                    description="You're all caught up!"
+                    icon={Bell}
+                />
             </div>
         ) : (
             <div className="space-y-3">

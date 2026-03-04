@@ -1,5 +1,5 @@
-import type { IGrade } from "@/models/grade.model";
-import type { IBaseRepository } from "./IBaseRepository";
+import type { IGrade } from "@/models/grade.model.js";
+import type { IBaseRepository } from "./IBaseRepository.js";
 
 export interface IGradeRepository extends IBaseRepository<IGrade> {
     findAllActive(): Promise<IGrade[]>;

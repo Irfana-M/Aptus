@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import type { IMentorEarning } from '../../interfaces/models/compensation.interface';
+import type { IMentorEarning } from '../../interfaces/models/compensation.interface.js';
 
 const mentorEarningSchema = new Schema<IMentorEarning>(
   {

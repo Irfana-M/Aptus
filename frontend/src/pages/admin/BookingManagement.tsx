@@ -12,10 +12,7 @@ interface Booking {
   notification: string;
 }
 
-interface Column<T> {
-  header: string;
-  accessor: keyof T | ((row: T) => React.ReactNode);
-}
+import type { Column } from "../../types/table.types";
 
 export const BookingsManagement: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);

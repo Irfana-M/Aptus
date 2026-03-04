@@ -3,13 +3,14 @@ import Logo from "./logo";
 import { NAV_ITEMS } from "../../config/nav";
 import { Button } from "../ui/Button";
 import { Menu, X, User, LogOut, Settings } from "lucide-react";
-import { NotificationBell } from "../common/NotificationBell";
+import { NotificationBell } from "../shared/NotificationBell";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import type { RootState, AppDispatch } from "../../app/store";
 import { fetchMentorProfile } from "../../features/mentor/mentorThunk";
 import { fetchStudentProfile } from "../../features/student/studentThunk";
 import { logoutUser } from "../../features/auth/authThunks";
+import { ROUTES } from "../../constants/routes.constants";
 
 interface HeaderProps {
   onLoginClick?: () => void;
@@ -96,23 +97,23 @@ export default function Header({
   const handleLogout = async () => {
     await dispatch(logoutUser());
     setIsUserMenuOpen(false);
-    navigate("/login");
+    navigate(ROUTES.LOGIN);
   };
 
   const handleProfileClick = () => {
     setIsUserMenuOpen(false);
     if (user?.role === "mentor") {
-      navigate("/mentor/dashboard");
+      navigate(ROUTES.MENTOR.DASHBOARD);
     } else if (user?.role === "student") {
-      navigate("/student/dashboard");
+      navigate(ROUTES.STUDENT.DASHBOARD);
     } else {
-      navigate("/login");
+      navigate(ROUTES.LOGIN);
     }
   };
 
   const userNavigation = [
     { name: "Your Dashboard", onClick: handleProfileClick, icon: User },
-    { name: "Settings", onClick: () => navigate("/settings"), icon: Settings },
+    { name: "Settings", onClick: () => navigate(ROUTES.COMMON.SETTINGS), icon: Settings },
     { name: "Sign out", onClick: handleLogout, icon: LogOut },
   ];
 

@@ -1,8 +1,8 @@
 import { injectable } from "inversify";
-import { AppError } from "@/utils/AppError";
-import { HttpStatusCode } from "@/constants/httpStatus";
-import type { TrialClassRequestDto } from "@/dtos/student/trialClassDTO";
-import type { ITrialClassDocument } from "@/models/student/trialClass.model";
+import { AppError } from "../../utils/AppError.js";
+import { HttpStatusCode } from "../../constants/httpStatus.js";
+import type { TrialClassRequestDto } from "../../dtos/student/trialClassDTO.js";
+import type { ITrialClassDocument } from "../../models/student/trialClass.model.js";
 import { Types } from "mongoose";
 
 @injectable()

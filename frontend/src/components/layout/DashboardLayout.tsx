@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { DashboardSidebar, type NavItem } from './DashboardSidebar';
 import { DashboardTopbar, type UserProfile } from './DashboardTopbar';
+import { BaseDashboardLayout } from '../base/BaseDashboardLayout';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -23,33 +24,28 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     appTitle,
     extraContent
 }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
   return (
-    <div className="flex h-screen bg-gray-50/50 overflow-hidden font-sans">
-      <DashboardSidebar 
-        isOpen={sidebarOpen} 
-        onClose={() => setSidebarOpen(false)} 
-        navItems={navItems}
-        onLogout={onLogout}
-        logoSrc={logoSrc}
-        title={appTitle}
-        extraContent={extraContent}
-      />
-      
-      <div className="flex-1 flex flex-col min-w-0 relative">
-        <DashboardTopbar 
-            onMenuToggle={() => setSidebarOpen(true)} 
-            title={title} 
-            user={user}
+    <BaseDashboardLayout
+      sidebar={
+        <DashboardSidebar 
+          isOpen={false} // Managed by BaseDashboardLayout
+          onClose={() => {}} // Managed by BaseDashboardLayout
+          navItems={navItems}
+          onLogout={onLogout}
+          logoSrc={logoSrc}
+          title={appTitle}
+          extraContent={extraContent}
         />
-        
-        <main className="flex-1 overflow-y-auto p-4 lg:p-8 scroll-smooth custom-scrollbar">
-          <div className="max-w-7xl mx-auto w-full animate-in fade-in slide-in-from-bottom-3 duration-500">
-            {children}
-          </div>
-        </main>
-      </div>
-    </div>
+      }
+      topbar={(onMenuToggle) => (
+        <DashboardTopbar 
+          onMenuToggle={onMenuToggle} 
+          title={title} 
+          user={user}
+        />
+      )}
+    >
+      {children}
+    </BaseDashboardLayout>
   );
 };

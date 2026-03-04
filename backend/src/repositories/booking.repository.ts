@@ -1,9 +1,9 @@
 import { injectable } from 'inversify';
-import type { ClientSession, FilterQuery } from 'mongoose';
-import { BaseRepository } from './baseRepository';
-import type { IBookingRepository } from '../interfaces/repositories/IBookingRepository';
-import type { IBooking } from '../interfaces/models/booking.interface';
-import { BookingModel } from '../models/scheduling/booking.model';
+import type { ClientSession, FilterQuery, UpdateQuery } from 'mongoose';
+import { BaseRepository } from './baseRepository.js';
+import type { IBookingRepository } from '../interfaces/repositories/IBookingRepository.js';
+import type { IBooking } from '../interfaces/models/booking.interface.js';
+import { BookingModel } from '../models/scheduling/booking.model.js';
 
 @injectable()
 export class BookingRepository extends BaseRepository<IBooking> implements IBookingRepository {
@@ -47,7 +47,7 @@ export class BookingRepository extends BaseRepository<IBooking> implements IBook
     return await this.model.find({ timeSlotId, status: 'scheduled' }).lean() as unknown as IBooking[];
   }
 
-  async updateMany(filter: FilterQuery<IBooking>, update: any, session?: ClientSession): Promise<any> {
+  async updateMany(filter: FilterQuery<IBooking>, update: UpdateQuery<IBooking>, session?: ClientSession): Promise<unknown> {
     return await this.model.updateMany(filter, update).session(session || null).exec();
   }
 }

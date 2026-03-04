@@ -1,7 +1,7 @@
 import { injectable } from "inversify";
-import { Enrollment, type IEnrollment } from "../models/enrollment.model";
-import type { IEnrollmentLinkRepository } from "../interfaces/repositories/IEnrollmentLinkRepository";
-import { BaseRepository } from "./baseRepository";
+import { Enrollment, type IEnrollment } from "../models/enrollment.model.js";
+import type { IEnrollmentLinkRepository } from "../interfaces/repositories/IEnrollmentLinkRepository.js";
+import { BaseRepository } from "./baseRepository.js";
 import type { FilterQuery } from "mongoose";
 
 @injectable()

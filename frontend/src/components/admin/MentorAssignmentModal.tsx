@@ -41,16 +41,16 @@ export const MentorAssignmentModal: React.FC<MentorAssignmentModalProps> = ({
     if (isOpen && trialClass) {
       dispatch(fetchAvailableMentors({
         subjectId: trialClass.subject.id,
-        preferredDate: trialClass.preferredDate, // optional, but safe to send
+        preferredDate: trialClass.preferredDate, 
       }));
-      // Pre-fill form with student preferences
-      // Format preferredDate to YYYY-MM-DD
+      
       const date = new Date(trialClass.preferredDate);
+      // Use local date formatting to prevent timezone shift (Fixes one-day decrease bug)
       const formattedDate = !isNaN(date.getTime()) 
-        ? date.toISOString().split('T')[0] 
+        ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
         : '';
         
-      // Extract start time from range (e.g. "09:00-10:00" -> "09:00")
+      
       const startTime = trialClass.preferredTime 
         ? trialClass.preferredTime.split('-')[0] 
         : '';
