@@ -12,8 +12,10 @@ import { logger } from "../utils/logger.js";
 import { AppError } from "../utils/AppError.js";
 import { HttpStatusCode } from "../constants/httpStatus.js";
 import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository.js";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository.js";
 import type { INotificationService } from "../interfaces/services/INotificationService.js";
 import { MESSAGES } from "../constants/messages.constants.js";
+import type { AssignmentResponseDto } from "../dtos/shared/AssignmentResponseDTO.js";
 
 @injectable()
 export class StudyMaterialService implements IStudyMaterialService {
@@ -24,6 +26,7 @@ export class StudyMaterialService implements IStudyMaterialService {
     @inject(TYPES.IMentorRepository) private _mentorRepo: IMentorRepository,
     @inject(TYPES.IBookingRepository) private _bookingRepo: IBookingRepository,
     @inject(TYPES.ISubjectRepository) private _subjectRepo: ISubjectRepository,
+    @inject(TYPES.IStudentRepository) private _studentRepo: IStudentRepository,
     @inject(TYPES.INotificationService) private _notificationService: INotificationService
   ) {}
 
@@ -303,8 +306,86 @@ export class StudyMaterialService implements IStudyMaterialService {
     return (this._studyMaterialRepo as unknown as { findByMentor(id: string, t?: string): Promise<IStudyMaterial[]> }).findByMentor(mentorId, type);
   }
 
-  async getStudentAssignments(studentId: string): Promise<IStudyMaterial[]> {
-    return (this._studyMaterialRepo as unknown as { findAssignmentsForStudent(id: string): Promise<IStudyMaterial[]> }).findAssignmentsForStudent(studentId);
+  async getStudentAssignments(studentId: string): Promise<AssignmentResponseDto[]> {
+    try {
+      const assignments = await this._studyMaterialRepo.findAssignmentsForStudent(studentId);
+      const submissions = await this._submissionRepo.findByStudentId(studentId);
+      
+    // Use materialId._id or materialId depending on whether it's populated
+    const submissionMap = new Map(submissions.map(s => {
+      const mId = (s.materialId as any)?._id ? (s.materialId as any)._id.toString() : s.materialId.toString();
+      return [mId, s];
+    }));
+    
+    return assignments.map(assignment => {
+      const assignmentId = (assignment as any)._id.toString();
+      const submission = submissionMap.get(assignmentId);
+        
+        let status: AssignmentResponseDto['status'] = 'pending';
+        if (submission) {
+          status = submission.status === 'reviewed' ? 'reviewed' : 'submitted';
+        }
+
+        return {
+          _id: (assignment as any)._id.toString(),
+          title: assignment.title,
+          description: assignment.description,
+          dueDate: assignment.assignmentDetails?.dueDate as Date,
+          status,
+          subjectName: (assignment.subjectId as any)?.subjectName,
+          mentorName: (assignment.mentorId as any)?.fullName
+        };
+      });
+    } catch (error) {
+      logger.error(`Error in getStudentAssignments: ${error}`);
+      throw error;
+    }
+  }
+
+  async getMentorAssignments(mentorId: string): Promise<AssignmentResponseDto[]> {
+    try {
+      const assignments = await this._studyMaterialRepo.findByMentor(mentorId, 'assignment');
+      const results: AssignmentResponseDto[] = [];
+
+      for (const assignment of assignments) {
+      const assignmentId = (assignment as any)._id.toString();
+      const assignedStudentIds = assignment.assignmentDetails?.assignedTo || [];
+      const submissions = await this._submissionRepo.findByMaterialId(assignmentId);
+      
+      // Use studentId._id or studentId depending on whether it's populated
+      const submissionMap = new Map(submissions.map(s => {
+        const sId = (s.studentId as any)?._id ? (s.studentId as any)._id.toString() : s.studentId.toString();
+        return [sId, s];
+      }));
+
+      for (const studentId of assignedStudentIds) {
+        const studentIdStr = studentId.toString();
+        const submission = submissionMap.get(studentIdStr);
+        const student = await this._studentRepo.findById(studentIdStr);
+
+          let status: AssignmentResponseDto['status'] = 'pending';
+          if (submission) {
+            status = submission.status === 'reviewed' ? 'reviewed' : 'submitted';
+          }
+
+          results.push({
+            _id: (assignment as any)._id.toString(),
+            title: assignment.title,
+            description: assignment.description,
+            dueDate: assignment.assignmentDetails?.dueDate as Date,
+            status,
+            subjectName: (assignment.subjectId as any)?.subjectName,
+            studentName: (student as any)?.fullName,
+            studentId: studentId.toString()
+          });
+        }
+      }
+
+      return results;
+    } catch (error) {
+      logger.error(`Error in getMentorAssignments: ${error}`);
+      throw error;
+    }
   }
 
   async getAssignmentSubmissions(assignmentId: string, mentorId: string): Promise<IAssignmentSubmission[]> {

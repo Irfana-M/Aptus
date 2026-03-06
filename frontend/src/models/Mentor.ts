@@ -1,4 +1,4 @@
-import type { MentorProfile } from '../features/mentor/mentorSlice';
+import type { MentorProfile } from '../features/mentor/types';
 
 export class Mentor {
   readonly data: MentorProfile;

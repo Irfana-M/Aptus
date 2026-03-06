@@ -50,6 +50,9 @@ export const API_ROUTES = {
     MENTOR_REQUESTS: '/admin/mentor-requests',
     MENTOR_REQUEST_APPROVE: '/admin/mentor-requests/:requestId/approve',
     MENTOR_REQUEST_REJECT: '/admin/mentor-requests/:requestId/reject',
+    LEAVES: "/admin/leaves",
+    LEAVE_APPROVE: "/admin/mentors/:mentorId/leaves/:leaveId/approve",
+    LEAVE_REJECT: "/admin/mentors/:mentorId/leaves/:leaveId/reject",
   },
   MENTOR: {
     PROFILE_UPDATE: "/mentor/me/profile-update",
@@ -66,6 +69,8 @@ export const API_ROUTES = {
     ADMIN_REJECT: "/mentor/admin/:mentorId/reject",
     SESSIONS: "/mentor/sessions",
     UPCOMING_SESSIONS: "/mentor/me/sessions/upcoming",
+    LEAVE_REQUEST: "/mentor/me/leave",
+    MY_LEAVES: "/mentor/me/leaves",
   },
   STUDENT: {
     PROFILE: "/student/profile",

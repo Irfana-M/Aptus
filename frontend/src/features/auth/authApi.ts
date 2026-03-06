@@ -1,12 +1,13 @@
-import api, { type ApiResponse } from "../../api/api";
+import api from "../../api/api";
+import type { ApiResponse } from "../../types/api.types";
 import { API_ROUTES } from "../../constants/apiRoutes";
 import type {
   RegisterUserDto,
   VerifyOtpDto,
   LoginDto,
   LoginResponse,
-} from "../../types/dtoTypes";
-import type { User } from "../../types/authTypes";
+} from "../../types/dto/auth.dto";
+import type { User } from "../../types/user.types";
 
 export const authApi = {
   register: (data: RegisterUserDto) => api.post<ApiResponse<User>>(API_ROUTES.AUTH.SIGNUP, data),

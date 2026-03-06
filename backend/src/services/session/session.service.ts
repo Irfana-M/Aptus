@@ -2,6 +2,7 @@ import { injectable, inject } from "inversify";
 import { TYPES } from "../../types.js";
 import { logger } from "../../utils/logger.js";
 import type { ISessionService, CreateSessionDto } from "../../interfaces/services/ISessionService.js";
+import { SESSION_STATUS } from "../../constants/status.constants.js";
 import type { ISessionRepository } from "../../interfaces/repositories/ISessionRepository.js";
 import type { SchedulingOrchestrator } from "../scheduling/SchedulingOrchestrator.js";
 import type { IBooking } from "../../interfaces/models/booking.interface.js";
@@ -31,10 +32,10 @@ export class SessionService implements ISessionService {
       startTime: data.startTime,
       endTime: data.endTime,
       sessionType: data.sessionType || 'one-to-one',
-      status: 'scheduled' as const,
+      status: SESSION_STATUS.SCHEDULED as const,
       participants: [
-        { userId: data.studentId, role: 'student', status: 'scheduled' },
-        { userId: data.mentorId, role: 'mentor', status: 'scheduled' }
+        { userId: data.studentId, role: 'student', status: SESSION_STATUS.SCHEDULED },
+        { userId: data.mentorId, role: 'mentor', status: SESSION_STATUS.SCHEDULED }
       ]
     };
     return await this._sessionRepo.create(sessionData as any);
@@ -42,7 +43,7 @@ export class SessionService implements ISessionService {
 
   async cancelSession(sessionId: string, mentorId: string, reason: string): Promise<void> {
     logger.info(`Cancelling session ${sessionId}, reason: ${reason}`);
-    await this._sessionRepo.updateStatus(sessionId, 'cancelled');
+    await this._sessionRepo.updateStatus(sessionId, SESSION_STATUS.CANCELLED);
   }
 
   async updateSessionStatus(sessionId: string, status: string): Promise<import('../../interfaces/models/session.interface.js').ISession | null> {
@@ -59,6 +60,9 @@ export class SessionService implements ISessionService {
   }
 
   // Missing implementations for other interface methods
+  async getStudentUpcomingSessionsPaginated(studentId: string, page: number, limit: number): Promise<any> { return { items: [], total: 0 }; }
+  async getMentorUpcomingSessionsPaginated(mentorId: string, page: number, limit: number): Promise<any> { return { items: [], total: 0 }; }
+  async getStudentUpcomingSessionsWithEligibility(studentId: string): Promise<any> { return { eligibleSessions: [], ineligibleSessions: [] }; }
   async getMentorUpcomingSessions(mentorId: string): Promise<any[]> { return []; }
   async getMentorTodaySessions(mentorId: string): Promise<any[]> { return []; }
   async findByStudentAndSubject(studentId: string, subjectId: string): Promise<any[]> { return []; }

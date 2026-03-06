@@ -3,7 +3,7 @@ import React from 'react';
 import { Socket } from 'socket.io-client';
 import videoSocketService from '../services/videoSocketService';
 import { getErrorMessage } from '../utils/errorUtils';
-import type { RemoteMediaState, JoinCallProps } from '../types/videoTypes';
+import type { RemoteMediaState, JoinCallProps } from '../types/video.types';
 import { VideoCallContext } from './videoCallContextStore';
 
 export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -398,3 +398,4 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     </VideoCallContext.Provider>
   );
 };
+

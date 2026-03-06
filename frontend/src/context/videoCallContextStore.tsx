@@ -1,5 +1,5 @@
 import React from 'react';
-import type { VideoCallContextType } from '../types/videoTypes';
+import type { VideoCallContextType } from '../types/video.types';
 
 export const VideoCallContext = React.createContext<VideoCallContextType | undefined>(undefined);
 
@@ -10,3 +10,4 @@ export const useVideoCall = () => {
     }
     return context;
 };
+

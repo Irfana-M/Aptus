@@ -19,7 +19,7 @@ import {
   Eye,
   ArrowLeft,
 } from 'lucide-react';
-import type { TrialClass, TrialClassStudent } from '../../types/trialTypes';
+import type { TrialClass, TrialClassStudent } from "../../types/trial.types";
 
 import type { Column } from "../../types/table.types";
 

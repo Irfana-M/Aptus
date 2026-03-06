@@ -1,4 +1,4 @@
-import type { StudentBaseResponseDto } from '../types/studentTypes';
+import type { StudentBaseResponseDto } from '../types/student.types';
 
 export class Student {
   readonly data: StudentBaseResponseDto;
@@ -107,3 +107,4 @@ export class Student {
     });
   }
 }
+

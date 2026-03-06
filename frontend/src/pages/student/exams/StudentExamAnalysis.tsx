@@ -7,7 +7,7 @@ import type { AppDispatch, RootState } from '../../../app/store';
 import { ChevronLeft, CheckCircle, XCircle, MessageCircle } from 'lucide-react';
 import StudentLayout from '../../../components/students/StudentLayout';
 import { Loader } from '../../../components/ui/Loader';
-import { QuestionType } from '../../../types/examTypes';
+import { QuestionType } from '../../../types/exam.types';
 
 const StudentExamAnalysis: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -134,3 +134,4 @@ const StudentExamAnalysis: React.FC = () => {
 };
 
 export default StudentExamAnalysis;
+

@@ -54,11 +54,11 @@ export class TrialClassRepository extends BaseRepository<ITrialClassDocument> im
   }
 
   // FIND BY STUDENT
-  async findByStudentId(studentId: string, status?: string): Promise<ITrialClassDocument[]> {
+  async findByStudentId(studentId: string, status?: string, skip?: number, limit?: number): Promise<ITrialClassDocument[]> {
     const query: FilterQuery<ITrialClassDocument> = { student: new Types.ObjectId(studentId) };
     if (status) query.status = status;
 
-    return await TrialClass.find(query)
+    const mongoQuery = TrialClass.find(query)
       .populate("student", "fullName email phoneNumber")
       .populate({
         path: "subject",
@@ -69,13 +69,23 @@ export class TrialClassRepository extends BaseRepository<ITrialClassDocument> im
         }
       })
       .populate("mentor", "fullName email")
-      .sort({ createdAt: -1 })
-      .exec();
+      .sort({ createdAt: -1 });
+
+    if (skip !== undefined) mongoQuery.skip(skip);
+    if (limit !== undefined) mongoQuery.limit(limit);
+
+    return await mongoQuery.exec();
+  }
+
+  async countByStudentId(studentId: string, status?: string): Promise<number> {
+    const query: FilterQuery<ITrialClassDocument> = { student: new Types.ObjectId(studentId) };
+    if (status) query.status = status;
+    return await TrialClass.countDocuments(query).exec();
   }
 
   // FIND BY MENTOR (ALL)
-  async findByMentorId(mentorId: string): Promise<ITrialClassDocument[]> {
-    return await TrialClass.find({ mentor: new Types.ObjectId(mentorId) })
+  async findByMentorId(mentorId: string, skip?: number, limit?: number): Promise<ITrialClassDocument[]> {
+    const mongoQuery = TrialClass.find({ mentor: new Types.ObjectId(mentorId) })
       .populate("student", "fullName email phoneNumber profilePicture")
       .populate({
         path: "subject",
@@ -85,8 +95,16 @@ export class TrialClassRepository extends BaseRepository<ITrialClassDocument> im
           select: "name grade syllabus"
         }
       })
-      .sort({ preferredDate: 1, preferredTime: 1 })
-      .exec();
+      .sort({ preferredDate: 1, preferredTime: 1 });
+
+    if (skip !== undefined) mongoQuery.skip(skip);
+    if (limit !== undefined) mongoQuery.limit(limit);
+
+    return await mongoQuery.exec();
+  }
+
+  async countByMentorId(mentorId: string): Promise<number> {
+    return await TrialClass.countDocuments({ mentor: new Types.ObjectId(mentorId) }).exec();
   }
 
   // FIND TODAY'S SESSIONS FOR MENTOR ← This is the key method

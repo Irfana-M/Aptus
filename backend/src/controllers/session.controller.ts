@@ -3,6 +3,7 @@ import type { ISessionService } from "../interfaces/services/ISessionService.js"
 import { HttpStatusCode } from "../constants/httpStatus.js";
 import { AppError } from "../utils/AppError.js";
 import { MESSAGES } from "../constants/messages.constants.js";
+import { getPaginationParams, formatStandardizedPaginatedResult } from "../utils/pagination.util.js";
 
 export class SessionController {
   constructor(private _sessionService: ISessionService) {}
@@ -10,8 +11,11 @@ export class SessionController {
   async getStudentUpcomingSessions(req: Request, res: Response, next: NextFunction) {
       try {
         if (!req.user) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
-        const sessions = await this._sessionService.getStudentUpcomingSessions(req.user.id);
-        res.status(HttpStatusCode.OK).json({ success: true, data: sessions });
+        const { page, limit } = getPaginationParams(req.query as Record<string, unknown>);
+        const { items, total } = await this._sessionService.getStudentUpcomingSessionsPaginated(req.user.id, page, limit);
+        res.status(HttpStatusCode.OK).json(
+          formatStandardizedPaginatedResult(items, total, { page, limit }, MESSAGES.COMMON.DATA_FETCHED)
+        );
       } catch (error) {
           next(error);
       }
@@ -20,8 +24,11 @@ export class SessionController {
   async getMentorUpcomingSessions(req: Request, res: Response, next: NextFunction) {
       try {
           if (!req.user) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
-          const sessions = await this._sessionService.getMentorUpcomingSessions(req.user.id);
-          res.status(HttpStatusCode.OK).json({ success: true, data: sessions });
+          const { page, limit } = getPaginationParams(req.query as Record<string, unknown>);
+          const { items, total } = await this._sessionService.getMentorUpcomingSessionsPaginated(req.user.id, page, limit);
+          res.status(HttpStatusCode.OK).json(
+            formatStandardizedPaginatedResult(items, total, { page, limit }, MESSAGES.COMMON.DATA_FETCHED)
+          );
       } catch (error) {
           next(error);
       }

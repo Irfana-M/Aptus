@@ -1,25 +1,9 @@
-import api, { type ApiResponse } from "../../api/api";
+import api from "../../api/api";
+import type { ApiResponse } from "../../types/api.types";
 import { API_ROUTES } from "../../constants/apiRoutes";
-import type { MentorProfile } from "../mentor/mentorSlice";
-import type { Subject } from "../../types/adminTypes";
-
-export interface CourseRequestData {
-  subject: string;
-  grade: string;
-  mentoringMode: string;
-  preferredDays: string[];
-  timeSlot: string;
-  timezone?: string;
-}
-
-export interface SubjectPreference {
-    subjectId: string;
-    slots: {
-        day: string;
-        startTime: string;
-        endTime: string;
-    }[];
-}
+import type { MentorProfile } from "../../features/mentor/types";
+import type { Subject } from "../../types/admin.types";
+import type { CourseRequestData, SubjectPreference } from "../../types/dto/student.dto";
 
 
 export const fetchAvailableCourses = async (filters: Record<string, unknown>) => {
@@ -27,10 +11,7 @@ export const fetchAvailableCourses = async (filters: Record<string, unknown>) =>
   return response.data;
 };
 
-export interface MentorMatch {
-    matches: MentorProfile[];
-    alternates: MentorProfile[];
-}
+import type { MentorMatch, MentorRequest, DayAvailability } from "../../types/dto/student.dto";
 
 export const findMentors = async (subject: string, grade?: string, days?: string[], timeSlot?: string): Promise<ApiResponse<MentorMatch>> => {
   const params: Record<string, unknown> = { subject };
@@ -124,13 +105,7 @@ export const requestMentor = async (data: { subjectId: string; mentorId: string 
     return response.data;
 };
 
-export interface MentorRequest {
-    _id: string;
-    mentorId?: { _id: string };
-    subjectId?: { _id: string };
-    status: string;
-    createdAt: string;
-}
+// Moved to student.dto.ts
 
 export const fetchMyMentorRequests = async (): Promise<ApiResponse<MentorRequest[]>> => {
     const response = await api.get<ApiResponse<MentorRequest[]>>('/student/mentor-requests');
@@ -156,19 +131,15 @@ export const requestTrialClass = async (data: {
 };
 
 
-export interface DayAvailability {
-    day: string;
-    date: string;
-    slots: {
-        _id?: string;
-        startTime: string;
-        endTime: string;
-        remainingCapacity: number;
-    }[];
-}
+// Moved to student.dto.ts
 
 export const getMentorAvailableSlots = async (mentorId: string): Promise<ApiResponse<DayAvailability[]>> => {
     const response = await api.get<ApiResponse<DayAvailability[]>>(`/mentor/${mentorId}/available-slots`);
+    return response.data;
+};
+
+export const getStudentAssignments = async () => {
+    const response = await api.get('/student/assignments');
     return response.data;
 };
 
@@ -190,5 +161,7 @@ export const studentApi = {
     requestMentor,
     fetchMyMentorRequests,
     getMentorAvailableSlots,
-    getUpcomingSessions
+    getUpcomingSessions,
+    getStudentAssignments
 };
+

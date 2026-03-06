@@ -1,6 +1,6 @@
 import api from "../../api/api";
 import type { ApiResponse } from "../../api/api";
-import type { CreateExamDTO, SubmitExamDTO, IExam, IExamResult } from "../../types/examTypes";
+import type { CreateExamDTO, SubmitExamDTO, IExam, IExamResult } from "../../types/exam.types";
 
 export const examApi = {
   createExam: (data: CreateExamDTO) => api.post<ApiResponse<IExam>>("/exams", data),
@@ -20,3 +20,4 @@ export const examApi = {
   gradeExam: (resultId: string, grades: { questionId: string; marks: number; feedback?: string }[]) => 
     api.patch<ApiResponse<IExamResult>>(`/exams/results/${resultId}/grade`, { grades }),
 };
+

@@ -1,28 +1,42 @@
 import React, { useEffect, useState } from "react";
-import { getUserNotifications, markNotificationAsRead } from "../../api/userApi";
-import { Bell, CheckCircle, Clock } from "lucide-react";
+import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead, type PaginationMeta } from "../../api/userApi";
+import toast from "react-hot-toast";
+import { Bell, CheckCircle, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Loader } from "../../components/ui/Loader";
 import { EmptyState } from "../../components/ui/EmptyState";
-import {type  NotificationDTO,type NotificationUI, mapNotificationDTOToUI } from "../../types/notificationTypes";
+import { type NotificationDTO, type NotificationUI, mapNotificationDTOToUI } from "../../types/notification.types";
+import { useSelector } from "react-redux";
+import type { RootState } from "../../app/store";
+import { MentorLayout } from "../../components/mentor/MentorLayout";
+import StudentLayout from "../../components/students/StudentLayout";
+import { AdminLayout } from "../../components/admin/AdminLayout";
 
 const NotificationsPage: React.FC = () => {
   const [notifications, setNotifications] = useState<NotificationUI[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
+  const limit = 10;
   const navigate = useNavigate();
+  const { user } = useSelector((state: RootState) => state.auth);
+  const { admin } = useSelector((state: RootState) => state.admin);
+  const role = user?.role || admin?.role;
 
-const fetchNotifications = async () => {
+const fetchNotifications = async (currentPage: number) => {
   try {
     setLoading(true);
-    const res = await getUserNotifications();
+    const res = await getUserNotifications(currentPage, limit);
 
-    const rawList: NotificationDTO[] =
-      Array.isArray(res) ? res : res.data || [];
+    const rawList: NotificationDTO[] = Array.isArray(res.data)
+      ? res.data as unknown as NotificationDTO[]
+      : (res.data as any)?.items || [];
 
+    const paginationData = (res.data as any)?.pagination || null;
     const list = rawList.map(mapNotificationDTOToUI);
 
     setNotifications(list);
-
+    setPagination(paginationData);
   } catch (error) {
     console.error("Failed to fetch notifications", error);
   } finally {
@@ -31,8 +45,8 @@ const fetchNotifications = async () => {
 };
 
   useEffect(() => {
-    fetchNotifications();
-  }, []);
+    fetchNotifications(page);
+  }, [page]);
 
   const handleMarkAsRead = async (id: string) => {
     try {
@@ -44,29 +58,17 @@ const fetchNotifications = async () => {
   };
 
   const handleMarkAllRead = async () => {
-     
-     setNotifications(prev => prev.map(n => ({ ...n, status: 'read' })));
-     
-     for (const n of notifications) {
-         if (n.status !== 'read') await markNotificationAsRead(n._id);
+     try {
+         await markAllNotificationsAsRead();
+         setNotifications(prev => prev.map(n => ({ ...n, status: 'read' })));
+         toast.success("All notifications marked as read.");
+     } catch (error) {
+         console.error("Failed to mark all as read", error);
+         toast.error("Failed to update notification.");
      }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-       {/* Use simple header or existing layout depending on context - simpler for now */}
-       <div className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-            <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                <Bell className="text-cyan-600" /> Notifications
-            </h1>
-            <button 
-                onClick={() => navigate(-1)}
-                className="text-sm text-gray-500 hover:text-gray-700 font-medium"
-            >
-                Back
-            </button>
-       </div>
-
+  const content = (
       <div className="flex-1 max-w-4xl w-full mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-semibold text-gray-700">All Notifications</h2>
@@ -138,9 +140,69 @@ const fetchNotifications = async () => {
                 ))}
             </div>
         )}
+
+        {pagination && pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-white">
+            <span className="text-sm text-gray-500">
+              Page {pagination.currentPage} of {pagination.totalPages} ({pagination.totalItems} total)
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={!pagination.hasPrevPage}
+                className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                aria-label="Previous page"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                onClick={() => setPage(p => p + 1)}
+                disabled={!pagination.hasNextPage}
+                className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                aria-label="Next page"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+  );
+
+  if (role === 'mentor') {
+    return <MentorLayout title="Notifications">{content}</MentorLayout>;
+  }
+
+  if (role === 'student') {
+    return <StudentLayout title="Notifications">{content}</StudentLayout>;
+  }
+
+  if (role === 'admin') {
+    return (
+      <AdminLayout title="Notifications" activeItem="Notifications">
+        {content}
+      </AdminLayout>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+       {/* Use simple header or existing layout depending on context - simpler for now */}
+       <div className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+            <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <Bell className="text-cyan-600" /> Notifications
+            </h1>
+            <button 
+                onClick={() => navigate(-1)}
+                className="text-sm text-gray-500 hover:text-gray-700 font-medium"
+            >
+                Back
+            </button>
+       </div>
+       {content}
     </div>
   );
 };
 
 export default NotificationsPage;
+

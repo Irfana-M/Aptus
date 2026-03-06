@@ -1,15 +1,6 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { fetchStudentPaymentHistory as fetchStudentPaymentHistoryApi } from './paymentApi';
-
-export interface Payment {
-    _id: string;
-    amount: number;
-    currency: string;
-    status: string;
-    createdAt: string;
-    paymentMethod?: string;
-    description?: string;
-}
+import type { Payment } from './types';
 
 export const fetchStudentPaymentHistory = createAsyncThunk<
     Payment[], 

@@ -1,9 +1,9 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { mentorApi } from "./mentorApi";
-import type { MentorProfile } from "./mentorSlice";
+import type { MentorProfile } from "./types";
 import type { RootState } from "../../app/store";
-import type { TrialClass } from "../../types/studentTypes";
-import type { Course } from "../../types/courseTypes";
+import type { TrialClass } from "../../types/student.types";
+import type { Course } from "../../types/course.types";
 
 export const updateMentorProfile = createAsyncThunk<
   MentorProfile,
@@ -77,3 +77,27 @@ export const fetchMentorCourses = createAsyncThunk<
   const data = await mentorApi.getMentorCourses();
   return data;
 });
+
+export const fetchMentorAssignments = createAsyncThunk(
+  'mentor/fetchAssignments',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await mentorApi.getMentorAssignments();
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch assignments');
+    }
+  }
+);
+
+export const fetchMentorDashboardData = createAsyncThunk(
+    'mentor/fetchDashboardData',
+    async (_, { rejectWithValue }) => {
+        try {
+            const data = await mentorApi.getDashboardData();
+            return data;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.message || 'Failed to fetch dashboard data');
+        }
+    }
+);

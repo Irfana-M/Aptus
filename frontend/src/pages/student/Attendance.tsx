@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import StudentLayout from '../../components/students/StudentLayout';
 import { Calendar, CheckCircle2, XCircle } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
@@ -6,10 +6,17 @@ import { fetchAttendanceHistory } from '../../features/attendance/attendanceThun
 import { format } from 'date-fns';
 import { Loader } from '../../components/ui/Loader';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { Pagination } from '../../components/ui/Pagination';
 
 const StudentAttendance: React.FC = () => {
     const dispatch = useAppDispatch();
     const { history, loading } = useAppSelector((state) => state.attendance);
+
+    const ITEMS_PER_PAGE = 10;
+    const [currentPage, setCurrentPage] = useState(1);
+
+    // Reset to page 1 when data changes
+    useEffect(() => { setCurrentPage(1); }, [history.length]);
 
     useEffect(() => {
         dispatch(fetchAttendanceHistory());
@@ -20,9 +27,14 @@ const StudentAttendance: React.FC = () => {
         const present = history.filter(h => h.status === 'present').length;
         const absent = history.filter(h => h.status === 'absent').length;
         const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
-
         return { total, present, absent, percentage };
     }, [history]);
+
+    const totalPages = Math.max(1, Math.ceil(history.length / ITEMS_PER_PAGE));
+    const paginatedHistory = history.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
 
     return (
         <StudentLayout title="My Attendance">
@@ -71,8 +83,8 @@ const StudentAttendance: React.FC = () => {
                                     <th className="pb-4 px-4 font-black">Status</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {history.map((record) => (
+                    <tbody className="divide-y divide-slate-50">
+                                {paginatedHistory.map((record) => (
                                     <tr key={record._id} className="hover:bg-slate-50/50 transition-colors">
                                         <td className="py-4 px-4">
                                             <div className="font-bold text-slate-700">
@@ -98,6 +110,19 @@ const StudentAttendance: React.FC = () => {
                                 ))}
                             </tbody>
                         </table>
+                        {history.length > ITEMS_PER_PAGE && (
+                            <div className="px-4 pt-4">
+                                <Pagination
+                                    currentPage={currentPage}
+                                    totalPages={totalPages}
+                                    totalItems={history.length}
+                                    itemsPerPage={ITEMS_PER_PAGE}
+                                    onPageChange={setCurrentPage}
+                                    showItemsPerPage={false}
+                                    variant="minimal"
+                                />
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <EmptyState 

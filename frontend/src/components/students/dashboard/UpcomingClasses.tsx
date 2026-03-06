@@ -7,7 +7,7 @@ import { EmptyState } from '../../ui/EmptyState';
 import { Calendar } from 'lucide-react';
 import type { RootState, AppDispatch } from '../../../app/store';
 import { format, isAfter, startOfDay, addDays } from 'date-fns';
-import type { Course } from '../../../types/courseTypes';
+import type { Course } from '../../../types/course.types';
 
 const UpcomingClasses: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -131,3 +131,4 @@ const UpcomingClasses: React.FC = () => {
 };
 
 export default UpcomingClasses;
+

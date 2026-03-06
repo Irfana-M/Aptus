@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useAppDispatch, useAppSelector } from '@/app/hooks';
+import { useAppDispatch, useAppSelector } from '../../../app/hooks';
 import { fetchChatHistory, sendChatMessage, addMessage } from '../chatSlice';
 import { Send } from 'lucide-react';
 import { format } from 'date-fns';
-import type { ChatMessage } from '@/api/chatApi';
-import socketService from '@/services/socketService';
-import type { RootState } from '@/app/store';
+import type { ChatMessage } from '../../../api/chatApi';
+import socketService from '../../../services/socketService';
+import type { RootState } from '../../../app/store';
 
 interface ChatWindowProps {
   sessionId: string;
@@ -137,7 +137,7 @@ const MessageItem: React.FC<{ message: ChatMessage; isOwnMessage: boolean }> = (
           {message.content}
         </div>
         <span className="text-[10px] text-gray-400 mt-1 px-1">
-          {format(new Date(message.createdAt), 'p')}
+          {message.createdAt ? format(new Date(message.createdAt), 'p') : ''}
         </span>
       </div>
     </div>

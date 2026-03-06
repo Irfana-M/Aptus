@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getStudentUpcomingSessions } from '../../api/userApi';
-import type { Session } from '../../types/schedulingTypes';
+import type { Session } from '../../types/scheduling.types';
 import { fetchStudentProfile } from '../../features/student/studentThunk';
 import type { RootState, AppDispatch } from '../../app/store';
 
@@ -15,11 +15,14 @@ const StudentDashboard: React.FC = () => {
 
   useEffect(() => {
     if (!profile && user?._id) {
-        dispatch(fetchStudentProfile(user._id));
+        dispatch(fetchStudentProfile(user._id as any));
     }
     
     getStudentUpcomingSessions()
-      .then(setSessions)
+      .then(res => {
+        const items = (res.data as any)?.items || [];
+        setSessions(items);
+      })
       .finally(() => setLoading(false));
   }, [dispatch, profile, user]);
 
@@ -46,11 +49,11 @@ const StudentDashboard: React.FC = () => {
            <h2 className="text-lg font-bold text-gray-900 mb-2">Your Mentor</h2>
            <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold text-xl">
-                 {assignedMentorSlot.assignedMentorId?.fullName?.charAt(0) || 'M'}
+                 {(assignedMentorSlot.assignedMentorId as any)?.fullName?.charAt(0) || 'M'}
               </div>
               <div>
-                 <p className="font-bold text-lg">{assignedMentorSlot.assignedMentorId?.fullName || "Assigned Mentor"}</p>
-                 <p className="text-sm text-gray-500">{assignedMentorSlot.subjectId?.subjectName || "Subject"}</p>
+                 <p className="font-bold text-lg">{(assignedMentorSlot.assignedMentorId as any)?.fullName || "Assigned Mentor"}</p>
+                 <p className="text-sm text-gray-500">{(assignedMentorSlot.subjectId as any)?.subjectName || "Subject"}</p>
                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full mt-1 inline-block">
                     Mentor Assigned
                  </span>
@@ -77,7 +80,7 @@ const StudentDashboard: React.FC = () => {
                       {new Date(session.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                     <p className="text-sm text-indigo-600 font-medium mt-1">
-                        {typeof session.subjectId === 'object' ? session.subjectId.name : 'Session'}
+                        {session.subjectId && typeof session.subjectId === 'object' && 'name' in session.subjectId ? (session.subjectId as any).name : 'Session'}
                     </p>
                   </div>
                   <button 
@@ -99,3 +102,4 @@ const StudentDashboard: React.FC = () => {
 };
 
 export default StudentDashboard;
+

@@ -7,7 +7,7 @@ import { ROUTES } from "../constants/routes.constants";
 import { AuthContext } from "../utils/authContext";
 import { fetchStudentProfile } from "../features/student/studentThunk";
 import { getStudentRedirect } from "../utils/StudentOnboardingGuard";
-import type { User } from "../types/authTypes";
+import type { User } from "../types/auth.types";
 import { Loader } from "../components/ui/Loader";
 
 interface ProtectedRouteProps {
@@ -312,3 +312,4 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 };
 
 export default ProtectedRoute;
+

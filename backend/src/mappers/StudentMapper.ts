@@ -253,6 +253,7 @@ export class StudentMapper {
       isTrialCompleted: s.isTrialCompleted || false,
       totalTrialClasses: (s as unknown as { totalTrialClasses: number }).totalTrialClasses || 0,
       pendingTrialClasses: (s as unknown as { pendingTrialClasses: number }).pendingTrialClasses || 0,
+      onboardingStatus: s.onboardingStatus,
       createdAt: s.createdAt || undefined,
     };
   }

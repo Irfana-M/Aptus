@@ -2,28 +2,14 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "../../../constants/routes.constants";
-import {
-  Users,
-  Clock,
-  Calendar,
-  BookOpen,
-  ClipboardList,
-  User,
-  Home,
-  FileText,
-  ArrowLeft,
-  Plus,
-  Trash2,
-  Save,
-} from "lucide-react";
-import { DashboardLayout } from "../../../components/layout/DashboardLayout";
-import type { NavItem } from "../../../components/layout/DashboardSidebar";
+import { ArrowLeft, Plus, Trash2, Save } from "lucide-react";
 import { createExam } from "../../../features/exam/examSlice";
 import { fetchMentorCourses } from "../../../features/mentor/mentorThunk";
 import type { AppDispatch, RootState } from "../../../app/store";
-import { logoutUser } from "../../../features/auth/authThunks";
-import { QuestionType } from "../../../types/examTypes";
-import type { CreateQuestionDTO } from "../../../types/examTypes";
+
+import { MentorLayout } from "../../../components/mentor/MentorLayout";
+import { QuestionType } from "../../../types/exam.types";
+import type { CreateQuestionDTO } from "../../../types/exam.types";
 import { Loader } from "../../../components/ui/Loader";
 import toast from "react-hot-toast";
 
@@ -32,8 +18,6 @@ const CreateExam: React.FC = () => {
   const navigate = useNavigate();
   const { loading } = useSelector((state: RootState) => state.exam);
   const { courses } = useSelector((state: RootState) => state.mentor);
-  const { user } = useSelector((state: RootState) => state.auth);
-  const { profile } = useSelector((state: RootState) => state.mentor);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -92,11 +76,6 @@ const CreateExam: React.FC = () => {
   useEffect(() => {
     dispatch(fetchMentorCourses());
   }, [dispatch]);
-
-  const handleLogout = async () => {
-    await dispatch(logoutUser());
-    navigate(ROUTES.LOGIN);
-  };
 
   const handleAddQuestion = () => {
     setQuestions([
@@ -227,49 +206,9 @@ const CreateExam: React.FC = () => {
     }
   };
 
-  const mentorNavItems: NavItem[] = [
-    { icon: <Home size={20} />, label: "Dashboard", path: ROUTES.MENTOR.DASHBOARD },
-    { icon: <User size={20} />, label: "Profile", path: ROUTES.MENTOR.PROFILE },
-    {
-      icon: <Users size={20} />,
-      label: "Students/Batches",
-      path: ROUTES.MENTOR.STUDENTS,
-    },
-    {
-      icon: <Calendar size={20} />,
-      label: "Attendance",
-      path: ROUTES.MENTOR.ATTENDANCE,
-    },
-    {
-      icon: <BookOpen size={20} />,
-      label: "Classroom",
-      path: ROUTES.MENTOR.CLASSROOM,
-    },
-      { icon: <ClipboardList size={20} />, label: 'Class History', path: ROUTES.MENTOR.CLASS_HISTORY },
-    {
-      icon: <Clock size={20} />,
-      label: "Availability",
-      path: ROUTES.MENTOR.AVAILABILITY,
-    },
-    { icon: <FileText size={20} />, label: "Exams", path: ROUTES.MENTOR.EXAMS },
-  ];
-
-  const dashboardUser = {
-    name: profile?.fullName || user?.fullName || "Mentor",
-    email: user?.email || "",
-    avatar: profile?.profileImageUrl || undefined,
-    role: "mentor",
-  };
-
-  return (
-    <DashboardLayout
-      navItems={mentorNavItems}
-      user={dashboardUser}
-      title="Create Exam"
-      onLogout={handleLogout}
-      appTitle="Aptus"
-    >
-      <div className="p-6 max-w-4xl mx-auto">
+    return (
+      <MentorLayout title="Create Exam">
+        <div className="p-6 max-w-4xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
           <button
             onClick={() => navigate(ROUTES.MENTOR.EXAMS)}
@@ -603,8 +542,9 @@ const CreateExam: React.FC = () => {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </MentorLayout>
   );
 };
 
 export default CreateExam;
+

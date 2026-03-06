@@ -3,6 +3,7 @@ import * as studentApi from "./studentApi";
 import { getErrorMessage } from "../../utils/errorUtils";
 
 
+
 export const fetchStudentProfile = createAsyncThunk(
   "student/fetchProfile",
   async (_, { rejectWithValue }) => {
@@ -39,9 +40,11 @@ export const fetchAvailableCourses = createAsyncThunk(
   }
 );
 
+import type { CourseRequestData } from "../../types/dto/student.dto";
+
 export const submitCourseRequest = createAsyncThunk(
   "student/submitCourseRequest",
-  async (data: studentApi.CourseRequestData, { rejectWithValue }) => {
+  async (data: CourseRequestData, { rejectWithValue }) => {
     try {
       const response = await studentApi.createCourseRequest(data);
       return response;
@@ -71,6 +74,18 @@ export const requestMentor = createAsyncThunk(
       return response;
     } catch (error: unknown) {
       return rejectWithValue(getErrorMessage(error));
+    }
+  }
+);
+
+export const fetchStudentAssignments = createAsyncThunk(
+  'student/fetchAssignments',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await studentApi.getStudentAssignments();
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch assignments');
     }
   }
 );

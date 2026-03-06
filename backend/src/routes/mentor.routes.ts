@@ -27,6 +27,13 @@ mentorRouter.post(
   mentorController.requestLeave
 );
 
+mentorRouter.get(
+  MENTOR_ROUTES.MY_LEAVES,
+  requireAuth,
+  requireRole("mentor"),
+  mentorController.getMyLeaves
+);
+
 mentorRouter.put(
   MENTOR_ROUTES.PROFILE_UPDATE,
   requireAuth,
@@ -131,13 +138,20 @@ mentorRouter.delete(
 
 // === ASSIGNMENT ROUTES ===
 
-// Create assignment
+// Create and Get assignments
 mentorRouter.post(
-  "/assignments",
+  MENTOR_ROUTES.ASSIGNMENTS,
   requireAuth,
   requireRole("mentor"),
   upload.single("file"),
   studyMaterialController.createAssignment.bind(studyMaterialController)
+);
+
+mentorRouter.get(
+  MENTOR_ROUTES.ASSIGNMENTS,
+  requireAuth,
+  requireRole("mentor"),
+  studyMaterialController.getMentorAssignments.bind(studyMaterialController)
 );
 
 // Get mentor's materials (study materials and/or assignments)

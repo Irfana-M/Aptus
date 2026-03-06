@@ -6,6 +6,7 @@ import { HttpStatusCode } from "@/constants/httpStatus.js";
 import { logger } from "@/utils/logger.js";
 import { AppError } from "@/utils/AppError.js";
 import { MESSAGES } from "@/constants/messages.constants.js";
+import { getPaginationParams, formatStandardizedPaginatedResult } from "@/utils/pagination.util.js";
 import { UserRole } from "@/enums/user.enum.js";
 import { TrialClassStatus } from "@/enums/trialClass.enum.js";
 
@@ -63,13 +64,18 @@ export class TrialClassController {
         return;
       }
 
-      const trialClasses = await this._trialService.getStudentTrialClasses(studentId);
+      const { page, limit } = getPaginationParams(req.query);
+
+      const { items, total } = await this._trialService.getStudentTrialClasses(studentId, page, limit);
+
+      const result = formatStandardizedPaginatedResult(
+        items,
+        total,
+        { page, limit },
+        MESSAGES.TRIAL_CLASS.FETCH_SUCCESS
+      );
       
-      res.status(HttpStatusCode.OK).json({
-        success: true,
-        message: MESSAGES.TRIAL_CLASS.FETCH_SUCCESS,
-        data: trialClasses,
-      });
+      res.status(HttpStatusCode.OK).json(result);
     } catch (error: unknown) {
       this.handleError(res, error, MESSAGES.TRIAL_CLASS.FETCH_FAILED);
     }
@@ -260,7 +266,7 @@ async updateTrialClass(req: Request, res: Response): Promise<void> {
         return;
       }
 
-      // Verify user has access to this trial class (throws if denied)
+      
       await this._trialService.getTrialClassById(id, userId);
 
       const trialClass = await this._trialService.updateTrialClassStatus(id, TrialClassStatus.COMPLETED);

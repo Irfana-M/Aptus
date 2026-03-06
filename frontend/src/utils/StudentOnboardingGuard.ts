@@ -1,4 +1,4 @@
-import type { User } from '../types/authTypes';
+import type { User } from '../types/auth.types';
 import { ROUTES } from '../constants/routes.constants';
 
 export const StudentOnboardingStatus = {
@@ -97,3 +97,4 @@ export function getStudentRedirect(user: User): string | null {
   // Otherwise, strict enforcement for other states
   return requiredPath;
 }
+

@@ -2,7 +2,7 @@ import * as React from "react";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import { Button } from "../components/ui/Button";
-import heroImage from "../assets/images/mentora.png";
+import heroImage from "../assets/images/aptus.webp";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "../constants/routes.constants";
 import { Users, Target, TrendingUp, Star, CheckCircle } from "lucide-react";

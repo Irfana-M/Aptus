@@ -16,6 +16,7 @@ import type { IUserRoleService } from "@/interfaces/services/IUserRoleSrvice.js"
 import type { IAttendanceService } from "@/interfaces/services/IAttendanceService.js";
 
 import { fileLogger } from "@/utils/fileLogger.js";
+import type { ISessionRepository } from "@/interfaces/repositories/ISessionRepository.js";
 
 @injectable()
 export class VideoCallService implements IVideoCallService {
@@ -25,12 +26,12 @@ export class VideoCallService implements IVideoCallService {
     @inject(TYPES.ITrialClassRepository)
     private _trialClassRepo: ITrialClassRepository,
     @inject(TYPES.IUserRoleService) private _userRoleService: IUserRoleService,
-    @inject(TYPES.ISessionRepository) private _sessionRepo: import("../interfaces/repositories/ISessionRepository.js").ISessionRepository,
+    @inject(TYPES.ISessionRepository) private _sessionRepo: ISessionRepository,
     @inject(TYPES.IAttendanceService) private _attendanceService: IAttendanceService
-  ) {}
+  ) { }
 
 
-    async initializeCall(
+  async initializeCall(
     trialClassId: string,
     userId: string,
     userRole: 'mentor' | 'student'
@@ -40,19 +41,17 @@ export class VideoCallService implements IVideoCallService {
       let isSession = false;
 
       if (!trialClass) {
-         // Try finding a session
-         const session = await this._sessionRepo.findById(trialClassId);
-         if (session) {
-             isSession = true;
-             // Mock trial class structure
-             trialClass = ({ ...session, meetLink: (session as unknown as { webRTCId?: string }).webRTCId } as unknown as ITrialClassDocument);
-         } else {
-             throw new AppError("Trial class or Session not found", HttpStatusCode.NOT_FOUND);
-         }
+        const session = await this._sessionRepo.findById(trialClassId);
+        if (session) {
+          isSession = true;
+          trialClass = ({ ...session, meetLink: (session as unknown as { webRTCId?: string }).webRTCId } as unknown as ITrialClassDocument);
+        } else {
+          throw new AppError("Trial class or Session not found", HttpStatusCode.NOT_FOUND);
+        }
       }
 
       let videoCall = await this._videoCallRepo.findByTrialClassId(trialClassId);
-      
+
       if (videoCall) {
         return { success: true, meetLink: videoCall.meetLink };
       }
@@ -61,9 +60,7 @@ export class VideoCallService implements IVideoCallService {
 
       if (!meetLink) {
         meetLink = this._generateMeetLink(trialClassId);
-        // Fallback: If not found in Trial Repo (unlikely as we just found it), update it.
-        // But if we modify logic to support Session, we need to handle it.
-        // Only update Trial Class if it is NOT a session
+       
         if (!isSession) {
           await this._trialClassRepo.updateById(trialClassId, { meetLink });
         } else {
@@ -95,91 +92,89 @@ export class VideoCallService implements IVideoCallService {
     }
   }
 
-  
+
   async joinCall(
     data: JoinCallRequestDto
   ): Promise<{ success: boolean; error?: string }> {
     try {
       fileLogger(`🎥 JOIN CALL REQUEST - User: ${data.userId}, Type: ${data.userType}, Trial: ${data.trialClassId}`);
       logger.info(`🎥 JOIN CALL REQUEST - User: ${data.userId}, Type: ${data.userType}, Trial: ${data.trialClassId}`);
+
       
-      // ========== NEW: USE IUserRoleService for verification ==========
-      // Step 1: Verify user exists and has correct role
       const userVerification = await this._userRoleService.verifyUserRole(
         data.userId,
         data.userType
       );
-      
+
       if (!userVerification.success) {
         fileLogger(`❌ User verification failed: ${userVerification.error}`);
         logger.warn(`❌ User verification failed: ${userVerification.error}`);
-        return { 
-          success: false, 
-          error: userVerification.error || "User verification failed" 
+        return {
+          success: false,
+          error: userVerification.error || "User verification failed"
         };
       }
 
       logger.info(`✅ User verified: ${userVerification.user?.email} as ${data.userType}`);
 
-      // Step 2: Verify trial class authorization
+      
       const authCheck = await this._userRoleService.verifyTrialClassAuthorization(
         data.trialClassId,
         data.userId,
         data.userType
       );
-      
+
       if (!authCheck.authorized) {
         logger.warn(`❌ Unauthorized: ${authCheck.error}`);
-        return { 
-          success: false, 
-          error: authCheck.error || "Unauthorized to join this call" 
+        return {
+          success: false,
+          error: authCheck.error || "Unauthorized to join this call"
         };
       }
 
       logger.info(`✅ User authorized for trial class ${data.trialClassId}`);
 
-      // ========== ORIGINAL LOGIC FOR VIDEO CALL ==========
-      // Find or create video call - allow BOTH student and mentor to create
+      
       let videoCall = await this._videoCallRepo.findByTrialClassId(
         data.trialClassId
       );
-      
+
       if (!videoCall) {
         logger.info(`📹 No existing call found - creating new VideoCall for trial class ${data.trialClassId}`);
+
         
-        // Get meetLink from trial class or generate one
         let meetLink = (authCheck.trialClass as { meetLink?: string })?.meetLink;
-        
+
         if (!meetLink) {
           meetLink = this._generateMeetLink(data.trialClassId);
-          // Only update Trial Class if it IS a trial class
+          
           if (!(authCheck as unknown as { isSession?: boolean }).isSession) {
-             await this._trialClassRepo.updateById(data.trialClassId, { meetLink });
+            await this._trialClassRepo.updateById(data.trialClassId, { meetLink });
           } else {
-             logger.info(`ℹ️ Session detected, skipping TrialClass update for ${data.trialClassId}`);
+            logger.info(`ℹ️ Session detected, skipping TrialClass update for ${data.trialClassId}`);
           }
           logger.info(`🔗 Generated meet link: ${meetLink}`);
         }
 
-        // Create new video call
+        
         videoCall = await this._videoCallRepo.create({
           trialClassId: new Types.ObjectId(data.trialClassId),
           callStatus: "active",
           meetLink,
         });
-        
+
         logger.info(`✅ Video call created by ${data.userType} for trial class ${data.trialClassId}, CallID: ${videoCall._id}`);
       } else {
         logger.info(`📹 Found existing VideoCall: ${videoCall._id}, Status: ${videoCall.callStatus}`);
       }
 
-      // Check if call is active
+
       if (videoCall.callStatus !== "active") {
         logger.warn(`❌ Call status is ${videoCall.callStatus}, not active`);
         return { success: false, error: `Call is ${videoCall.callStatus}` };
       }
 
-      // Add participant to video call
+      
       const participantData = {
         userId: data.userId,
         userType: data.userType,
@@ -191,99 +186,33 @@ export class VideoCallService implements IVideoCallService {
         data.trialClassId,
         participantData
       );
-      
+
       logger.info(`✅ Participant added successfully`);
 
-      // ========== NEW: AUTO-MARK ATTENDANCE ==========
+      
       try {
-          const sessionModel = (authCheck as unknown as { isSession?: boolean }).isSession ? 'Session' : 'TrialClass';
-          // We use data.trialClassId as sessionId here because effectiveId logic treats them same
-          await this._attendanceService.markPresent(data.trialClassId, data.userId, sessionModel);
-          logger.info(`📝 Attendance marked for ${data.userId} in ${sessionModel} ${data.trialClassId}`);
+        const sessionModel = (authCheck as unknown as { isSession?: boolean }).isSession ? 'Session' : 'TrialClass';
+        
+        await this._attendanceService.markPresent(data.trialClassId, data.userId, sessionModel);
+        logger.info(`📝 Attendance marked for ${data.userId} in ${sessionModel} ${data.trialClassId}`);
       } catch (attError) {
-          logger.error(`⚠️ Failed to auto-mark attendance for ${data.trialClassId}: ${attError}`);
-          // Don't fail the join if attendance fails
+        logger.error(`⚠️ Failed to auto-mark attendance for ${data.trialClassId}: ${attError}`);
+       
       }
 
       return { success: true };
-      
+
     } catch (error) {
       logger.error("❌ Error joining call", error);
-      
-      // Return appropriate error message
+
+    
       if (error instanceof AppError) {
         return { success: false, error: error.message };
       }
-      
+
       return { success: false, error: "Failed to join call. Please try again." };
     }
   }
-
-  // async joinCall(
-  //   data: JoinCallRequestDto
-  // ): Promise<{ success: boolean; error?: string }> {
-  //   try {
-  //     logger.info(`🎥 JOIN CALL REQUEST - User: ${data.userId}, Type: ${data.userType}, Trial: ${data.trialClassId}`);
-      
-  //     const trialClass = await this._trialClassRepo.findById(data.trialClassId);
-  //     if (!trialClass) {
-  //       logger.warn(`❌ Trial class not found: ${data.trialClassId}`);
-  //       return { success: false, error: "Trial class not found" };
-  //     }
-
-  //     const isAuthorized = this.verifyUserAuthorization(
-  //       trialClass,
-  //       data.userId,
-  //       data.userType
-  //     );
-  //     if (!isAuthorized) {
-  //       logger.warn(`❌ Unauthorized user ${data.userId} trying to join trial class ${data.trialClassId}`);
-  //       return { success: false, error: "Unauthorized to join this call" };
-  //     }
-
-  //     // Find or create video call - allow BOTH student and mentor to create
-  //     let videoCall = await this._videoCallRepo.findByTrialClassId(
-  //       data.trialClassId
-  //     );
-      
-  //     if (!videoCall) {
-  //       logger.info(`📹 No existing call found - creating new VideoCall for trial class ${data.trialClassId}`);
-  //       // Create call if it doesn't exist (either user can create)
-  //       const meetLink = this._generateMeetLink(data.trialClassId);
-  //       videoCall = await this._videoCallRepo.create({
-  //         trialClassId: new Types.ObjectId(data.trialClassId),
-  //         callStatus: "active",
-  //         meetLink,
-  //       });
-  //       logger.info(`✅ Video call created by ${data.userType} for trial class ${data.trialClassId}, CallID: ${videoCall._id}`);
-  //     } else {
-  //       logger.info(`📹 Found existing VideoCall: ${videoCall._id}, Status: ${videoCall.callStatus}`);
-  //     }
-
-  //     if (videoCall.callStatus !== "active") {
-  //       logger.warn(`❌ Call status is ${videoCall.callStatus}, not active`);
-  //       return { success: false, error: `Call is ${videoCall.callStatus}` };
-  //     }
-
-  //     const participantData = {
-  //       userId: data.userId,
-  //       userType: data.userType,
-  //       socketId: data.socketId,
-  //     };
-
-  //     logger.info(`👤 Adding participant ${data.userId} (${data.userType}) to call ${videoCall._id}`);
-  //     await this._videoCallRepo.addParticipant(
-  //       data.trialClassId,
-  //       participantData
-  //     );
-  //     logger.info(`✅ Participant added successfully`);
-  //     return { success: true };
-  //   } catch (error) {
-  //     logger.error("❌ Error joining call", error);
-  //     return { success: false, error: "Failed to join call" };
-  //   }
-  // }
-
 
 
   async endCall(data: CallEndedDto): Promise<{ success: boolean }> {
@@ -291,8 +220,7 @@ export class VideoCallService implements IVideoCallService {
       const videoCall = await this._videoCallRepo.findByTrialClassId(
         data.trialClassId
       );
-      
-      // If call doesn't exist, it's already ended - return success
+
       if (!videoCall) {
         logger.info(`End call requested for ${data.trialClassId} but no active call found - already ended`);
         return { success: true };
@@ -324,11 +252,11 @@ export class VideoCallService implements IVideoCallService {
     trialClassId: string
   ): Promise<{ status: string; participants: Record<string, unknown>[]; meetLink?: string }> {
     try {
-      // First check if there's an active video call
+      
       const videoCall = await this._videoCallRepo.findByTrialClassId(
         trialClassId
       );
-      
+
       if (videoCall) {
         const activeParticipants = videoCall.participants.filter(
           (p) => !p.leftAt
@@ -343,19 +271,19 @@ export class VideoCallService implements IVideoCallService {
           meetLink: videoCall.meetLink,
         };
       }
+
       
-      // If no video call exists, check if trial class has a meetLink
       const trialClass = await this._trialClassRepo.findById(trialClassId);
       if (trialClass?.meetLink) {
-        // Trial class has a meet link but call hasn't started yet
-        return { 
-          status: "not_started", 
+        
+        return {
+          status: "not_started",
           participants: [],
-          meetLink: trialClass.meetLink 
+          meetLink: trialClass.meetLink
         };
       }
+
       
-      // No video call and no meetLink in trial class
       return { status: "not_started", participants: [] };
     } catch (error) {
       logger.error("Error getting call status", error);

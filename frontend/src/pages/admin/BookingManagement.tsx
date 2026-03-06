@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Sidebar } from "../../components/admin/Sidebar";
-import { Topbar } from "../../components/admin/Topbar";
 import { Table } from "../../components/admin/Table";
+import { AdminLayout } from "../../components/admin/AdminLayout";
+import type { Column } from "../../types/table.types";
+
 interface Booking {
   _id: string;
   studentName: string;
@@ -12,12 +13,7 @@ interface Booking {
   notification: string;
 }
 
-import type { Column } from "../../types/table.types";
-
 export const BookingsManagement: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeNav, setActiveNav] = useState("Bookings");
-
   const [bookings] = useState<Booking[]>([
     {
       _id: "1",
@@ -175,100 +171,78 @@ export const BookingsManagement: React.FC = () => {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar
-        isOpen={sidebarOpen}
-        activeItem={activeNav}
-        onItemClick={setActiveNav}
-        onClose={() => setSidebarOpen(false)}
-      />
-
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <Topbar
-          onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-          title="Bookings"
-          user={{
-            name: "Admin User",
-            email: "admin@mentora.com",
-          }}
-        />
-
-        <div className="flex-1 overflow-y-auto p-6">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex flex-col">
-                <p className="text-gray-600 text-sm font-medium mb-2">Total Students</p>
-                <p className="text-3xl font-bold text-gray-900">{totalStudents}</p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex flex-col">
-                <p className="text-gray-600 text-sm font-medium mb-2">Subjects</p>
-                <p className="text-3xl font-bold text-gray-900">{totalSubjects}</p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex flex-col">
-                <p className="text-gray-600 text-sm font-medium mb-2">Mentors</p>
-                <p className="text-3xl font-bold text-gray-900">{totalMentors}</p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex flex-col">
-                <p className="text-gray-600 text-sm font-medium mb-2">Pending Requests</p>
-                <p className="text-3xl font-bold text-gray-900">{pendingRequests}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* All Bookings Table */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <h2 className="text-lg font-semibold text-gray-900">All Bookings</h2>
-              <div className="flex items-center space-x-3">
-                <button 
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors" 
-                  title="Filter"
-                  onClick={() => console.log('Filter clicked')}
-                >
-                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                  </svg>
-                </button>
-                <button 
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors" 
-                  title="Download"
-                  onClick={() => console.log('Download clicked')}
-                >
-                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </button>
-                <button 
-                  className="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2 font-medium"
-                  onClick={() => console.log('Export clicked')}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <span>Export</span>
-                </button>
-              </div>
-            </div>
-
-            <Table<Booking>
-              columns={columns}
-              data={bookings}
-              emptyMessage="No bookings found"
-            />
+    <AdminLayout title="Bookings" activeItem="Bookings">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex flex-col">
+            <p className="text-gray-600 text-sm font-medium mb-2">Total Students</p>
+            <p className="text-3xl font-bold text-gray-900">{totalStudents}</p>
           </div>
         </div>
-      </main>
-    </div>
+
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex flex-col">
+            <p className="text-gray-600 text-sm font-medium mb-2">Subjects</p>
+            <p className="text-3xl font-bold text-gray-900">{totalSubjects}</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex flex-col">
+            <p className="text-gray-600 text-sm font-medium mb-2">Mentors</p>
+            <p className="text-3xl font-bold text-gray-900">{totalMentors}</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex flex-col">
+            <p className="text-gray-600 text-sm font-medium mb-2">Pending Requests</p>
+            <p className="text-3xl font-bold text-gray-900">{pendingRequests}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+        <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <h2 className="text-lg font-semibold text-gray-900">All Bookings</h2>
+          <div className="flex items-center space-x-3">
+            <button 
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors" 
+              title="Filter"
+              onClick={() => console.log('Filter clicked')}
+            >
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+            </button>
+            <button 
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors" 
+              title="Download"
+              onClick={() => console.log('Download clicked')}
+            >
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </button>
+            <button 
+              className="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2 font-medium"
+              onClick={() => console.log('Export clicked')}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>Export</span>
+            </button>
+          </div>
+        </div>
+
+        <Table<Booking>
+          columns={columns}
+          data={bookings}
+          emptyMessage="No bookings found"
+        />
+      </div>
+    </AdminLayout>
   );
 };
 

@@ -1,7 +1,7 @@
 import { schedulingRepository } from '../repositories/SchedulingRepository';
 import { TimeSlot } from '../models/scheduling/TimeSlot';
 import { Booking } from '../models/scheduling/Booking';
-import type { AttendanceSummaryDto } from '../types/schedulingTypes';
+import type { AttendanceSummaryDto } from '../types/scheduling.types';
 
 export class SchedulingService {
   async getAvailableSlots(subjectId: string, date?: string): Promise<TimeSlot[]> {
@@ -29,3 +29,4 @@ export class SchedulingService {
 }
 
 export const schedulingService = new SchedulingService();
+

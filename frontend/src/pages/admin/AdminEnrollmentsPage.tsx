@@ -6,11 +6,17 @@ import { setEnrollmentsPagination } from "../../features/admin/adminSlice";
 import { DataTable } from "../../components/ui/DataTable";
 import { SearchAndFilters, type FilterConfig } from "../../components/ui/SearchAndFilters";
 import { CheckCircle, Clock, XCircle, User, Calendar } from "lucide-react";
-import type { Enrollment } from "../../types/enrollmentTypes";
+import type { Enrollment } from "../../types/student.types";
 import { useDebounce } from "../../hooks/useDebounce";
 import { Pagination } from "../../components/ui/Pagination";
 
-const AdminEnrollmentsPage: React.FC = () => {
+import { AdminLayout } from "../../components/admin/AdminLayout";
+
+interface AdminEnrollmentsPageProps {
+  hideLayout?: boolean;
+}
+
+const AdminEnrollmentsPage: React.FC<AdminEnrollmentsPageProps> = ({ hideLayout = false }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { 
     enrollmentsList, 
@@ -75,25 +81,28 @@ const AdminEnrollmentsPage: React.FC = () => {
   const columns = [
     {
       header: "Student",
-      accessor: (row: Enrollment) => (
-        <div className="flex items-center gap-3">
-          {(row.student?.profilePicture || (row.student as any)?.profileImage) ? (
-            <img
-              src={row.student?.profilePicture || (row.student as any)?.profileImage}
-              alt={row.student?.fullName}
-              className="w-8 h-8 rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
-              <User size={14} />
+      accessor: (row: Enrollment) => {
+        const student = typeof row.student === 'object' ? row.student : null;
+        return (
+          <div className="flex items-center gap-3">
+            {(student?.profilePicture || (student as any)?.profileImage) ? (
+              <img
+                src={student?.profilePicture || (student as any)?.profileImage}
+                alt={student?.fullName}
+                className="w-8 h-8 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
+                <User size={14} />
+              </div>
+            )}
+            <div>
+              <div className="font-medium text-gray-900">{student?.fullName || "N/A"}</div>
+              <div className="text-xs text-gray-500">{student?.email}</div>
             </div>
-          )}
-          <div>
-            <div className="font-medium text-gray-900">{row.student?.fullName || "N/A"}</div>
-            <div className="text-xs text-gray-500">{row.student?.email}</div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       header: "Course",
@@ -154,16 +163,7 @@ const AdminEnrollmentsPage: React.FC = () => {
     },
   ];
 
-  if (enrollmentsError) {
-    return (
-      <div className="bg-red-50 p-6 rounded-xl border border-red-100 flex items-center gap-3 text-red-700">
-        <XCircle className="w-5 h-5" />
-        <p>{enrollmentsError}</p>
-      </div>
-    );
-  }
-
-  return (
+  const content = (
     <div className="space-y-6">
       <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -217,6 +217,30 @@ const AdminEnrollmentsPage: React.FC = () => {
         </div>
       )}
     </div>
+  );
+
+  if (enrollmentsError) {
+    const errorContent = (
+      <div className="bg-red-50 p-6 rounded-xl border border-red-100 flex items-center gap-3 text-red-700">
+        <XCircle className="w-5 h-5" />
+        <p>{enrollmentsError}</p>
+      </div>
+    );
+
+    if (hideLayout) return errorContent;
+    return (
+      <AdminLayout title="Enrollments" activeItem="Courses">
+        {errorContent}
+      </AdminLayout>
+    );
+  }
+
+  if (hideLayout) return content;
+
+  return (
+    <AdminLayout title="Enrollments" activeItem="Courses">
+      {content}
+    </AdminLayout>
   );
 };
 

@@ -18,9 +18,9 @@ export const ACCESS_STATE_HIERARCHY: Record<AccessState, number> = {
   [AccessState.FULLY_QUALIFIED]: 5,
 };
 
-import type { StudentBaseResponseDto } from '../types/studentTypes';
+import type { User } from '../types/auth.types';
 
-export const resolveAccessState = (user: StudentBaseResponseDto | null | undefined): AccessState => {
+export const resolveAccessState = (user: User | null | undefined): AccessState => {
   if (!user) return AccessState.FORBIDDEN;
   if (user.role !== 'student') return AccessState.FULLY_QUALIFIED; // Admins/Mentors have their own logic, usually fully qualified for student views
 
@@ -44,3 +44,4 @@ export const getRecommendedRedirect = (state: AccessState): string => {
     default: return '/login';
   }
 };
+

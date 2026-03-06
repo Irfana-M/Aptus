@@ -1,15 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import { ROUTES } from '../../constants/routes.constants';
-import { Home, User, Users, Calendar, BookOpen, Clock, ClipboardList } from 'lucide-react';
-import { DashboardLayout } from '../../components/layout/DashboardLayout';
-import type { NavItem } from '../../components/layout/DashboardSidebar';
+import { Calendar, BookOpen, Clock, ClipboardList } from 'lucide-react';
+import { MentorLayout } from '../../components/mentor/MentorLayout';
 import { Table, type TableColumn } from '../../components/mentor/Table';
 import { Loader } from '../../components/ui/Loader';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { fetchMentorTrialClasses, fetchMentorProfile, fetchMentorCourses } from "../../features/mentor/mentorThunk";
-import { logoutUser } from "../../features/auth/authThunks";
 import type { AppDispatch, RootState } from "../../app/store";
 
 // Helper for date formatting
@@ -33,13 +29,10 @@ interface HistoryItem {
     status: string;
 }
 
-
-
 const ClassHistory: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
-    const navigate = useNavigate();
+
     const { trialClasses, courses, loading, profile } = useSelector((state: RootState) => state.mentor);
-    const { user } = useSelector((state: RootState) => state.auth);
     const [view, setView] = useState<'all' | 'trial' | 'regular'>('all');
 
     useEffect(() => {
@@ -50,107 +43,114 @@ const ClassHistory: React.FC = () => {
         }
     }, [dispatch, profile]);
 
-    const handleLogout = async () => {
-        await dispatch(logoutUser());
-        navigate(ROUTES.LOGIN);
-    };
+    // Format and combine data
+    const historyData = React.useMemo(() => {
+        const data: HistoryItem[] = [];
 
-    const mentorNavItems: NavItem[] = [
-        { icon: <Home size={20} />, label: 'Dashboard', path: '/mentor/dashboard' },
-        { icon: <User size={20} />, label: 'Profile', path: '/mentor/profile' },
-        { icon: <Users size={20} />, label: 'Students/Batches', path: '/mentor/students' },
-        { icon: <Calendar size={20} />, label: 'Attendance', path: '/mentor/attendance' },
-        { icon: <BookOpen size={20} />, label: 'Classroom', path: '/mentor/classroom' },
-        { icon: <ClipboardList size={20} />, label: 'Class History', path: '/mentor/class-history' },
-        { icon: <Clock size={20} />, label: 'Availability', path: '/mentor/availability' },
-    ];
+        // Add completed trial classes
+        trialClasses.forEach(tc => {
+            if (tc.status === 'completed') {
+                data.push({
+                    id: tc._id || tc.id,
+                    studentName: tc.student?.fullName || 'N/A',
+                    subject: tc.subject?.subjectName || 'N/A',
+                    grade: (tc.subject?.grade as string) || 'N/A',
+                    date: tc.preferredDate,
+                    time: tc.preferredTime,
+                    type: 'Trial',
+                    status: tc.status
+                });
+            }
+        });
 
-    const dashboardUser = {
-        name: profile?.fullName || user?.fullName || "Mentor",
-        email: user?.email || "",
-        avatar: profile?.profileImageUrl || undefined,
-        role: "mentor"
-    };
-
-    // Prepare unified history
-    const historyData = [
-        ...(trialClasses || [])
-            .filter(cls => cls.status === 'completed')
-            .map(cls => ({
-                id: cls._id,
-                studentName: cls.student?.fullName || 'Unknown',
-                subject: cls.subject?.subjectName || 'N/A',
-                grade: String(cls.subject?.grade || 'N/A'),
-                date: cls.preferredDate,
-                time: cls.preferredTime,
-                type: 'Trial' as const,
-                status: 'Completed'
-            })),
-        ...(courses || [])
-            .filter(course => course.status === 'completed')
-            .map(course => ({
+        // Add courses (simplified for history view)
+        courses.forEach(course => {
+            // Courses are ongoing, but we can show them here if they've started
+            // In a real app, you'd show individual completed sessions
+            data.push({
                 id: course._id,
-                studentName: course.student?.fullName || 'Batch/Multiple',
+                studentName: course.student?.fullName || (course.courseType === 'group' ? 'Group Batch' : 'Regular Student'),
                 subject: course.subject?.subjectName || 'N/A',
-                grade: String(course.grade?.name || 'N/A'),
-                date: course.endDate,
-                time: course.schedule?.timeSlot || 'N/A',
-                type: 'Regular' as const,
-                status: 'Completed'
-            }))
-    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) as HistoryItem[];
+                grade: course.grade?.name || 'N/A',
+                date: course.startDate,
+                time: course.schedule?.timeSlot || course.timeSlot || 'N/A',
+                type: 'Regular',
+                status: course.status
+            });
+        });
+
+        // Sort by date descending
+        return data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [trialClasses, courses]);
 
     const filteredData = historyData.filter(item => {
         if (view === 'all') return true;
-        if (view === 'trial') return item.type === 'Trial';
-        if (view === 'regular') return item.type === 'Regular';
-        return true;
+        return item.type.toLowerCase() === view;
     });
 
     const columns: TableColumn<HistoryItem>[] = [
-        { 
-            header: 'Student/Subject', 
+        {
+            header: 'Date',
             accessor: (item) => (
-                <div className="flex items-center gap-3">
-                    <img 
-                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${item.studentName}`}
-                        alt=""
-                        className="w-8 h-8 rounded-full bg-gray-100"
-                    />
-                    <div>
-                        <div className="font-medium text-gray-900">{item.studentName}</div>
-                        <div className="text-xs text-gray-500">{item.subject}</div>
-                    </div>
+                <div className="flex items-center gap-2">
+                    <Calendar size={14} className="text-gray-400" />
+                    <span>{formatDate(item.date)}</span>
                 </div>
-            ) 
+            )
         },
-        { header: 'Type', accessor: (item) => (
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                item.type === 'Trial' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-            }`}>
-                {item.type}
-            </span>
-        )},
-        { header: 'Date', accessor: (item) => formatDate(item.date) },
-        { header: 'Time', accessor: (item) => item.time },
-        { 
-            header: 'Status', 
-            accessor: () => (
-                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase tracking-wider">
-                    Completed
+        {
+            header: 'Student/Batch',
+            accessor: (item) => (
+                <div>
+                    <div className="font-medium text-gray-900">{item.studentName}</div>
+                    <div className="text-xs text-gray-500">{item.grade}</div>
+                </div>
+            )
+        },
+        {
+            header: 'Subject',
+            accessor: (item) => (
+                <div className="flex items-baseline gap-2">
+                    <BookOpen size={14} className="text-gray-400" />
+                    <span>{item.subject}</span>
+                </div>
+            )
+        },
+        {
+            header: 'Time',
+            accessor: (item) => (
+                <div className="flex items-center gap-2">
+                    <Clock size={14} className="text-gray-400" />
+                    <span>{item.time}</span>
+                </div>
+            )
+        },
+        {
+            header: 'Type',
+            accessor: (item) => (
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    item.type === 'Trial' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                }`}>
+                    {item.type}
                 </span>
-            ) 
+            )
         },
+        {
+            header: 'Status',
+            accessor: (item) => (
+                <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
+                    item.status === 'completed' || item.status === 'conducted' || item.status === 'active' || item.status === 'ongoing'
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-gray-100 text-gray-700'
+                }`}>
+                    {item.status}
+                </span>
+            )
+        }
     ];
 
     return (
-        <DashboardLayout
-            navItems={mentorNavItems}
-            user={dashboardUser}
-            title="Class History"
-            onLogout={handleLogout}
-            appTitle="Aptus"
-        >
+        <MentorLayout title="Class History">
             <div className="p-6">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                     <div>
@@ -200,7 +200,7 @@ const ClassHistory: React.FC = () => {
                     )}
                 </div>
             </div>
-        </DashboardLayout>
+        </MentorLayout>
     );
 };
 

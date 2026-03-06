@@ -1,27 +1,27 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { adminAuthApi, adminCourseApi, adminStudentApi, adminRequestsApi, adminMentorRequestApi, type AddStudentRequestDto, type AddStudentResponseDto, type AdminLoginDto, type StudentsWithStatsResponse, type PaginatedResponse, type PaginationMeta } from "./adminApi";
-import type { AdminLoginResponse } from "../../types/dtoTypes";
+import { adminAuthApi, adminCourseApi, adminStudentApi, adminRequestsApi, adminMentorRequestApi, type AddStudentRequestDto, type AddStudentResponseDto, type AdminLoginDto, type StudentsWithStatsResponse, type PaginationMeta } from "./adminApi";
+import type { AdminLoginResponse } from "../../types/dto/auth.dto";
 import { adminMentorApi } from "./adminApi";
 import type { RootState } from "../../app/store";
-import type { MentorProfile } from "../mentor/mentorSlice";
-import type { StudentBaseResponseDto, CourseRequest, SubscriptionDetails } from "../../types/studentTypes";
+import type { MentorProfile } from "../mentor/types";
+import type { StudentBaseResponseDto, CourseRequest, SubscriptionDetails } from "../../types/student.types";
 import type { StudentProfile } from "../../types/student.types";
-import type { TrialClass } from "../../types/trialTypes";
+import type { TrialClass } from "../../types/trial.types";
 import { logger } from "../../utils/logger";
 import { getApiErrorMessage, getErrorMessage } from "../../utils/errorUtils";
-import type { MentorRequestListItem } from "../../types/adminTypes";
-import type { Enrollment } from "../../types/enrollmentTypes";
+import type { MentorRequestListItem } from "../../types/admin.types";
+import type { Enrollment } from "../../types/student.types";
 import { z } from 'zod';
 import { 
   adminCreateStudentSchema, 
   type AdminCreateStudentInput 
 } from '../../lib/schemas/student.schemas';
 import { clearCourseCreationState } from "./adminSlice";
-import type { Course } from "../../types/courseTypes";
+import type { Course } from "../../types/course.types";
 
 
 
-    export interface AvailableMentorDto {
+export interface AvailableMentorDto {
   _id: string;
   id?: string;
   fullName: string;
@@ -106,11 +106,17 @@ export const fetchAllMentorsAdmin = createAsyncThunk<
     if (Array.isArray(data)) {
       return data as MentorProfile[];
     } else if (data && typeof data === 'object') {
-      const obj = data as Record<string, unknown>;
-      if ('data' in obj && Array.isArray(obj.data)) {
+      const obj = data as Record<string, any>;
+      // Standardized format: { success: true, data: { items: [], pagination: {} } }
+      if (obj.data && typeof obj.data === 'object' && Array.isArray(obj.data.items)) {
+        return obj.data.items as MentorProfile[];
+      }
+      // Legacy data wrapper: { success: true, data: [] }
+      if (obj.data && Array.isArray(obj.data)) {
         return obj.data as MentorProfile[];
       }
-      if ('mentors' in obj && Array.isArray(obj.mentors)) {
+      // Direct mentors property
+      if (obj.mentors && Array.isArray(obj.mentors)) {
         return obj.mentors as MentorProfile[];
       }
       return rejectWithValue("Unexpected response format from server");
@@ -155,15 +161,23 @@ export const fetchMentorsPaginated = createAsyncThunk<
     
     const response = await adminMentorApi.fetchAllMentors(params);
     
-    const data = response.data;
+    const data = response.data as any;
     
-    // Handle paginated response structure
-    if (data && 'success' in data && 'data' in data && 'pagination' in data) {
-      const paginatedData = data as PaginatedResponse<MentorProfile>;
-      logger.info(`✅ Successfully fetched ${paginatedData.data.length} mentors (page ${paginatedData.pagination.currentPage})`);
+    // Handle standardized paginated response: { success: true, data: { items: [], pagination: {} } }
+    if (data && data.success && data.data && typeof data.data === 'object' && Array.isArray(data.data.items) && data.data.pagination) {
+      logger.info(`✅ Successfully fetched ${data.data.items.length} mentors (page ${data.data.pagination.currentPage})`);
       return {
-        mentors: paginatedData.data,
-        pagination: paginatedData.pagination,
+        mentors: data.data.items,
+        pagination: data.data.pagination,
+      };
+    }
+
+    // Handle PaginatedResponse format: { success: true, data: [], pagination: {} }
+    if (data && data.success && Array.isArray(data.data) && data.pagination) {
+      logger.info(`✅ Successfully fetched ${data.data.length} mentors (page ${data.pagination.currentPage})`);
+      return {
+        mentors: data.data,
+        pagination: data.pagination,
       };
     }
     
@@ -363,13 +377,14 @@ export const fetchAllStudentsAdmin = createAsyncThunk<
     // Use the new endpoint with large limit to get all students
     const response = await adminStudentApi.getStudentsWithStats({ page: 1, limit: 1000 });
 
-    const data = response.data as unknown as { success: boolean; message?: string; data: { students: unknown[] } };
-    if (!data.success) {
+    const data = response.data as any;
+    if (!data?.success) {
       logger.error("❌ API returned unsuccessful response:", data);
-      return rejectWithValue(data.message || "Failed to fetch students");
+      return rejectWithValue(data?.message || "Failed to fetch students");
     }
 
-    const { students } = data.data;
+    // Standardized format: { data: { items: [] } } or { data: { students: [] } }
+    const students = data.data?.items || data.data?.students || (Array.isArray(data.data) ? data.data : []);
 
     const validatedStudents = (students as unknown[]).map((student: unknown) => {
       const s = student as Record<string, unknown>;
@@ -437,15 +452,23 @@ export const fetchStudentsPaginated = createAsyncThunk<
     
     const response = await adminStudentApi.getAllStudents(params);
     
-    const data = response.data;
+    const data = response.data as any;
     
-    // Handle paginated response structure
-    if (data && 'success' in data && 'data' in data && 'pagination' in data) {
-      const paginatedData = data as PaginatedResponse<StudentBaseResponseDto>;
-      logger.info(`✅ Successfully fetched ${paginatedData.data.length} students (page ${paginatedData.pagination.currentPage})`);
+    // Handle standardized paginated response: { success: true, data: { items: [], pagination: {} } }
+    if (data && data.success && data.data && typeof data.data === 'object' && Array.isArray(data.data.items) && data.data.pagination) {
+      logger.info(`✅ Successfully fetched ${data.data.items.length} students (page ${data.data.pagination.currentPage})`);
       return {
-        students: paginatedData.data,
-        pagination: paginatedData.pagination,
+        students: data.data.items,
+        pagination: data.data.pagination,
+      };
+    }
+
+    // Handle PaginatedResponse format: { success: true, data: [], pagination: {} }
+    if (data && data.success && Array.isArray(data.data) && data.pagination) {
+      logger.info(`✅ Successfully fetched ${data.data.length} students (page ${data.pagination.currentPage})`);
+      return {
+        students: data.data,
+        pagination: data.pagination,
       };
     }
     
@@ -558,7 +581,9 @@ export const fetchAllTrialClassesAdmin = createAsyncThunk<
   async (_, { rejectWithValue }) => {
     try {
       const response = await adminStudentApi.getTrialClasses();
-      return (response.data.data || response.data) as TrialClass[];
+      const responseData = response.data as any;
+      const trialClasses = responseData?.data?.items || responseData?.data || (Array.isArray(responseData) ? responseData : []);
+      return trialClasses as TrialClass[];
     } catch (error: unknown) {
       return rejectWithValue(getApiErrorMessage(error, 'Failed to fetch trial classes'));
     }
@@ -571,41 +596,33 @@ export const fetchAvailableMentors = createAsyncThunk<{ matches: AvailableMentor
   async (params, { rejectWithValue }) => {
     try {
       const response = await adminStudentApi.getAvailableMentors(params);
-      const responseData = response.data as Record<string, unknown>;
-      const data = responseData.data;
+      const responseData = response.data as any;
+      const data = responseData?.data?.items || responseData?.data || responseData;
 
-      // Ensure data is an object with matches and alternates properties
-      if (data && typeof data === 'object' && ('matches' in (data as Record<string, unknown>) || 'alternates' in (data as Record<string, unknown>))) {
+      // Check for standardized matches/alternates structure first
+      if (data && typeof data === 'object' && !Array.isArray(data) && ('matches' in data || 'alternates' in data)) {
         const obj = data as Record<string, unknown[]>;
-        const matches = (obj.matches || []).map((m: unknown) => {
-          const mentor = m as Record<string, unknown>;
-          return {
-            ...mentor,
-            rating: (mentor.rating as number) || 0
-          };
-        }) as AvailableMentorDto[];
+        const transformMentor = (m: any) => ({
+          ...m,
+          rating: Number(m.rating) || 0
+        });
         
-        const alternates = (obj.alternates || []).map((m: unknown) => {
-          const mentor = m as Record<string, unknown>;
-          return {
-            ...mentor,
-            rating: (mentor.rating as number) || 0
-          };
-        }) as AvailableMentorDto[];
-        
-        return { matches, alternates };
-      } else if (Array.isArray(data)) {
-        const matches = (data as unknown[]).map((m: unknown) => {
-           const mentor = m as Record<string, unknown>;
-           return {
-             ...mentor,
-             rating: (mentor.rating as number) || 0
-           };
-        }) as AvailableMentorDto[];
+        return { 
+          matches: (obj.matches || []).map(transformMentor), 
+          alternates: (obj.alternates || []).map(transformMentor) 
+        };
+      } 
+      
+      // Fallback to array of matches
+      if (Array.isArray(data)) {
+        const matches = data.map((m: any) => ({
+          ...m,
+          rating: Number(m.rating) || 0
+        }));
         return { matches, alternates: [] };
       }
       
-      return { matches: [], alternates: [] }; // Default empty response
+      return { matches: [], alternates: [] };
     } catch (error: unknown) {
       return rejectWithValue(getApiErrorMessage(error, 'Failed to fetch available mentors'));
     }
@@ -640,13 +657,14 @@ export const fetchStudentsWithStats = createAsyncThunk<
 
     const response = await adminStudentApi.getStudentsWithStats({ page, limit });
 
-    const responseData = response.data as StudentsWithStatsResponse;
+    const responseData = response.data as any;
     if (!responseData.success) {
       logger.error("❌ API returned unsuccessful response:", responseData);
       return rejectWithValue(responseData.message || "Failed to fetch students with stats");
     }
 
-    const { students, pagination } = responseData.data;
+    const students = responseData.data?.items || responseData.data?.students || [];
+    const pagination = responseData.data?.pagination || responseData.pagination;
 
     // Transform and validate students data
     const validatedStudents = (students as unknown as Record<string, unknown>[]).map((student) => {
@@ -698,14 +716,16 @@ export const fetchStudentTrialClasses = createAsyncThunk<
   try {
     logger.debug("🔄 Starting fetchStudentTrialClasses", { studentId, status });
 
-    const response = await adminStudentApi.getStudentTrialClasses(studentId, status);
+      const response = await adminStudentApi.getStudentTrialClasses(studentId, status);
+      const responseData = response.data as any;
 
-    if (!response.data.success) {
-      return rejectWithValue(getApiErrorMessage(response.data, "Failed to fetch student trial classes"));
-    }
+      if (!responseData.success) {
+        return rejectWithValue(getApiErrorMessage(responseData, "Failed to fetch student trial classes"));
+      }
 
-    logger.info(`✅ Successfully fetched ${(response.data.data as unknown[])?.length || 0} trial classes for student ${studentId}`);
-    return (response.data.data || []) as TrialClass[];
+      const trialClasses = responseData.data?.items || responseData.data || [];
+      logger.info(`✅ Successfully fetched ${(trialClasses as unknown[])?.length || 0} trial classes for student ${studentId}`);
+      return trialClasses as TrialClass[];
   } catch (error: unknown) {
     logger.error("❌ Error fetching student trial classes:", {
       error: getErrorMessage(error),
@@ -756,14 +776,14 @@ export const fetchTrialClassDetails = createAsyncThunk<
     logger.debug("🔄 Starting fetchTrialClassDetails", { trialClassId });
 
     const response = await adminStudentApi.getTrialClassDetails(trialClassId);
+    const responseData = response.data as any;
 
-    if (!response.data.success) {
-      return rejectWithValue(getApiErrorMessage(response.data, "Failed to fetch trial class details"));
+    if (!responseData.success) {
+      return rejectWithValue(getApiErrorMessage(responseData, "Failed to fetch trial class details"));
     }
 
     logger.info(`✅ Successfully fetched trial class details for ${trialClassId}`);
-    const resData = response.data as Record<string, unknown>;
-    return resData.data as TrialClass;
+    return (responseData.data?.items?.[0] || responseData.data) as TrialClass;
   } catch (error: unknown) {
     logger.error("❌ Error fetching trial class details:", {
       error: getErrorMessage(error),
@@ -962,17 +982,13 @@ export const fetchAllCoursesAdmin = createAsyncThunk<
     
     console.log("📡 Courses API response:", response.data);
     
-    // Handle different response structures
     let courses: Course[] = [];
-    
-    const responseData = response.data;
+    const responseData = response.data as any;
 
     if (Array.isArray(responseData)) {
-      console.log("✅ Using response.data directly (array)");
       courses = responseData;
-    } else if (responseData && 'data' in responseData && Array.isArray(responseData.data)) {
-      console.log("✅ Using response.data.data (paginated structure)");
-      courses = responseData.data;
+    } else if (responseData?.success && responseData.data) {
+      courses = responseData.data.items || (Array.isArray(responseData.data) ? responseData.data : []);
     } else {
       console.error("❌ Invalid courses response structure:", responseData);
       return rejectWithValue("Invalid response format for courses");
@@ -1019,11 +1035,18 @@ export const fetchCoursesPaginated = createAsyncThunk<
     
     const response = await adminCourseApi.getAllOneToOneCourses(params);
     
-    const responseData = response.data;
+    const responseData = response.data as any;
     
-    // Handle paginated response structure
-    if (responseData && !Array.isArray(responseData) && 'pagination' in responseData && 'data' in responseData) {
-      logger.info(`✅ Successfully fetched ${responseData.data.length} courses (page ${responseData.pagination.currentPage})`);
+    // Handle standardized paginated response
+    if (responseData?.success && responseData.data && responseData.data.items && responseData.data.pagination) {
+       return {
+        courses: responseData.data.items,
+        pagination: responseData.data.pagination,
+      };
+    }
+
+    // Handle PaginatedResponse format
+    if (responseData?.success && Array.isArray(responseData.data) && responseData.pagination) {
       return {
         courses: responseData.data,
         pagination: responseData.pagination,
@@ -1067,17 +1090,15 @@ export const fetchGradesAdmin = createAsyncThunk<
     
     console.log("📡 Grades API response:", response.data);
     
-    // Handle different response structures
     let grades: { _id: string; name: string; syllabus?: string }[] = [];
+    const responseData = response.data as any;
     
-    if (response.data?.success && Array.isArray(response.data.data)) {
-      console.log("✅ Using response.data.data for grades (array)");
-      grades = response.data.data as unknown as { _id: string; name: string; syllabus?: string }[];
-    } else if (Array.isArray(response.data)) {
-      console.log("✅ Using response.data directly for grades (array)");
-      grades = response.data as unknown as { _id: string; name: string; syllabus?: string }[];
+    if (responseData?.success && responseData.data) {
+      grades = responseData.data.items || (Array.isArray(responseData.data) ? responseData.data : []);
+    } else if (Array.isArray(responseData)) {
+      grades = responseData;
     } else {
-      console.error("❌ Invalid grades response structure:", response.data);
+      console.error("❌ Invalid grades response structure:", responseData);
       return rejectWithValue("Invalid response format for grades");
     }
     
@@ -1108,9 +1129,8 @@ export const fetchSubjectsByGradeAdmin = createAsyncThunk<
     const { adminCourseApi } = await import("./adminApi");
     const response = await adminCourseApi.getSubjectsByGrade(gradeId);
     
-    console.log(`📡 Subjects API response for grade ${gradeId}:`, response.data);
-    
-    const subjects = response.data?.data || response.data;
+    const responseData = response.data as any;
+    const subjects = responseData?.data?.items || responseData?.data || responseData;
     
     if (!Array.isArray(subjects)) {
       console.error('❌ Invalid subjects response:', response.data);
@@ -1145,8 +1165,8 @@ export const fetchAllCourseRequestsAdmin = createAsyncThunk<
 >("admin/fetchAllCourseRequests", async (_, { rejectWithValue }) => {
   try {
     const response = await adminRequestsApi.getAllRequests();
-    const data = response.data;
-    const requests = 'data' in data ? data.data : [];
+    const responseData = response.data as any;
+    const requests = responseData?.data?.items || responseData?.data || (Array.isArray(responseData) ? responseData : []);
     
     // Manual mapping to ensure 'id' is present
     return (requests as (CourseRequest & { _id?: string })[]).map(req => ({
@@ -1169,21 +1189,21 @@ export const fetchCourseRequestsPaginated = createAsyncThunk<
 >("admin/fetchCourseRequestsPaginated", async (params, { rejectWithValue }) => {
   try {
     const response = await adminRequestsApi.getAllRequests(params);
-    const responseData = response.data;
+    const responseData = response.data as any;
 
-    if (responseData && 'pagination' in responseData && 'data' in responseData) {
-      const requests = (responseData.data as (CourseRequest & { _id?: string })[]).map(req => ({
+    if (responseData?.success && responseData.data && responseData.data.items && responseData.data.pagination) {
+      const requests = (responseData.data.items as (CourseRequest & { _id?: string })[]).map(req => ({
         ...req,
         id: req._id || req.id,
         student: req.student ? (typeof req.student === 'object' ? {
           ...req.student,
-          id: (req.student as Record<string, unknown>)._id as string || (req.student as Record<string, unknown>).id as string || (req.student as unknown as string)
+          id: (req.student as Record<string, any>)._id as string || (req.student as Record<string, any>).id as string || (req.student as any)
         } : req.student) : 'Unknown Student'
       })) as CourseRequest[];
 
       return {
         requests,
-        pagination: responseData.pagination,
+        pagination: responseData.data.pagination,
       };
     }
 
@@ -1313,8 +1333,8 @@ export const fetchAllEnrollmentsAdmin = createAsyncThunk<
   try {
     const { adminEnrollmentApi } = await import("./adminApi");
     const response = await adminEnrollmentApi.fetchAllEnrollments();
-    const data = response.data;
-    const enrollments = 'data' in data ? data.data : [];
+    const responseData = response.data as any;
+    const enrollments = responseData?.data?.items || responseData?.data || (Array.isArray(responseData) ? responseData : []);
 
     return (enrollments as unknown as Record<string, unknown>[]).map(en => {
       const student = en.student as Record<string, unknown> | undefined;
@@ -1346,11 +1366,11 @@ export const fetchEnrollmentsPaginated = createAsyncThunk<
   try {
     const { adminEnrollmentApi } = await import("./adminApi");
     const response = await adminEnrollmentApi.fetchAllEnrollments(params);
-    const responseData = response.data;
+    const responseData = response.data as any;
 
-    if (responseData && 'pagination' in responseData && 'data' in responseData) {
-      const enrollments = (responseData.data as unknown as Record<string, unknown>[]).map(en => {
-        const student = en.student as Record<string, unknown> | undefined;
+    if (responseData?.success && responseData.data && responseData.data.items && responseData.data.pagination) {
+      const enrollments = (responseData.data.items as unknown as Record<string, any>[]).map(en => {
+        const student = en.student as Record<string, any> | undefined;
         if (student && student.profileImage && !student.profilePicture) {
           student.profilePicture = student.profileImage;
         }
@@ -1369,7 +1389,7 @@ export const fetchEnrollmentsPaginated = createAsyncThunk<
 
       return {
         enrollments,
-        pagination: responseData.pagination,
+        pagination: responseData.data.pagination,
       };
     }
 
@@ -1429,3 +1449,4 @@ export const reassignMentorToStudent = createAsyncThunk<
     }
   }
 );
+

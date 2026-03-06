@@ -72,6 +72,7 @@ export class UserMapper {
         isPaid: (user as StudentAuthUser).isPaid ?? false,
         hasPaid: (user as StudentAuthUser).isPaid ?? false,
         isTrialCompleted: (user as StudentAuthUser).isTrialCompleted ?? false,
+        onboardingStatus: (user as StudentAuthUser).onboardingStatus,
         profileImageUrl: (user as StudentAuthUser).profileImageUrl,
         profileImage: (user as StudentAuthUser).profileImage,
       } : {

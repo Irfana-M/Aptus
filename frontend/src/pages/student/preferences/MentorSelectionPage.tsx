@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 import { Button } from '../../../components/ui/Button';
 import { Loader } from '../../../components/ui/Loader';
 import MentorDetailModal from '../../../components/students/MentorDetailModal';
-import type { MentorProfile } from '../../../features/mentor/mentorSlice';
+import type { MentorProfile } from "../../../features/mentor/types";
 import { ROUTES } from '../../../constants/routes.constants';
 
 interface SelectedSubject {
@@ -105,7 +105,7 @@ const MentorSelectionPage: React.FC = () => {
                 // 1. Fetch Candidates (No time constraints for Premium flow)
                 await Promise.all(selectedSubjects.map(async (subject: SelectedSubject) => {
                     // For mentor-first flow, we don't have slots yet, so we pass undefined for days/timeSlot
-                    const result = await findMentors(subject.id, profile?.gradeId);
+                    const result = await findMentors(subject.id, profile?.gradeId as any);
                     newMatches[subject.id] = result.data as MentorMatch;
                 }));
                 setMatches(newMatches);
@@ -414,7 +414,7 @@ const MentorSelectionPage: React.FC = () => {
             <MentorDetailModal 
                 isOpen={isDetailOpen} 
                 onClose={() => setIsDetailOpen(false)} 
-                mentor={viewingMentor}
+                mentor={viewingMentor as any}
                 onRequestMentor={handleMentorToggle}
                 requestStatus={viewingMentor ? getMentorRequestStatus(viewingMentor._id) : 'none'}
                 isLoadingRequest={false}

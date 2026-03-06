@@ -1,6 +1,8 @@
-import type { MentorProfile } from "../features/mentor/mentorSlice";
-import type { StudentBaseResponseDto } from "./studentTypes";
-import type { Course } from "./courseTypes";
+import type { MentorProfile } from "../features/mentor/types";
+import type { StudentBaseResponseDto, CourseRequest } from "./student.types";
+import type { Course, Subject } from "./course.types";
+
+export type { MentorProfile, StudentBaseResponseDto, Course, Subject, CourseRequest };
 
 export interface AddStudentRequestDto {
   fullName: string;
@@ -37,10 +39,10 @@ export interface CertificationDto {
 }
 
 
-// In your adminTypes.ts
+
 export interface AvailableMentor {
   _id: string;
-  id: string; // Add this to match MentorResponseDto
+  id: string; 
   fullName: string;
   email: string;
   phoneNumber: string;
@@ -95,16 +97,8 @@ export interface AvailableMentorsRequest {
   preferredDate: string;
 }
 
-export interface Subject {
-  _id: string;
-  id: string;
-  name: string;
-  subjectName: string;
-  gradeId?: string;
-  syllabus?: string;
-}
 
-export interface Enrollment {
+export interface AdminEnrollment {
   _id: string;
   id: string;
   student: StudentBaseResponseDto | string;
@@ -124,4 +118,3 @@ export interface MentorRequestListItem {
   createdAt: string;
 }
 
-export { type CourseRequest } from "./studentTypes";

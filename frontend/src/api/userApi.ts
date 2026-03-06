@@ -1,4 +1,5 @@
-import api, { type ApiResponse } from "./api";
+import api from "./api";
+import type { ApiResponse } from "../types/api.types";
 
 export interface UserNotification {
   _id: string;
@@ -33,8 +34,22 @@ export interface UpcomingSession {
   title?: string;
 }
 
-export const getUserNotifications = async (): Promise<ApiResponse<UserNotification[]>> => {
-  const response = await api.get<ApiResponse<UserNotification[]>>("/notifications");
+export interface PaginationMeta {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+export interface PaginatedData<T> {
+  items: T[];
+  pagination: PaginationMeta;
+}
+
+export const getUserNotifications = async (page = 1, limit = 10): Promise<ApiResponse<PaginatedData<UserNotification>>> => {
+  const response = await api.get<ApiResponse<PaginatedData<UserNotification>>>(`/notifications?page=${page}&limit=${limit}`);
   return response.data;
 };
 
@@ -43,13 +58,18 @@ export const markNotificationAsRead = async (id: string): Promise<ApiResponse<vo
   return response.data;
 };
 
-export const getStudentUpcomingSessions = async (): Promise<ApiResponse<UpcomingSession[]>> => {
-    const response = await api.get<ApiResponse<UpcomingSession[]>>("/sessions/student/upcoming");
+export const markAllNotificationsAsRead = async (): Promise<ApiResponse<{ count: number }>> => {
+  const response = await api.patch<ApiResponse<{ count: number }>>('/notifications/read-all');
+  return response.data;
+};
+
+export const getStudentUpcomingSessions = async (page = 1, limit = 10): Promise<ApiResponse<PaginatedData<UpcomingSession>>> => {
+    const response = await api.get<ApiResponse<PaginatedData<UpcomingSession>>>(`/sessions/student/upcoming?page=${page}&limit=${limit}`);
     return response.data;
 }
 
-export const getMentorUpcomingSessions = async (): Promise<ApiResponse<UpcomingSession[]>> => {
-    const response = await api.get<ApiResponse<UpcomingSession[]>>("/sessions/mentor/upcoming");
+export const getMentorUpcomingSessions = async (page = 1, limit = 10): Promise<ApiResponse<PaginatedData<UpcomingSession>>> => {
+    const response = await api.get<ApiResponse<PaginatedData<UpcomingSession>>>(`/sessions/mentor/upcoming?page=${page}&limit=${limit}`);
     return response.data;
 }
 
@@ -61,6 +81,7 @@ export const getMentorTodaySessions = async (): Promise<ApiResponse<UpcomingSess
 const userApi = {
     getUserNotifications,
     markNotificationAsRead,
+    markAllNotificationsAsRead,
     getStudentUpcomingSessions,
     getMentorUpcomingSessions,
     getMentorTodaySessions

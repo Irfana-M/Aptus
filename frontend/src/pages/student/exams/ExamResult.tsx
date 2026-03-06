@@ -6,7 +6,7 @@ import StudentLayout from '../../../components/students/StudentLayout';
 import { Loader } from '../../../components/ui/Loader';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { getStudentResults } from "../../../features/exam/examSlice";
-import type { IExam } from "../../../types/examTypes";
+import type { IExam } from "../../../types/exam.types";
 import type { AppDispatch, RootState } from "../../../app/store";
 
 const ExamResultPage: React.FC = () => {
@@ -87,3 +87,4 @@ const ExamResultPage: React.FC = () => {
 };
 
 export default ExamResultPage;
+

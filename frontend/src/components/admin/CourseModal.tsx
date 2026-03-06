@@ -17,13 +17,13 @@ import {
   selectCourseCreationError,
 } from "../../features/admin/adminSelectors";
 import type { AppDispatch, RootState } from "../../app/store";
-import type { StudentBaseResponseDto } from "../../types/studentTypes";
+import type { StudentBaseResponseDto } from "../../types/student.types";
 import { Users, CheckCircle, Search, UserPlus, X } from "lucide-react";
 import { showToast } from "../../utils/toast";
 import { getErrorMessage } from "../../utils/errorUtils";
-import type { Course } from "../../types/courseTypes";
+import type { Course } from "../../types/course.types";
 import type { Grade } from "../../features/admin/adminSelectors";
-import type { Subject } from "../../types/adminTypes";
+import type { Subject } from "../../types/admin.types";
 import { Loader } from "../ui/Loader";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -301,7 +301,7 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, initialValues,
       
       if (!form.subjectId || !isCurrentIdValid) {
         const match = subjects.find(s => 
-          s.name.trim().toLowerCase() === initialValues.subjectName?.trim().toLowerCase()
+          s.name?.trim().toLowerCase() === initialValues.subjectName?.trim().toLowerCase()
         );
         if (match) {
           setForm(prev => ({ ...prev, subjectId: match._id }));
@@ -772,3 +772,4 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, initialValues,
     </div>
   );
 };
+

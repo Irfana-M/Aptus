@@ -15,10 +15,10 @@ export const NotificationBell: React.FC = () => {
 
   const fetchNotifications = async () => {
     try {
-      const res = await getUserNotifications();
-      const list = res.data || [];
-      setNotifications(list);
-      setUnreadCount(list.filter(n => !n.isRead).length);
+      const res = await getUserNotifications(1, 20);
+      const list: UserNotification[] = (res.data as any)?.items || res.data || [];
+      setNotifications(list as UserNotification[]);
+      setUnreadCount((list as UserNotification[]).filter(n => !n.isRead).length);
     } catch (error) {
       console.error("Failed to fetch notifications", error);
     }

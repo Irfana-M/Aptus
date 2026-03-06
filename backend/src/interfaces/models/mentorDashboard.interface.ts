@@ -30,11 +30,11 @@ export interface UpcomingClassDto {
 
 export interface RecentActivityDto {
   id: string;
-  type: "session";
+  type: "session" | "upload" | "schedule";
   title: string;
-  subtitle: string;
+  subtitle?: string;
   time: string;
-  icon: string;
+  icon?: string;
 }
 
 export interface CalendarEventDto {

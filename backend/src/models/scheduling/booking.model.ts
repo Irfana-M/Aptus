@@ -1,5 +1,6 @@
 import mongoose, { Schema } from 'mongoose';
 import type { IBooking } from '../../interfaces/models/booking.interface.js';
+import { BOOKING_STATUS } from '../../constants/status.constants.js';
 
 const bookingSchema = new Schema<IBooking>(
   {
@@ -20,12 +21,13 @@ const bookingSchema = new Schema<IBooking>(
     },
     status: { 
       type: String, 
-      enum: ['scheduled', 'completed', 'cancelled', 'absent'], 
-      default: 'scheduled',
+      enum: Object.values(BOOKING_STATUS), 
+      default: BOOKING_STATUS.SCHEDULED,
       required: true 
     },
     cost: { type: Number },
     currency: { type: String },
+    rebookingRequired: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

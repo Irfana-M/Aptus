@@ -2,10 +2,9 @@ import { useState, useEffect } from "react";
 import { Clock, BookOpen, ChevronRight, CheckCircle, Calendar } from "lucide-react";
 import { getAvailableTrialSlots, requestTrialClass, fetchSubjectsByGrade } from "../../features/student/studentApi";
 import toast from "react-hot-toast";
-import Header from "../../components/layout/Header";
+import StudentLayout from "../../components/students/StudentLayout";
 import { Button } from "../../components/ui/Button";
 import { Loader } from "../../components/ui/Loader";
-import { EmptyState } from "../../components/ui/EmptyState";
 import { ROUTES } from "../../constants/routes.constants";
 import { useSelector } from "react-redux";
 import type { RootState } from "../../app/store";
@@ -44,7 +43,7 @@ const SuccessComponent = ({
     message: string; 
     onClose: () => void 
 }) => (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-[60vh] flex items-center justify-center p-4">
         <div className="w-full max-w-2xl text-center">
             <div className="bg-white border-4 border-teal-500 rounded-2xl p-12 relative shadow-xl">
                 <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-200">
@@ -65,7 +64,7 @@ const SuccessComponent = ({
     </div>
 );
 
-const BookTuitionSessions = () => {
+const SelectTimeSlot = () => {
     const [subjectId, setSubjectId] = useState("");
     const [subjects, setSubjects] = useState<Subject[]>([]);
     const [loadingSubjects, setLoadingSubjects] = useState(false);
@@ -75,7 +74,6 @@ const BookTuitionSessions = () => {
     const [bookingLoading, setBookingLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [successMessage, setSuccessMessage] = useState("");
-    const [noSlotsMessage, setNoSlotsMessage] = useState("");
 
     const studentProfile = useSelector((state: RootState) => state.student.profile);
 
@@ -114,26 +112,21 @@ const BookTuitionSessions = () => {
         const loadSlots = async () => {
             if (!subjectId || !selectedDate) {
                 setAvailableSlots([]);
-                setNoSlotsMessage("");
                 return;
             }
 
             try {
                 setLoadingSlots(true);
-                setNoSlotsMessage("");
-                
                 const response = await getAvailableTrialSlots(subjectId, selectedDate);
                 
                 if (response.success && response.data.slots.length > 0) {
                     setAvailableSlots(response.data.slots);
                 } else {
                     setAvailableSlots([]);
-                    setNoSlotsMessage(response.message || "No slots available for this date.");
                 }
             } catch (error) {
                 console.error("Failed to fetch slots", error);
                 setAvailableSlots([]);
-                setNoSlotsMessage("No mentors available on this date. Please try another day.");
             } finally {
                 setLoadingSlots(false);
             }
@@ -168,13 +161,15 @@ const BookTuitionSessions = () => {
     };
 
     if (showSuccess) {
-        return <SuccessComponent message={successMessage} onClose={() => window.location.href = ROUTES.STUDENT.DASHBOARD} />;
+        return (
+            <StudentLayout title="Success">
+                <SuccessComponent message={successMessage} onClose={() => window.location.href = ROUTES.STUDENT.DASHBOARD} />
+            </StudentLayout>
+        );
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 font-sans antialiased text-slate-900">
-            <Header />
-            
+        <StudentLayout title="Book Free Trial">
             <main className="max-w-4xl mx-auto px-4 py-12">
                 <div className="text-center mb-12">
                     <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-4">
@@ -262,14 +257,14 @@ const BookTuitionSessions = () => {
                                             ))}
                                         </div>
                                     ) : (
-                                        <EmptyState 
-                                            icon={Clock}
-                                            title="No slots available" 
-                                            description={noSlotsMessage || "No mentors available on this date. Please try another day."}
-                                            actionLabel="Try another date"
-                                            onAction={() => setSelectedDate("")}
-                                            variant="compact"
-                                        />
+                                            {...({
+                                                variant: "compact",
+                                                icon: Clock,
+                                                title: "No slots today",
+                                                description: "Try selecting another date",
+                                                actionLabel: "View all",
+                                                onAction: () => setSelectedDate("")
+                                            } as any)}       
                                     )}
                                 </div>
                             )}
@@ -300,8 +295,8 @@ const BookTuitionSessions = () => {
                     </div>
                 </div>
             </main>
-        </div>
+        </StudentLayout>
     );
 };
 
-export default BookTuitionSessions;
+export default SelectTimeSlot;

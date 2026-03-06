@@ -32,7 +32,29 @@ export class NotificationRepository extends BaseRepository<INotification> implem
       .exec() as unknown as INotification[];
   }
 
+  async findByUserPaginated(userId: string, role: string, page: number, limit: number): Promise<{ items: INotification[]; total: number }> {
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      this.model.find({ userId, userRole: role })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec() as unknown as INotification[],
+      this.model.countDocuments({ userId, userRole: role })
+    ]);
+    return { items, total };
+  }
+
   async markAsRead(notificationId: string): Promise<void> {
     await this.model.findByIdAndUpdate(notificationId, { status: 'read', isRead: true }).exec();
+  }
+
+  async markAllAsRead(userId: string): Promise<number> {
+    const result = await this.model.updateMany(
+      { userId, isRead: false },
+      { $set: { isRead: true, status: 'read' } }
+    ).exec();
+    return result.modifiedCount;
   }
 }

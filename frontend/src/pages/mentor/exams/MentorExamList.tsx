@@ -3,59 +3,26 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/routes.constants';
 import { 
-  Users, Clock, Calendar, BookOpen, ClipboardList, 
-  User, Home, FileText, Plus, Trash2, Edit
+  Plus, Trash2, Edit, ClipboardList, FileText
 } from 'lucide-react';
-import { DashboardLayout } from '../../../components/layout/DashboardLayout';
-import type { NavItem } from '../../../components/layout/DashboardSidebar';
 import { Loader } from '../../../components/ui/Loader';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { getExamsByMentor } from "../../../features/exam/examSlice";
 import type { AppDispatch, RootState } from "../../../app/store";
-import { logoutUser } from "../../../features/auth/authThunks";
+import { MentorLayout } from "../../../components/mentor/MentorLayout";
 
 const MentorExamList: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
     const { exams, loading } = useSelector((state: RootState) => state.exam);
-    const { user } = useSelector((state: RootState) => state.auth);
-    const { profile } = useSelector((state: RootState) => state.mentor);
+
 
     useEffect(() => {
         dispatch(getExamsByMentor());
     }, [dispatch]);
 
-    const handleLogout = async () => {
-        await dispatch(logoutUser());
-        navigate(ROUTES.LOGIN);
-    };
-
-    const mentorNavItems: NavItem[] = [
-        { icon: <Home size={20} />, label: 'Dashboard', path: '/mentor/dashboard' },
-        { icon: <User size={20} />, label: 'Profile', path: '/mentor/profile' },
-        { icon: <Users size={20} />, label: 'Students/Batches', path: '/mentor/students' },
-        { icon: <Calendar size={20} />, label: 'Attendance', path: '/mentor/attendance' },
-        { icon: <BookOpen size={20} />, label: 'Classroom', path: '/mentor/classroom' },
-        { icon: <ClipboardList size={20} />, label: 'Class History', path: '/mentor/class-history' },
-        { icon: <Clock size={20} />, label: 'Availability', path: '/mentor/availability' },
-        { icon: <FileText size={20} />, label: 'Exams', path: '/mentor/exams' },
-    ];
-
-    const dashboardUser = {
-        name: profile?.fullName || user?.fullName || "Mentor",
-        email: user?.email || "",
-        avatar: profile?.profileImageUrl || undefined,
-        role: "mentor"
-    };
-
     return (
-        <DashboardLayout
-            navItems={mentorNavItems}
-            user={dashboardUser}
-            title="Exams"
-            onLogout={handleLogout}
-            appTitle="Aptus"
-        >
+        <MentorLayout title="Exams">
             <div className="p-6">
                 <div className="flex justify-between items-center mb-6">
                     <div>
@@ -148,7 +115,7 @@ const MentorExamList: React.FC = () => {
                     </div>
                 </div>
             </div>
-        </DashboardLayout>
+        </MentorLayout>
     );
 };
 

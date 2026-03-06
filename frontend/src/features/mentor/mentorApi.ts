@@ -38,7 +38,11 @@ export const mentorApi = {
 
   getMentorTrialClasses: async () => {
     const response = await api.get(API_ROUTES.MENTOR.TRIAL_CLASSES);
-    return response.data.data;
+    const data = response.data.data;
+    if (data && typeof data === 'object' && 'items' in data) {
+      return data.items;
+    }
+    return data || [];
   },
 
   updateTrialClassStatus: async (trialId: string, status: string) => {
@@ -66,6 +70,26 @@ export const mentorApi = {
   
   getUpcomingSessions: async () => {
     const response = await api.get(API_ROUTES.MENTOR.UPCOMING_SESSIONS);
+    return response.data.data;
+  },
+
+  getMyLeaves: async (params?: { page?: number; limit?: number; status?: string }) => {
+    const response = await api.get(API_ROUTES.MENTOR.MY_LEAVES, {
+      params
+    });
+    return response.data;
+  },
+
+  requestLeave: async (data: { startDate: string; endDate: string; reason: string }) => {
+    const response = await api.post(API_ROUTES.MENTOR.LEAVE_REQUEST, data);
+    return response.data;
+  },
+  getMentorAssignments: async () => {
+    const response = await api.get('/mentor/assignments');
+    return response.data;
+  },
+  getDashboardData: async () => {
+    const response = await api.get('/mentor/dashboard');
     return response.data.data;
   },
 };

@@ -1,4 +1,5 @@
 import type { IStudyMaterial, IAssignmentSubmission } from "../models/studyMaterial.interface.js";
+import type { AssignmentResponseDto } from "../../dtos/shared/AssignmentResponseDTO.js";
 
 export interface IStudyMaterialService {
   uploadMaterial(data: {
@@ -36,7 +37,8 @@ export interface IStudyMaterialService {
   getStudentMaterials(studentId: string): Promise<IStudyMaterial[]>;
   getCourseMaterials(courseId: string): Promise<IStudyMaterial[]>;
   getMentorMaterials(mentorId: string, type?: 'study_material' | 'assignment'): Promise<IStudyMaterial[]>;
-  getStudentAssignments(studentId: string): Promise<IStudyMaterial[]>;
+  getStudentAssignments(studentId: string): Promise<AssignmentResponseDto[]>;
+  getMentorAssignments(mentorId: string): Promise<AssignmentResponseDto[]>;
   getAssignmentSubmissions(assignmentId: string, mentorId: string): Promise<IAssignmentSubmission[]>;
   getStudentSubmission(assignmentId: string, studentId: string): Promise<IAssignmentSubmission | null>;
   deleteMaterial(materialId: string, mentorId: string): Promise<boolean>;

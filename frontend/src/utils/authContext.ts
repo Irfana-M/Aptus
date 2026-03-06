@@ -151,6 +151,8 @@ export class AuthContext {
     return (
       localStorage.getItem('student_accessToken') ||
       localStorage.getItem('mentor_accessToken') ||
+      localStorage.getItem('admin_accessToken') ||
+      localStorage.getItem('adminAccessToken') ||
       null
     );
   }

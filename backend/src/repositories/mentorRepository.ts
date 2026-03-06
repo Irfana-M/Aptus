@@ -1,8 +1,8 @@
 import { MentorModel } from "../models/mentor/mentor.model.js";
-import type { IMentorRepository, MentorPaginatedResult } from "../interfaces/repositories/IMentorRepository.js";
-import type { MentorProfile } from "../interfaces/models/mentor.interface.js";
+import type { IMentorRepository, MentorPaginatedResult, LeavePaginatedResult } from "../interfaces/repositories/IMentorRepository.js";
+import type { MentorProfile, LeaveEntry } from "../interfaces/models/mentor.interface.js";
 import { BaseRepository } from "./baseRepository.js";
-import { Model, type Document, type PipelineStage, type ClientSession, type UpdateQuery } from "mongoose";
+import { Model, type Document, type PipelineStage, type ClientSession, type UpdateQuery, Types } from "mongoose";
 import type { FilterQuery } from "mongoose";
 import { logger } from "../utils/logger.js";
 import { HttpStatusCode } from "../constants/httpStatus.js";
@@ -14,6 +14,7 @@ import { Subject } from "../models/subject.model.js";
 import { normalizeTimeTo24h } from "../utils/time.util.js";
 import type { MentorPaginationParams } from "@/dtos/shared/paginationTypes.js";
 import { getPaginationParams } from "@/utils/pagination.util.js";
+import { LEAVE_STATUS } from "../constants/status.constants.js";
 
 @injectable()
 export class MentorRepository
@@ -22,6 +23,75 @@ export class MentorRepository
 {
   constructor() {
     super(MentorModel as unknown as Model<MentorProfile & Document>);
+  }
+
+  async getPaginatedLeaves(params: {
+    page: number;
+    limit: number;
+    mentorId?: string;
+    status?: LEAVE_STATUS | '';
+  }): Promise<LeavePaginatedResult> {
+    try {
+      const skip = (params.page - 1) * params.limit;
+      const pipeline: PipelineStage[] = [];
+
+      // 1. Filter by mentorId if provided
+      if (params.mentorId) {
+        pipeline.push({ $match: { _id: new Types.ObjectId(params.mentorId) } });
+      }
+
+      // 2. Project only relevant fields and unwind leaves
+      pipeline.push(
+        { $project: { _id: 1, fullName: 1, leaves: 1 } },
+        { $unwind: "$leaves" }
+      );
+
+      // 3. Filter by status if provided
+      if (params.status) {
+        pipeline.push({ $match: { "leaves.status": params.status } });
+      }
+
+      // 4. Sort by startDate (newest first)
+      pipeline.push({ $sort: { "leaves.startDate": -1 } });
+
+      // 5. Paginate with facet
+      pipeline.push({
+        $facet: {
+          items: [
+            { $skip: skip },
+            { $limit: params.limit },
+            {
+              $project: {
+                _id: "$leaves._id",
+                mentorId: "$_id",
+                mentorName: "$fullName",
+                startDate: "$leaves.startDate",
+                endDate: "$leaves.endDate",
+                reason: "$leaves.reason",
+                approved: "$leaves.approved",
+                status: "$leaves.status",
+                approvedBy: "$leaves.approvedBy",
+                approvedAt: "$leaves.approvedAt",
+                rejectionReason: "$leaves.rejectionReason",
+              }
+            }
+          ],
+          totalCount: [{ $count: "count" }]
+        }
+      });
+
+      const result = await this.model.aggregate(pipeline).exec();
+      const items = result[0]?.items || [];
+      const total = result[0]?.totalCount[0]?.count || 0;
+
+      return { items, total };
+    } catch (error: unknown) {
+      logger.error(`Error in getPaginatedLeaves: ${error instanceof Error ? error.message : "Unknown error"}`);
+      throw new AppError(
+        MESSAGES.MENTOR.FETCH_FAILED,
+        HttpStatusCode.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   async findByEmail(email: string): Promise<MentorProfile | null> {
@@ -291,12 +361,13 @@ export class MentorRepository
     subjectId: string;
     days?: string[];
     timeSlot?: string;
+    date?: string;
     excludeCourseId?: string;
   }): Promise<unknown[]> { // Changed return type to unknown[] to match the instruction's context
-    const { subjectId, days, timeSlot, excludeCourseId } = params;
+    const { subjectId, days, timeSlot, date, excludeCourseId } = params;
     
     try {
-      logger.info(`🔍 findAvailableMentors called with: subjectId=${subjectId}, days=${days}, timeSlot=${timeSlot}`);
+      logger.info(`🔍 findAvailableMentors called with: subjectId=${subjectId}, days=${days}, timeSlot=${timeSlot}, date=${date}`);
       
       let subjectName = "";
 
@@ -338,6 +409,24 @@ export class MentorRepository
          }
        }
       };
+
+      if (date) {
+        const queryDate = new Date(date);
+        queryDate.setUTCHours(23, 59, 59, 999);
+        const dayStart = new Date(date);
+        dayStart.setUTCHours(0, 0, 0, 0);
+
+        matchStage.leaves = {
+          $not: {
+            $elemMatch: {
+              status: "approved",
+              startDate: { $lte: queryDate },
+              endDate: { $gte: dayStart }
+            }
+          }
+        };
+        logger.info(`📅 Added leave exclusion for date: ${date}`);
+      }
 
       logger.info(`🔍 findAvailableMentorsDB query: ${JSON.stringify(matchStage)}`);
 
@@ -670,16 +759,31 @@ export class MentorRepository
     await this.model.findByIdAndUpdate(id, { $inc: { currentWeeklyBookings: -1 } });
   }
 
-  async addLeave(id: string, leave: { startDate: Date; endDate: Date; reason?: string; approved: boolean }): Promise<void> {
+  async findByLeaveId(leaveId: string): Promise<MentorProfile | null> {
+    return await this.model.findOne({ "leaves._id": leaveId }).lean().exec() as unknown as MentorProfile | null;
+  }
+
+  async addLeave(id: string, leave: { startDate: Date; endDate: Date; reason?: string; approved: boolean; status: LEAVE_STATUS }): Promise<void> {
     await this.model.findByIdAndUpdate(id, {
       $push: { leaves: leave }
     });
   }
 
-  async updateLeaveStatus(mentorId: string, leaveId: string, approved: boolean): Promise<void> {
+  async updateLeaveStatus(
+    mentorId: string, 
+    leaveId: string, 
+    data: Partial<LeaveEntry>, 
+    session?: ClientSession
+  ): Promise<void> {
+    const updateQuery: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      updateQuery[`leaves.$.${key}`] = value;
+    }
+
     await this.model.updateOne(
       { _id: mentorId, "leaves._id": leaveId },
-      { $set: { "leaves.$.approved": approved } }
+      { $set: updateQuery },
+      session ? { session } : {}
     );
   }
 }

@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import type { AttendanceState } from "../../types/attendanceTypes";
+import type { AttendanceState } from "../../types/attendance.types";
 import { fetchAttendanceHistory, fetchAllAttendanceAdmin } from "./attendanceThunk";
 
 const initialState: AttendanceState = {
@@ -47,3 +47,4 @@ const attendanceSlice = createSlice({
 
 export const { clearAttendanceError } = attendanceSlice.actions;
 export default attendanceSlice.reducer;
+

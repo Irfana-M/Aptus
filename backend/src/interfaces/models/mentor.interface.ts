@@ -58,11 +58,17 @@ export interface Availability {
   slots: TimeSlot[];
 }
 
+import { LEAVE_STATUS } from '../../constants/status.constants.js';
+
 export interface LeaveEntry {
   startDate: Date;
   endDate: Date;
   reason?: string;
   approved: boolean;
+  status: LEAVE_STATUS;
+  approvedBy?: string;
+  approvedAt?: Date;
+  rejectionReason?: string;
 }
 
 export interface MentorProfile {

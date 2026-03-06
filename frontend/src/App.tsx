@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { useAppDispatch } from "./app/hooks";
 import { Toaster } from "react-hot-toast";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Loader } from "./components/ui/Loader";
 
 import LandingPage from "./pages/LandingPage";
@@ -61,6 +61,8 @@ import MentorExamResults from "./pages/mentor/exams/MentorExamResults";
 import ExamGrading from "./pages/mentor/exams/ExamGrading";
 import StudentExamAnalysis from "./pages/student/exams/StudentExamAnalysis";
 import SessionJoin from "./pages/scheduling/SessionJoin";
+import MentorLeaves from "./pages/mentor/Leaves";
+import LeaveManagement from "./pages/admin/LeaveManagement";
 
 
 import { VideoCallProvider } from "./context/VideoCallContext";
@@ -538,6 +540,14 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
+          path={ROUTES.MENTOR.LEAVES}
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+              <MentorLeaves />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path={ROUTES.MENTOR.STUDY_MATERIALS}
           element={
             <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
@@ -577,6 +587,14 @@ const AppContent: React.FC = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
               <AdminEnrollmentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN.LEAVES}
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+              <LeaveManagement />
             </ProtectedRoute>
           }
         />

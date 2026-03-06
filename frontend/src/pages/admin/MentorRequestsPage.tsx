@@ -1,17 +1,15 @@
 import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { fetchAllMentorRequestsAdmin, approveMentorRequestAdmin, rejectMentorRequestAdmin } from "../../features/admin/adminThunk";
-import { Sidebar } from "../../components/admin/Sidebar";
-import { Topbar } from "../../components/admin/Topbar";
 import { Check, X, Clock, User, BookOpen } from "lucide-react";
 import toast from "react-hot-toast";
 import { Loader } from "../../components/ui/Loader";
 import { EmptyState } from "../../components/ui/EmptyState";
+import { AdminLayout } from "../../components/admin/AdminLayout";
 
 const MentorRequestsPage = () => {
   const dispatch = useAppDispatch();
   const {mentorAssignmentRequests, loading} = useAppSelector((state) => state.admin);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
   useEffect(() => {
@@ -151,41 +149,25 @@ const MentorRequestsPage = () => {
   );
 
   return (
-    <div className="flex h-screen bg-slate-50">
-      <Sidebar
-        isOpen={sidebarOpen}
-        activeItem="Mentor Requests"
-        onItemClick={() => {}}
-        onClose={() => setSidebarOpen(false)}
-      />
-      
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <Topbar
-          onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-          title="Mentor Requests"
-        />
-        
-        <div className="flex-1 overflow-y-auto p-6 md:p-8">
-            <div className="max-w-7xl mx-auto">
-                <div className="mb-8">
-                    <h1 className="text-2xl font-black text-slate-900 tracking-tight">Mentor Assignment Requests</h1>
-                    <p className="text-slate-500 mt-2 font-medium">Manage and review student requests for personal mentors.</p>
-                </div>
-
-                {loading && !mentorAssignmentRequests.length ? (
-                    <div className="py-20">
-                        <Loader size="lg" text="Loading requests..." />
-                    </div>
-                ) : (
-                    <>
-                        <RequestsTable requests={pendingRequests} title="Pendings Requests" />
-                        <RequestsTable requests={pastRequests} title="Past History" />
-                    </>
-                )}
-            </div>
+    <AdminLayout title="Mentor Requests" activeItem="Mentor Requests">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Mentor Assignment Requests</h1>
+            <p className="text-slate-500 mt-2 font-medium">Manage and review student requests for personal mentors.</p>
         </div>
-      </main>
-    </div>
+
+        {loading && !mentorAssignmentRequests.length ? (
+            <div className="py-20">
+                <Loader size="lg" text="Loading requests..." />
+            </div>
+        ) : (
+            <>
+                <RequestsTable requests={pendingRequests} title="Pendings Requests" />
+                <RequestsTable requests={pastRequests} title="Past History" />
+            </>
+        )}
+      </div>
+    </AdminLayout>
   );
 };
 

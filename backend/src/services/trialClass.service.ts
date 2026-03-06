@@ -129,10 +129,17 @@ export class TrialClassService implements ITrialClassService {
     }
   }
 
-  async getStudentTrialClasses(studentId: string): Promise<TrialClassResponseDto[]> {
+  async getStudentTrialClasses(studentId: string, page: number = 1, limit: number = 10): Promise<{ items: TrialClassResponseDto[]; total: number }> {
     try {
-      const trials = await this.trialRepo.findByStudentId(studentId);
-      return trials.map(TrialClassMapper.toResponseDto);
+      const skip = (page - 1) * limit;
+      const [trials, total] = await Promise.all([
+        this.trialRepo.findByStudentId(studentId, undefined, skip, limit),
+        this.trialRepo.countByStudentId(studentId)
+      ]);
+      return {
+        items: trials.map(TrialClassMapper.toResponseDto),
+        total
+      };
     } catch (error) {
       logger.error("Error fetching student trial classes", error);
       throw new AppError(MESSAGES.TRIAL_CLASS.FETCH_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
@@ -291,10 +298,17 @@ export class TrialClassService implements ITrialClassService {
     }
   }
 
-  async getMentorTrialClasses(mentorId: string): Promise<TrialClassResponseDto[]> {
+  async getMentorTrialClasses(mentorId: string, page: number = 1, limit: number = 10): Promise<{ items: TrialClassResponseDto[]; total: number }> {
     try {
-      const trials = await this.trialRepo.findByMentorId(mentorId);
-      return trials.map(TrialClassMapper.toResponseDto);
+      const skip = (page - 1) * limit;
+      const [trials, total] = await Promise.all([
+        this.trialRepo.findByMentorId(mentorId, skip, limit),
+        this.trialRepo.countByMentorId(mentorId)
+      ]);
+      return {
+        items: trials.map(TrialClassMapper.toResponseDto),
+        total
+      };
     } catch (error) {
       logger.error("Error fetching mentor trial classes", error);
       throw new AppError(MESSAGES.TRIAL_CLASS.FETCH_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);

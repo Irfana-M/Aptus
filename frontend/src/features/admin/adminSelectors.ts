@@ -1,6 +1,6 @@
 import type { RootState } from "../../app/store";
 import { createSelector } from "@reduxjs/toolkit";
-import type { Course } from "../../types/courseTypes";
+import type { Course } from "../../types/course.types";
 
 export interface Grade {
   _id: string;
@@ -137,10 +137,10 @@ export const selectTrialClassDetails = (state: RootState) => state.admin.trialCl
 export const selectStudentTrialClasses = createSelector(
   [selectAllTrialClasses, (_state: RootState, studentId?: string) => studentId],
   (trialClasses, studentId) => {
-    if (!studentId) {
+    if (!studentId || !Array.isArray(trialClasses)) {
       return []; 
     }
-    trialClasses.filter(trialClass => 
+    return trialClasses.filter(trialClass => 
       trialClass.student?.id === studentId 
     );
   }
@@ -254,3 +254,4 @@ export const selectSubjectsByGrade = (gradeId: string) =>
     }
   );
 export const selectSubjectsLoading = (state: RootState) => state.admin.subjectsLoading;
+

@@ -45,6 +45,8 @@ export const MESSAGES = {
         INVALID_AUTH: "Invalid user authentication",
         UNKNOWN_ERROR: "Unknown error",
         PARAM_REQUIRED: (param: string) => `${param} is required`,
+        DATA_FETCHED: "Data fetched successfully",
+        INVALID_PAGINATION: "Invalid pagination parameters",
     },
     ADMIN: {
         FETCH_SUCCESS: "Data fetched successfully",
@@ -86,6 +88,7 @@ export const MESSAGES = {
         DELETE_FAILED: "Failed to delete record",
         RESOURCE_NOT_FOUND: (resource: string) => `${resource} not found`,
         VALIDATION_FAILED: "Validation failed",
+        GROUP_REASSIGNMENT_REQUIRED: "A group session requires a substitute mentor due to an approved leave.",
     },
     ATTENDANCE: {
         FETCH_SUCCESS: "Attendance records fetched successfully",
@@ -158,6 +161,7 @@ export const MESSAGES = {
     MENTOR: {
         LEAVE_REQUEST_SUCCESS: "Leave requested successfully",
         LEAVE_APPROVE_SUCCESS: "Leave approved successfully",
+        LEAVE_REJECT_SUCCESS: "Leave rejected successfully",
         LEAVE_CUTOFF_ERROR: "Leave must be requested at least 24 hours before any scheduled sessions.",
         INVALID_DATE: "Invalid date format",
         INVALID_USER: "Invalid user",
@@ -171,6 +175,7 @@ export const MESSAGES = {
         FETCH_FAILED: "Failed to fetch mentors",
         SUBMIT_FAILED: "Failed to submit mentor for approval",
         APPROVAL_UPDATE_FAILED: "Failed to update approval status",
+        LEAVE_CUTOFF_VIOLATION: "Leave must be requested at least 24 hours before any scheduled sessions.",
     },
     TRIAL_CLASS: {
         REQUEST_SUCCESS: "Trial class requested successfully",
@@ -226,6 +231,8 @@ export const MESSAGES = {
     },
     NOTIFICATION: {
         MARK_READ_SUCCESS: "Notification marked as read",
+        NOTIFICATIONS_MARKED_READ: "All notifications marked as read.",
+        NOTIFICATION_UPDATE_FAILED: "Failed to update notification."
     },
     OTP: {
         VERIFY_SUCCESS: "OTP verified successfully",

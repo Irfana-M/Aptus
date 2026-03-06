@@ -8,6 +8,10 @@ import { logger } from "@/utils/logger.js";
 import { AppError } from "@/utils/AppError.js";
 import { HttpStatusCode } from "@/constants/httpStatus.js";
 import type { ITrialClassDocument } from "@/models/student/trialClass.model.js";
+import type { ICourseRepository } from "@/interfaces/repositories/ICourseRepository.js";
+import type { IStudyMaterialRepository } from "@/interfaces/repositories/IStudyMaterialRepository.js";
+import type { ICourse } from "@/models/course.model.js";
+import type { IStudyMaterial } from "../interfaces/models/studyMaterial.interface.js";
 import type {
   DashboardDataDto,
   TodaySessionDto,
@@ -32,22 +36,26 @@ export class MentorDashboardService implements IMentorDashboardService {
   constructor(
     @inject(TYPES.ITrialClassRepository) private trialClassRepo: ITrialClassRepository,
     @inject(TYPES.IMentorRepository) private mentorRepo: IMentorRepository,
-    @inject(TYPES.IVideoCallRepository) private videoCallRepo: IVideoCallRepository
+    @inject(TYPES.IVideoCallRepository) private videoCallRepo: IVideoCallRepository,
+    @inject(TYPES.ICourseRepository) private courseRepo: ICourseRepository,
+    @inject(TYPES.IStudyMaterialRepository) private studyMaterialRepo: IStudyMaterialRepository
   ) {}
 
   async getDashboardData(mentorId: string): Promise<DashboardDataDto> {
     try {
       logger.info(`Getting dashboard data for mentor: ${mentorId}`);
 
-      const [allClasses, todayClasses] = await Promise.all([
+      const [allClasses, todayClasses, allCourses, allMaterials] = await Promise.all([
         this.trialClassRepo.findByMentorId(mentorId),
         this.trialClassRepo.findTodayTrialClasses(mentorId),
+        this.courseRepo.findByMentor(mentorId) as Promise<ICourse[]>,
+        this.studyMaterialRepo.findByMentor(mentorId)
       ]);
 
-      const stats = this.calculateStats(allClasses, todayClasses);
+      const stats = this.calculateStats(allClasses, todayClasses, allCourses, allMaterials);
       const todaySessions = this.formatTodaySessions(todayClasses);
       const upcomingClasses = this.formatUpcomingClasses(allClasses).slice(0, 4);
-      const recentActivities = this.formatRecentActivities(allClasses).slice(0, 5);
+      const recentActivities = this.formatCombinedActivities(allClasses, allMaterials).slice(0, 10);
       const calendarEvents = this.formatCalendarEvents(allClasses);
 
       return {
@@ -124,34 +132,34 @@ export class MentorDashboardService implements IMentorDashboardService {
 
   async getRecentActivities(mentorId: string, limit?: number): Promise<RecentActivityDto[]> {
     const effectiveLimit = limit ?? 10;
-    const classes = await this.trialClassRepo.findByMentorId(mentorId);
-    return this.formatRecentActivities(classes).slice(0, effectiveLimit);
+    const [classes, materials] = await Promise.all([
+      this.trialClassRepo.findByMentorId(mentorId),
+      this.studyMaterialRepo.findByMentor(mentorId)
+    ]);
+    return this.formatCombinedActivities(classes, materials).slice(0, effectiveLimit);
   }
 
   // ──────────────────────────────────────────────────────────────────
   // Private Helpers (Pure, Typed, Reusable)
   // ──────────────────────────────────────────────────────────────────
 
-  private calculateStats(all: ITrialClassDocument[], today: ITrialClassDocument[]): DashboardStats {
+  private calculateStats(
+    all: ITrialClassDocument[], 
+    today: ITrialClassDocument[],
+    courses: ICourse[],
+    materials: IStudyMaterial[]
+  ): DashboardStats {
     const completed = all.filter(c => c.status === "completed").length;
     const upcomingToday = today.filter(c => c.status === "assigned").length;
     const joinNow = today.filter(c => c.status === "assigned" && this.isClassJoinable(c)).length;
-
-    const studentIds = new Set<string>();
-    all.forEach(c => {
-      if (c.student && typeof c.student === "object") {
-        studentIds.add((c.student as { _id: { toString: () => string } })._id.toString());
-      }
-    });
-
-    const pendingAssignments = all.filter(c => c.status === "assigned" && !c.feedback).length;
+    const pendingAssignments = materials.filter(m => m.materialType === "assignment").length;
 
     return {
       totalClasses: all.length,
       upcomingToday,
       completed,
       joinNow,
-      assignedStudents: studentIds.size,
+      assignedStudents: courses.length,
       pendingAssignments,
     };
   }
@@ -204,23 +212,57 @@ export class MentorDashboardService implements IMentorDashboardService {
       });
   }
 
-  private formatRecentActivities(classes: ITrialClassDocument[]): RecentActivityDto[] {
-    return classes
-      .filter(c => c.status === "completed")
-      .sort((a, b) => (b.updatedAt?.getTime() || 0) - (a.updatedAt?.getTime() || 0))
-      .map(c => {
-        const student = typeof c.student === "object" ? (c.student as unknown as { fullName: string }) : null;
-        const subject = typeof c.subject === "object" ? (c.subject as unknown as { subjectName: string; grade: string }) : null;
+  private formatCombinedActivities(classes: ITrialClassDocument[], materials: IStudyMaterial[]): RecentActivityDto[] {
+    const activities: (RecentActivityDto & { rawDate: Date })[] = [];
 
-        return {
-          id: c._id.toString(),
-          type: "session",
-          title: `Completed trial class with ${student?.fullName || "Student"}`,
-          subtitle: `${subject?.subjectName || "Subject"} - Grade ${subject?.grade || "N/A"}`,
-          time: this.formatTimeAgo(c.updatedAt || c.createdAt),
-          icon: "Target",
-        };
+    // Process trial classes
+    classes.forEach(c => {
+      const student = typeof c.student === "object" ? (c.student as unknown as { fullName: string }) : null;
+      const subject = typeof c.subject === "object" ? (c.subject as unknown as { subjectName: string }) : null;
+      const studentName = student?.fullName || "Student";
+      
+      // New schedule activity (based on createdAt)
+      activities.push({
+        id: `schedule-${c._id}`,
+        type: "schedule",
+        title: `Trial class scheduled with ${studentName}`,
+        subtitle: subject?.subjectName || "Subject",
+        time: this.formatTimeAgo(c.createdAt),
+        rawDate: c.createdAt
       });
+
+      // Completed session activity (based on updatedAt)
+      if (c.status === "completed") {
+        activities.push({
+          id: `session-${c._id}`,
+          type: "session",
+          title: `Completed trial class with ${studentName}`,
+          subtitle: subject?.subjectName || "Subject",
+          time: this.formatTimeAgo(c.updatedAt || c.createdAt),
+          rawDate: c.updatedAt || c.createdAt
+        });
+      }
+    });
+
+    // Process materials
+    materials.forEach(m => {
+      const subject = typeof m.subjectId === "object" ? (m.subjectId as unknown as { subjectName: string }) : null;
+      const typeLabel = m.materialType === "assignment" ? "assignment" : "study material";
+      
+      activities.push({
+        id: `upload-${m._id}`,
+        type: "upload",
+        title: `New ${typeLabel} uploaded: ${m.title}`,
+        subtitle: subject?.subjectName || "Subject",
+        time: this.formatTimeAgo((m as any).createdAt),
+        rawDate: (m as any).createdAt
+      });
+    });
+
+    // Sort by date and return
+    return activities
+      .sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime())
+      .map(({ rawDate, ...rest }) => rest);
   }
 
   private formatCalendarEvents(classes: ITrialClassDocument[]): CalendarEventDto[] {

@@ -2,6 +2,7 @@ import React from "react";
 import type { Column } from "../../types/table.types";
 import { Loader } from "./Loader";
 import { EmptyState } from "./EmptyState";
+import { Database } from "lucide-react";
 
 interface DataTableProps<T> {
   columns: Column<T>[];
@@ -86,7 +87,7 @@ export function DataTable<
       <EmptyState 
         title="No records found" 
         description={emptyMessage} 
-        icon="database"
+        icon={Database}
       />
     );
   }

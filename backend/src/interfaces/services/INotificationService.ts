@@ -57,5 +57,7 @@ export interface INotificationService {
   ): Promise<void>;
 
   getUserNotifications(userId: string, role: string): Promise<INotification[]>;
+  getUserNotificationsPaginated(userId: string, role: string, page: number, limit: number): Promise<{ items: INotification[]; total: number }>;
   markAsRead(notificationId: string): Promise<void>;
+  markAllAsRead(userId: string): Promise<number>;
 }

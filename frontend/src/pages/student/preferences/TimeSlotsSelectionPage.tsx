@@ -4,9 +4,10 @@ import { useAppDispatch, useAppSelector } from '../../../app/hooks';
 import { saveStudentPreferences as updatePreferences, getMentorAvailableSlots } from '../../../features/student/studentApi';
 import { requestMentor, fetchStudentProfile } from '../../../features/student/studentThunk';
 import StudentLayout from '../../../components/students/StudentLayout';
-import { Clock, Info, Check, ChevronLeft, Sun, Moon, Calendar, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
+import { Clock, Check, ChevronLeft, Sun, Moon, Calendar } from 'lucide-react';
 import { Loader } from '../../../components/ui/Loader';
-import { Alert } from '../../../components/ui/Alert';
+
+
 import toast from 'react-hot-toast';
 import { Button } from '../../../components/ui/Button';
 import { ROUTES } from '../../../constants/routes.constants';

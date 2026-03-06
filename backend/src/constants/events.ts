@@ -6,6 +6,9 @@ export enum DomainEvent {
   MENTOR_REASSIGNED = 'mentor.reassigned',
   MENTOR_REQUEST_SUBMITTED = 'mentor.request_submitted',
   MENTOR_REQUEST_REJECTED = 'mentor.request_rejected',
+  MENTOR_LEAVE_REQUESTED = 'mentor.leave_requested',
+  MENTOR_LEAVE_APPROVED = 'mentor.leave_approved',
+  MENTOR_LEAVE_REJECTED = 'mentor.leave_rejected',
 
   // Trial related
   TRIAL_BOOKED = 'trial.booked',

@@ -1,5 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import type { ISession, ISessionParticipant } from "../../interfaces/models/session.interface.js";
+import { SESSION_STATUS } from "../../constants/status.constants.js";
 
 const participantSchema = new Schema(
   {
@@ -67,8 +68,8 @@ const sessionSchema = new Schema<ISession>(
     },
     status: {
       type: String,
-      enum: ["scheduled", "in_progress", "completed", "not_held", "cancelled", "rescheduling"],
-      default: "scheduled",
+      enum: Object.values(SESSION_STATUS),
+      default: SESSION_STATUS.SCHEDULED,
     },
     startTime: { type: Date, required: true },
     endTime: { type: Date, required: true },
@@ -77,6 +78,11 @@ const sessionSchema = new Schema<ISession>(
     webRTCId: String,
     recordingUrl: String,
     mentorNotes: String,
+    cancellationReason: String,
+    cancelledBy: {
+      type: String,
+      enum: ["student", "mentor", "admin"],
+    },
   },
   { timestamps: true, collection: "class_sessions" }
 );

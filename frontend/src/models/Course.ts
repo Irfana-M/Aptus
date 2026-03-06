@@ -1,4 +1,4 @@
-import type { Course as CourseType } from '../types/courseTypes';
+import type { Course as CourseType } from '../types/course.types';
 
 export class Course {
   readonly data: CourseType;
@@ -52,3 +52,4 @@ get schedule() {
     return `${this.data.subject.subjectName} - ${this.data.grade.name}`;
   }
 }
+

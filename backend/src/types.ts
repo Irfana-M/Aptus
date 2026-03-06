@@ -73,6 +73,7 @@ const TYPES = {
   ISlotGenerationService: Symbol.for("ISlotGenerationService"),
   ISessionPolicyService: Symbol.for("ISessionPolicyService"),
   ILeaveEligibilityService: Symbol.for("ILeaveEligibilityService"),
+  ILeavePolicyService: Symbol.for("ILeavePolicyService"),
   ExamAccessPolicyService: Symbol.for("ExamAccessPolicyService"),
   ExamScoringService: Symbol.for("ExamScoringService"),
   ExamResultEnricher: Symbol.for("ExamResultEnricher"),
@@ -128,7 +129,7 @@ const TYPES = {
   InternalEventEmitter: Symbol.for("InternalEventEmitter"),
   IMentorRequestService: Symbol.for("IMentorRequestService"),
   NotificationController: Symbol.for("NotificationController"),
-
+  MentorLeaveEventListener: Symbol.for("MentorLeaveEventListener"),
 };
 
 export { TYPES };

@@ -16,11 +16,9 @@ import {
   selectStudentsLoading,
 } from "../../features/admin/adminSelectors";
 import { Student } from "../../models/Student";
-import type { StudentBaseResponseDto } from "../../types/studentTypes";
+import type { StudentBaseResponseDto } from "../../types/student.types";
 import { StudentModal } from "../../components/admin/StudentModal";
 import { ConfirmationModal } from "../../components/ui/ConfirmationModal";
-import { Sidebar } from "../../components/admin/Sidebar";
-import { Topbar } from "../../components/admin/Topbar";
 import { DataTable } from "../../components/ui/DataTable";
 import { Pagination } from "../../components/ui/Pagination";
 import {
@@ -44,14 +42,14 @@ import { showToast } from "../../utils/toast";
 import { Loader } from "../../components/ui/Loader";
 import type { Column } from "../../types/table.types";
 
+import { AdminLayout } from "../../components/admin/AdminLayout";
+
 export const StudentsManagement: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const students = useSelector(selectAllStudents);
   const loading = useSelector(selectStudentsLoading);
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeNav, setActiveNav] = useState("Students");
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({
     status: "",
@@ -444,188 +442,163 @@ export const StudentsManagement: React.FC = () => {
 
   if (loading && students.length === 0) {
     return (
-      <div className="flex h-screen bg-gray-50">
-        <Sidebar
-          isOpen={sidebarOpen}
-          activeItem={activeNav}
-          onItemClick={setActiveNav}
-          onClose={() => setSidebarOpen(false)}
-        />
-        <div className="flex-1 flex items-center justify-center">
+      <AdminLayout title="Students Management" activeItem="Students">
+        <div className="flex-1 flex items-center justify-center min-h-[400px]">
           <Loader size="lg" text="Loading students..." color="purple" />
         </div>
-      </div>
+      </AdminLayout>
     );
   }
   
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar
-        isOpen={sidebarOpen}
-        activeItem={activeNav}
-        onItemClick={setActiveNav}
-        onClose={() => setSidebarOpen(false)}
+    <AdminLayout title="Students Management" activeItem="Students">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm font-medium">Total Students</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total}</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center">
+              <Users className="w-6 h-6 text-white" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm font-medium">Verified</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{stats.verified}</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center">
+              <CheckCircle className="w-6 h-6 text-white" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm font-medium">Paid</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{stats.paid}</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 flex items-center justify-center">
+              <CreditCard className="w-6 h-6 text-white" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm font-medium">Blocked</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{stats.blocked}</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 flex items-center justify-center">
+              <Ban className="w-6 h-6 text-white" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <SearchAndFilters
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        filterConfigs={filterConfigs}
+        onClearFilters={handleClearFilters}
+        searchPlaceholder="Search students by name, email, or ID..."
+        className="mb-6"
       />
 
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <Topbar
-          onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-          title="Students Management"
-          user={{
-            name: "Admin User",
-            email: "admin@mentora.com",
-          }}
-        />
-
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm font-medium">Total Students</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total}</p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center">
-                  <Users className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm font-medium">Verified</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{stats.verified}</p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center">
-                  <CheckCircle className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm font-medium">Paid</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{stats.paid}</p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 flex items-center justify-center">
-                  <CreditCard className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm font-medium">Blocked</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{stats.blocked}</p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 flex items-center justify-center">
-                  <Ban className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </div>
+      <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm mb-6">
+        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">All Students</h2>
+            <p className="text-gray-500 text-sm mt-1">
+              Showing {paginatedStudents.length} of {filteredStudents.length} students
+              {filteredStudents.length !== students.length && ` (filtered from ${students.length} total)`}
+            </p>
           </div>
 
-          <SearchAndFilters
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            filters={filters}
-            onFilterChange={handleFilterChange}
-            filterConfigs={filterConfigs}
-            onClearFilters={handleClearFilters}
-            searchPlaceholder="Search students by name, email, or ID..."
-            className="mb-6"
-          />
-
-          <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm mb-6">
-            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">All Students</h2>
-                <p className="text-gray-500 text-sm mt-1">
-                  Showing {paginatedStudents.length} of {filteredStudents.length} students
-                  {filteredStudents.length !== students.length && ` (filtered from ${students.length} total)`}
-                </p>
-              </div>
-
-              <button
-                onClick={handleAddStudent}
-                className="flex items-center justify-center space-x-2 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 font-medium"
-              >
-                <Plus size={20} />
-                <span>Add Student</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
-            <DataTable<Student>
-              columns={columns}
-              data={paginatedStudents}
-              loading={loading}
-              onSort={handleSort}
-              onRowClick={(student) => navigate(`/admin/student/${student.id}`)}
-              variant="bordered"
-              emptyMessage={
-                searchTerm || Object.values(filters).some((f) => f !== "")
-                  ? "No students match your search criteria"
-                  : "No students have been added yet"
-              }
-            />
-          </div>
-
-          {filteredStudents.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-              <Pagination
-                currentPage={pagination.currentPage}
-                totalPages={pagination.totalPages}
-                totalItems={filteredStudents.length}
-                itemsPerPage={pagination.itemsPerPage}
-                onPageChange={pagination.goToPage}
-                onItemsPerPageChange={pagination.setItemsPerPage}
-                variant="detailed"
-                className="px-6 py-4"
-              />
-            </div>
-          )}
-
-          {/* Confirmation Modal for Block/Unblock */}
-          {showBlockModal && selectedStudent && (
-            <ConfirmationModal
-              isOpen={showBlockModal}
-              onClose={() => {
-                setShowBlockModal(false);
-                setSelectedStudent(null);
-              }}
-              onConfirm={handleConfirmAction}
-              title={`Confirm ${selectedStudent.action === 'block' ? 'Block' : 'Unblock'}`}
-              message={`Are you sure you want to ${selectedStudent.action} ${selectedStudent.name}? ${
-                selectedStudent.action === 'block' 
-                  ? 'They will not be able to access the platform.' 
-                  : 'They will regain access to the platform.'
-              }`}
-              confirmText={selectedStudent.action === 'block' ? 'Block' : 'Unblock'}
-              variant="danger"
-              isLoading={loading}
-            />
-          )}
-
-          {/* Student Modal for Add/Edit */}
-          {showStudentModal && (
-            <StudentModal
-              student={selectedStudentForEdit}
-              onClose={handleCloseStudentModal}
-              onSave={handleSaveStudent}
-              isOpen={showStudentModal}
-              loading={loading}
-            />
-          )}
+          <button
+            onClick={handleAddStudent}
+            className="flex items-center justify-center space-x-2 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 font-medium"
+          >
+            <Plus size={20} />
+            <span>Add Student</span>
+          </button>
         </div>
-      </main>
-    </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+        <DataTable<Student>
+          columns={columns}
+          data={paginatedStudents}
+          loading={loading}
+          onSort={handleSort}
+          onRowClick={(student) => navigate(`/admin/student/${student.id}`)}
+          variant="bordered"
+          emptyMessage={
+            searchTerm || Object.values(filters).some((f) => f !== "")
+              ? "No students match your search criteria"
+              : "No students have been added yet"
+          }
+        />
+      </div>
+
+      {filteredStudents.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+          <Pagination
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            totalItems={filteredStudents.length}
+            itemsPerPage={pagination.itemsPerPage}
+            onPageChange={pagination.goToPage}
+            onItemsPerPageChange={pagination.setItemsPerPage}
+            variant="detailed"
+            className="px-6 py-4"
+          />
+        </div>
+      )}
+
+      {/* Confirmation Modal for Block/Unblock */}
+      {showBlockModal && selectedStudent && (
+        <ConfirmationModal
+          isOpen={showBlockModal}
+          onClose={() => {
+            setShowBlockModal(false);
+            setSelectedStudent(null);
+          }}
+          onConfirm={handleConfirmAction}
+          title={`Confirm ${selectedStudent.action === 'block' ? 'Block' : 'Unblock'}`}
+          message={`Are you sure you want to ${selectedStudent.action} ${selectedStudent.name}? ${
+            selectedStudent.action === 'block' 
+              ? 'They will not be able to access the platform.' 
+              : 'They will regain access to the platform.'
+          }`}
+          confirmText={selectedStudent.action === 'block' ? 'Block' : 'Unblock'}
+          variant="danger"
+          isLoading={loading}
+        />
+      )}
+
+      {/* Student Modal for Add/Edit */}
+      {showStudentModal && (
+        <StudentModal
+          student={selectedStudentForEdit}
+          onClose={handleCloseStudentModal}
+          onSave={handleSaveStudent}
+          isOpen={showStudentModal}
+          loading={loading}
+        />
+      )}
+    </AdminLayout>
   );
 };
 
 export default StudentsManagement;
+

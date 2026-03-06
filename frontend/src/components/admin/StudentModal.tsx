@@ -1,8 +1,8 @@
 import React, { useMemo } from "react";
 import { AlertCircle, CheckCircle } from "lucide-react";
 import { useZodForm } from "../../hooks/useZodForm";
-import { adminCreateStudentSchema, adminUpdateStudentSchema } from "../../lib/schemas";
-import type { StudentBaseResponseDto } from "../../types/studentTypes";
+import { adminCreateStudentSchema, adminUpdateStudentSchema, type AdminCreateStudentInput } from "../../lib/schemas";
+import type { StudentBaseResponseDto } from "../../types/student.types";
 import { selectAdminLoading } from "../../features/admin/adminSelectors";
 import { FormModal } from "../../components/ui/FormModal";
 import { useSelector } from "react-redux";
@@ -16,11 +16,7 @@ interface StudentModalProps {
 }
 
 // Define the form data type based on your schema
-type StudentFormData = {
-  fullName: string;
-  email: string;
-  phoneNumber: string;
-};
+type StudentFormData = AdminCreateStudentInput;
 
 export const StudentModal: React.FC<StudentModalProps> = ({
   student,
@@ -32,7 +28,7 @@ export const StudentModal: React.FC<StudentModalProps> = ({
   const globalLoading = useSelector(selectAdminLoading);
   const isLoading = loading || globalLoading;
 
-  const schema = student ? adminUpdateStudentSchema : adminCreateStudentSchema;
+  
   
   // Properly typed initial values
   const initialValues: StudentFormData = useMemo(() => ({
@@ -41,17 +37,20 @@ export const StudentModal: React.FC<StudentModalProps> = ({
     phoneNumber: student?.phoneNumber || "",
   }), [student]);
 
-  const {
-    formData,
-    errors,
-    touched,
-    setFieldValue,
-    setFieldTouched,
-    validateForm,
-    isFormValid,
-    resetForm
-  } = useZodForm<StudentFormData>(schema, initialValues);
+  const form = student
+  ? useZodForm(adminUpdateStudentSchema, initialValues)
+  : useZodForm(adminCreateStudentSchema, initialValues);
 
+const {
+  formData,
+  errors,
+  touched,
+  setFieldValue,
+  setFieldTouched,
+  validateForm,
+  isFormValid,
+  resetForm
+} = form;
   // Reset form when modal opens/closes or student changes
   React.useEffect(() => {
     if (isOpen) {
@@ -256,3 +255,4 @@ export const StudentModal: React.FC<StudentModalProps> = ({
     </FormModal>
   );
 };
+

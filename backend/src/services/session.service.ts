@@ -18,6 +18,7 @@ import { MESSAGES } from "../constants/messages.constants.js";
 import { AppError } from "../utils/AppError.js";
 import { HttpStatusCode } from "../constants/httpStatus.js";
 import { STUDENT_CANCEL_CUTOFF_HOURS } from "../config/leavePolicy.config.js";
+import { BOOKING_STATUS, SESSION_STATUS } from "../constants/status.constants.js";
 
 @injectable()
 export class SessionService implements ISessionService {
@@ -38,6 +39,15 @@ export class SessionService implements ISessionService {
     return sessions;
   }
 
+  async getStudentUpcomingSessionsPaginated(studentId: string, page: number, limit: number): Promise<{ items: ISession[]; total: number }> {
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      this.sessionRepo.findUpcomingByStudent(studentId, { skip, limit }),
+      this.sessionRepo.countUpcomingByStudent(studentId)
+    ]);
+    return { items, total };
+  }
+
   async getStudentUpcomingSessionsWithEligibility(studentId: string): Promise<LeaveEligibilityResponse> {
     const sessions = await this.sessionRepo.findUpcomingByStudent(studentId);
     return this.leaveEligibilityService.computeStudentEligibility(sessions, new Date());
@@ -45,6 +55,15 @@ export class SessionService implements ISessionService {
 
   async getMentorUpcomingSessions(mentorId: string): Promise<ISession[]> {
     return this.sessionRepo.findUpcomingByMentor(mentorId);
+  }
+
+  async getMentorUpcomingSessionsPaginated(mentorId: string, page: number, limit: number): Promise<{ items: ISession[]; total: number }> {
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      this.sessionRepo.findUpcomingByMentor(mentorId, { skip, limit }),
+      this.sessionRepo.countUpcomingByMentor(mentorId)
+    ]);
+    return { items, total };
   }
 
   async getMentorTodaySessions(mentorId: string): Promise<ISession[]> {
@@ -73,7 +92,7 @@ export class SessionService implements ISessionService {
         logger.info(`[SessionService] Syncing ${slots.length} slots into Sessions...`);
         
         for (const slot of slots) {
-             const booking = await this.bookingRepo.findOne({ timeSlotId: slot._id, status: 'scheduled' });
+             const booking = await this.bookingRepo.findOne({ timeSlotId: slot._id, status: BOOKING_STATUS.SCHEDULED });
              if (!booking) continue;
 
              const existingSession = await this.sessionRepo.existsByTimeSlot(slot._id);
@@ -84,7 +103,7 @@ export class SessionService implements ISessionService {
                      timeSlotId: new Types.ObjectId(slot._id.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
                      startTime: slot.startTime,
                      endTime: slot.endTime,
-                     status: 'scheduled',
+                     status: SESSION_STATUS.SCHEDULED,
                      participants: [{ userId: new Types.ObjectId(booking.studentId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId, role: 'student' }]
                  });
              }
@@ -136,28 +155,75 @@ export class SessionService implements ISessionService {
         minute: '2-digit'
     });
 
-    // Logic: mark as Rescheduling, notify mentor
-    await this.sessionRepo.updateStatus(sessionId, 'rescheduling');
-    
-    await this.notificationService.notifyUser(
-        session.mentorId.toString(), 
-        'mentor', 
-        'student_absence', 
-        { 
-            sessionId, 
-            studentId,
-            studentName: student?.fullName || 'Student',
-            subjectName: subject?.subjectName || 'Session',
-            sessionDate,
-            sessionTime,
-            reason,
-            message: `${student?.fullName || 'A student'} reported absence for ${subject?.subjectName || 'your session'} on ${sessionDate} at ${sessionTime}. Reason: ${reason}`
-        },
-        ['web', 'email']
-    );
+    if (session.sessionType === 'group') {
+        const updatedParticipants = session.participants.map(p => 
+            p.userId.toString() === studentId ? { ...p, status: 'absent' as const } : p
+        );
+        
+        await this.sessionRepo.updateById(sessionId, { participants: updatedParticipants });
+        
+        await this.bookingRepo.updateMany(
+            { 
+                $or: [{ sessionId: session._id }, { timeSlotId: session.timeSlotId }], 
+                studentId: new Types.ObjectId(studentId) as unknown as import('mongoose').Schema.Types.ObjectId 
+            },
+            { status: BOOKING_STATUS.ABSENT }
+        );
 
-    // Release capacity so rescheduling can happen cleanly
-    await this.timeSlotRepo.releaseCapacity(session.timeSlotId.toString());
+        await this.studentRepo.incrementCancellationCount(studentId);
+
+        await this.notificationService.notifyUser(
+            session.mentorId.toString(), 
+            'mentor', 
+            'session_cancelled', 
+            { 
+                sessionId, 
+                studentId,
+                studentName: student?.fullName || 'Student',
+                subjectName: subject?.subjectName || 'Session',
+                sessionDate,
+                sessionTime,
+                reason,
+                message: `Student ${student?.fullName || ''} will be absent for the group session scheduled for ${sessionDate} at ${sessionTime}. Reason: ${reason}.`
+            },
+            ['web', 'email']
+        );
+    } else {
+        await this.sessionRepo.updateById(sessionId, { 
+            status: SESSION_STATUS.CANCELLED,
+            cancellationReason: reason,
+            cancelledBy: 'student'
+        });
+        
+        await this.bookingRepo.updateMany(
+            { 
+                $or: [{ sessionId: session._id }, { timeSlotId: session.timeSlotId }], 
+                studentId: new Types.ObjectId(studentId) as unknown as import('mongoose').Schema.Types.ObjectId 
+            },
+            { status: BOOKING_STATUS.CANCELLED }
+        );
+
+        await this.studentRepo.incrementCancellationCount(studentId);
+
+        await this.notificationService.notifyUser(
+            session.mentorId.toString(), 
+            'mentor', 
+            'session_cancelled', 
+            { 
+                sessionId, 
+                studentId,
+                studentName: student?.fullName || 'Student',
+                subjectName: subject?.subjectName || 'Session',
+                sessionDate,
+                sessionTime,
+                reason,
+                message: `Student ${student?.fullName || ''} has cancelled the 1:1 session scheduled for ${sessionDate} at ${sessionTime}. Reason: ${reason}. The slot is now available.`
+            },
+            ['web', 'email']
+        );
+
+        await this.timeSlotRepo.releaseCapacity(session.timeSlotId.toString());
+    }
   }
 
   async cancelSession(sessionId: string, mentorId: string, reason: string): Promise<void> {
@@ -166,18 +232,31 @@ export class SessionService implements ISessionService {
 
     if (session.mentorId.toString() !== mentorId) throw new Error(MESSAGES.SESSION.ACCESS_DENIED);
 
-    await this.sessionRepo.updateStatus(sessionId, 'rescheduling');
+    await this.sessionRepo.updateById(sessionId, {
+        status: SESSION_STATUS.CANCELLED,
+        cancelledBy: 'mentor',
+        cancellationReason: reason
+    });
 
-    // Notify student
-    const student = session.participants.find(participant => participant.role === 'student');
-    if (student) {
-        await this.notificationService.notifyUser(
-            student.userId.toString(),
-            'student',
-            'mentor_absence_reschedule',
-            { sessionId, reason, message: `Mentor cancelled session: ${reason}. Please reschedule.` },
-            ['web', 'email']
-        );
+    await this.bookingRepo.updateMany(
+        { $or: [{ sessionId: session._id }, { timeSlotId: session.timeSlotId }] },
+        { 
+            status: BOOKING_STATUS.CANCELLED,
+            rebookingRequired: true,
+            rebookMentorId: session.mentorId 
+        } as any
+    );
+
+    for (const participant of session.participants) {
+        if (participant.role === 'student') {
+             await this.notificationService.notifyUser(
+                participant.userId.toString(),
+                'student',
+                'mentor_absence_reschedule',
+                { sessionId, reason, message: `Your mentor has cancelled the session. Please choose another time slot with the same mentor.` },
+                ['web', 'email']
+            );
+        }
     }
    
     await this.timeSlotRepo.releaseCapacity(session.timeSlotId.toString());
@@ -250,13 +329,13 @@ export class SessionService implements ISessionService {
             timeSlotId: new Types.ObjectId(effectiveSlotId) as unknown as import('mongoose').Schema.Types.ObjectId,
             startTime: newSlot.startTime,
             endTime: newSlot.endTime,
-            status: 'scheduled'
+            status: SESSION_STATUS.SCHEDULED
         });
 
         // 3. Update Booking
         await this.bookingRepo.updateMany(
             { $or: [{ sessionId: session._id }, { timeSlotId: session.timeSlotId }], studentId: new Types.ObjectId(studentId) as unknown as import('mongoose').Schema.Types.ObjectId },
-            { timeSlotId: new Types.ObjectId(effectiveSlotId) as unknown as import('mongoose').Schema.Types.ObjectId, status: 'scheduled' }
+            { timeSlotId: new Types.ObjectId(effectiveSlotId) as unknown as import('mongoose').Schema.Types.ObjectId, status: BOOKING_STATUS.SCHEDULED }
         );
 
         // 4. Notify Mentor
@@ -288,7 +367,7 @@ export class SessionService implements ISessionService {
         logger.info(`Student ${studentId} requested refund for rescheduling session ${sessionId}`);
 
         // 1. Update Session Status
-        await this.sessionRepo.updateStatus(sessionId, 'cancelled');
+        await this.sessionRepo.updateStatus(sessionId, SESSION_STATUS.CANCELLED);
 
         // 2. Find Booking to process refund
         const booking = await this.bookingRepo.findOne({ 
@@ -304,7 +383,7 @@ export class SessionService implements ISessionService {
             }
 
             // 3. Update Booking Status
-            await this.bookingRepo.updateById((booking as any)._id.toString(), { status: 'cancelled' });
+            await this.bookingRepo.updateById((booking as any)._id.toString(), { status: BOOKING_STATUS.CANCELLED });
         }
 
         // 4. Notify Mentor

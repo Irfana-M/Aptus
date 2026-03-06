@@ -1,4 +1,4 @@
-import type { BookingDto } from '../../types/schedulingTypes';
+import type { BookingDto } from '../../types/scheduling.types';
 import { TimeSlot } from './TimeSlot';
 
 export class Booking {
@@ -26,3 +26,4 @@ export class Booking {
     }
   }
 }
+

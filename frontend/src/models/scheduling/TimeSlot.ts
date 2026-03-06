@@ -1,4 +1,4 @@
-import type { TimeSlotDto } from '../../types/schedulingTypes';
+import type { TimeSlotDto } from '../../types/scheduling.types';
 import { SlotStatus } from '../../enums/SlotStatus';
 
 export class TimeSlot {
@@ -33,3 +33,4 @@ export class TimeSlot {
     return Math.round((this.endTime.getTime() - this.startTime.getTime()) / (1000 * 60));
   }
 }
+

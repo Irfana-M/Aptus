@@ -17,7 +17,7 @@ import { logger } from "../utils/logger.js";
 import { getErrorMessage } from "../utils/errorUtils.js";
 import { uploadFileToS3 } from "../utils/s3Upload.js";
 import { TYPES } from '../types.js';
-import { Types } from 'mongoose';
+import mongoose from "mongoose";
 import { MESSAGES } from '../constants/messages.constants.js';
 import type { RegisterUserDto } from '@/dtos/auth/RegisteruserDTO.js';
 import type { MentorResponseDto } from '@/dtos/mentor/MentorResponseDTO.js';
@@ -27,6 +27,14 @@ import type { TrialClassResponseDto } from "@/dtos/student/trialClassDTO.js";
 import { AppError } from '../utils/AppError.js';
 import { HttpStatusCode } from '../constants/httpStatus.js';
 import { MENTOR_LEAVE_CUTOFF_HOURS } from '../config/leavePolicy.config.js';
+
+import type { ILeavePolicyService } from '../interfaces/services/ILeavePolicyService.js';
+import { LEAVE_STATUS } from '../constants/status.constants.js';
+import { DomainEvent } from '../constants/events.js';
+import type { InternalEventEmitter } from '../utils/InternalEventEmitter.js';
+import type { LeaveEntry } from '../interfaces/models/mentor.interface.js';
+import { StatusLogger } from '../utils/statusLogger.js';
+import type { LeavePaginatedResult } from '../interfaces/repositories/IMentorRepository.js';
 
 @injectable()
 export class MentorService implements IMentorService {
@@ -39,7 +47,9 @@ export class MentorService implements IMentorService {
     @inject(TYPES.ISessionRepository) private _sessionRepo: ISessionRepository,
     @inject(TYPES.ICourseRepository) private _courseRepo: ICourseRepository,
     @inject(TYPES.IMentorAvailabilityRepository) private _mentorAvailabilityRepo: IMentorAvailabilityRepository,
-    @inject(TYPES.ITimeSlotRepository) private _timeSlotRepo: ITimeSlotRepository
+    @inject(TYPES.ITimeSlotRepository) private _timeSlotRepo: ITimeSlotRepository,
+    @inject(TYPES.ILeavePolicyService) private _leavePolicyService: ILeavePolicyService,
+    @inject(TYPES.InternalEventEmitter) private _eventEmitter: InternalEventEmitter
   ) {}
 
 
@@ -367,11 +377,18 @@ export class MentorService implements IMentorService {
     }
   }
 
-  async getMentorTrialClasses(mentorId: string): Promise<TrialClassResponseDto[]> {
+  async getMentorTrialClasses(mentorId: string, page: number = 1, limit: number = 10): Promise<{ items: TrialClassResponseDto[]; total: number }> {
     try {
-      logger.info(`Fetching trial classes for mentor: ${mentorId}`);
-      const trialClasses = await this._trialClassRepo.findByMentorId(mentorId);
-      return trialClasses.map(token => TrialClassMapper.toResponseDto(token));
+      logger.info(`Fetching trial classes for mentor: ${mentorId}, page: ${page}, limit: ${limit}`);
+      const skip = (page - 1) * limit;
+      const [trialClasses, total] = await Promise.all([
+        this._trialClassRepo.findByMentorId(mentorId, skip, limit),
+        this._trialClassRepo.countByMentorId(mentorId)
+      ]);
+      return {
+        items: trialClasses.map(token => TrialClassMapper.toResponseDto(token)),
+        total
+      };
     } catch (error: unknown) {
       logger.error(`Error in getMentorTrialClasses for mentor ${mentorId}: ${getErrorMessage(error)}`);
       throw error;
@@ -495,13 +512,13 @@ export class MentorService implements IMentorService {
           continue;
         }
 
-        const slots = avail.slots.map(slot => ({
+        const slots = avail.slots.map((slot: import('../interfaces/models/mentor.interface.js').TimeSlot) => ({
           startTime: slot.startTime,
           endTime: slot.endTime
         }));
 
         await this._mentorAvailabilityRepo.findOneAndUpdate(
-          { mentorId: new Types.ObjectId(mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId, dayOfWeek },
+          { mentorId: new mongoose.Types.ObjectId(mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId, dayOfWeek },
           { slots, isActive: true },
           { upsert: true, new: true }
         );
@@ -558,7 +575,7 @@ export class MentorService implements IMentorService {
 
       // Get mentor's availability from MentorAvailabilityModel
       const availabilityRecords = await this._mentorAvailabilityRepo.find({
-        mentorId: new Types.ObjectId(mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
+        mentorId: new mongoose.Types.ObjectId(mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
         isActive: true
       });
 
@@ -698,30 +715,26 @@ export class MentorService implements IMentorService {
     try {
       logger.info(`Mentor ${mentorId} requesting leave from ${startDate} to ${endDate}`);
       
-      // Cutoff Validation: Fetch affected upcoming sessions
-      const upcomingSessions = await this._sessionRepo.findByMentorAndDateRange(mentorId, startDate, endDate);
-      const now = new Date();
-      
-      for (const session of upcomingSessions) {
-          // Ignore past or already cancelled sessions
-          if (session.startTime <= now || session.status === 'cancelled') continue;
-          
-          const diffInHours = (session.startTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-          
-          if (diffInHours < MENTOR_LEAVE_CUTOFF_HOURS) {
-              logger.warn(`Mentor ${mentorId} leave request rejected: Session ${session._id} starts in ${diffInHours.toFixed(2)}h (Cutoff: ${MENTOR_LEAVE_CUTOFF_HOURS}h)`);
-              throw new AppError(MESSAGES.MENTOR.LEAVE_CUTOFF_ERROR, HttpStatusCode.BAD_REQUEST);
-          }
-      }
+      // 1. Validate using policy service
+      await this._leavePolicyService.validateLeaveRequest(mentorId, startDate, endDate);
 
-      const leaveData: { startDate: Date; endDate: Date; approved: boolean; reason?: string } = {
+      // 2. Prepare leave data
+      const leaveData = {
         startDate,
         endDate,
-        approved: false
+        approved: false,
+        status: LEAVE_STATUS.PENDING,
+        ...(reason !== undefined && { reason })
       };
-      if (reason) leaveData.reason = reason;
 
+      // 3. Persist
       await this._mentorRepo.addLeave(mentorId, leaveData);
+      
+      StatusLogger.logLeaveStatusChange(mentorId, "NEW_LEAVE", "NONE", LEAVE_STATUS.PENDING, mentorId);
+
+      // 4. Emit event for orchestration (Step 1 requirement)
+      this._eventEmitter.emit(DomainEvent.MENTOR_LEAVE_REQUESTED, { mentorId, startDate, endDate, reason });
+
     } catch (error: unknown) {
       logger.error(`Error in requestLeave: ${getErrorMessage(error)}`);
       throw error;
@@ -730,22 +743,85 @@ export class MentorService implements IMentorService {
 
   async approveLeave(mentorId: string, leaveId: string, adminId: string): Promise<void> {
     try {
-      logger.info(`Admin ${adminId} approving leave ${leaveId} for mentor ${mentorId}`);
-      await this._mentorRepo.updateLeaveStatus(mentorId, leaveId, true);
+      let effectiveMentorId = mentorId;
+      if (!effectiveMentorId) {
+          const mentor = await this._mentorRepo.findByLeaveId(leaveId);
+          if (!mentor) throw new AppError(MESSAGES.MENTOR.NOT_FOUND, HttpStatusCode.NOT_FOUND);
+          effectiveMentorId = (mentor as any)._id.toString();
+      }
 
-      // Get the mentor to find the specific leave dates
-      const mentor = await this._mentorRepo.findById(mentorId);
-      if (!mentor || !mentor.leaves) throw new Error(MESSAGES.MENTOR.NOT_FOUND);
-
-      const leave = mentor.leaves.find(l => (l as unknown as { _id: Types.ObjectId })._id.toString() === leaveId);
-      if (!leave) throw new Error(MESSAGES.MENTOR.NOT_FOUND);
-
-      // Delegate cancellation of affected slots to SchedulingService
-      await this._schedulingService.handleMentorLeave(mentorId, leave.startDate, leave.endDate);
+      logger.info(`Admin ${adminId} approving leave ${leaveId} for mentor ${effectiveMentorId}`);
       
-      logger.info(`Leave ${leaveId} approved and slots handled for mentor ${mentorId}`);
+      const mentor = await this._mentorRepo.findById(effectiveMentorId);
+      if (!mentor || !mentor.leaves) throw new AppError(MESSAGES.MENTOR.NOT_FOUND, HttpStatusCode.NOT_FOUND);
+
+      const leave = mentor.leaves.find((l: any) => (l as unknown as { _id: mongoose.Types.ObjectId })._id.toString() === leaveId);
+      if (!leave) throw new AppError(MESSAGES.MENTOR.NOT_FOUND, HttpStatusCode.NOT_FOUND);
+
+      // Rule: status === LEAVE_STATUS.PENDING
+      if (leave.status !== LEAVE_STATUS.PENDING) {
+          throw new AppError("Leave request is already processed", HttpStatusCode.CONFLICT);
+      }
+
+      const updateData: Partial<LeaveEntry> = {
+          status: LEAVE_STATUS.APPROVED,
+          approved: true,
+          approvedBy: adminId,
+          approvedAt: new Date()
+      };
+
+      await this._mentorRepo.updateLeaveStatus(effectiveMentorId, leaveId, updateData);
+      
+      StatusLogger.logLeaveStatusChange(effectiveMentorId, leaveId, leave.status, LEAVE_STATUS.APPROVED, adminId);
+
+      // Emit domain event: MentorLeaveApprovedEvent (Internal Event)
+      this._eventEmitter.emit(DomainEvent.MENTOR_LEAVE_APPROVED, { mentorId: effectiveMentorId, leaveId, startDate: leave.startDate, endDate: leave.endDate });
+
+      logger.info(`Leave ${leaveId} approved for mentor ${effectiveMentorId}`);
     } catch (error: unknown) {
       logger.error(`Error in approveLeave: ${getErrorMessage(error)}`);
+      throw error;
+    }
+  }
+
+  async rejectLeave(mentorId: string | undefined, leaveId: string, adminId: string, reason: string): Promise<void> {
+    try {
+      let effectiveMentorId: string;
+      if (!mentorId) {
+          const mentor = await this._mentorRepo.findByLeaveId(leaveId);
+          if (!mentor) throw new AppError(MESSAGES.MENTOR.NOT_FOUND, HttpStatusCode.NOT_FOUND);
+          effectiveMentorId = (mentor as any)._id.toString();
+      } else {
+          effectiveMentorId = mentorId;
+      }
+
+      logger.info(`Admin ${adminId} rejecting leave ${leaveId} for mentor ${effectiveMentorId}`);
+      
+      const mentor = await this._mentorRepo.findById(effectiveMentorId);
+      if (!mentor || !mentor.leaves) throw new AppError(MESSAGES.MENTOR.NOT_FOUND, HttpStatusCode.NOT_FOUND);
+
+      const leave = mentor.leaves.find((l: any) => (l as unknown as { _id: mongoose.Types.ObjectId })._id.toString() === leaveId);
+      if (!leave) throw new AppError(MESSAGES.MENTOR.NOT_FOUND, HttpStatusCode.NOT_FOUND);
+
+      if (leave.status !== LEAVE_STATUS.PENDING) {
+          throw new AppError("Leave request is already processed", HttpStatusCode.CONFLICT);
+      }
+
+      const updateData: Partial<LeaveEntry> = {
+          status: LEAVE_STATUS.REJECTED,
+          approved: false,
+          rejectionReason: reason
+      };
+
+      await this._mentorRepo.updateLeaveStatus(effectiveMentorId, leaveId, updateData);
+
+      StatusLogger.logLeaveStatusChange(effectiveMentorId, leaveId, leave.status, LEAVE_STATUS.REJECTED, adminId);
+
+      this._eventEmitter.emit(DomainEvent.MENTOR_LEAVE_REJECTED, { mentorId: effectiveMentorId, leaveId, reason });
+
+      logger.info(`Leave ${leaveId} rejected for mentor ${effectiveMentorId}`);
+    } catch (error: unknown) {
+      logger.error(`Error in rejectLeave: ${getErrorMessage(error)}`);
       throw error;
     }
   }
@@ -863,6 +939,21 @@ export class MentorService implements IMentorService {
 
     } catch (error: unknown) {
       logger.error(`Error in getMentorUpcomingSessionsWithEligibility: ${getErrorMessage(error)}`);
+      throw error;
+    }
+  }
+
+  async getPaginatedLeaves(params: {
+    page: number;
+    limit: number;
+    mentorId?: string;
+    status?: LEAVE_STATUS | '';
+  }): Promise<LeavePaginatedResult> {
+    try {
+      logger.info(`Fetching paginated leaves with params: ${JSON.stringify(params)}`);
+      return await this._mentorRepo.getPaginatedLeaves(params);
+    } catch (error: unknown) {
+      logger.error(`Error in getPaginatedLeaves service: ${getErrorMessage(error)}`);
       throw error;
     }
   }

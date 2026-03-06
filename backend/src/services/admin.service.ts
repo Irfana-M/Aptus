@@ -103,12 +103,31 @@ export class AdminService implements IAdminService {
 
   async getDashboardData(): Promise<DashboardDataDto> {
     try {
-      const [students, mentors, activeSessionsCount, pendingApprovalsCount] = await Promise.all([
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
+      const [
+        students, 
+        mentors, 
+        activeSessionsCount, 
+        pendingMentorsCount,
+        pendingCourseRequestsCount,
+        pendingTrialClassesCount
+      ] = await Promise.all([
         this._studentRepo.findAllStudents(),
         this._mentorRepo.getAllMentors(),
-        this._sessionRepo.count({ status: 'in_progress' }),
-        this._mentorRepo.count({ approvalStatus: ApprovalStatus.PENDING })
+        this._sessionRepo.count({ 
+          startTime: { $gte: todayStart, $lte: todayEnd },
+          status: { $nin: ['completed', 'cancelled'] }
+        }),
+        this._mentorRepo.count({ approvalStatus: ApprovalStatus.PENDING }),
+        this._requestRepo.findPending().then(reqs => reqs.length),
+        this._trialClassRepo.countDocuments({ status: 'requested' })
       ]);
+
+      const totalPendingApprovals = pendingMentorsCount + pendingCourseRequestsCount + pendingTrialClassesCount;
 
       const recentStudents = students.slice(-5).reverse();
       const recentMentors = MentorMapper.toResponseDtoList(
@@ -118,10 +137,13 @@ export class AdminService implements IAdminService {
       logger.info("Dashboard data fetched", {
         totalStudents: students.length,
         totalMentors: mentors.length,
-        recentStudents: recentStudents.length,
-        recentMentors: recentMentors.length,
         activeSessions: activeSessionsCount,
-        pendingApprovals: pendingApprovalsCount
+        pendingApprovals: totalPendingApprovals,
+        breakdown: {
+          pendingMentors: pendingMentorsCount,
+          pendingCourseRequests: pendingCourseRequestsCount,
+          pendingTrialClasses: pendingTrialClassesCount
+        }
       });
 
       const financeStats = await this.getFinanceStats().catch(err => {
@@ -136,7 +158,7 @@ export class AdminService implements IAdminService {
         recentMentors,
         finance: financeStats,
         activeSessions: activeSessionsCount,
-        pendingApprovals: pendingApprovalsCount
+        pendingApprovals: totalPendingApprovals
       };
     } catch (error: unknown) {
       logger.error("Error fetching dashboard data:", error);

@@ -1,23 +1,8 @@
-import api, { type ApiResponse } from "./api";
+import api from "./api";
+import type { ApiResponse } from "../types/api.types";
+import type { ChatMessage, ChatRoom } from "../types/classroom.types";
 
-export interface ChatMessage {
-  _id: string;
-  chatRoomId: string;
-  senderId: string;
-  senderRole: 'mentor' | 'student' | 'admin';
-  messageType: 'text' | 'image' | 'system';
-  content: string;
-  isRead: boolean;
-  createdAt: string;
-}
-
-export interface ChatRoom {
-  _id: string;
-  sessionId: string;
-  mentorId: string;
-  participantIds: string[];
-  isActive: boolean;
-}
+export type { ChatMessage, ChatRoom };
 
 export const chatApi = {
   getHistory: async (sessionId: string): Promise<ApiResponse<ChatMessage[]>> => {

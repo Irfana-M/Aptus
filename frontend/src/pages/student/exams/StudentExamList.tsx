@@ -1,13 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/routes.constants';
-import { FileText, Clock, Award, ArrowRight, ArrowLeft, GraduationCap, Info } from 'lucide-react';
+import { FileText, Clock, Award, ArrowRight, ArrowLeft, GraduationCap } from 'lucide-react';
 import StudentLayout from '../../../components/students/StudentLayout';
 import { Loader } from '../../../components/ui/Loader';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { Pagination } from '../../../components/ui/Pagination';
 import { getExamsForStudent } from "../../../features/exam/examSlice";
-import type { IEnrichedExam } from "../../../types/examTypes";
+import type { IEnrichedExam } from "../../../types/exam.types";
 import type { AppDispatch, RootState } from "../../../app/store";
 
 const StudentExamList: React.FC = () => {
@@ -22,6 +23,9 @@ const StudentExamList: React.FC = () => {
     const isPremium = profile?.subscription?.status === 'active'; 
     
     const [activeTab, setActiveTab] = React.useState<'available' | 'history'>('available');
+    const ITEMS_PER_PAGE = 9;
+    const [availablePage, setAvailablePage] = useState(1);
+    const [historyPage, setHistoryPage] = useState(1);
 
     useEffect(() => {
         dispatch(getExamsForStudent());
@@ -41,6 +45,11 @@ const StudentExamList: React.FC = () => {
     };
 
    
+
+    const availableExams = exams.filter(e => !(e as IEnrichedExam).attemptStatus);
+    const historyExams = exams.filter(e => (e as IEnrichedExam).attemptStatus);
+    const paginatedAvailable = availableExams.slice((availablePage - 1) * ITEMS_PER_PAGE, availablePage * ITEMS_PER_PAGE);
+    const paginatedHistory = historyExams.slice((historyPage - 1) * ITEMS_PER_PAGE, historyPage * ITEMS_PER_PAGE);
 
     return (
         <StudentLayout title="My Exams">
@@ -95,17 +104,17 @@ const StudentExamList: React.FC = () => {
                 ) : (
                     <>
                         {activeTab === 'available' && (
-                            exams.filter(e => !(e as IEnrichedExam).attemptStatus).length === 0 ? (
+                            availableExams.length === 0 ? (
                                 <EmptyState 
                                     icon={FileText} 
                                     title="No New Exams" 
                                     description="You have completed all assigned exams or none are available." 
                                 />
                             ) : (
+                                <>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {exams.filter(e => !(e as IEnrichedExam).attemptStatus).map((exam) => (
+                                    {paginatedAvailable.map((exam) => (
                                         <div key={exam._id} className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 hover:shadow-lg transition-all relative overflow-hidden">
-                                            {/* Exam Card Content - Same as before but filtered */}
                                             {exam.isPremium && (
                                                 <div className="absolute top-4 right-4 bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide flex items-center gap-1">
                                                     <Award size={14} /> Premium
@@ -136,8 +145,6 @@ const StudentExamList: React.FC = () => {
 
                                             <button 
                                                 onClick={() => {
-                                                    // Debug log on click
-                                                    console.log("Clicked exam:", exam);
                                                     if ((exam as IEnrichedExam).resultId) {
                                                         navigate(`/student/results/${(exam as IEnrichedExam).resultId}`);
                                                     } else {
@@ -165,22 +172,37 @@ const StudentExamList: React.FC = () => {
                                         </div>
                                     ))}
                                 </div>
+                                {availableExams.length > ITEMS_PER_PAGE && (
+                                    <div className="mt-6">
+                                        <Pagination
+                                            currentPage={availablePage}
+                                            totalPages={Math.ceil(availableExams.length / ITEMS_PER_PAGE)}
+                                            totalItems={availableExams.length}
+                                            itemsPerPage={ITEMS_PER_PAGE}
+                                            onPageChange={setAvailablePage}
+                                            showItemsPerPage={false}
+                                            variant="minimal"
+                                        />
+                                    </div>
+                                )}
+                                </>
                             )
                         )}
 
                         {activeTab === 'history' && (
-                            exams.filter(e => (e as IEnrichedExam).attemptStatus).length === 0 ? (
+                            historyExams.length === 0 ? (
                                 <EmptyState 
                                     icon={GraduationCap} 
                                     title="No Exam History" 
                                     description="You haven't attempted any exams yet." 
                                 />
                             ) : (
+                                <>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {exams.filter(e => (e as IEnrichedExam).attemptStatus).map((exam) => (
+                                    {paginatedHistory.map((exam) => (
                                         <div key={exam._id} className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 hover:shadow-lg transition-all relative overflow-hidden opacity-90">
                                             <div className="absolute top-4 right-4 bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide flex items-center gap-1">
-                                                {(exam as IEnrichedExam).attemptStatus === 'PENDING_REVIEW' ? 'Reviewed Pending' : 'Completed'}
+                                                {(exam as IEnrichedExam).attemptStatus === 'PENDING_REVIEW' ? 'Review Pending' : 'Completed'}
                                             </div>
                                             
                                             <div className="mb-4 mt-2">
@@ -218,6 +240,20 @@ const StudentExamList: React.FC = () => {
                                         </div>
                                     ))}
                                 </div>
+                                {historyExams.length > ITEMS_PER_PAGE && (
+                                    <div className="mt-6">
+                                        <Pagination
+                                            currentPage={historyPage}
+                                            totalPages={Math.ceil(historyExams.length / ITEMS_PER_PAGE)}
+                                            totalItems={historyExams.length}
+                                            itemsPerPage={ITEMS_PER_PAGE}
+                                            onPageChange={setHistoryPage}
+                                            showItemsPerPage={false}
+                                            variant="minimal"
+                                        />
+                                    </div>
+                                )}
+                                </>
                             )
                         )}
                     </>
@@ -228,3 +264,4 @@ const StudentExamList: React.FC = () => {
 };
 
 export default StudentExamList;
+

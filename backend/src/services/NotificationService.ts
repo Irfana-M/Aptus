@@ -8,6 +8,7 @@ import type { ISocketService } from '../interfaces/services/ISocketService.js';
 import type { INotification, NotificationType, NotificationChannel } from '../interfaces/models/notification.interface.js';
 import { logger } from '../utils/logger.js';
 import { MESSAGES } from '../constants/messages.constants.js';
+import { StatusLogger } from '../utils/statusLogger.js';
 
 @injectable()
 export class NotificationService implements INotificationService {
@@ -364,7 +365,17 @@ export class NotificationService implements INotificationService {
     return this._notificationRepo.findByUser(userId, role);
   }
 
+  async getUserNotificationsPaginated(userId: string, role: string, page: number, limit: number): Promise<{ items: INotification[]; total: number }> {
+    return this._notificationRepo.findByUserPaginated(userId, role, page, limit);
+  }
+
   async markAsRead(notificationId: string): Promise<void> {
     await this._notificationRepo.markAsRead(notificationId);
+  }
+
+  async markAllAsRead(userId: string): Promise<number> {
+    const count = await this._notificationRepo.markAllAsRead(userId);
+    StatusLogger.logUserAction(userId, "NOTIFICATIONS_MARKED_READ", `Marked ${count} notifications as read.`);
+    return count;
   }
 }

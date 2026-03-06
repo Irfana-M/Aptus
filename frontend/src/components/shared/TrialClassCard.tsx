@@ -1,5 +1,5 @@
 import React from 'react';
-import type { TrialClassResponse } from '../../types/trialTypes';
+import type { TrialClassResponse } from '../../types/trial.types';
 
 interface TrialClassCardProps {
   trialClass: TrialClassResponse;

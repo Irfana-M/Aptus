@@ -88,6 +88,8 @@ import { SessionPolicyService } from "./services/session/SessionPolicyService.js
 import { LeaveEligibilityService } from "./services/scheduling/LeaveEligibilityService.js";
 import type { ISessionPolicyService } from "./interfaces/services/ISessionPolicyService.js";
 import type { ILeaveEligibilityService } from "./interfaces/services/ILeaveEligibilityService.js";
+import type { ILeavePolicyService } from "./interfaces/services/ILeavePolicyService.js";
+import { LeavePolicyService } from "./services/LeavePolicyService.js";
 
 import { StudyMaterialRepository } from "./repositories/studyMaterial.repository.js";
 import { StudyMaterialService } from "./services/studyMaterial.service.js";
@@ -96,6 +98,7 @@ import type { IStudyMaterialRepository } from "./interfaces/repositories/IStudyM
 import type { IStudyMaterialService } from "./interfaces/services/IStudyMaterialService.js";
 import { ExampleRepository } from "./repositories/ExampleRepository.js";
 import { ExampleService } from "./services/ExampleService.js";
+import { MentorLeaveEventListener } from "./listeners/MentorLeaveEventListener.js";
 import { ExampleController } from "./controllers/example.controller.js";
 import { PaymentRepository } from "./repositories/payment.repository.js";
 import { SubscriptionRepository } from "./repositories/subscription.repository.js";
@@ -309,6 +312,7 @@ container.bind<ISessionRepository>(TYPES.ISessionRepository).to(SessionRepositor
 container.bind<ISessionService>(TYPES.ISessionService).to(SessionService);
 container.bind<ISessionPolicyService>(TYPES.ISessionPolicyService).to(SessionPolicyService);
 container.bind<ILeaveEligibilityService>(TYPES.ILeaveEligibilityService).to(LeaveEligibilityService);
+container.bind<ILeavePolicyService>(TYPES.ILeavePolicyService).to(LeavePolicyService);
 
 
 import type { IExamRepository } from "./interfaces/repositories/IExamRepository.js";
@@ -337,5 +341,7 @@ container
 container.bind(TYPES.ExamAccessPolicyService).to(ExamAccessPolicyService);
 container.bind(TYPES.ExamScoringService).to(ExamScoringService);
 container.bind(TYPES.ExamResultEnricher).to(ExamResultEnricher);
+
+container.bind<MentorLeaveEventListener>(TYPES.MentorLeaveEventListener).to(MentorLeaveEventListener).inSingletonScope();
 
 export { container };

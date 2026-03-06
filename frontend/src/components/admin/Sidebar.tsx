@@ -35,6 +35,7 @@ const navItems: NavItem[] = [
   { icon: <BookOpen size={20} />, label: "Courses", path: ROUTES.ADMIN.COURSES },
   { icon: <DollarSign size={20} />, label: "Finance", path: ROUTES.ADMIN.FINANCE },
   { icon: <Calendar size={20} />, label: "Attendance", path: ROUTES.ADMIN.ATTENDANCE },
+  { icon: <Calendar size={20} />, label: "Leave Management", path: ROUTES.ADMIN.LEAVES },
   {
     icon: <Bell size={20} />,
     label: "Notifications",

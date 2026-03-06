@@ -4,9 +4,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getExamResults, getExamById, gradeExam } from '../../../features/exam/examSlice';
 import type { AppDispatch, RootState } from '../../../app/store';
 import { ChevronLeft, Save, CheckCircle, XCircle } from 'lucide-react';
-import { QuestionType } from '../../../types/examTypes';
+import { QuestionType } from '../../../types/exam.types';
 import { Loader } from '../../../components/ui/Loader';
 import toast from 'react-hot-toast';
+import { MentorLayout } from '../../../components/mentor/MentorLayout';
 
 const ExamGrading: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -85,7 +86,8 @@ const ExamGrading: React.FC = () => {
     const currentTotalScore = Object.values(grades).reduce((sum, g) => sum + (Number(g.marks) || 0), 0);
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-20">
+        <MentorLayout title="Grade Exam">
+            <div className="pb-20">
             {/* Header */}
             <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm px-6 py-4">
                 <div className="max-w-7xl mx-auto flex justify-between items-center">
@@ -200,9 +202,11 @@ const ExamGrading: React.FC = () => {
                         </div>
                     );
                 })}
+                </div>
             </div>
-        </div>
+        </MentorLayout>
     );
 };
 
 export default ExamGrading;
+

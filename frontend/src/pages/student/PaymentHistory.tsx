@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import StudentLayout from '../../components/students/StudentLayout';
 import { CreditCard, Calendar, Clock, Download } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -7,6 +7,7 @@ import { fetchStudentProfile } from '../../features/student/studentThunk';
 import type { RootState, AppDispatch } from '../../app/store';
 import { Loader } from '../../components/ui/Loader';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { Pagination } from '../../components/ui/Pagination';
 
 interface Payment {
     _id: string;
@@ -31,6 +32,10 @@ const PaymentHistory: React.FC = () => {
     const { paymentHistory, loading } = useSelector((state: RootState) => state.payment);
     const { user } = useSelector((state: RootState) => state.auth);
     const studentProfile = useSelector((state: RootState) => state.student?.profile);
+
+    const ITEMS_PER_PAGE = 10;
+    const [currentPage, setCurrentPage] = useState(1);
+    useEffect(() => { setCurrentPage(1); }, [paymentHistory?.length]);
 
     // Use subscription from profile (more current) or fallback to auth.user
     const subscription = studentProfile?.subscription || (user as unknown as { subscription?: { 
@@ -196,7 +201,9 @@ Thank you for choosing Aptus for your learning!
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {paymentHistory.map((payment) => (
+                                {paymentHistory
+                                    .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+                                    .map((payment) => (
                                     <tr key={payment._id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                             <div className="flex items-center gap-2">
@@ -238,6 +245,19 @@ Thank you for choosing Aptus for your learning!
                                 ))}
                             </tbody>
                         </table>
+                        {paymentHistory.length > ITEMS_PER_PAGE && (
+                            <div className="px-6 py-4 border-t border-gray-100">
+                                <Pagination
+                                    currentPage={currentPage}
+                                    totalPages={Math.ceil(paymentHistory.length / ITEMS_PER_PAGE)}
+                                    totalItems={paymentHistory.length}
+                                    itemsPerPage={ITEMS_PER_PAGE}
+                                    onPageChange={setCurrentPage}
+                                    showItemsPerPage={false}
+                                    variant="detailed"
+                                />
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <EmptyState 

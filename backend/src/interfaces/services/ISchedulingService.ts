@@ -10,7 +10,7 @@ export interface ISchedulingService {
 
   cancelBooking(bookingId: string, initiator: 'student' | 'mentor' | 'admin', reason?: string): Promise<void>;
 
-  handleMentorLeave(mentorId: string, startDate: Date, endDate: Date): Promise<void>;
+  processLeaveImpact(mentorId: string, startDate: Date, endDate: Date): Promise<void>;
 
   getAvailableSlots(filters: Record<string, unknown>): Promise<ITimeSlot[]>;
   ensureTimeSlot(mentorId: string, startTime: Date, endTime: Date): Promise<string>;

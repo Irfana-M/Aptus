@@ -10,7 +10,7 @@ import ProgressCard from '../../components/students/dashboard/ProgressCard';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState, AppDispatch } from '../../app/store';
 import { Clock, CalendarCheck } from 'lucide-react';
-import { fetchStudentProfile } from '../../features/student/studentThunk';
+import { fetchStudentProfile, fetchStudentAssignments } from '../../features/student/studentThunk';
 import { fetchStudentTrialClasses } from '../../features/trial/student/studentTrialThunk';
 
 
@@ -23,6 +23,7 @@ const Dashboard: React.FC = () => {
   React.useEffect(() => {
       dispatch(fetchStudentProfile());
       dispatch(fetchStudentTrialClasses());
+      dispatch(fetchStudentAssignments());
   }, [dispatch]);
 
   const isProcessingPayment = !!(profile && profile.hasPaid && enrollments.length === 0);
@@ -30,13 +31,14 @@ const Dashboard: React.FC = () => {
   // Check if student is in TRIAL_BOOKED state
   // Primary: Check trial classes for pending status
   // Fallback: Use onboardingStatus from profile if trialClasses haven't loaded
-  const pendingTrial = trialClasses.find(t => t.status === 'requested' || t.status === 'approved');
-  const assignedTrial = trialClasses.find(t => t.status === 'assigned');
+  const trialClassesList = Array.isArray(trialClasses) ? trialClasses : [];
+  const pendingTrial = trialClassesList.find(t => t.status === 'requested' || t.status === 'approved');
+  const assignedTrial = trialClassesList.find(t => t.status === 'assigned');
   
   // Use profile.onboardingStatus as fallback when trialClasses are empty
   const onboardingStatus = profile?.onboardingStatus;
   const isTrialPending = (!!pendingTrial && !assignedTrial) || 
-    (trialClasses.length === 0 && onboardingStatus === 'trial_booked');
+    (trialClassesList.length === 0 && onboardingStatus === 'trial_booked');
 
   return (
     <StudentLayout title="Dashboard">
@@ -51,7 +53,7 @@ const Dashboard: React.FC = () => {
   );
 };
 
-import type { TrialClass } from '../../types/trialTypes';
+import type { TrialClass } from '../../types/trial.types';
 
 interface DashboardContentProps {
     isProcessingPayment?: boolean;

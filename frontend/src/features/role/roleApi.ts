@@ -1,4 +1,4 @@
-import userApi from "../../api/userApi";
+import api from "../../api/api";
 import { API_ROUTES } from "../../constants/apiRoutes";
 
 export interface VerifyRoleResponse {
@@ -38,7 +38,7 @@ export interface UserRoleByIdResponse {
 export const roleApi = {
   // USE THIS ONE — reads from Bearer token (RECOMMENDED & WORKING)
   verifyRoleWithToken: () => {
-    return userApi.get<{
+    return api.get<{
       success: boolean;
       role?: 'mentor' | 'student';
       userId?: string;
@@ -54,11 +54,11 @@ export const roleApi = {
 
   // Lightweight version — just role + id (also works great)
   getRoleOnly: () => {
-    return userApi.get<{ success: boolean; role: string; userId: string; email: string }>(API_ROUTES.ROLE.ROLE_ONLY);
+    return api.get<{ success: boolean; role: string; userId: string; email: string }>(API_ROUTES.ROLE.ROLE_ONLY);
   },
 
   // Optional: if you ever need by ID (now safe)
   getUserRoleById: (userId: string) => {
-    return userApi.get(API_ROUTES.ROLE.BY_ID.replace(":userId", userId));
+    return api.get(API_ROUTES.ROLE.BY_ID.replace(":userId", userId));
   },
 };

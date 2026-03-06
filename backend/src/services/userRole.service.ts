@@ -44,7 +44,7 @@ export class UserRoleService implements IUserRoleService {
       }
 
       if (role === "admin") {
-         return { success: true }; // Basic check for admin for now
+         return { success: true };
       }
 
       return { success: false, error: MESSAGES.AUTH.INVALID_ROLE };

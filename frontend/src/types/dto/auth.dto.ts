@@ -1,4 +1,4 @@
-import type { User } from "./authTypes";
+import type { User } from "../user.types";
 
 export interface RegisterUserDto {
   fullName: string;

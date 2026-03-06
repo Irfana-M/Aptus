@@ -5,9 +5,10 @@ import { sessionApi } from '../../features/session/sessionApi';
 import { Button } from '../../components/ui/Button';
 import { toast } from 'react-hot-toast';
 import { fetchStudentTrialClasses } from '../../features/trial/student/studentTrialThunk';
-import { studentApi, type DayAvailability } from '../../features/student/studentApi';
-import { useDispatch } from 'react-redux';
-import type { AppDispatch } from '../../app/store';
+import { studentApi } from '../../features/student/studentApi';
+import type { DayAvailability } from '../../types/dto/student.dto';
+import { useDispatch, useSelector } from 'react-redux';
+import type { AppDispatch, RootState } from '../../app/store';
 import { ReportAbsenceModal } from '../../components/shared/ReportAbsenceModal';
 import { Loader } from '../../components/ui/Loader';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -27,6 +28,9 @@ interface Session {
   startTime: string;
   endTime: string;
   status: string;
+  sessionType?: 'group' | 'one-to-one';
+  cancelledBy?: 'student' | 'mentor' | 'admin';
+  participants?: { userId: string; role: string; status?: string }[];
 }
 
 interface SessionEligibility {
@@ -118,13 +122,13 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ isOpen, onClose, sess
 
           {loading ? (
             <Loader size="md" text="Checking mentor slots..." />
-          ) : availability.some((d) => d.slots?.some((s) => s.remainingCapacity > 0)) ? (
+          ) : availability.some((d) => d.slots?.some((s: { remainingCapacity: number }) => s.remainingCapacity > 0)) ? (
             <div className="space-y-6">
               {availability.map((day) => (
                 <div key={day.day}>
                   <h4 className="text-sm font-bold text-slate-800 mb-3 ml-1">{day.day}</h4>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {day.slots.map((slot, idx: number) => (
+                    {day.slots.map((slot: { _id?: string; startTime: string; endTime: string; remainingCapacity: number }, idx: number) => (
                       <button
                         key={idx}
                         onClick={() =>
@@ -163,6 +167,7 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ isOpen, onClose, sess
 
 const StudentClassroom: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const currentUser = useSelector((state: RootState) => state.auth.user);
   const [eligibilityData, setEligibilityData] = useState<LeaveEligibilityResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedRescheduleSession, setSelectedRescheduleSession] = useState<Session | null>(null);
@@ -287,15 +292,23 @@ const StudentClassroom: React.FC = () => {
                     <div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl group-hover:scale-110 transition-transform duration-500">
                       <Video size={24} />
                     </div>
-                    <div
-                      className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                        session.status === 'rescheduling'
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-emerald-50 text-emerald-700'
-                      }`}
-                    >
-                      {session.status}
-                    </div>
+                    {session.sessionType === 'group' && session.participants?.find(p => p.userId === currentUser?._id)?.status === 'absent' ? (
+                      <div className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-700">
+                        ABSENT
+                      </div>
+                    ) : (
+                      <div
+                        className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          session.status === 'rescheduling'
+                            ? 'bg-amber-100 text-amber-700'
+                          : session.status === 'cancelled'
+                            ? 'bg-rose-100 text-rose-700'
+                            : 'bg-emerald-50 text-emerald-700'
+                        }`}
+                      >
+                        {session.status}
+                      </div>
+                    )}
                   </div>
 
                   <h3 className="text-lg font-black text-slate-900 mb-1 leading-tight">
@@ -323,7 +336,24 @@ const StudentClassroom: React.FC = () => {
                     </div>
                   </div>
 
-                  {session.status === 'rescheduling' ? (
+                  {session.sessionType === 'group' && session.participants?.find(p => p.userId === currentUser?._id)?.status === 'absent' ? (
+                    <div className="w-full bg-slate-50 text-slate-500 h-12 rounded-2xl flex items-center justify-center font-black text-xs uppercase tracking-widest border border-slate-200">
+                      Absent from Session
+                    </div>
+                  ) : session.status === 'cancelled' ? (
+                    session.cancelledBy === 'mentor' ? (
+                      <Button
+                        onClick={() => setSelectedRescheduleSession(session)}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-100 h-12 rounded-2xl font-black text-xs uppercase tracking-widest"
+                      >
+                        Rebook Session
+                      </Button>
+                    ) : (
+                      <div className="w-full bg-rose-50 text-rose-600 h-12 rounded-2xl flex items-center justify-center font-black text-xs uppercase tracking-widest border border-rose-100">
+                        Session Cancelled
+                      </div>
+                    )
+                  ) : session.status === 'rescheduling' ? (
                     <Button
                       onClick={() => setSelectedRescheduleSession(session)}
                       className="w-full bg-slate-900 text-white hover:bg-slate-800 h-12 rounded-2xl font-black text-xs uppercase tracking-widest"
@@ -483,15 +513,23 @@ const StudentClassroom: React.FC = () => {
                           </div>
                         </td>
                         <td className="px-8 py-6 text-right">
-                          <span
-                            className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${
-                              session.status === 'rescheduling'
-                                ? 'bg-amber-100 text-amber-700'
-                                : 'bg-slate-100 text-slate-600'
-                            }`}
-                          >
-                            {session.status}
-                          </span>
+                          {session.sessionType === 'group' && session.participants?.find(p => p.userId === currentUser?._id)?.status === 'absent' ? (
+                            <span className="px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-700">
+                              ABSENT
+                            </span>
+                          ) : (
+                            <span
+                              className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${
+                                session.status === 'rescheduling'
+                                  ? 'bg-amber-100 text-amber-700'
+                                : session.status === 'cancelled'
+                                  ? 'bg-rose-100 text-rose-700'
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}
+                            >
+                              {session.status}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}

@@ -6,6 +6,7 @@ import { logger } from "@/utils/logger.js";
 import { HttpStatusCode } from "@/constants/httpStatus.js";
 import { AppError } from "@/utils/AppError.js";
 import { MESSAGES } from "@/constants/messages.constants.js";
+import { getPaginationParams, formatStandardizedPaginatedResult } from "@/utils/pagination.util.js";
 
 @injectable()
 export class MentorTrialClassController {
@@ -14,8 +15,18 @@ export class MentorTrialClassController {
   getMentorTrialClasses = async (req: Request, res: Response): Promise<void> => {
     try {
       const mentorId = req.user!.id;
-      const trialClasses = await this._trialClassService.getMentorTrialClasses(mentorId);
-      res.status(HttpStatusCode.OK).json({ success: true, data: trialClasses, message: MESSAGES.TRIAL_CLASS.RETRIEVE_SUCCESS });
+      const { page, limit } = getPaginationParams(req.query);
+
+      const { items, total } = await this._trialClassService.getMentorTrialClasses(mentorId, page, limit);
+
+      const result = formatStandardizedPaginatedResult(
+        items,
+        total,
+        { page, limit },
+        MESSAGES.TRIAL_CLASS.RETRIEVE_SUCCESS
+      );
+
+      res.status(HttpStatusCode.OK).json(result);
     } catch (error: unknown) {
       logger.error("Error getting mentor trial classes", error);
       const status = error instanceof AppError ? error.statusCode : HttpStatusCode.INTERNAL_SERVER_ERROR;

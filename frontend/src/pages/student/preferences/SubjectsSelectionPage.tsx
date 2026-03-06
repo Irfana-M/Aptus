@@ -7,7 +7,7 @@ import StudentLayout from '../../../components/students/StudentLayout';
 import { Book, Check, ChevronRight, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../../components/ui/Button';
-import type { Subject } from '../../../types/adminTypes';
+import type { Subject } from "../../../types/admin.types";
 import { ROUTES } from '../../../constants/routes.constants';
 import { Loader } from '../../../components/ui/Loader';
 import { EmptyState } from '../../../components/ui/EmptyState';
@@ -42,7 +42,6 @@ const SubjectsSelectionPage: React.FC = () => {
             try {
                 setFetchingSubjects(true);
                 const data = await fetchSubjectsByGrade(gradeId, syllabus);
-                // API returns { success: true, data: [...], message: "..." }
                 const list = data.data || data;
                 setSubjects(Array.isArray(list) ? list : []);
             } catch (error) {
@@ -57,7 +56,6 @@ const SubjectsSelectionPage: React.FC = () => {
     }, [gradeId, syllabus]);
 
     const toggleSubject = (subjectId: string) => {
-        // BUG FIX: Use subjectId (which is subject.id from DTO)
         if (selectedSubjects.includes(subjectId)) {
             setSelectedSubjects(selectedSubjects.filter(id => id !== subjectId));
         } else {
@@ -75,13 +73,11 @@ const SubjectsSelectionPage: React.FC = () => {
             return;
         }
 
-        const selectedSubjectDetails = subjects.filter(s => selectedSubjects.includes(s.id));
+        const selectedSubjectDetails = subjects.filter(s => s.id && selectedSubjects.includes(s.id));
         
-        // Premium Flow: Subjects -> Mentors -> Time Slots
         if (!isBasicPlan) {
             navigate(ROUTES.STUDENT.PREFERENCES.MENTORS, { state: { selectedSubjects: selectedSubjectDetails } });
         } else {
-            // Basic Flow: Subjects -> Time Slots (Shifts)
             navigate(ROUTES.STUDENT.PREFERENCES.TIME_SLOTS, { state: { selectedSubjects: selectedSubjectDetails } });
         }
     };
@@ -112,28 +108,28 @@ const SubjectsSelectionPage: React.FC = () => {
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {subjects.map((subject) => (
-                            <button
-                                key={subject.id}
-                                onClick={() => toggleSubject(subject.id)}
-                                className={`relative p-8 rounded-[2rem] border-2 transition-all group flex flex-col items-center text-center ${
-                                    selectedSubjects.includes(subject.id)
-                                        ? 'border-indigo-600 bg-indigo-50 shadow-lg scale-[1.02]'
-                                        : 'border-slate-50 bg-white hover:border-indigo-200 hover:shadow-md'
-                                }`}
-                            >
-                                <div className={`p-5 rounded-2xl mb-4 transition-all duration-300 ${
-                                    selectedSubjects.includes(subject.id) 
-                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' 
-                                        : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 group-hover:scale-110'
-                                }`}>
-                                    <Book size={32} />
-                                </div>
-                                <h3 className="text-xl font-black text-slate-900 mb-1">{subject.subjectName}</h3>
-                                <p className="text-xs font-bold text-slate-400 tracking-widest uppercase">{subject.syllabus}</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {subjects.map((subject) => (
+                                <button
+                                    key={subject.id}
+                                    onClick={() => subject.id && toggleSubject(subject.id)}
+                                    className={`relative p-8 rounded-[2rem] border-2 transition-all group flex flex-col items-center text-center ${
+                                        subject.id && selectedSubjects.includes(subject.id)
+                                            ? 'border-indigo-600 bg-indigo-50 shadow-lg scale-[1.02]'
+                                            : 'border-slate-50 bg-white hover:border-indigo-200 hover:shadow-md'
+                                    }`}
+                                >
+                                    <div className={`p-5 rounded-2xl mb-4 transition-all duration-300 ${
+                                        subject.id && selectedSubjects.includes(subject.id) 
+                                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' 
+                                            : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 group-hover:scale-110'
+                                    }`}>
+                                        <Book size={32} />
+                                    </div>
+                                    <h3 className="text-xl font-black text-slate-900 mb-1">{subject.subjectName}</h3>
+                                    <p className="text-xs font-bold text-slate-400 tracking-widest uppercase">{subject.syllabus}</p>
                                 
-                                {selectedSubjects.includes(subject.id) && (
+                                {subject.id && selectedSubjects.includes(subject.id) && (
                                     <div className="absolute top-5 right-5 bg-indigo-600 text-white p-1.5 rounded-full shadow-lg">
                                         <Check size={16} strokeWidth={3} />
                                     </div>

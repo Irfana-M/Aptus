@@ -3,6 +3,7 @@ import StudentLayout from '../../components/students/StudentLayout';
 import { FileText, ClipboardList, Download, Clock, CheckCircle, AlertCircle, MessageSquare, Upload, Calendar } from 'lucide-react';
 import { Loader } from '../../components/ui/Loader';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { Pagination } from '../../components/ui/Pagination';
 import { getStudentMaterials, getStudentAssignments, getMySubmission, getStudentDownloadUrl, type StudyMaterial, type AssignmentSubmission } from '../../api/classroomApi';
 import { toast } from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -17,6 +18,12 @@ const StudentStudyMaterials: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submissionModal, setSubmissionModal] = useState<{ show: boolean; assignment: StudyMaterial | null }>({ show: false, assignment: null });
   const [submissionDetails, setSubmissionDetails] = useState<{ [key: string]: AssignmentSubmission | null }>({});
+
+  const ITEMS_PER_PAGE = 10;
+  const [materialsPage, setMaterialsPage] = useState(1);
+  const [assignmentsPage, setAssignmentsPage] = useState(1);
+  useEffect(() => { setMaterialsPage(1); }, [materials.length]);
+  useEffect(() => { setAssignmentsPage(1); }, [assignments.length]);
 
   const loadData = async () => {
     try {
@@ -148,8 +155,9 @@ const StudentStudyMaterials: React.FC = () => {
           ) : activeTab === 'materials' ? (
             /* Study Materials */
             materials.length > 0 ? (
+              <>
               <div className="space-y-4">
-                {materials.map(m => (
+                {materials.slice((materialsPage - 1) * ITEMS_PER_PAGE, materialsPage * ITEMS_PER_PAGE).map(m => (
                   <div key={m._id} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between hover:border-indigo-200 transition-colors">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600">
@@ -173,6 +181,20 @@ const StudentStudyMaterials: React.FC = () => {
                   </div>
                 ))}
               </div>
+              {materials.length > ITEMS_PER_PAGE && (
+                <div className="mt-4">
+                  <Pagination
+                    currentPage={materialsPage}
+                    totalPages={Math.ceil(materials.length / ITEMS_PER_PAGE)}
+                    totalItems={materials.length}
+                    itemsPerPage={ITEMS_PER_PAGE}
+                    onPageChange={setMaterialsPage}
+                    showItemsPerPage={false}
+                    variant="minimal"
+                  />
+                </div>
+              )}
+              </>
             ) : (
               <EmptyState 
                 icon={FileText} 
@@ -183,8 +205,9 @@ const StudentStudyMaterials: React.FC = () => {
           ) : (
             /* Assignments */
             assignments.length > 0 ? (
+              <>
               <div className="space-y-4">
-                {assignments.map(a => {
+                {assignments.slice((assignmentsPage - 1) * ITEMS_PER_PAGE, assignmentsPage * ITEMS_PER_PAGE).map(a => {
                   const dueStatus = a.assignmentDetails?.dueDate ? getDueStatus(a.assignmentDetails.dueDate) : null;
                   const subStatus = getSubmissionStatus(a._id);
                   const submission = submissionDetails[a._id];
@@ -269,6 +292,20 @@ const StudentStudyMaterials: React.FC = () => {
                   );
                 })}
               </div>
+              {assignments.length > ITEMS_PER_PAGE && (
+                <div className="mt-4">
+                  <Pagination
+                    currentPage={assignmentsPage}
+                    totalPages={Math.ceil(assignments.length / ITEMS_PER_PAGE)}
+                    totalItems={assignments.length}
+                    itemsPerPage={ITEMS_PER_PAGE}
+                    onPageChange={setAssignmentsPage}
+                    showItemsPerPage={false}
+                    variant="minimal"
+                  />
+                </div>
+              )}
+              </>
             ) : (
               <EmptyState 
                 icon={ClipboardList} 

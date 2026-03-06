@@ -39,4 +39,5 @@ export interface StudentBaseResponseDto extends BaseUserResponseDto {
   relationship?: string | undefined;
   totalTrialClasses?: number;
   pendingTrialClasses?: number;
+  onboardingStatus?: string | undefined;
 }

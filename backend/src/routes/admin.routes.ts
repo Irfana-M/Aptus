@@ -355,5 +355,17 @@ adminRouter.patch(
   requireRole("admin"),
   mentorController.approveLeave
 );
+adminRouter.patch(
+  ADMIN_ROUTES.MENTOR_LEAVE_REJECT,
+  requireAuth,
+  requireRole("admin"),
+  mentorController.rejectLeave
+);
+adminRouter.get(
+  ADMIN_ROUTES.ALL_LEAVES,
+  requireAuth,
+  requireRole("admin"),
+  mentorController.getAllLeaves
+);
 
 export default adminRouter;

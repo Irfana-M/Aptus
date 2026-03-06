@@ -1,5 +1,5 @@
 import { Schema, Document } from "mongoose";
-
+import { SESSION_STATUS } from "../../constants/status.constants.js";
 
 export interface ISessionParticipant {
   userId: Schema.Types.ObjectId;
@@ -29,7 +29,7 @@ export interface ISession extends Document {
   mentorStatus?: 'scheduled' | 'present' | 'absent';
 
  
-  status: 'scheduled' | 'in_progress' | 'completed' | 'not_held' | 'cancelled' | 'rescheduling';
+  status: SESSION_STATUS;
 
   
   startTime: Date;
@@ -42,6 +42,8 @@ export interface ISession extends Document {
   recordingUrl?: string;
 
   mentorNotes?: string;
+  cancellationReason?: string;
+  cancelledBy?: 'student' | 'mentor' | 'admin';
 
   createdAt: Date;
   updatedAt: Date;

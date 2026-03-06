@@ -25,6 +25,7 @@ export const ROUTES = {
     ENROLLMENTS: '/admin/enrollments',
     LOGOUT: '/admin/logout',
     ATTENDANCE: '/admin/attendance',
+    LEAVES: '/admin/leaves',
   },
   STUDENT: {
     DASHBOARD: '/student/dashboard',
@@ -75,6 +76,7 @@ export const ROUTES = {
     CHATS: '/mentor/chats',
     NOTIFICATIONS: '/mentor/notifications',
     ASSIGNMENTS: '/mentor/assignments',
+    LEAVES: '/mentor/leaves',
   },
   COMMON: {
     VIDEO_CALL: '/trial-class/:trialClassId/call',

@@ -23,4 +23,10 @@ router.patch(
   (req, res, next) => notificationController.markAsRead(req, res, next)
 );
 
+router.patch(
+  '/read-all',
+  AuthMiddleware.verifyToken,
+  (req, res, next) => notificationController.markAllAsRead(req, res, next)
+);
+
 export default router;

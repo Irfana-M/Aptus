@@ -1,12 +1,12 @@
 import api from '../../../api/api';
 import { API_ROUTES } from '../../../constants/apiRoutes';
-import type { 
-  TrialClassRequest, 
-  TrialClassResponse, 
-  FeedbackRequest, 
+import type {
+  TrialClassRequest,
+  TrialClassResponse,
+  FeedbackRequest,
   Grade,
   Subject
-} from '../../../types/trialTypes';
+} from '../../../types/trial.types';
 
 export const studentTrialApi = {
   requestTrialClass: async (data: TrialClassRequest): Promise<TrialClassResponse> => {
@@ -21,7 +21,11 @@ export const studentTrialApi = {
 
   getStudentTrialClasses: async (): Promise<TrialClassResponse[]> => {
     const response = await api.get(API_ROUTES.STUDENT.TRIAL_CLASSES);
-    return response.data.data;
+    // Handle both paginated { items, pagination } and plain array response
+    if (response.data.data && typeof response.data.data === 'object' && 'items' in response.data.data) {
+      return response.data.data.items;
+    }
+    return response.data.data || [];
   },
 
   getTrialClassById: async (id: string): Promise<TrialClassResponse> => {

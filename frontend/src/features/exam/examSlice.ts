@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit";
 import { examApi } from "./examApi";
-import type { CreateExamDTO, SubmitExamDTO, IExam, IExamResult } from "../../types/examTypes";
+import type { CreateExamDTO, SubmitExamDTO, IExam, IExamResult } from "../../types/exam.types";
 import { getErrorMessage } from "../../utils/errorUtils";
 
 interface ExamState {
@@ -186,3 +186,4 @@ const examSlice = createSlice({
 
 export const { clearCurrentExam, clearError } = examSlice.actions;
 export default examSlice.reducer;
+

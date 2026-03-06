@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../constants/routes.constants';
-import Header from '../../components/layout/Header';
+import StudentLayout from '../../components/students/StudentLayout';
 import { Search, BookOpen, Clock, Calendar } from "lucide-react";
 import { Loader } from '../../components/ui/Loader';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -55,8 +55,8 @@ const BookTuitionSessions = () => {
   const handleSearch = () => {
     dispatch(fetchAvailableCourses({ 
         subject: selectedSubject, 
-        gradeId: studentGrade, // Prefer selected, fallback to student's
-        syllabus: studentSyllabus             // Keep syllabus strict or add filter if needed
+        gradeId: studentGrade, 
+        syllabus: studentSyllabus 
     }));
   };
 
@@ -65,10 +65,9 @@ const BookTuitionSessions = () => {
   const gradeDisplay = typeof studentGrade === 'object' ? studentGrade.name : studentGrade;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
+    <StudentLayout title="Book Tuition Sessions">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">One-on-One Tuition</h1>
@@ -76,14 +75,6 @@ const BookTuitionSessions = () => {
                 Book your personalized session for {gradeDisplay ? `Grade ${gradeDisplay}` : ''} {studentSyllabus}
             </p>
           </div>
-          {/* <button
-            onClick={() => setIsModalOpen(true)}
-            className="mt-4 md:mt-0 bg-teal-600 text-white px-6 py-3 rounded-lg hover:bg-teal-700 transition duration-200 flex items-center gap-2"
-          >
-           <Clock size={20} />
-            Request Custom Time
-          </button> */} 
-          {/* Requirement says link/button is if "not available time slot is there" */}
         </div>
 
         {/* Search and Filters */}
@@ -109,19 +100,9 @@ const BookTuitionSessions = () => {
                     <option value="">All Subjects</option>
                     {dummySubjects.map(sub => <option key={sub} value={sub}>{sub}</option>)}
                 </select>
-                {/* 
-                <button 
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`px-4 py-2 border rounded-lg flex items-center gap-2 hover:bg-gray-50 ${showFilters ? 'bg-gray-100 ring-2 ring-gray-200' : ''}`}
-                >
-                   <Filter size={20} />
-                   Filters
-                </button> 
-                */}
             </div>
           </div>
         </div>
-
 
         {/* Course Grid */}
         {loading ? (
@@ -178,8 +159,6 @@ const BookTuitionSessions = () => {
                 </div>
               </div>
             ))}
-            
-             
           </div>
         ) : (
              <div className="bg-white rounded-xl shadow-sm p-12">
@@ -193,7 +172,7 @@ const BookTuitionSessions = () => {
              </div>
         )}
         
-        {/* Also explicitly allow requesting if results ARE found but none fit */}
+        {/* Call to action for custom request */}
         {courses.length > 0 && (
             <div className="mt-8 text-center text-gray-500">
                 Can't find a time that works? {' '}
@@ -212,7 +191,7 @@ const BookTuitionSessions = () => {
         onClose={() => setIsModalOpen(false)} 
         initialSubject={selectedSubject}
       />
-    </div>
+    </StudentLayout>
   );
 };
 

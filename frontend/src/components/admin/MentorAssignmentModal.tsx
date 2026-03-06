@@ -7,7 +7,7 @@ import { User, Calendar, Clock, Search } from 'lucide-react';
 import { showToast } from '../../utils/toast';
 import { createDefaultTimeRange } from '../../utils/timeUtils';
 
-import type { TrialClassResponse as TrialClass } from '../../types/trialTypes';
+import type { TrialClassResponse as TrialClass } from '../../types/trial.types';
 
 interface MentorAssignmentModalProps {
   isOpen: boolean;

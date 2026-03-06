@@ -8,7 +8,7 @@ import type {
   TrialClassResponse,
   Grade,
   Subject,
-} from "../../../types/trialTypes";
+} from "../../../types/trial.types";
 
 export const requestTrialClass = createAsyncThunk<
   TrialClassResponse,

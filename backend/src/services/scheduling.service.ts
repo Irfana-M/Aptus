@@ -6,6 +6,7 @@ import { AppError } from "../utils/AppError.js";
 import { HttpStatusCode } from "../constants/httpStatus.js";
 import { STUDENT_CANCEL_CUTOFF_HOURS } from "../config/leavePolicy.config.js";
 import { MESSAGES } from "../constants/messages.constants.js";
+import { BOOKING_STATUS } from "../constants/status.constants.js";
 
 import type { ISchedulingService } from "../interfaces/services/ISchedulingService.js";
 import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository.js";
@@ -53,7 +54,7 @@ export class SchedulingService implements ISchedulingService {
       const booking = await this._bookingRepo.findById(bookingId, session);
       if (!booking) throw new AppError("Booking not found", HttpStatusCode.NOT_FOUND);
 
-      if (booking.status === 'cancelled') return;
+      if (booking.status === BOOKING_STATUS.CANCELLED) return;
 
       // Cutoff Validation: only for students
       if (initiator === 'student') {
@@ -69,7 +70,7 @@ export class SchedulingService implements ISchedulingService {
           }
       }
 
-      await this._bookingRepo.updateById(bookingId, { status: 'cancelled' }, session);
+      await this._bookingRepo.updateById(bookingId, { status: BOOKING_STATUS.CANCELLED }, session);
 
       // Increment cancellation count for student if they initiated
       if (initiator === 'student') {
@@ -91,9 +92,9 @@ export class SchedulingService implements ISchedulingService {
     }
   }
 
-  async handleMentorLeave(mentorId: string, startDate: Date, endDate: Date): Promise<void> {
-    logger.info(`Delegating leave handling for mentor ${mentorId}`);
-    return this._leaveManagementService.handleMentorLeave(mentorId, startDate, endDate);
+  async processLeaveImpact(mentorId: string, startDate: Date, endDate: Date): Promise<void> {
+    logger.info(`Delegating leave impact processing for mentor ${mentorId}`);
+    return this._leaveManagementService.processLeaveImpact(mentorId, startDate, endDate);
   }
 
   async getAvailableSlots(filters: Record<string, unknown>): Promise<import("../interfaces/models/timeSlot.interface.js").ITimeSlot[]> {

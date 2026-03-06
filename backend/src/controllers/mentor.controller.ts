@@ -5,6 +5,7 @@ import type { IMentorService } from "../interfaces/services/IMentorService.js";
 import { HttpStatusCode } from "../constants/httpStatus.js";
 import { logger } from "../utils/logger.js";
 import { MESSAGES } from "../constants/messages.constants.js";
+import { getPaginationParams, formatStandardizedPaginatedResult } from "../utils/pagination.util.js";
 
 @injectable()
 export class MentorController {
@@ -200,9 +201,19 @@ export class MentorController {
           .json({ success: false, message: MESSAGES.MENTOR.INVALID_USER });
       }
 
-      const trialClasses = await this._mentorService.getMentorTrialClasses(mentorId);
-      logger.info(`Fetched ${trialClasses.length} trial classes for mentor ${mentorId}`);
-      return res.status(HttpStatusCode.OK).json({ success: true, data: trialClasses });
+      const { page, limit } = getPaginationParams(req.query);
+
+      const { items, total } = await this._mentorService.getMentorTrialClasses(mentorId, page, limit);
+      
+      const result = formatStandardizedPaginatedResult(
+        items,
+        total,
+        { page, limit },
+        MESSAGES.COMMON.DATA_FETCHED
+      );
+
+      logger.info(`Fetched ${items.length} trial classes for mentor ${mentorId}`);
+      return res.status(HttpStatusCode.OK).json(result);
     } catch (error: unknown) {
       const err = error as Error;
       logger.error(`Error in getTrialClasses: ${err.message}`);
@@ -247,7 +258,7 @@ export class MentorController {
       }
 
       await this._mentorService.requestLeave(mentorId, new Date(startDate), new Date(endDate), reason);
-      return res.status(HttpStatusCode.OK).json({ success: true, message: MESSAGES.MENTOR.LEAVE_REQUEST_SUCCESS });
+      return res.status(HttpStatusCode.CREATED).json({ success: true, message: MESSAGES.MENTOR.LEAVE_REQUEST_SUCCESS });
     } catch (error: unknown) {
       const err = error as Error;
       return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: err.message });
@@ -259,7 +270,7 @@ export class MentorController {
       const adminId = req.user?.id;
       const { mentorId, leaveId } = req.params;
 
-      if (!adminId || !mentorId || !leaveId) {
+      if (!adminId || !leaveId) {
         return res.status(HttpStatusCode.BAD_REQUEST).json({ success: false, message: MESSAGES.MENTOR.MISSING_PARAMS });
       }
 
@@ -267,7 +278,27 @@ export class MentorController {
       return res.status(HttpStatusCode.OK).json({ success: true, message: MESSAGES.MENTOR.LEAVE_APPROVE_SUCCESS });
     } catch (error: unknown) {
       const err = error as Error;
-      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: err.message });
+      const statusCode = (err as any).statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+      return res.status(statusCode).json({ success: false, message: err.message });
+    }
+  };
+
+  rejectLeave = async (req: Request, res: Response) => {
+    try {
+      const adminId = req.user?.id;
+      const { mentorId, leaveId } = req.params;
+      const { reason } = req.body;
+
+      if (!adminId || !leaveId || !reason) {
+        return res.status(HttpStatusCode.BAD_REQUEST).json({ success: false, message: MESSAGES.MENTOR.MISSING_PARAMS });
+      }
+
+      await this._mentorService.rejectLeave(mentorId, leaveId, adminId, reason);
+      return res.status(HttpStatusCode.OK).json({ success: true, message: MESSAGES.MENTOR.LEAVE_REJECT_SUCCESS });
+    } catch (error: unknown) {
+      const err = error as Error;
+      const statusCode = (err as any).statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+      return res.status(statusCode).json({ success: false, message: err.message });
     }
   };
 
@@ -343,6 +374,66 @@ export class MentorController {
     } catch (error: unknown) {
       const err = error as Error;
       logger.error(`Error in getGroupBatches: ${err.message}`);
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: err.message });
+    }
+  };
+
+  getMyLeaves = async (req: Request, res: Response) => {
+    try {
+      const mentorId = req.user?.id;
+      if (!mentorId) {
+        return res.status(HttpStatusCode.UNAUTHORIZED).json({ success: false, message: MESSAGES.MENTOR.UNAUTHORIZED });
+      }
+
+      const { page, limit } = getPaginationParams(req.query);
+      const status = req.query.status as any;
+
+      const { items, total } = await this._mentorService.getPaginatedLeaves({
+        page,
+        limit,
+        mentorId,
+        status
+      });
+
+      const result = formatStandardizedPaginatedResult(
+        items,
+        total,
+        { page, limit },
+        MESSAGES.COMMON.DATA_FETCHED
+      );
+
+      return res.status(HttpStatusCode.OK).json(result);
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error(`Error in getMyLeaves: ${err.message}`);
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: err.message });
+    }
+  };
+
+  getAllLeaves = async (req: Request, res: Response) => {
+    try {
+      const { page, limit } = getPaginationParams(req.query);
+      const mentorId = req.query.mentorId as string;
+      const status = req.query.status as any;
+
+      const { items, total } = await this._mentorService.getPaginatedLeaves({
+        page,
+        limit,
+        mentorId,
+        status
+      });
+
+      const result = formatStandardizedPaginatedResult(
+        items,
+        total,
+        { page, limit },
+        MESSAGES.COMMON.DATA_FETCHED
+      );
+
+      return res.status(HttpStatusCode.OK).json(result);
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error(`Error in getAllLeaves: ${err.message}`);
       return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ success: false, message: err.message });
     }
   };

@@ -1,6 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 import type { MentorProfile } from "@/interfaces/models/mentor.interface.js";
 import { ApprovalStatus } from "../../domain/enums/ApprovalStatus.js";
+import { LEAVE_STATUS } from "../../constants/status.constants.js";
 const academicQualificationSchema = new Schema({
   institutionName: String,
   degree: String,
@@ -83,7 +84,15 @@ const mentorSchema = new Schema<MentorProfile>(
       startDate: { type: Date, required: true },
       endDate: { type: Date, required: true },
       reason: { type: String },
-      approved: { type: Boolean, default: false }
+      approved: { type: Boolean, default: false },
+      status: {
+        type: String,
+        enum: Object.values(LEAVE_STATUS),
+        default: LEAVE_STATUS.PENDING
+      },
+      approvedBy: { type: String },
+      approvedAt: { type: Date },
+      rejectionReason: { type: String }
     }],
     commissionPercentage: { type: Number, default: 60 }
   },

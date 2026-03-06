@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import type { AuthState } from "../../types/authTypes";
+import type { AuthState } from "../../types/auth.types";
 import {
   registerUser,
   verifyOtp,

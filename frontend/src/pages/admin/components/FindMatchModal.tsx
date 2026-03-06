@@ -11,13 +11,14 @@ import { Button } from '../../../components/ui/Button';
 import { formatTo12Hour } from '../../../utils/timeFormat';
 import { Loader } from '../../../components/ui/Loader';
 
-interface CourseRequestData {
+// Local interface compatible with both CourseRequest and StudentProfile MatchRequest
+interface GeneralMatchRequest {
     id: string;
     _id?: string;
     subject: string;
     subjectId?: string;
     subjectName?: string;
-    grade: string;
+    grade: string | { _id: string; name: string };
     gradeId?: string;
     preferredDays: string[];
     timeSlot: string;
@@ -28,13 +29,13 @@ interface CourseRequestData {
         fullName: string;
         email?: string;
     } | string;
-    mentoringMode?: 'one-to-one' | 'group';
+    mentoringMode?: 'one-to-one' | 'group' | string;
 }
 
 interface FindMatchModalProps {
     isOpen: boolean;
     onClose: () => void;
-    request: CourseRequestData | null;
+    request: GeneralMatchRequest | any | null; // Broadened for compatibility
     onMatchConfirmed: () => void;
     onSubmit?: (data: { mentorId: string; days: string[]; timeSlot?: string }) => Promise<void>;
 }
@@ -81,8 +82,8 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
         }
 
         // Prioritize IDs over names - critical fix for mentor matching
-        const subjectId = request.subjectId || request.subject;
-        const gradeId = request.gradeId || request.grade;
+        const subjectId = (request as any).subjectId || (request as any).subject;
+        const gradeId = typeof (request as any).grade === 'object' ? (request as any).grade._id : ((request as any).gradeId || (request as any).grade);
 
         if (!subjectId) {
             toast.error("Subject information is missing from this request");
@@ -148,9 +149,9 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
         setCreating(true);
         try {
             // Resolve IDs with priority for ObjectIDs
-            const subjectId = request.subjectId || request.subject;
-            const gradeId = request.gradeId || request.grade;
-            const studentId = typeof request.student === 'object' ? (request.student._id || request.student.id || "") : request.student;
+            const subjectId = (request as any).subjectId || (request as any).subject;
+            const gradeId = typeof (request as any).grade === 'object' ? (request as any).grade._id : ((request as any).gradeId || (request as any).grade);
+            const studentId = typeof (request as any).student === 'object' ? ((request as any).student._id || (request as any).student.id || "") : (request as any).student;
 
             if (onSubmit) {
                 await onSubmit({
@@ -212,7 +213,7 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
                              </span>
                         </div>
                         <p className="text-sm text-slate-700 mt-2 font-bold">
-                            {request?.preferredDays?.join(', ')} at {(request?.timeSlot || request?.timeRange || '').split('-').map(t => formatTo12Hour(t.trim())).join(' - ')}
+                            {request?.preferredDays?.join(', ')} at {(request?.timeSlot || request?.timeRange || '').split('-').map((t: string) => formatTo12Hour(t.trim())).join(' - ')}
                         </p>
                     </div>
                 </div>

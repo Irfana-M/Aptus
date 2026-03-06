@@ -3,10 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAppDispatch } from '../../app/hooks';
 import { studentTrialApi } from '../../features/trial/student/studentTrialApi';
 import { fetchStudentProfile } from '../../features/student/studentThunk';
-import Header from '../../components/layout/Header';
+import StudentLayout from '../../components/students/StudentLayout';
 import { X } from 'lucide-react';
 import { ROUTES } from '../../constants/routes.constants';
-
 
 const TrialClassFeedback: React.FC = () => {
   const { trialClassId } = useParams<{ trialClassId: string }>();
@@ -30,31 +29,21 @@ const TrialClassFeedback: React.FC = () => {
         comment: feedback
       });
       
-      // Refresh profile to pick up isTrialCompleted: true
       dispatch(fetchStudentProfile());
       
       setSubmitted(true);
       
-      // Logic based on user requirement: 
-      // if satisfied (or high rating) ->
-      //    if profile NOT complete -> profile setup
-      //    if profile IS complete -> student dashboard (trial classes)
-      // else -> show popup for unsatisfied
-      
       if (rating >= 4 || satisfaction === 'satisfied') {
         setTimeout(() => {
-          // User Requirement: Always go to profile-setup when satisfied
           navigate(ROUTES.STUDENT.PROFILE_SETUP);
         }, 1500);
       } else {
-        // Show popup for unsatisfied users
         setTimeout(() => {
           setShowUnsatisfiedPopup(true);
         }, 1000);
       }
     } catch (error) {
       console.error("Error submitting feedback:", error);
-      // specific toast or error handling could go here
     } finally {
       setLoading(false);
     }
@@ -69,19 +58,14 @@ const TrialClassFeedback: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
-      {/* Header */}
-      <Header />
+    <StudentLayout title="Trial Class Feedback">
+      <div className="max-w-2xl mx-auto px-4 py-12">
+        <div className="text-center mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">Trial Class Feedback</h1>
+            <p className="text-gray-600 mt-2">We'd love to hear about your experience</p>
+        </div>
 
-      {/* Page Title */}
-      <div className="text-center py-8">
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900">Trial Class Feedback</h1>
-        <p className="text-gray-600 mt-2">We'd love to hear about your experience</p>
-      </div>
-
-      {/* Feedback Form */}
-      <div className="max-w-2xl mx-auto px-4 pb-12">
-        <div className="bg-white rounded-lg shadow-lg p-6 md:p-8">
+        <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8 border border-gray-100">
           <h2 className="text-xl md:text-2xl font-semibold text-center mb-8 text-gray-800">
             How was the meeting?
           </h2>
@@ -90,7 +74,7 @@ const TrialClassFeedback: React.FC = () => {
             {/* Question 1: Rating */}
             <div className="mb-8">
               <label className="block text-sm font-semibold text-gray-700 mb-4">
-                Question 1: Rate your experience
+                Rate your experience
               </label>
               <div className="flex justify-center space-x-3 md:space-x-6 mb-6">
                 {[1, 2, 3, 4, 5].map((num) => (
@@ -99,8 +83,8 @@ const TrialClassFeedback: React.FC = () => {
                     onClick={() => setRating(num)}
                     className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-2 flex items-center justify-center font-semibold transition-all ${
                       rating === num
-                        ? 'bg-blue-600 text-white border-blue-600 scale-110'
-                        : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
+                        ? 'bg-teal-600 text-white border-teal-600 scale-110'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-teal-400'
                     }`}
                   >
                     {num}
@@ -114,7 +98,7 @@ const TrialClassFeedback: React.FC = () => {
                   onClick={() => setSatisfaction('satisfied')}
                   className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
                     satisfaction === 'satisfied'
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-teal-600 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
@@ -124,7 +108,7 @@ const TrialClassFeedback: React.FC = () => {
                   onClick={() => setSatisfaction('unsatisfied')}
                   className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
                     satisfaction === 'unsatisfied'
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-teal-600 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
@@ -136,13 +120,13 @@ const TrialClassFeedback: React.FC = () => {
             {/* Question 2: Feedback */}
             <div className="mb-8">
               <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Question 2: Your feedback
+                Your feedback
               </label>
               <textarea
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
                 rows={5}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
                 placeholder="Please share your thoughts..."
               />
             </div>
@@ -152,7 +136,7 @@ const TrialClassFeedback: React.FC = () => {
               <button
                 onClick={handleSubmit}
                 disabled={loading || rating === 0}
-                className={`px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg ${
+                className={`px-8 py-3 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors shadow-md hover:shadow-lg ${
                   (loading || rating === 0) ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
@@ -161,7 +145,6 @@ const TrialClassFeedback: React.FC = () => {
             </div>
           </div>
 
-          {/* Thank You Message */}
           {submitted && !showUnsatisfiedPopup && (
             <div className="mt-6 text-center text-gray-600 text-sm animate-fade-in">
               Thank you for your feedback! Redirecting...
@@ -210,7 +193,7 @@ const TrialClassFeedback: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </StudentLayout>
   );
 };
 

@@ -12,6 +12,7 @@ import { logger } from '../../utils/logger.js';
 import { EVENTS, type InternalEventEmitter } from '../../utils/InternalEventEmitter.js';
 import type { IChatService } from '../../interfaces/services/IChatService.js';
 import type { IPricingService } from '../../interfaces/services/IPricingService.js';
+import { BOOKING_STATUS } from '../../constants/status.constants.js';
 
 @injectable()
 export class SchedulingOrchestrator {
@@ -77,7 +78,7 @@ export class SchedulingOrchestrator {
         studentId: new mongoose.Types.ObjectId(studentId) as unknown as import('mongoose').Schema.Types.ObjectId,
         studentSubjectId: new mongoose.Types.ObjectId(subjectId) as unknown as import('mongoose').Schema.Types.ObjectId,
         timeSlotId: new mongoose.Types.ObjectId(slotId) as unknown as import('mongoose').Schema.Types.ObjectId,
-        status: 'scheduled',
+        status: BOOKING_STATUS.SCHEDULED,
         cost,
         currency
       }, session);

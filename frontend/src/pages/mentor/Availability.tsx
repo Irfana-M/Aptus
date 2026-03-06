@@ -7,6 +7,7 @@ import { Loader } from '../../components/ui/Loader';
 import { Alert } from '../../components/ui/Alert';
 import toast from 'react-hot-toast';
 import api from '../../api/api';
+import { MentorLayout } from '../../components/mentor/MentorLayout';
 
 
 
@@ -97,7 +98,8 @@ const MentorAvailabilityPage: React.FC = () => {
     };
 
     return (
-        <div className="p-6 max-w-7xl mx-auto">
+        <MentorLayout title="Availability">
+            <div className="p-6">
             <div className="flex justify-between items-center mb-8">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Weekly Availability</h1>
@@ -168,7 +170,8 @@ const MentorAvailabilityPage: React.FC = () => {
                 message="Students will book you based on these recurring slots. If you mark Monday 17:00-18:00 as available, a student can book you for every Monday at this time for the duration of the course." 
                 className="mt-6"
             />
-        </div>
+            </div>
+        </MentorLayout>
     );
 };
 

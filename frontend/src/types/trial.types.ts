@@ -1,16 +1,11 @@
-export interface Grade {
-  id: string;
-  name: string;
-  syllabus: string;
+import type { Subject, Grade } from "./course.types";
+
+export interface FeedbackRequest {
+  rating: number;
+  comment: string;
 }
 
-export interface Subject {
-  id: string;
-  subjectName: string;
-  gradeId: string;
-  syllabus: string;
-  grade?: number; 
-}
+export type { Subject, Grade };
 
 export interface TrialClassStudent {
   id: string;
@@ -79,11 +74,6 @@ export interface AssignMentorRequest {
   mentorId: string;
   scheduledDateTime: string;
   meetLink: string;
-}
-
-export interface FeedbackRequest {
-  rating: number;
-  comment: string;
 }
 
 export type TrialStatus = TrialClass["status"];

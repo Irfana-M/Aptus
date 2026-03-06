@@ -29,6 +29,7 @@ export const STUDENT_ROUTES = {
   PROFILE: "/profile",
   PREFERENCES: "/preferences",
   STUDY_MATERIALS: "/study-materials",
+  ASSIGNMENTS: "/assignments",
 };
 
 export const ADMIN_ROUTES = {
@@ -61,7 +62,9 @@ export const ADMIN_ROUTES = {
   COURSE_REQUEST_STATUS: "/course-requests/:id/status",
   ENROLLMENTS: "/enrollments",
   MENTOR_REQUESTS: "/mentor-requests",
-  MENTOR_LEAVE_APPROVE: "/mentors/:mentorId/leave/:leaveId/approve",
+  MENTOR_LEAVE_APPROVE: "/mentors/:mentorId/leaves/:leaveId/approve",
+  MENTOR_LEAVE_REJECT: "/mentors/:mentorId/leaves/:leaveId/reject",
+  ALL_LEAVES: "/leaves",
 };
 
 export const MENTOR_ROUTES = {
@@ -75,8 +78,10 @@ export const MENTOR_ROUTES = {
   STUDY_MATERIALS: "/sessions/:sessionId/study-materials",
   STUDY_MATERIAL_DELETE: "/study-materials/:materialId",
   LEAVE_REQUEST: "/me/leave",
+  MY_LEAVES: "/me/leaves",
   SESSIONS: "/sessions",
   UPCOMING_SESSIONS: "/me/sessions/upcoming",
   STUDENTS_ONE_TO_ONE: "/students/one-to-one",
   BATCHES: "/batches",
+  ASSIGNMENTS: "/assignments",
 };

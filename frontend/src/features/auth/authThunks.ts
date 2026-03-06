@@ -6,8 +6,8 @@ import type {
   VerifyOtpDto,
   LoginDto,
   LoginResponse,
-} from "../../types/dtoTypes";
-import type { User } from "../../types/authTypes";
+} from "../../types/dto/auth.dto";
+import type { User } from "../../types/user.types";
 import { logout } from "./authSlice";
 import { getApiErrorMessage } from "../../utils/errorUtils";
 import socketService from "../../services/socketService";

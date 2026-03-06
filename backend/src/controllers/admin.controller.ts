@@ -8,7 +8,7 @@ import { MESSAGES } from "../constants/messages.constants.js";
 import { generateAccessToken, verifyRefreshToken } from "@/utils/jwt.util.js";
 import { AppError } from "@/utils/AppError.js";
 import { config } from "../config/app.config.js";
-import { getPaginationParams } from "@/utils/pagination.util.js";
+import { getPaginationParams, formatStandardizedPaginatedResult } from "@/utils/pagination.util.js";
 import type { MentorPaginationParams, StudentPaginationParams } from "@/dtos/shared/paginationTypes.js";
 import { UserRole } from "@/enums/user.enum.js";
 import { ApprovalStatus } from "@/domain/enums/ApprovalStatus.js";
@@ -189,7 +189,15 @@ export class AdminController {
       if (subject) paginationParams.subject = subject;
 
       const result = await this._adminService.getAllMentorsPaginated(paginationParams);
-      return res.status(HttpStatusCode.OK).json(result);
+      
+      const formattedResult = formatStandardizedPaginatedResult(
+        result.data,
+        result.pagination.totalItems,
+        { page, limit },
+        MESSAGES.ADMIN.MENTORS_FETCH_SUCCESS
+      );
+
+      return res.status(HttpStatusCode.OK).json(formattedResult);
     } catch (error: unknown) {
       const errorTyped = error as AppError;
       logger.error(`Error fetching mentors: ${errorTyped.message}`);
@@ -218,7 +226,15 @@ export class AdminController {
       if (verification) paginationParams.verification = verification;
 
       const result = await this._adminService.getAllStudentsPaginated(paginationParams);
-      return res.status(HttpStatusCode.OK).json(result);
+      
+      const formattedResult = formatStandardizedPaginatedResult(
+        result.data,
+        result.pagination.totalItems,
+        { page, limit },
+        MESSAGES.ADMIN.STUDENTS_FETCH_SUCCESS
+      );
+
+      return res.status(HttpStatusCode.OK).json(formattedResult);
     } catch (error: unknown) {
       const errorTyped = error as AppError;
       logger.error(`Error fetching students: ${errorTyped.message}`);
@@ -586,16 +602,22 @@ updateStudent = async (req: Request, res: Response): Promise<void> => {
 
    getStudentsWithTrialStats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
+      const { page, limit } = getPaginationParams(req.query);
 
       logger.info(`AdminController: Fetching students with trial stats - Page: ${page}, Limit: ${limit}`);
 
-      const result = await this._adminService.getStudentsWithTrialStats(page, limit);
+      const result = await (this._adminService as any).getStudentsWithTrialStats(page, limit);
+
+      const formattedResult = formatStandardizedPaginatedResult(
+        result.data.students,
+        result.data.pagination.totalStudents,
+        { page, limit },
+        MESSAGES.ADMIN.FETCH_SUCCESS
+      );
 
       logger.info(`AdminController: Successfully fetched students with trial stats`);
 
-      res.status(HttpStatusCode.OK).json(result);
+      res.status(HttpStatusCode.OK).json(formattedResult);
     } catch (error: unknown) {
       logger.error("AdminController: Error fetching students with trial stats", error);
       next(error);
@@ -655,12 +677,14 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
 
       logger.info(`AdminController: Found ${result.trialClasses.length} trial classes`);
 
-      res.status(HttpStatusCode.OK).json({
-        success: true,
-        data: result.trialClasses,
-        pagination: result.pagination,
-        message: MESSAGES.ADMIN.TRIAL_CLASSES_FETCH_SUCCESS,
-      });
+      const formattedResult = formatStandardizedPaginatedResult(
+        result.trialClasses,
+        result.pagination.totalTrialClasses,
+        { page, limit },
+        MESSAGES.ADMIN.TRIAL_CLASSES_FETCH_SUCCESS
+      );
+
+      res.status(HttpStatusCode.OK).json(formattedResult);
     } catch (error: unknown) {
       logger.error("AdminController: Error fetching all trial classes", error);
       next(error);

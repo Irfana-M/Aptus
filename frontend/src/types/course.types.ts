@@ -1,3 +1,20 @@
+export interface Grade {
+  _id: string;
+  id?: string;
+  name: string;
+  syllabus: string;
+}
+
+export interface Subject {
+  _id: string;
+  id?: string;
+  name?: string;
+  subjectName: string;
+  gradeId?: string;
+  syllabus?: string;
+  grade?: number | string;
+}
+
 export interface Course {
   _id: string;
   grade: { _id: string; name: string; syllabus: string };

@@ -12,8 +12,8 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
     super(SessionModel);
   }
 
-  async findUpcomingByStudent(studentId: string): Promise<ISession[]> {
-    return this.model.find({
+  async findUpcomingByStudent(studentId: string, pagination?: { skip: number; limit: number }): Promise<ISession[]> {
+    const query = this.model.find({
       $or: [
         { studentId: studentId },
         { 'participants.studentId': studentId },
@@ -24,12 +24,28 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
     })
     .sort({ startTime: 1 })
     .populate('subjectId')
-    .populate('mentorId', 'fullName profilePicture')
-    .exec();
+    .populate('mentorId', 'fullName profilePicture');
+
+    if (pagination) {
+      query.skip(pagination.skip).limit(pagination.limit);
+    }
+    return query.exec();
   }
 
-  async findUpcomingByMentor(mentorId: string): Promise<ISession[]> {
-    return this.model.find({
+  async countUpcomingByStudent(studentId: string): Promise<number> {
+    return this.model.countDocuments({
+      $or: [
+        { studentId: studentId },
+        { 'participants.studentId': studentId },
+        { 'participants.userId': studentId }
+      ],
+      status: { $in: ['scheduled', 'in_progress', 'rescheduling'] },
+      endTime: { $gte: new Date() }
+    }).exec();
+  }
+
+  async findUpcomingByMentor(mentorId: string, pagination?: { skip: number; limit: number }): Promise<ISession[]> {
+    const query = this.model.find({
       mentorId: mentorId,
       status: { $in: ['scheduled', 'in_progress'] },
       endTime: { $gte: new Date() }
@@ -37,8 +53,20 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
     .sort({ startTime: 1 })
     .populate('subjectId')
     .populate('studentId', 'fullName profileImage')
-    .populate('participants.userId', 'fullName profileImage')
-    .exec();
+    .populate('participants.userId', 'fullName profileImage');
+
+    if (pagination) {
+      query.skip(pagination.skip).limit(pagination.limit);
+    }
+    return query.exec();
+  }
+
+  async countUpcomingByMentor(mentorId: string): Promise<number> {
+    return this.model.countDocuments({
+      mentorId: mentorId,
+      status: { $in: ['scheduled', 'in_progress'] },
+      endTime: { $gte: new Date() }
+    }).exec();
   }
 
   async findByMentorAndDateRange(mentorId: string, startDate: Date, endDate: Date): Promise<ISession[]> {

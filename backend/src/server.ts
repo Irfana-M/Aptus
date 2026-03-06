@@ -21,6 +21,7 @@ import { container } from "./inversify.config.js";
 import { SocketService } from "./services/SocketService.js";
 import { CronService } from "./services/CronService.js";
 import { NotificationManager } from "./services/NotificationManager.js";
+import { MentorLeaveEventListener } from "./listeners/MentorLeaveEventListener.js";
 import { TYPES } from "./types.js";
 
 const PORT = 5000;
@@ -42,6 +43,11 @@ console.log("📡 WebSocket server should be ready at:", `ws://localhost:${PORT}
 const notificationManager = container.get<NotificationManager>(TYPES.INotificationManager);
 notificationManager.initialize();
 console.log("🔔 Notification Manager initialized");
+
+// Initialize Mentor Leave Event Listener
+const mentorLeaveListener = container.get<MentorLeaveEventListener>(TYPES.MentorLeaveEventListener);
+mentorLeaveListener.initialize();
+console.log("📅 Mentor Leave Event Listener initialized");
 
 // Start Cron Jobs
 const cronService = container.get<CronService>(TYPES.CronService);

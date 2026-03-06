@@ -39,6 +39,8 @@ export interface Session {
     startTime: string; // ISO Date string
     endTime: string;   // ISO Date string
     status: 'scheduled' | 'completed' | 'cancelled' | 'live';
+    cancelledBy?: 'student' | 'mentor' | 'admin';
+    sessionType?: 'group' | 'one-to-one';
     meetingLink?: string;
     topic?: string;
     timeSlotId?: string;

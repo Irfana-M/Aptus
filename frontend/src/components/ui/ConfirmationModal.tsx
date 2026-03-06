@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal } from "./modal";
+import { Modal } from "./Modal";
 import { AlertTriangle, Info } from "lucide-react";
 
 interface ConfirmationModalProps {

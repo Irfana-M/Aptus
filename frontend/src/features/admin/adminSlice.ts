@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { MentorProfile } from "../mentor/mentorSlice";
+import type { MentorProfile } from "../mentor/types";
 import {
   adminLoginThunk,
   fetchMentorProfileAdmin,
@@ -45,14 +45,14 @@ import {
   fetchAllMentorRequestsAdmin,
 } from "./adminThunk";
 import { loginUser, refreshAccessToken } from "../auth/authThunks";
-import type { AdminLoginResponse } from "../../types/dtoTypes";
-import type { StudentBaseResponseDto } from "../../types/studentTypes";
+import type { AdminLoginResponse } from "../../types/dto/auth.dto";
+import type { StudentBaseResponseDto } from "../../types/student.types";
 import type { StudentProfile } from "../../types/student.types";
-import type { TrialClass } from "../../types/trialTypes";
+import type { TrialClass } from "../../types/trial.types";
 import type { AddStudentResponseDto } from "./adminApi";
-import type { MentorRequestListItem, CourseRequest } from "../../types/adminTypes";
-import type { Course } from "../../types/courseTypes";
-import type { Enrollment } from "../../types/enrollmentTypes";
+import type { MentorRequestListItem, CourseRequest } from "../../types/admin.types";
+import type { Course } from "../../types/course.types";
+import type { Enrollment } from "../../types/student.types";
 
 interface Admin {
   role: "admin";
@@ -77,8 +77,6 @@ interface MentorPaginationState {
   hasPrevPage: boolean;
 }
 
-
-// TrialClass interface moved to studentTypes.ts
 
 interface AdminState {
   admin: Admin | null;

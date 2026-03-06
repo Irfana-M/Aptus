@@ -12,7 +12,7 @@ export class GradeController {
   constructor(
     @inject(TYPES.IGradeService)
     private _gradeService: IGradeService
-  ) {}
+  ) { }
 
   async getAllGrades(req: Request, res: Response): Promise<void> {
     try {

@@ -1,13 +1,8 @@
 import { createSlice, type PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
-import { chatApi, type ChatMessage } from '@/api/chatApi';
+import { chatApi } from '../../api/chatApi'; 
+import type { ChatMessage } from '../../types/classroom.types';
+import type { ChatState } from './types';
 import { getErrorMessage } from '../../utils/errorUtils';
-
-export interface ChatState {
-  messages: ChatMessage[];
-  loading: boolean;
-  error: string | null;
-  activeSessionId: string | null;
-}
 
 const initialState: ChatState = {
   messages: [],
@@ -46,7 +41,7 @@ const chatSlice = createSlice({
   reducers: {
     addMessage: (state, action: PayloadAction<ChatMessage>) => {
       // Avoid duplicates
-      if (!state.messages.some(m => m._id === action.payload._id)) {
+      if (!state.messages.some((m: ChatMessage) => m._id === action.payload._id)) {
         state.messages.push(action.payload);
       }
     },
@@ -75,10 +70,8 @@ const chatSlice = createSlice({
         state.error = action.payload as string;
       })
       .addCase(sendChatMessage.fulfilled, (state, action) => {
-        // We'll trust the socket event for adding the message to the list usually,
-        // but adding it here optimistically or as a fallback is also fine.
-        // However, to avoid double messages, we check in addMessage reducer.
-        if (!state.messages.some(m => m._id === action.payload._id)) {
+        
+        if (!state.messages.some((m: ChatMessage) => m._id === action.payload._id)) {
           state.messages.push(action.payload);
         }
       });

@@ -1,14 +1,14 @@
 import type { AxiosResponse } from "axios";
 import adminApi from "../../api/adminApi";
 import { API_ROUTES } from "../../constants/apiRoutes";
-import type { AdminLoginResponse } from "../../types/dtoTypes";
-import type { StudentBaseResponseDto } from "../../types/studentTypes";
+import type { AdminLoginResponse } from "../../types/dto/auth.dto";
+import type { StudentBaseResponseDto } from "../../types/student.types";
 import { logger } from "../../utils/logger";
-import type { MentorProfile } from "../mentor/mentorSlice";
-import type { Course } from "../../types/courseTypes";
+import type { MentorProfile } from "../mentor/types";
+import type { Course } from "../../types/course.types";
 import type { StudentProfile } from "../../types/student.types";
-import type { Enrollment } from "../../types/enrollmentTypes";
-import type { MentorRequestListItem, CourseRequest } from "../../types/adminTypes";
+import type { Enrollment } from "../../types/student.types";
+import type { MentorRequestListItem, CourseRequest } from "../../types/admin.types";
 
 export interface AdminLoginDto {
   email: string;
@@ -50,6 +50,15 @@ export interface PaginationMeta {
   itemsPerPage: number;
   hasNextPage: boolean;
   hasPrevPage: boolean;
+}
+
+export interface StandardPaginatedResponse<T> {
+  success: boolean;
+  message?: string;
+  data: {
+    items: T[];
+    pagination: PaginationMeta;
+  };
 }
 
 export interface PaginatedResponse<T> {
@@ -359,3 +368,25 @@ export const adminMentorRequestApi = {
   approveRequest: (requestId: string): Promise<AxiosResponse<{ success: boolean; message: string }>> => adminApi.patch(API_ROUTES.ADMIN.MENTOR_REQUEST_APPROVE.replace(':requestId', requestId)),
   rejectRequest: (requestId: string, reason: string): Promise<AxiosResponse<{ success: boolean; message: string }>> => adminApi.patch(API_ROUTES.ADMIN.MENTOR_REQUEST_REJECT.replace(':requestId', requestId), { reason }),
 };
+
+export const adminLeaveApi = {
+  fetchAllLeaves: (params?: { page?: number; limit?: number; mentorId?: string; status?: string }): Promise<AxiosResponse<StandardPaginatedResponse<any>>> => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.mentorId) queryParams.append('mentorId', params.mentorId);
+    if (params?.status) queryParams.append('status', params.status);
+    
+    const queryString = queryParams.toString();
+    const url = queryString ? `${API_ROUTES.ADMIN.LEAVES}?${queryString}` : API_ROUTES.ADMIN.LEAVES;
+    
+    return adminApi.get<StandardPaginatedResponse<any>>(url);
+  },
+  approveLeave: (leaveId: string, mentorId: string): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
+    return adminApi.patch(API_ROUTES.ADMIN.LEAVE_APPROVE.replace(':leaveId', leaveId).replace(':mentorId', mentorId));
+  },
+  rejectLeave: (leaveId: string, mentorId: string, reason: string): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
+    return adminApi.patch(API_ROUTES.ADMIN.LEAVE_REJECT.replace(':leaveId', leaveId).replace(':mentorId', mentorId), { reason });
+  },
+};
+

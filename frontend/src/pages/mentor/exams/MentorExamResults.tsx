@@ -7,6 +7,7 @@ import type { AppDispatch, RootState } from '../../../app/store';
 import { Eye, Edit, ChevronLeft, ClipboardList } from 'lucide-react';
 import { Loader } from '../../../components/ui/Loader';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { MentorLayout } from '../../../components/mentor/MentorLayout';
 
 const MentorExamResults: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -33,7 +34,8 @@ const MentorExamResults: React.FC = () => {
     }
 
     return (
-        <div className="p-6 max-w-7xl mx-auto">
+        <MentorLayout title="Exam Results">
+            <div className="p-6">
             <button 
                 onClick={() => navigate(ROUTES.MENTOR.EXAMS)}
                 className="flex items-center text-gray-600 hover:text-cyan-600 mb-6 transition-colors"
@@ -123,7 +125,8 @@ const MentorExamResults: React.FC = () => {
                     </table>
                 </div>
             </div>
-        </div>
+            </div>
+        </MentorLayout>
     );
 };
 

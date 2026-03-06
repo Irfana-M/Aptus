@@ -1,4 +1,5 @@
-import api, { type ApiResponse } from './api';
+import api from './api';
+import type { ApiResponse } from '../types/api.types';
 import { API_ROUTES } from '../constants/apiRoutes';
 
 // Types

@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../../app/store';
 import { fetchCourseRequestsPaginated, updateCourseRequestStatusAdmin } from '../../features/admin/adminThunk';
 import { setCourseRequestsPagination } from "../../features/admin/adminSlice";
-import type { CourseRequest } from "../../types/studentTypes";
+import type { CourseRequest } from "../../types/student.types";
 import { Check, X, Clock, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatTo12Hour } from '../../utils/timeFormat';
@@ -178,10 +178,10 @@ const AdminCourseRequestsPage: React.FC<AdminCourseRequestsPageProps> = ({ onCre
                                             <div className="flex items-center">
                                                 <div className="ml-4">
                                                     <div className="text-sm font-medium text-gray-900">
-                                                        {typeof request.student === 'object' ? request.student.fullName : 'Unknown Student'}
+                                                        {request.student && typeof request.student === 'object' ? request.student.fullName : 'Unknown Student'}
                                                     </div>
                                                     <div className="text-sm text-gray-500">
-                                                        {typeof request.student === 'object' ? request.student.email : ''}
+                                                        {request.student && typeof request.student === 'object' ? request.student.email : ''}
                                                     </div>
                                                 </div>
                                             </div>
@@ -288,3 +288,4 @@ const AdminCourseRequestsPage: React.FC<AdminCourseRequestsPageProps> = ({ onCre
 
 export default AdminCourseRequestsPage;
             
+

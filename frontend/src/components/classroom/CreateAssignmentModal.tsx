@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Upload, FileText, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { createAssignment } from '../../api/classroomApi';
-import type { Course } from '../../types/courseTypes';
+import type { Course } from '../../types/course.types';
 import { toast } from 'react-hot-toast';
 import api from '../../api/api';
 
@@ -364,3 +364,4 @@ const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({ onClose, 
 };
 
 export default CreateAssignmentModal;
+

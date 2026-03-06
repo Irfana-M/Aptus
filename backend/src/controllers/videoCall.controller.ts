@@ -9,12 +9,7 @@ import { MESSAGES } from '@/constants/messages.constants.js';
 import { UserRole } from '@/enums/user.enum.js';
 import { CallStatus } from '@/enums/videoCall.enum.js';
 
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    role: UserRole;
-  };
-}
+
 
 @injectable()
 export class VideoCallController {

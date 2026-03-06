@@ -5,8 +5,8 @@ import { ROUTES } from '../../../constants/routes.constants';
 import { Clock, ChevronLeft, ChevronRight, Save } from 'lucide-react';
 import { getExamById, submitExam } from "../../../features/exam/examSlice";
 import type { AppDispatch, RootState } from "../../../app/store";
-import { QuestionType } from "../../../types/examTypes";
-import type { SubmitAnswerDTO } from "../../../types/examTypes";
+import { QuestionType } from "../../../types/exam.types";
+import type { SubmitAnswerDTO } from "../../../types/exam.types";
 import toast from 'react-hot-toast';
 import { Loader } from '../../../components/ui/Loader';
 
@@ -245,3 +245,4 @@ const TakeExam: React.FC = () => {
 };
 
 export default TakeExam;
+

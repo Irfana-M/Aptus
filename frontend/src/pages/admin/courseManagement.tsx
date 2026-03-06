@@ -13,16 +13,15 @@ import {
 } from "../../features/admin/adminSelectors";
 import { CourseModal } from "../../components/admin/CourseModal";
 import { CourseDetailsModal } from "../../components/admin/CourseDetailsModal";
-import { Sidebar } from "../../components/admin/Sidebar";
-import { Topbar } from "../../components/admin/Topbar";
+import { AdminLayout } from "../../components/admin/AdminLayout";
 import { DataTable } from "../../components/ui/DataTable";
 import { Pagination } from "../../components/ui/Pagination";
 import {
   SearchAndFilters,
   type FilterConfig,
 } from "../../components/ui/SearchAndFilters";
-import type { Course } from "../../types/courseTypes";
-import type { CourseRequest } from "../../types/studentTypes";
+import type { Course } from "../../types/course.types";
+import type { CourseRequest } from "../../types/student.types";
 import {
   Plus,
   Edit2,
@@ -79,8 +78,6 @@ export const CreateOneToOneCourse: React.FC = () => {
   const coursesPagination = useSelector((state: RootState) => state.admin.coursesPagination);
   const loading = useSelector(selectCoursesLoading);
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeNav, setActiveNav] = useState("Courses");
   const [activeTab, setActiveTab] = useState<TabType>('courses');
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -361,8 +358,8 @@ export const CreateOneToOneCourse: React.FC = () => {
        syllabus: request.syllabus || "",
        selectedDays: request.preferredDays || [],
        timeSlot: request.timeSlot || "",
-       courseType: request.mentoringMode,
-       studentId: typeof request.student === 'object' ? request.student.id : request.student,
+       courseType: request.mentoringMode as 'one-to-one' | 'group',
+       studentId: typeof request.student === 'object' ? (request.student?._id || (request.student as any)?.id) : request.student,
     };
     
     setInitialCourseValues(prefilledValues);
@@ -371,37 +368,23 @@ export const CreateOneToOneCourse: React.FC = () => {
   }, [courses, setShowCourseModal, setInitialCourseValues, setSelectedCourseForEdit]); 
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar
-        isOpen={sidebarOpen}
-        activeItem={activeNav}
-        onItemClick={setActiveNav}
-        onClose={() => setSidebarOpen(false)}
-      />
-
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <Topbar
-          onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-          title="Courses Management"
-          user={{ name: "Admin User", email: "admin@mentora.com" }}
-        />
-
-        <div className="flex-1 overflow-y-auto p-6">
+    <AdminLayout title="Courses Management" activeItem="Courses">
+      <div className="space-y-8">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm transition-all hover:shadow-md">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-sm font-medium">Total Courses</p>
                   <p className="text-3xl font-bold text-gray-900 mt-2">{courses.length}</p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100">
                   <BookOpen className="w-6 h-6 text-white" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm transition-all hover:shadow-md">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-sm font-medium">Available</p>
@@ -409,13 +392,13 @@ export const CreateOneToOneCourse: React.FC = () => {
                     {courses.filter((c: Course) => c.status === "available").length}
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-100">
                   <CheckCircle className="w-6 h-6 text-white" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm transition-all hover:shadow-md">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-sm font-medium">Booked</p>
@@ -423,7 +406,7 @@ export const CreateOneToOneCourse: React.FC = () => {
                     {courses.filter((c: Course) => c.status === "booked").length}
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-cyan-100">
                   <Users className="w-6 h-6 text-white" />
                 </div>
               </div>
@@ -431,95 +414,99 @@ export const CreateOneToOneCourse: React.FC = () => {
           </div>
 
           
-          {/* Tabs Header */}
-           <div className="bg-white border-b border-gray-200 mb-6 sticky top-0 z-10">
-              <div className="flex px-6">
-                <TabButton 
-                  id="courses" 
-                  label="All Courses" 
-                  active={activeTab === 'courses'} 
-                  onClick={setActiveTab}
-                  icon={<BookOpen size={18} />}
-                />
-                <TabButton 
-                  id="requests" 
-                  label="Course Requests" 
-                  active={activeTab === 'requests'} 
-                  onClick={setActiveTab}
-                  icon={<AlertCircle size={18} />}
-                />
-                 <TabButton 
-                  id="enrollments" 
-                  label="Enrollments" 
-                  active={activeTab === 'enrollments'} 
-                  onClick={setActiveTab}
-                  icon={<Users size={18} />}
-                />
-              </div>
-          </div>
-
-          {activeTab === 'courses' && (
-            <>
-              <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm mb-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h2 className="text-xl font-semibold">All Courses</h2>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Showing {courses.length} of {coursesPagination.totalStudents} courses
-                      {(searchTerm || filters.status || filters.grade) && ` (filtered)`}
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleAddCourse}
-                    className="flex items-center gap-2 px-6 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 font-medium"
-                  >
-                    <Plus size={20} />
-                    Add Course
-                  </button>
+          {/* Tabs Container */}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+             <div className="border-b border-gray-200">
+                <div className="flex px-4">
+                  <TabButton 
+                    id="courses" 
+                    label="All Courses" 
+                    active={activeTab === 'courses'} 
+                    onClick={setActiveTab}
+                    icon={<BookOpen size={18} />}
+                  />
+                  <TabButton 
+                    id="requests" 
+                    label="Course Requests" 
+                    active={activeTab === 'requests'} 
+                    onClick={setActiveTab}
+                    icon={<AlertCircle size={18} />}
+                  />
+                   <TabButton 
+                    id="enrollments" 
+                    label="Enrollments" 
+                    active={activeTab === 'enrollments'} 
+                    onClick={setActiveTab}
+                    icon={<Users size={18} />}
+                  />
                 </div>
-              </div>
+            </div>
 
-               <SearchAndFilters
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                filters={filters}
-                onFilterChange={handleFilterChange}
-                filterConfigs={filterConfigs}
-                onClearFilters={handleClearFilters}
-                searchPlaceholder="Search by grade, subject, or mentor..."
-                className="mb-6"
-              />
+            <div className="p-0">
+              {activeTab === 'courses' && (
+                <div className="p-6">
+                  <div className="flex justify-between items-center mb-6">
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-900">Course List</h2>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Showing {courses.length} of {coursesPagination.totalStudents} courses
+                        {(searchTerm || filters.status || filters.grade) && ` (filtered)`}
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleAddCourse}
+                      className="flex items-center gap-2 px-6 py-2.5 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 font-medium transition-all shadow-sm active:scale-95"
+                    >
+                      <Plus size={20} />
+                      Add Course
+                    </button>
+                  </div>
 
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <DataTable<Course>
-                  columns={columns}
-                  data={courses}
-                  loading={loading}
-                  onRowClick={(c: Course) => navigate(`/admin/course/${c._id}`)}
-                  emptyMessage="No courses found"
-                />
-              </div>
+                   <SearchAndFilters
+                    searchTerm={searchTerm}
+                    onSearchChange={setSearchTerm}
+                    filters={filters}
+                    onFilterChange={handleFilterChange}
+                    filterConfigs={filterConfigs}
+                    onClearFilters={handleClearFilters}
+                    searchPlaceholder="Search by grade, subject, or mentor..."
+                    className="mb-6"
+                  />
 
-              {coursesPagination.totalStudents > 0 && (
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={coursesPagination.totalPages}
-                  onPageChange={handlePageChange}
-                  totalItems={coursesPagination.totalStudents}
-                  itemsPerPage={itemsPerPage}
-                  onItemsPerPageChange={handleItemsPerPageChange}
-                />
+                  <div className="rounded-xl border border-gray-200 overflow-hidden">
+                    <DataTable<Course>
+                      columns={columns}
+                      data={courses}
+                      loading={loading}
+                      onRowClick={(c: Course) => navigate(`/admin/course/${c._id}`)}
+                      emptyMessage="No courses found"
+                    />
+                  </div>
+
+                  {coursesPagination.totalStudents > 0 && (
+                    <div className="mt-6 border-t border-gray-100 pt-6">
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={coursesPagination.totalPages}
+                        onPageChange={handlePageChange}
+                        totalItems={coursesPagination.totalStudents}
+                        itemsPerPage={itemsPerPage}
+                        onItemsPerPageChange={handleItemsPerPageChange}
+                      />
+                    </div>
+                  )}
+                </div>
               )}
-            </>
-          )}
 
-          {activeTab === 'requests' && (
-            <AdminCourseRequestsPage onCreateCourse={handleCreateCourseFromRequest} />
-          )}
+              {activeTab === 'requests' && (
+                <AdminCourseRequestsPage onCreateCourse={handleCreateCourseFromRequest} />
+              )}
 
-          {activeTab === 'enrollments' && (
-             <AdminEnrollmentsPage />
-          )}
+              {activeTab === 'enrollments' && (
+                 <AdminEnrollmentsPage hideLayout={true} />
+              )}
+            </div>
+          </div>
 
           <CourseModal
             course={selectedCourseForEdit}
@@ -536,10 +523,10 @@ export const CreateOneToOneCourse: React.FC = () => {
             onClose={() => setShowDetailsModal(false)}
             onEdit={handleEditFromDetails}
           />
-        </div>
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 
 export default CreateOneToOneCourse;
+

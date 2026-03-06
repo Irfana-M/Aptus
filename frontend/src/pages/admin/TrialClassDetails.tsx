@@ -25,7 +25,7 @@ import {
   Mail,
   Edit3
 } from 'lucide-react';
-import type { TrialClassResponse } from '../../types/trialTypes';
+import type { TrialClassResponse } from '../../types/trial.types';
 
 export const TrialClassDetailsPage: React.FC = () => {
   const { trialClassId } = useParams<{ trialClassId: string }>();

@@ -7,7 +7,7 @@ import { fetchMyEnrollments } from '../../../features/student/studentThunk';
 import { EmptyState } from '../../ui/EmptyState';
 import type { RootState, AppDispatch } from '../../../app/store'; 
 import { format, addDays, startOfWeek, isSameDay } from 'date-fns';
-import type { Course } from '../../../types/courseTypes';
+import type { Course } from '../../../types/course.types';
 
 const ScheduleList: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -208,3 +208,4 @@ const ScheduleList: React.FC = () => {
 };
 
 export default ScheduleList;
+

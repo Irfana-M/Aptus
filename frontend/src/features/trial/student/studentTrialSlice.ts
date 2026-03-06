@@ -10,11 +10,7 @@ import {
   fetchSubjectsByGradeAndSyllabus,
   updateTrialClass,
 } from "./studentTrialThunk";
-import type {
-  Grade,
-  Subject,
-  TrialClassResponse,
-} from "../../../types/trialTypes";
+import type { TrialClassResponse, Grade, Subject } from "../../../types/trial.types";
 
 interface StudentTrialState {
   trialClasses: TrialClassResponse[];

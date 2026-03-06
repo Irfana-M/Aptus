@@ -217,6 +217,33 @@ export class StudyMaterialController {
     }
   };
 
+  getMentorAssignments = async (req: Request, res: Response) => {
+    try {
+      const mentorId = (req as ExtendedRequest).user?.id;
+
+      if (!mentorId) {
+        return res.status(HttpStatusCode.BAD_REQUEST).json({
+          success: false,
+          message: MESSAGES.STUDY_MATERIAL.MENTOR_ID_MISSING,
+        });
+      }
+
+      const assignments = await this._studyMaterialService.getMentorAssignments(mentorId);
+
+      return res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: assignments,
+      });
+    } catch (error: unknown) {
+      logger.error("Error in getMentorAssignments controller:", error);
+      const appError = error as { message?: string };
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: appError.message || MESSAGES.ADMIN.FETCH_FAILED,
+      });
+    }
+  };
+
   getAssignmentSubmissions = async (req: Request, res: Response) => {
     try {
       const mentorId = (req as ExtendedRequest).user?.id;

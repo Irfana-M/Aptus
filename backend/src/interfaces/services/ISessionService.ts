@@ -15,8 +15,10 @@ export interface CreateSessionDto {
 
 export interface ISessionService {
   getStudentUpcomingSessions(studentId: string): Promise<ISession[]>;
+  getStudentUpcomingSessionsPaginated(studentId: string, page: number, limit: number): Promise<{ items: ISession[]; total: number }>;
   getStudentUpcomingSessionsWithEligibility(studentId: string): Promise<LeaveEligibilityResponse>;
   getMentorUpcomingSessions(mentorId: string): Promise<ISession[]>;
+  getMentorUpcomingSessionsPaginated(mentorId: string, page: number, limit: number): Promise<{ items: ISession[]; total: number }>;
   getMentorTodaySessions(mentorId: string): Promise<ISession[]>;
   createSession(data: Partial<ISession>): Promise<ISession>;
   getSessionById(sessionId: string): Promise<ISession | null>;

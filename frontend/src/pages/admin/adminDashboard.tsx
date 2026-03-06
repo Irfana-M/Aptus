@@ -1,11 +1,10 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../../app/store";
 import { fetchDashboardData } from "../../features/admin/dashboardSlice";
-import { Sidebar } from "../../components/admin/Sidebar";
-import { Topbar } from "../../components/admin/Topbar";
-import { Users, DollarSign, TrendingUp, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Users, DollarSign, TrendingUp, Clock } from "lucide-react";
 import { Loader } from "../../components/ui/Loader";
+import { AdminLayout } from "../../components/admin/AdminLayout";
 
 const StatCard = ({
   title,
@@ -105,9 +104,6 @@ export default function Dashboard() {
     error,
   } = useSelector((state: RootState) => state.dashboard);
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeNav, setActiveNav] = useState("Dashboard");
-
   useEffect(() => {
     dispatch(fetchDashboardData())
       .unwrap()
@@ -124,133 +120,84 @@ export default function Dashboard() {
   }, [finance]);
 
   const totalRevenue = finance?.totalRevenue || 0;
-  const completionRate = 0;
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-gray-50">
-        <Sidebar
-          isOpen={sidebarOpen}
-          activeItem={activeNav}
-          onItemClick={setActiveNav}
-          onClose={() => setSidebarOpen(false)}
-        />
-        <div className="flex-1 flex items-center justify-center">
+      <AdminLayout title="Dashboard Overview" activeItem="Dashboard">
+        <div className="flex-1 flex items-center justify-center min-h-[400px]">
           <Loader size="lg" text="Loading dashboard..." color="teal" />
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-screen bg-gray-50">
-        <Sidebar
-          isOpen={sidebarOpen}
-          activeItem={activeNav}
-          onItemClick={setActiveNav}
-          onClose={() => setSidebarOpen(false)}
-        />
-        <div className="flex-1 flex items-center justify-center">
+      <AdminLayout title="Dashboard Overview" activeItem="Dashboard">
+        <div className="flex-1 flex items-center justify-center min-h-[400px]">
           <div className="text-center text-red-600">
             <p className="text-lg font-semibold">Error loading dashboard</p>
             <p className="text-sm mt-2">{error}</p>
           </div>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Reusable Sidebar */}
-      <Sidebar
-        isOpen={sidebarOpen}
-        activeItem={activeNav}
-        onItemClick={setActiveNav}
-        onClose={() => setSidebarOpen(false)}
-      />
+    <AdminLayout title="Dashboard Overview" activeItem="Dashboard">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">Welcome back, Admin!</h1>
+        <p className="text-gray-600 mt-2">
+          Here's what's happening with your platform today.
+        </p>
+      </div>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <Topbar
-          onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-          title="Dashboard Overview"
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <StatCard
+          title="Total Students"
+          value={totalStudents || 0}
+          subtitle="Registered learners"
+          icon={<Users size={24} />}
+          color="cyan"
         />
+        <StatCard
+          title="Total Mentors"
+          value={totalMentors || 0}
+          subtitle="Expert educators"
+          icon={<Users size={24} />}
+          color="orange"
+        />
+        <StatCard
+          title="Total Revenue"
+          value={`₹${totalRevenue.toLocaleString()}`}
+          subtitle="All time revenue"
+          icon={<DollarSign size={24} />}
+          color="green"
+        />
+        <StatCard
+          title="Monthly Revenue"
+          value={`₹${currentMonthRevenue.toLocaleString()}`}
+          subtitle="Current month"
+          icon={<TrendingUp size={24} />}
+          color="purple"
+        />
+      </div>
 
-        {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {/* Welcome Section */}
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">Welcome back, Admin!</h1>
-            <p className="text-gray-600 mt-2">
-              Here's what's happening with your platform today.
-            </p>
-          </div>
-
-          {/* Main Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <StatCard
-              title="Total Students"
-              value={totalStudents || 0}
-              subtitle="Registered learners"
-              icon={<Users size={24} />}
-              color="cyan"
-            />
-            <StatCard
-              title="Total Mentors"
-              value={totalMentors || 0}
-              subtitle="Expert educators"
-              icon={<Users size={24} />}
-              color="orange"
-            />
-            <StatCard
-              title="Total Revenue"
-              value={`₹${totalRevenue.toLocaleString()}`}
-              subtitle="All time revenue"
-              icon={<DollarSign size={24} />}
-              color="green"
-            />
-            <StatCard
-              title="Monthly Revenue"
-              value={`₹${currentMonthRevenue.toLocaleString()}`}
-              subtitle="Current month"
-              icon={<TrendingUp size={24} />}
-              color="purple"
-            />
-          </div>
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <QuickStatsCard
-              title="Pending Approvals"
-              value={pendingApprovals}
-              icon={<Clock size={20} />}
-              color="yellow"
-            />
-            <QuickStatsCard
-              title="Completion Rate"
-              value={`${completionRate}%`}
-              icon={<CheckCircle size={20} />}
-              color="green"
-            />
-            <QuickStatsCard
-              title="Active Sessions"
-              value={activeSessions || 0}
-              icon={<Users size={20} />}
-              color="green"
-            />
-            <QuickStatsCard
-              title="Issues Reported"
-              value="0"
-              icon={<XCircle size={20} />}
-              color="red"
-            />
-          </div>
-
-
-        </div>
-      </main>
-    </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <QuickStatsCard
+          title="Pending Approvals"
+          value={pendingApprovals}
+          icon={<Clock size={20} />}
+          color="yellow"
+        />
+        <QuickStatsCard
+          title="Active Sessions"
+          value={activeSessions || 0}
+          icon={<Users size={20} />}
+          color="green"
+        />
+      </div>
+    </AdminLayout>
   );
 }

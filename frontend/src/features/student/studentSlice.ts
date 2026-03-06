@@ -1,25 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { fetchStudentProfile, updateStudentProfile, fetchAvailableCourses, submitCourseRequest, fetchMyEnrollments, requestMentor } from "./studentThunk";
-import type { StudentProfile } from "../../types/student.types";
-import type { Course } from "../../types/courseTypes";
-
-export interface Enrollment {
-  _id: string;
-  student: string; // Renamed from studentId to match backend if needed, but 'course' is more critical
-  course: Course; // Populated course
-  enrollmentDate: string; // Renamed from enrolledAt to match backend
-  status: 'pending_payment' | 'active' | 'cancelled'; // Updated to match backend enum
-  progress?: number;
-}
-
-interface StudentState {
-  profile: StudentProfile | null;
-  courses: Course[];
-  enrollments: Enrollment[];
-  courseRequestStatus: 'idle' | 'loading' | 'succeeded' | 'failed';
-  loading: boolean;
-  error: string | null;
-}
+import { fetchStudentProfile, updateStudentProfile, fetchAvailableCourses, submitCourseRequest, fetchMyEnrollments, requestMentor, fetchStudentAssignments } from "./studentThunk";
+import type { StudentState } from "./types";
 
 const initialState: StudentState = {
   profile: null,
@@ -28,6 +9,11 @@ const initialState: StudentState = {
   courseRequestStatus: 'idle',
   loading: false,
   error: null,
+  performance: null,
+  performanceLoading: false,
+  assignments: [],
+  assignmentsLoading: false,
+  assignmentsError: null,
 };
 
 const studentSlice = createSlice({
@@ -123,6 +109,20 @@ const studentSlice = createSlice({
     builder.addCase(fetchMyEnrollments.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+    });
+
+    // Assignments
+    builder.addCase(fetchStudentAssignments.pending, (state) => {
+        state.assignmentsLoading = true;
+        state.assignmentsError = null;
+    });
+    builder.addCase(fetchStudentAssignments.fulfilled, (state, action) => {
+        state.assignmentsLoading = false;
+        state.assignments = action.payload;
+    });
+    builder.addCase(fetchStudentAssignments.rejected, (state, action) => {
+        state.assignmentsLoading = false;
+        state.assignmentsError = action.payload as string;
     });
   },
 });

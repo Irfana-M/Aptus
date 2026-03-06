@@ -2,7 +2,7 @@ import React from "react";
 import { AlertCircle, CheckCircle } from "lucide-react";
 import { useZodForm } from "../../hooks/useZodForm";
 import { adminCreateMentorSchema, adminUpdateMentorSchema } from "../../lib/schemas/mentor.schemas";
-import type { MentorProfile } from "../../features/mentor/mentorSlice";
+import type { MentorProfile } from "../../features/mentor/types";
 import { selectAdminLoading } from "../../features/admin/adminSelectors";
 import { FormModal } from "../../components/ui/FormModal";
 import { useSelector } from "react-redux";

@@ -6,6 +6,7 @@ import { HttpStatusCode } from "@/constants/httpStatus.js";
 import { AppError } from "@/utils/AppError.js";
 import { logger } from "@/utils/logger.js";
 import { MESSAGES } from "@/constants/messages.constants.js";
+import { getPaginationParams, formatStandardizedPaginatedResult } from "@/utils/pagination.util.js";
 import { UserRole } from "@/enums/user.enum.js";
 
 interface AuthenticatedRequest extends Request {
@@ -37,9 +38,17 @@ export class MentorDashboardController {
     try {
       const authReq = req as AuthenticatedRequest;
       const mentorId = authReq.user!.id;
-      const { page = 1, limit = 10 } = req.query;
-      const students = await this._dashboardService.getAssignedStudents(mentorId, Number(page), Number(limit));
-      res.status(HttpStatusCode.OK).json({ success: true, data: students, message: MESSAGES.ADMIN.STUDENTS_FETCH_SUCCESS });
+      const { page, limit } = getPaginationParams(req.query);
+      const result = await this._dashboardService.getAssignedStudents(mentorId, page, limit);
+
+      const formattedResult = formatStandardizedPaginatedResult(
+        result.students,
+        result.pagination.totalStudents,
+        { page, limit },
+        MESSAGES.ADMIN.STUDENTS_FETCH_SUCCESS
+      );
+
+      res.status(HttpStatusCode.OK).json(formattedResult);
     } catch (error: unknown) {
       logger.error("Error getting assigned students", error);
       const status = error instanceof AppError ? error.statusCode : HttpStatusCode.INTERNAL_SERVER_ERROR;

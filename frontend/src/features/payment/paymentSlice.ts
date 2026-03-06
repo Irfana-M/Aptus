@@ -1,26 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { fetchStudentPaymentHistory } from './paymentThunk';
 
-interface Payment {
-    _id: string;
-    studentId: string;
-    courseId?: string; 
-    amount: number;
-    currency: string;
-    paymentDate?: string;
-    createdAt?: string;
-    status: string;
-    paymentIntentId?: string;
-    transactionId?: string;
-    invoiceId?: string;
-    purpose?: string;
-}
-
-interface PaymentState {
-    paymentHistory: Payment[];
-    loading: boolean;
-    error: string | null;
-}
+import type { PaymentState } from './types';
 
 const initialState: PaymentState = {
     paymentHistory: [],
@@ -40,7 +21,7 @@ const paymentSlice = createSlice({
             })
             .addCase(fetchStudentPaymentHistory.fulfilled, (state, action) => {
                 state.loading = false;
-                state.paymentHistory = action.payload.data;
+                state.paymentHistory = action.payload;
             })
             .addCase(fetchStudentPaymentHistory.rejected, (state, action) => {
                 state.loading = false;

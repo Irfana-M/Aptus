@@ -1,5 +1,5 @@
 import React from "react";
-import type { Course } from "../../types/courseTypes";
+import type { Course } from "../../types/course.types";
 import {
   X,
   Clock,
@@ -311,3 +311,4 @@ export const CourseDetailsModal: React.FC<CourseDetailsModalProps> = ({
     </div>
   );
 };
+

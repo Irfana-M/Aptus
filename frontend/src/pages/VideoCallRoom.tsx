@@ -3,14 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { useVideoCall } from '../context/videoCallContextStore';
 import type { RootState } from '../app/store';
-import type { User } from '../types/authTypes';
+import type { User } from '../types/auth.types';
 import { selectCurrentUser } from '../features/auth/authSelector';
 import { prepareForVideoCall } from '../utils/videoCallPrep';
 import { setError } from '../features/videoCall/videoCallSlice';
 import type { AppDispatch } from '../app/store';
 import { verifyUserRole } from '../features/role/roleSlice';
 import { fetchStudentProfile } from '../features/student/studentThunk';
-import { VideoOff, AlertCircle } from 'lucide-react';
+import { VideoOff} from 'lucide-react';
 import { sessionApi } from '../features/session/sessionApi';
 import { ROUTES } from '../constants/routes.constants';
 import { Loader } from '../components/ui/Loader';
@@ -22,7 +22,7 @@ import { ClassroomHeader } from '../features/classroom/components/ClassroomHeade
 import { ClassroomRightPanel } from '../features/classroom/components/ClassroomRightPanel';
 import { ClassroomVideoGrid } from '../features/classroom/components/ClassroomVideoGrid';
 import { studentTrialApi } from '../features/trial/student/studentTrialApi';
-import type { TrialClassResponse } from '../types/trialTypes';
+import type { TrialClassResponse } from '../types/trial.types';
 
 export default function VideoCallRoom() {
   const { trialClassId, sessionId } = useParams<{ trialClassId: string; sessionId: string }>();
@@ -565,3 +565,4 @@ export default function VideoCallRoom() {
     />
   );
 }
+

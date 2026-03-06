@@ -21,7 +21,7 @@ import {
 import { toast } from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../../app/store";
-import Layout from "../../components/layout/Layout";
+import { MentorLayout } from "../../components/mentor/MentorLayout";
 import { ROUTES } from "../../constants/routes.constants";
 
 interface ProfileState {
@@ -149,6 +149,7 @@ export default function MentorProfileSetup() {
   });
   const [isEditing, setIsEditing] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isApprovalSeen, setIsApprovalSeen] = useState(false);
 
   // Load mentor profile data on component mount
   useEffect(() => {
@@ -185,6 +186,19 @@ export default function MentorProfileSetup() {
         setIsEditing(false);
       } else {
         setIsEditing(true);
+      }
+
+      // Handle the "Your profile has been approved!" message visibility
+      if (profile.approvalStatus === "approved" && profile.email) {
+        const storageKey = `approval_seen_${profile.email}`;
+        const hasSeen = localStorage.getItem(storageKey);
+        if (hasSeen === "true") {
+          setIsApprovalSeen(true);
+        } else {
+          // It's the first time they see it, we will mark it as seen after this render
+          // but let it show for this session/login
+          localStorage.setItem(storageKey, "true");
+        }
       }
     }
   }, [profile]);
@@ -888,22 +902,12 @@ export default function MentorProfileSetup() {
     }
   };
 
-  const handleLoginClick = () => {
-    window.location.href = "/login";
-  };
-
-  const handleGetStartedClick = () => {
-    window.location.href = "/signup";
-  };
 
   return (
-    <Layout
-      onLoginClick={handleLoginClick}
-      onGetStartedClick={handleGetStartedClick}
-    >
-      <div className="min-h-screen bg-gray-50">
+    <MentorLayout title="Tutor Profile">
+      <div className="min-h-screen">
         {/* Approval Status Banner */}
-        {approvalStatus !== "not_submitted" && (
+        {approvalStatus !== "not_submitted" && !(approvalStatus === "approved" && isApprovalSeen) && (
           <div className={`border-l-4 ${getStatusColor()} p-4 mt-4 rounded-r`}>
             <div className="flex items-center space-x-2">
               {getStatusIcon()}
@@ -1295,6 +1299,6 @@ export default function MentorProfileSetup() {
           {renderActionButtons()}
         </div>
       </div>
-    </Layout>
+    </MentorLayout>
   );
 }

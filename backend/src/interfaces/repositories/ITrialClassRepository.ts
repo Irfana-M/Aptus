@@ -11,9 +11,11 @@ export interface ITrialClassRepository extends IBaseRepository<ITrialClassDocume
     status?: "requested" | "assigned" | "completed" | "cancelled";
   }): Promise<ITrialClassDocument>;
 
-  findByStudentId(studentId: string, status?: string): Promise<ITrialClassDocument[]>;
+  findByStudentId(studentId: string, status?: string, skip?: number, limit?: number): Promise<ITrialClassDocument[]>;
+  countByStudentId(studentId: string, status?: string): Promise<number>;
 
-  findByMentorId(mentorId: string): Promise<ITrialClassDocument[]>;
+  findByMentorId(mentorId: string, skip?: number, limit?: number): Promise<ITrialClassDocument[]>;
+  countByMentorId(mentorId: string): Promise<number>;
 
   findTodayTrialClasses(mentorId: string): Promise<ITrialClassDocument[]>;
 

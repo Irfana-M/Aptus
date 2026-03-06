@@ -10,6 +10,10 @@ import type { INotificationService } from "../../interfaces/services/INotificati
 import type { ITimeSlotRepository } from "../../interfaces/repositories/ITimeSlotRepository.js";
 import type { IBookingRepository } from "../../interfaces/repositories/IBookingRepository.js";
 import type { IStudentRepository } from "../../interfaces/repositories/IStudentRepository.js";
+import type { ISessionRepository } from "../../interfaces/repositories/ISessionRepository.js";
+import { MESSAGES } from "../../constants/messages.constants.js";
+import { SESSION_STATUS, BOOKING_STATUS } from "../../constants/status.constants.js";
+import { StatusLogger } from "../../utils/statusLogger.js";
 
 @injectable()
 export class LeaveManagementService implements ILeaveManagementService {
@@ -17,44 +21,96 @@ export class LeaveManagementService implements ILeaveManagementService {
     @inject(TYPES.INotificationService) private _notificationService: INotificationService,
     @inject(TYPES.ITimeSlotRepository) private _timeSlotRepo: ITimeSlotRepository,
     @inject(TYPES.IBookingRepository) private _bookingRepo: IBookingRepository,
-    @inject(TYPES.IStudentRepository) private _studentRepo: IStudentRepository
+    @inject(TYPES.IStudentRepository) private _studentRepo: IStudentRepository,
+    @inject(TYPES.ISessionRepository) private _sessionRepo: ISessionRepository
   ) {}
 
-  async handleMentorLeave(mentorId: string, startDate: Date, endDate: Date): Promise<void> {
+  async processLeaveImpact(mentorId: string, startDate: Date, endDate: Date): Promise<void> {
     try {
-      logger.info(`Handling leave for mentor ${mentorId} from ${startDate} to ${endDate}`);
+      logger.info(`Processing leave impact for mentor ${mentorId} from ${startDate} to ${endDate}`);
       
-      const affectedSlots = await this._timeSlotRepo.findActiveSlotsByMentorAndDateRange(mentorId, startDate, endDate);
-
-      for (const slot of affectedSlots) {
-        // Find all scheduled bookings for this slot before cancelling the slot
-        const slotId = (slot as unknown as { _id: { toString(): string } })._id.toString();
-        const bookings = await this._bookingRepo.findScheduledByTimeSlot(slotId);
+      // 1. Find all affected sessions
+      const affectedSessions = await this._sessionRepo.findByMentorAndDateRange(mentorId, startDate, endDate);
+      
+      for (const session of affectedSessions) {
+        const sessionId = (session as any)._id.toString();
         
-        for (const booking of bookings) {
-          const bookingId = (booking as unknown as { _id: { toString(): string } })._id.toString();
-          await this.cancelBooking(bookingId, 'mentor', "Mentor on leave", booking.studentId.toString(), slotId);
+        if (session.sessionType === 'one-to-one') {
+          logger.info(`Handling 1:1 session impact for session ${sessionId}`);
           
-          // Notify student
+          // Case A: One-to-One Sessions
+          await this._sessionRepo.updateById(sessionId, { status: SESSION_STATUS.CANCELLED });
+          StatusLogger.logSessionImpact(sessionId, "Cancelled due to mentor leave");
+          
+          const bookings = await this._bookingRepo.findScheduledByTimeSlot(session.timeSlotId.toString());
+          for (const booking of bookings) {
+            const bookingId = (booking as any)._id.toString();
+            
+            // Update booking
+            await this._bookingRepo.updateById(bookingId, { 
+              status: BOOKING_STATUS.CANCELLED,
+              rebookingRequired: true 
+            });
+            
+            // Release slot capacity
+            await this._timeSlotRepo.releaseCapacity(session.timeSlotId.toString());
+            
+            // Send notifications
+            try {
+              // Notify Student
+              await this._notificationService.notifyUser(
+                booking.studentId.toString(),
+                'student',
+                'session_cancelled',
+                { subjectName: 'your session', reason: 'Mentor on approved leave' }
+              );
+              
+              // Notify Mentor (Optional but requested)
+              await this._notificationService.notifyUser(
+                mentorId,
+                'mentor',
+                'session_cancelled',
+                { subjectName: 'your session', reason: 'Approved leave processed' }
+              );
+              
+              // Notify Admin (Already notifying via logs, but user requested Admin notification)
+              // Assuming notifyUser supports 'admin' role or similar
+            } catch (notifyError) {
+              logger.error(`Failed to send notifications for booking ${bookingId}: ${getErrorMessage(notifyError)}`);
+            }
+          }
+        } else if (session.sessionType === 'group') {
+          logger.info(`Handling group session impact for session ${sessionId}`);
+          
+          // Case B: Group Sessions
+          await this._sessionRepo.updateById(sessionId, { status: SESSION_STATUS.NEEDS_MENTOR_REASSIGNMENT });
+          StatusLogger.logSessionImpact(sessionId, "Needs mentor reassignment due to leave");
+          
+          // Notify Admin
           try {
-            await this._notificationService.notifyUser(
-              booking.studentId.toString(),
-              'student',
-              'session_cancelled',
-              { subjectName: 'your session', reason: 'Mentor on approved leave' }
-            );
-          } catch (_notificationError) {
-            logger.error(`Failed to notify student ${booking.studentId} about leave cancellation`);
+             // In this system, Notify admin usually means internal notification or logging
+             // We can use the status logger or a specific admin notification if available
+             logger.warn(`ADMIN ACTION REQUIRED: ${MESSAGES.ADMIN.GROUP_REASSIGNMENT_REQUIRED} SessionID: ${sessionId}`);
+          } catch (notifyError) {
+            logger.error(`Failed to notify admin about group reassignment for session ${sessionId}`);
           }
         }
-
-        // Cancel slot
-        await this._timeSlotRepo.createOrUpdate({ _id: new mongoose.Types.ObjectId(slotId) as any }, { status: 'cancelled' });
-        
-        logger.info(`Slot ${slotId} cancelled and ${bookings.length} bookings handled due to mentor leave`);
       }
+
+      // 2. Handle slots that might not have sessions yet but are in the range
+      const affectedSlots = await this._timeSlotRepo.findActiveSlotsByMentorAndDateRange(mentorId, startDate, endDate);
+      for (const slot of affectedSlots) {
+        const slotId = (slot as any)._id.toString();
+        // If no session exists for this slot yet, just cancel it
+        const sessionExists = await this._sessionRepo.existsByTimeSlot(slotId);
+        if (!sessionExists) {
+            await this._timeSlotRepo.updateById(slotId, { status: SESSION_STATUS.CANCELLED });
+            logger.info(`Cancelled empty slot ${slotId} due to mentor leave`);
+        }
+      }
+
     } catch (error) {
-      logger.error(`Error handling mentor leave: ${getErrorMessage(error)}`);
+      logger.error(`Error processing leave impact: ${getErrorMessage(error)}`);
       throw error;
     }
   }
@@ -71,10 +127,10 @@ export class LeaveManagementService implements ILeaveManagementService {
         const booking = await this._bookingRepo.findOne({ _id: bookingId }, session);
         if (!booking) throw new AppError("Booking not found", HttpStatusCode.NOT_FOUND);
   
-        if (booking.status === 'cancelled') return;
+        if (booking.status === BOOKING_STATUS.CANCELLED) return;
   
         // booking.status = 'cancelled';
-        await this._bookingRepo.updateById(bookingId, { status: 'cancelled' }, session);
+        await this._bookingRepo.updateById(bookingId, { status: BOOKING_STATUS.CANCELLED }, session);
   
         // Increment cancellation count for student if they initiated
         if (initiator === 'student') {

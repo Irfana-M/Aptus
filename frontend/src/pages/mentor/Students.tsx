@@ -1,16 +1,13 @@
 import React, { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { Users, Clock, Calendar, MessageSquare, Video, Search, ChevronRight, BookOpen } from 'lucide-react';
-import { DashboardLayout } from '../../components/layout/DashboardLayout';
-import type { NavItem } from '../../components/layout/DashboardSidebar';
+import { Users, Clock, Calendar, MessageSquare, Video, Search, ChevronRight } from 'lucide-react';
 import { Loader } from '../../components/ui/Loader';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { fetchMentorTrialClasses, fetchMentorProfile, fetchMentorCourses } from "../../features/mentor/mentorThunk";
-import { logoutUser } from "../../features/auth/authThunks";
 import type { AppDispatch, RootState } from "../../app/store";
-import { Home, User, ClipboardList } from 'lucide-react';
 import { ROUTES } from '../../constants/routes.constants';
+import { MentorLayout } from '../../components/mentor/MentorLayout';
 
 interface UnifiedStudent {
     id: string;
@@ -41,7 +38,6 @@ const MentorStudentsPage: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
     const { trialClasses, courses, loading, profile } = useSelector((state: RootState) => state.mentor);
-    const { user } = useSelector((state: RootState) => state.auth);
 
     const [activeTab, setActiveTab] = React.useState<'trials' | 'enrolled'>('enrolled');
     const [searchQuery, setSearchQuery] = React.useState('');
@@ -53,28 +49,6 @@ const MentorStudentsPage: React.FC = () => {
             dispatch(fetchMentorProfile());
         }
     }, [dispatch, profile]);
-
-    const handleLogout = async () => {
-        await dispatch(logoutUser());
-        navigate(ROUTES.LOGIN);
-    };
-
-    const mentorNavItems: NavItem[] = [
-        { icon: <Home size={20} />, label: 'Dashboard', path: ROUTES.MENTOR.DASHBOARD },
-        { icon: <User size={20} />, label: 'Profile', path: ROUTES.MENTOR.PROFILE },
-        { icon: <Users size={20} />, label: 'Students/Batches', path: ROUTES.MENTOR.STUDENTS },
-        { icon: <Calendar size={20} />, label: 'Attendance', path: ROUTES.MENTOR.ATTENDANCE },
-        { icon: <BookOpen size={20} />, label: 'Classroom', path: ROUTES.MENTOR.CLASSROOM },
-        { icon: <ClipboardList size={20} />, label: 'Class History', path: ROUTES.MENTOR.CLASS_HISTORY },
-        { icon: <Clock size={20} />, label: 'Availability', path: ROUTES.MENTOR.AVAILABILITY },
-    ];
-
-    const dashboardUser = {
-        name: profile?.fullName || user?.fullName || "Mentor",
-        email: user?.email || "",
-        avatar: profile?.profileImageUrl || undefined,
-        role: "mentor"
-    };
 
     const assignedStudents = useMemo((): UnifiedStudent[] => {
         const trials = (trialClasses || [])
@@ -133,13 +107,7 @@ const MentorStudentsPage: React.FC = () => {
     }, [trialClasses, courses, searchQuery, activeTab]);
 
     return (
-        <DashboardLayout
-            navItems={mentorNavItems}
-            user={dashboardUser}
-            title="My Students"
-            onLogout={handleLogout}
-            appTitle="Aptus"
-        >
+        <MentorLayout title="My Students">
             <div className="p-6">
                 <div className="flex justify-between items-center mb-6">
                     <div>
@@ -318,7 +286,7 @@ const MentorStudentsPage: React.FC = () => {
                     </div>
                 </div>
             </div>
-        </DashboardLayout>
+        </MentorLayout>
     );
 };
 

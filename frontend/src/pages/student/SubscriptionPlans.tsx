@@ -6,6 +6,7 @@ import { useAppSelector } from '../../app/hooks';
 import { getActivePlans } from '../../api/subscriptionApi';
 import { calculateMonthlyCost, validateSubjectCount, type SubscriptionPlan } from '../../utils/subscriptionCalculator';
 import { ROUTES } from '../../constants/routes.constants';
+import StudentLayout from '../../components/students/StudentLayout';
 
 const SubscriptionPlans: React.FC = () => {
   const navigate = useNavigate();
@@ -82,25 +83,29 @@ const SubscriptionPlans: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader size="lg" text="Loading subscription plans..." />
-      </div>
+      <StudentLayout title="Loading Plans">
+        <div className="flex items-center justify-center py-24">
+          <Loader size="lg" text="Loading subscription plans..." />
+        </div>
+      </StudentLayout>
     );
   }
 
   if (error || !basicPlan || !premiumPlan) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 text-lg">{error || 'Plans not available'}</p>
+      <StudentLayout title="Subscription Plans">
+        <div className="flex items-center justify-center py-24">
+          <div className="text-center">
+            <p className="text-red-600 text-lg">{error || 'Plans not available'}</p>
+          </div>
         </div>
-      </div>
+      </StudentLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
+    <StudentLayout title="Choose Your Plan">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-extrabold text-gray-900 mb-4">Choose Your Learning Path</h1>
           <p className="text-xl text-gray-600">Invest in your future with our flexible subscription plans.</p>
@@ -134,7 +139,7 @@ const SubscriptionPlans: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 items-stretch">
+        <div className="grid md:grid-cols-2 gap-8 items-stretch mb-12">
           {/* BASIC PLAN */}
           <div className="bg-white rounded-3xl p-8 shadow-xl border-2 border-transparent hover:border-indigo-100 transition-all flex flex-col justify-between">
             <div>
@@ -272,13 +277,13 @@ const SubscriptionPlans: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-12 text-center">
+        <div className="mt-12 text-center pb-12">
           <p className="text-gray-400 text-xs">
             * Prices calculated based on: subjects × sessions per week × price per session × 4 weeks
           </p>
         </div>
       </div>
-    </div>
+    </StudentLayout>
   );
 };
 
