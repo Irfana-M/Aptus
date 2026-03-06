@@ -2,51 +2,45 @@
   "compilerOptions": {
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+
     "rootDir": "./src",
     "outDir": "./dist",
+
+    "baseUrl": "./",
+    "ignoreDeprecations": "6.0",
+
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@services/*": [
-        "./src/interfaces/services/*"
-      ],
-      "@utils/*": [
-        "./src/utils/*"
-      ],
-      "@constants/*": [
-        "./src/constants/*"
-      ]
+      "@/*": ["src/*"],
+      "@services/*": ["src/interfaces/services/*"],
+      "@utils/*": ["src/utils/*"],
+      "@constants/*": ["src/constants/*"]
     },
+
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "target": "ES2020",
+
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
-    "lib": [
-      "ES2020"
-    ],
-    "types": [
-      "reflect-metadata",
-      "node"
-    ],
+
+    "lib": ["ES2020"],
+    "types": ["reflect-metadata", "node"],
+
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
+
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "strict": true,
     "isolatedModules": true,
     "moduleDetection": "force",
+
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "sync-schemas": "cp src/schemas/*.ts ../frontend/src/schemas/",
-    "start": "tsc && node dist/server.js",
+    "start": "node -r tsconfig-paths/register dist/server.js",
     "seed-grades": "tsx src/scripts/seeders/grade.seeder.ts",
     "seed-plans": "tsx src/scripts/seedPlans.ts",
     "dev": "tsx watch --require reflect-metadata src/server.ts",
