@@ -1,13 +1,13 @@
 import type { PaginationMeta } from "@/dtos/shared/paginationTypes.js";
 
-export interface PaginationParams {
+export interface PaginationQueryParams {
   page: number;
   limit: number;
   skip: number;
 }
 
 
-export const getPaginationParams = (query: Record<string, unknown>): PaginationParams => {
+export const getPaginationParams = (query: Record<string, unknown>): PaginationQueryParams => {
   const page = Math.max(1, parseInt(query.page as string) || 1);
   const limit = Math.max(1, Math.min(100, parseInt(query.limit as string) || 10));
   const skip = (page - 1) * limit;
