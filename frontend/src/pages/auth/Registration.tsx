@@ -68,9 +68,12 @@ export default function Register() {
   };
 
   const handleGoogleAuth = () => {
-    const API_URL = import.meta.env.VITE_API_URL;
-    window.location.href = `${API_URL}/auth/google?role=${role}`;
-  };
+  const API_URL = import.meta.env.VITE_API_URL;
+  const CALLBACK_URL = import.meta.env.VITE_GOOGLE_CALLBACK_URL;
+
+  // Pass callback URL to backend as query param
+  window.location.href = `${API_URL}/auth/google?role=${role}&callbackUrl=${encodeURIComponent(CALLBACK_URL)}`;
+};
 
   return (
     <AuthLayout
