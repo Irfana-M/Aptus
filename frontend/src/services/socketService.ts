@@ -55,14 +55,14 @@ class SocketService {
 
 
     this.socket = io(socketUrl, {
-      auth: { token },
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      withCredentials: true,
-    });
-
+  path: "/socket.io/", 
+  auth: { token },
+  transports: ['websocket', 'polling'],
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+  withCredentials: true,
+});
 
     this.socket.on('connect', () => {
 
