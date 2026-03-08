@@ -174,7 +174,7 @@ export default function GoogleCallback() {
           toast.success(`Google ${role} login successful!`);
           setTimeout(() => {
             navigate(redirectPath, { replace: true });
-          }, 50);
+          }, 150);
         } catch (error) {
           console.error("Google auth processing error:", error);
           toast.error("Failed to process Google login");
