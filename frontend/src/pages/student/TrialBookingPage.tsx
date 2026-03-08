@@ -311,7 +311,7 @@ const TrialBookingPage: React.FC = () => {
             const gradeName = studentProfile.academicDetails.grade;
             // Try to find a grade object that matches the name
             const matchingGrade = grades.find(g => g.name === gradeName || g.name.includes(gradeName));
-            if (matchingGrade) targetGradeId = matchingGrade.id;
+            if (matchingGrade) targetGradeId = matchingGrade._id;
         }
 
         const targetSyllabus = studentProfile.academicDetails?.syllabus || '';
@@ -464,12 +464,13 @@ const TrialBookingPage: React.FC = () => {
       return grade.id === existingBooking.subject.gradeId && 
              grade.syllabus === existingBooking.subject.syllabus;
     });
+    
 
     if (matchingGrade) {
       setFormData({
         studentName,
         email: studentEmail,
-        grade: matchingGrade.id,
+        grade: matchingGrade._id,
         syllabus: existingBooking.subject.syllabus,
         subject: existingBooking.subject.id,
         time: existingBooking.preferredTime,
