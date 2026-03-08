@@ -311,7 +311,7 @@ const TrialBookingPage: React.FC = () => {
             const gradeName = studentProfile.academicDetails.grade;
             // Try to find a grade object that matches the name
             const matchingGrade = grades.find(g => g.name === gradeName || g.name.includes(gradeName));
-            if (matchingGrade) targetGradeId = matchingGrade._id;
+            if (matchingGrade) targetGradeId = (matchingGrade.id || matchingGrade._id) as string;
         }
 
         const targetSyllabus = studentProfile.academicDetails?.syllabus || '';
@@ -334,7 +334,7 @@ const TrialBookingPage: React.FC = () => {
   // Form Data Effects
   useEffect(() => {
     if (formData.grade) {
-      const selectedGrade = grades.find((grade) => grade._id === formData.grade);
+      const selectedGrade = grades.find((grade) => grade.id === formData.grade || grade._id === formData.grade);
       if (selectedGrade) {
         const gradeName = selectedGrade.name;
         const syllabiForThisGrade = grades
@@ -356,12 +356,9 @@ const TrialBookingPage: React.FC = () => {
 
   useEffect(() => {
     if (formData.grade && formData.syllabus) {
-      const selectedGrade = grades.find((grade) => grade._id === formData.grade);
+      const selectedGrade = grades.find((grade) => grade.id === formData.grade || grade._id === formData.grade);
       if (selectedGrade) {
         const gradeNumber = extractGradeNumber(selectedGrade.name);
-         console.log("gradeName:", selectedGrade.name);
-      console.log("gradeNumber:", gradeNumber);
-      console.log("syllabus:", formData.syllabus);
         if (gradeNumber) {
           dispatch(
             fetchSubjectsByGradeAndSyllabus({
@@ -464,18 +461,18 @@ const TrialBookingPage: React.FC = () => {
     const { studentName, studentEmail } = extractStudentInfo(existingBooking, user);
     const matchingGrade = grades.find(grade => {
       // Use direct ID comparison now that we have gradeId
-      return grade._id === existingBooking.subject.gradeId && 
+      const targetId = existingBooking.subject.gradeId;
+      return (grade.id === targetId || grade._id === targetId) && 
              grade.syllabus === existingBooking.subject.syllabus;
     });
-    
 
     if (matchingGrade) {
       setFormData({
         studentName,
         email: studentEmail,
-        grade: matchingGrade._id,
+        grade: (matchingGrade.id || matchingGrade._id) as string,
         syllabus: existingBooking.subject.syllabus,
-        subject: existingBooking.subject._id || (existingBooking.subject as any).id,
+        subject: existingBooking.subject.id || (existingBooking.subject as any)._id,
         time: existingBooking.preferredTime,
         notes: existingBooking.notes || ''
       });
@@ -758,7 +755,7 @@ const TrialBookingPage: React.FC = () => {
             {gradesLoading ? "Loading grades..." : "Select your grade"}
           </option>
           {getUniqueGrades().map((grade) => (
-            <option key={grade._id} value={grade._id}>
+            <option key={grade.id || grade._id} value={grade.id || grade._id}>
               {grade.name}
             </option>
           ))}
@@ -810,7 +807,7 @@ const TrialBookingPage: React.FC = () => {
                 : "Select a subject"}
             </option>
             {subjects.map((subject) => (
-              <option key={subject._id} value={subject._id}>
+              <option key={subject.id || subject._id} value={subject.id || subject._id}>
                 {subject.subjectName}
               </option>
             ))}

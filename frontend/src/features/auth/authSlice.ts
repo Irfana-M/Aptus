@@ -49,10 +49,17 @@ const authSlice = createSlice({
       state.error = null;
     },
     setCredentials: (state, action) => {
-      const { user, accessToken, isProfileComplete, hasPaid, isTrialCompleted } = action.payload;
+      const { user, accessToken, role, isProfileComplete, hasPaid, isTrialCompleted } = action.payload;
       state.user = user;
       state.accessToken = accessToken;
-      state[`${role}AccessToken`] = accessToken;
+      if (role === "student") {
+        localStorage.setItem("student_accessToken", accessToken);
+      } else if (role === "mentor") {
+        localStorage.setItem("mentor_accessToken", accessToken);
+      } else {
+        localStorage.setItem("accessToken", accessToken);
+      }
+
       state.isAuthenticated = true;
       state.isProfileComplete = isProfileComplete;
       state.hasPaid = hasPaid;
