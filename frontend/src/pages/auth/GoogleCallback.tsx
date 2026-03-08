@@ -3,8 +3,10 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ROUTES } from "../../constants/routes.constants";
 import { toast } from "react-hot-toast";
 import { useDispatch } from "react-redux";
-import { setCredentials } from "../../features/auth/authSlice"; 
+import { setCredentials } from "../../features/auth/authSlice";
 import { store } from "../../app/store";
+import { AuthContext } from "../../utils/authContext";
+import { StudentOnboardingStatus } from "../../utils/StudentOnboardingGuard";
 
 export default function GoogleCallback() {
   const navigate = useNavigate();
@@ -17,25 +19,27 @@ export default function GoogleCallback() {
     profileComplete?: boolean,
     paid?: boolean,
     approvalStatus?: string,
-    isTrialCompleted?: boolean
+    isTrialCompleted?: boolean,
   ) => {
-    console.log(`🔍 Redirect logic: role=${userRole}, profileComplete=${profileComplete}, approvalStatus=${approvalStatus}`);
-    
+    console.log(
+      `🔍 Redirect logic: role=${userRole}, profileComplete=${profileComplete}, approvalStatus=${approvalStatus}`,
+    );
+
     if (userRole === "mentor") {
-      
       if (!profileComplete) {
-        console.log('🚀 Redirecting mentor to profile setup');
+        console.log("🚀 Redirecting mentor to profile setup");
         return ROUTES.MENTOR.PROFILE_SETUP;
       }
-      
-     
+
       switch (approvalStatus) {
         case "pending":
           return ROUTES.MENTOR.PROFILE_SETUP;
         case "rejected":
           return ROUTES.MENTOR.REJECTED;
         case "approved":
-          return profileComplete ? ROUTES.MENTOR.DASHBOARD : ROUTES.MENTOR.PROFILE_SETUP;
+          return profileComplete
+            ? ROUTES.MENTOR.DASHBOARD
+            : ROUTES.MENTOR.PROFILE_SETUP;
         default:
           return ROUTES.MENTOR.PROFILE_SETUP;
       }
@@ -60,10 +64,10 @@ export default function GoogleCallback() {
 
     const processAuth = async () => {
       const params = new URLSearchParams(location.search);
-      console.log('🔍 ALL URL PARAMETERS RECEIVED:');
-    for (const [key, value] of params.entries()) {
-      console.log(`  ${key}: ${value}`);
-    }
+      console.log("🔍 ALL URL PARAMETERS RECEIVED:");
+      for (const [key, value] of params.entries()) {
+        console.log(`  ${key}: ${value}`);
+      }
       const token = params.get("token");
       const email = params.get("email");
       const role = params.get("role") as "student" | "mentor" | null;
@@ -74,16 +78,16 @@ export default function GoogleCallback() {
       const id = params.get("id");
       const error = params.get("error");
 
-      console.log('🔍 PARSED PARAMETERS:');
-    console.log('  token:', token);
-    console.log('  email:', email);
-    console.log('  role:', role);
-    console.log('  isProfileComplete:', isProfileComplete);
-    console.log('  isTrialCompleted:', isTrialCompleted);
-    console.log('  approvalStatus:', approvalStatus);
-    console.log('  isPaid:', isPaid);
-    console.log('  id:', id);
-    console.log('  error:', error);
+      console.log("🔍 PARSED PARAMETERS:");
+      console.log("  token:", token);
+      console.log("  email:", email);
+      console.log("  role:", role);
+      console.log("  isProfileComplete:", isProfileComplete);
+      console.log("  isTrialCompleted:", isTrialCompleted);
+      console.log("  approvalStatus:", approvalStatus);
+      console.log("  isPaid:", isPaid);
+      console.log("  id:", id);
+      console.log("  error:", error);
 
       if (error) {
         toast.error(`Google authentication failed: ${error}`);
@@ -93,6 +97,17 @@ export default function GoogleCallback() {
 
       if (token && email && role) {
         try {
+          // Calculate onboarding status for students
+          let onboardingStatus: string | undefined = undefined;
+          if (role === 'student') {
+            onboardingStatus = StudentOnboardingStatus.REGISTERED;
+            if (isProfileComplete) {
+              onboardingStatus = isTrialCompleted ? StudentOnboardingStatus.TRIAL_BOOKED : StudentOnboardingStatus.PROFILE_COMPLETE;
+            }
+            if (isPaid) {
+              onboardingStatus = StudentOnboardingStatus.SUBSCRIBED;
+            }
+          }
 
           const user = {
             email,
@@ -102,42 +117,63 @@ export default function GoogleCallback() {
             isPaid: isPaid || false,
             isTrialCompleted,
             _id: id || "",
+            onboardingStatus,
           };
+
+          // Update AuthContext role explicitly for this tab session
+          AuthContext.getInstance().setRole(role);
+
+          // dispatch(
+          //   setCredentials({
+          //     user,
+          //     accessToken: token,
+          //   })
+          // );
 
           dispatch(
             setCredentials({
               user,
               accessToken: token,
-            })
+              isProfileComplete,
+              hasPaid: isPaid,
+              isTrialCompleted,
+            }),
           );
 
-          localStorage.setItem(`${role}_accessToken`, token);   // ← THIS IS CRITICAL
+          localStorage.setItem(`${role}_accessToken`, token); // ← THIS IS CRITICAL
           localStorage.setItem("userRole", role);
-          localStorage.setItem("userId", id || ""); 
-          
+          localStorage.setItem("userId", id || "");
+
           localStorage.setItem("hasPaid", String(!!isPaid));
           localStorage.setItem("isTrialCompleted", String(!!isTrialCompleted));
-          localStorage.setItem("isProfileComplete", String(!!isProfileComplete));
+          localStorage.setItem(
+            "isProfileComplete",
+            String(!!isProfileComplete),
+          );
 
           console.log("Tokens and user info saved to localStorage");
 
           console.log("Google OAuth successful:", { user, token });
-          console.log("Token stored in Redux:", store.getState().auth.accessToken);
-          console.log("Token stored in localStorage:", localStorage.getItem("accessToken"));
+          console.log(
+            "Token stored in Redux:",
+            store.getState().auth.accessToken,
+          );
+          console.log(
+            "Token stored in localStorage:",
+            localStorage.getItem(`${role}_accessToken`),
+          );
 
-          
           const redirectPath = getRedirectPath(
             role,
             isProfileComplete,
             isPaid,
             approvalStatus || "pending",
-            isTrialCompleted
+            isTrialCompleted,
           );
 
           console.log(`🎯 Redirecting to: ${redirectPath}`);
           toast.success(`Google ${role} login successful!`);
           navigate(redirectPath, { replace: true });
-
         } catch (error) {
           console.error("Google auth processing error:", error);
           toast.error("Failed to process Google login");

@@ -84,19 +84,25 @@ export const refreshAccessToken = createAsyncThunk<
         isTrialCompleted,
     };
   } catch (err: unknown) {
-    // Clear all potential tokens to prevent infinite refresh loops
-    const tokens = [
-      "accessToken", 
-      "student_accessToken", 
-      "mentor_accessToken", 
-      "admin_accessToken", 
-      "userRole",
-      "userId",
-      "isTrialCompleted", 
-      "hasPaid",
-      "isProfileComplete"
-    ];
-    tokens.forEach(key => localStorage.removeItem(key));
+    // ONLY clear tokens if it's a definitive authentication failure (401)
+    // and not a network error or potential race condition with a new login
+    const isAuthError = (err as any)?.response?.status === 401;
+    
+    if (isAuthError) {
+        console.warn("🔐 Refresh failed with 401. Clearing tokens.");
+        const tokens = [
+          "accessToken", 
+          "student_accessToken", 
+          "mentor_accessToken", 
+          "admin_accessToken", 
+          "userRole",
+          "userId",
+          "isTrialCompleted", 
+          "hasPaid",
+          "isProfileComplete"
+        ];
+        tokens.forEach(key => localStorage.removeItem(key));
+    }
     
     return rejectWithValue(
       getApiErrorMessage(err, "Token refresh failed")

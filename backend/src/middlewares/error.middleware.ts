@@ -8,14 +8,14 @@ export const errorHandler: ErrorRequestHandler = (
   err: Error & { code?: number; name?: string; keyValue?: Record<string, unknown> },
   req,
   res,
-  
+
   next
 ) => {
   console.error('🚨 ERROR HANDLER CALLED');
   console.error('🚨 Error:', err);
   console.error('🚨 Error message:', err.message);
   console.error('🚨 Error stack:', err.stack);
-  
+
   let statusCode = HttpStatusCode.INTERNAL_SERVER_ERROR;
   let message = err.message || "Internal Server Error";
 
