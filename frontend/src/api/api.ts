@@ -126,6 +126,7 @@ api.interceptors.response.use(
         localStorage.removeItem('userId');
         sessionStorage.clear();
         
+        console.warn("🚨 api.ts: Refresh failed, CLEARING localStorage!");
         return Promise.reject(refreshError);
       }
     }

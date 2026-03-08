@@ -137,8 +137,11 @@ export default function GoogleCallback() {
             })
           );
 
-          localStorage.setItem(`${role}_accessToken`, token);
-          localStorage.setItem("userRole", role);
+          console.log(`🔍 DEBUG: Setting localStorage for role "${role}" with value: ${token?.substring(0, 10)}...`);
+          localStorage.setItem(`${role}_accessToken`, token as string);
+          console.log(`🔍 DEBUG: localStorage.${role}_accessToken NOW:`, localStorage.getItem(`${role}_accessToken`)?.substring(0, 10));
+
+          localStorage.setItem("userRole", role as string);
           localStorage.setItem("userId", id || "");
           
           console.log(`✅ Google Auth state committed. Role: ${role}, Status: ${onboardingStatus}`);
@@ -151,15 +154,19 @@ export default function GoogleCallback() {
           );
 
           console.log("Tokens and user info saved to localStorage");
+          console.log("FINAL localStorage CHECK BEFORE REDIRECT:");
+          console.log(`  student_accessToken: ${localStorage.getItem("student_accessToken")?.substring(0, 10)}...`);
+          console.log(`  mentor_accessToken: ${localStorage.getItem("mentor_accessToken")?.substring(0, 10)}...`);
+          console.log(`  userRole: ${localStorage.getItem("userRole")}`);
 
-          console.log("Google OAuth successful:", { user, token });
+          console.log("Google OAuth successful:", { user, token: token?.substring(0, 10) + "..." });
           console.log(
             "Token stored in Redux:",
-            store.getState().auth.accessToken,
+            store.getState().auth.accessToken?.substring(0, 10) + "...",
           );
           console.log(
-            "Token stored in localStorage:",
-            localStorage.getItem(`${role}_accessToken`),
+            "Token stored in localStorage (via role):",
+            localStorage.getItem(`${role}_accessToken`)?.substring(0, 10) + "...",
           );
 
           const redirectPath = getRedirectPath(

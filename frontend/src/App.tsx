@@ -138,6 +138,8 @@ const AppContent: React.FC = () => {
         // 2. Refresh User if on user path or generic refresh needed
         // Fallback to genericToken if role-specific tokens are missing
         const isGoogleCallbackPath = path === ROUTES.AUTH.GOOGLE_CALLBACK;
+        console.log(`🔍 DEBUG App.tsx: path="${path}", isGoogleCallbackPath=${isGoogleCallbackPath}`);
+        console.log(`🔍 DEBUG App.tsx: path="${path}", isGoogleCallbackPath=${isGoogleCallbackPath}`);
         
         // Skip refresh if we already have the user in state (e.g. just logged in via Google)
         // or if we are on the callback path
