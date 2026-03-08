@@ -131,12 +131,13 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(refreshAccessToken.rejected, (state) => {
+        console.log("❌ refreshAccessToken rejected");
         state.loading = false;
         // ONLY clear authentication if we don't already have a valid user
         // This prevents a failed background refresh of a STALE session
         // from wiping out a NEWLY successful session (e.g. from Google OAuth)
         if (!state.user) {
-          state.accessToken = null;
+          console.log("⚠️ Clearing auth state");
           state.user = null;
           state.isAuthenticated = false;
         } else {

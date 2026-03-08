@@ -359,6 +359,9 @@ const TrialBookingPage: React.FC = () => {
       const selectedGrade = grades.find((grade) => grade._id === formData.grade);
       if (selectedGrade) {
         const gradeNumber = extractGradeNumber(selectedGrade.name);
+         console.log("gradeName:", selectedGrade.name);
+      console.log("gradeNumber:", gradeNumber);
+      console.log("syllabus:", formData.syllabus);
         if (gradeNumber) {
           dispatch(
             fetchSubjectsByGradeAndSyllabus({
