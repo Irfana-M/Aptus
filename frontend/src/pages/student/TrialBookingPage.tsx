@@ -741,31 +741,31 @@ const TrialBookingPage: React.FC = () => {
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Select Grade <span className="text-red-500">*</span>
-        </label>
-        <select
-          value={formData.grade}
-          onChange={(e) => handleGradeChange(e.target.value)}
-          className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-          disabled={gradesLoading}
-        >
-          <option value="">
-            {gradesLoading ? "Loading grades..." : "Select your grade"}
-          </option>
-          {getUniqueGrades().map((grade) => (
-            <option key={grade.id || grade._id} value={grade.id || grade._id}>
-              {grade.name}
+      <div className="grid md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Select Grade <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={formData.grade}
+            onChange={(e) => handleGradeChange(e.target.value)}
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
+            disabled={gradesLoading}
+          >
+            <option value="">
+              {gradesLoading ? "Loading grades..." : "Select your grade"}
             </option>
-          ))}
-        </select>
-        {errors.grade && (
-          <p className="mt-1 text-sm text-red-500">{errors.grade}</p>
-        )}
-      </div>
+            {getUniqueGrades().map((grade) => (
+              <option key={grade.id || grade._id} value={grade.id || grade._id}>
+                {grade.name}
+              </option>
+            ))}
+          </select>
+          {errors.grade && (
+            <p className="mt-1 text-sm text-red-500">{errors.grade}</p>
+          )}
+        </div>
 
-      {formData.grade && availableSyllabi.length > 0 && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Education Board <span className="text-red-500">*</span>
@@ -773,9 +773,12 @@ const TrialBookingPage: React.FC = () => {
           <select
             value={formData.syllabus}
             onChange={(e) => handleSyllabusSelect(e.target.value)}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition disabled:bg-gray-100 disabled:cursor-not-allowed"
+            disabled={!formData.grade || availableSyllabi.length === 0}
           >
-            <option value="">Select education board</option>
+            <option value="">
+               {!formData.grade ? "Select grade first" : availableSyllabi.length === 0 ? "No boards available" : "Select education board"}
+            </option>
             {availableSyllabi.map((syllabus) => (
               <option key={syllabus} value={syllabus}>
                 {syllabus}
@@ -786,37 +789,37 @@ const TrialBookingPage: React.FC = () => {
             <p className="mt-1 text-sm text-red-500">{errors.syllabus}</p>
           )}
         </div>
-      )}
+      </div>
 
-      {formData.grade && formData.syllabus && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Choose Subject <span className="text-red-500">*</span>
-          </label>
-          <select
-            value={formData.subject}
-            onChange={(e) => handleInputChange("subject", e.target.value)}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-            disabled={subjectsLoading || subjects.length === 0}
-          >
-            <option value="">
-              {subjectsLoading
-                ? "Loading subjects..."
-                : subjects.length === 0
-                ? "No subjects available for this combination"
-                : "Select a subject"}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Choose Subject <span className="text-red-500">*</span>
+        </label>
+        <select
+          value={formData.subject}
+          onChange={(e) => handleInputChange("subject", e.target.value)}
+          className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition disabled:bg-gray-100 disabled:cursor-not-allowed"
+          disabled={!formData.syllabus || subjectsLoading || subjects.length === 0}
+        >
+          <option value="">
+            {subjectsLoading
+              ? "Loading subjects..."
+              : !formData.syllabus 
+              ? "Select education board first"
+              : subjects.length === 0
+              ? "No subjects available"
+              : "Select a subject"}
+          </option>
+          {subjects.map((subject) => (
+            <option key={subject.id || subject._id} value={subject.id || subject._id}>
+              {subject.subjectName}
             </option>
-            {subjects.map((subject) => (
-              <option key={subject.id || subject._id} value={subject.id || subject._id}>
-                {subject.subjectName}
-              </option>
-            ))}
-          </select>
-          {errors.subject && (
-            <p className="mt-1 text-sm text-red-500">{errors.subject}</p>
-          )}
-        </div>
-      )}
+          ))}
+        </select>
+        {errors.subject && (
+          <p className="mt-1 text-sm text-red-500">{errors.subject}</p>
+        )}
+      </div>
 
       <div className="grid md:grid-cols-2 gap-6">
         <div>
@@ -842,9 +845,15 @@ const TrialBookingPage: React.FC = () => {
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
               handleInputChange("time", e.target.value)
             }
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition appearance-none cursor-pointer"
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition appearance-none cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed"
+            disabled={!formData.subject || !selectedDate}
           >
-            {getFilteredTimeOptions(selectedDate, availableBackendSlots).map((option) => (
+             <option value="">
+                {!formData.subject || !selectedDate ? "Select subject and date first" : "Select time"}
+            </option>
+            {getFilteredTimeOptions(selectedDate, availableBackendSlots).map((option) => {
+              if (!option.value) return null; // Skip placeholder
+              return (
               <option
                 key={option.value}
                 value={option.value}
@@ -853,7 +862,7 @@ const TrialBookingPage: React.FC = () => {
               >
                 {option.label}
               </option>
-            ))}
+            )})}
           </select>
           {availabilityLoading && (
             <p className="mt-1 text-xs text-teal-600 animate-pulse font-medium">
