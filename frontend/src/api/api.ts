@@ -20,8 +20,9 @@ api.interceptors.request.use(
     authContext.setRoleFromPath(window.location.pathname);
     
     const activeRole = authContext.getCurrentRole();
-    const token = authContext.getTokenForCurrentRole();
 
+    const token = authContext.getTokenForCurrentRole();
+console.log(`getTokenFromCurrentRole:${token}`);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

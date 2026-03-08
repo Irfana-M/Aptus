@@ -52,6 +52,7 @@ const authSlice = createSlice({
       const { user, accessToken, isProfileComplete, hasPaid, isTrialCompleted } = action.payload;
       state.user = user;
       state.accessToken = accessToken;
+      state[`${role}AccessToken`] = accessToken;
       state.isAuthenticated = true;
       state.isProfileComplete = isProfileComplete;
       state.hasPaid = hasPaid;

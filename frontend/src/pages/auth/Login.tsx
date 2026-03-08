@@ -107,6 +107,9 @@ export default function Login() {
 
       if (loginUser.fulfilled.match(resultAction)) {
         const { user, accessToken, isProfileComplete, hasPaid, isTrialCompleted } = resultAction.payload;
+console.log(`localStorageAccessToken:${localStorage.accessToken}`);
+console.log(`student_accessToken: ${localStorage.getItem("student_accessToken") ?? "not set"}`);
+
 
       
         localStorage.setItem(`${user.role}_accessToken`, accessToken);

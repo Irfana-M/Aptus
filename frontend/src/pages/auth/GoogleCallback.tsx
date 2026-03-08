@@ -124,22 +124,41 @@ export default function GoogleCallback() {
           };
 
           // 6. Update context and Redux
-          AuthContext.getInstance().setRole(role as "student" | "mentor" | "admin");
-          
-          dispatch(
-            setCredentials({ 
-              user, 
-              accessToken: token,
-              isProfileComplete,
-              hasPaid: isPaid,
-              isTrialCompleted
-            })
+          AuthContext.getInstance().setRole(
+            role as "student" | "mentor" | "admin",
           );
 
-          localStorage.setItem(`${role}_accessToken`, token as string);
+          // Keep Redux + localStorage in sync — use the SAME key everyone expects
+          localStorage.setItem("accessToken", token as string); // ← change here
           localStorage.setItem("userRole", role as string);
+
+          // Optional: also keep role-specific for safety (but not required)
+          localStorage.setItem(`${role}_accessToken`, token as string);
+
+          dispatch(
+            setCredentials({
+              user,
+              accessToken: token, // same token
+              isProfileComplete,
+              hasPaid: isPaid,
+              isTrialCompleted,
+            }),
+          );
+
+          // dispatch(
+          //   setCredentials({
+          //     user,
+          //     accessToken: token,
+          //     isProfileComplete,
+          //     hasPaid: isPaid,
+          //     isTrialCompleted
+          //   })
+          // );
+
+          // localStorage.setItem(`${role}_accessToken`, token as string);
+          // localStorage.setItem("userRole", role as string);
           localStorage.setItem("userId", id || "");
-          
+
           localStorage.setItem("hasPaid", String(!!isPaid));
           localStorage.setItem("isTrialCompleted", String(!!isTrialCompleted));
           localStorage.setItem(
