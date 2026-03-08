@@ -1,13 +1,17 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import {
+  BookOpen,
   User,
   Search,
   Shield,
   Calendar as CalendarIcon,
   Clock,
+  Star,
   Video,
 } from "lucide-react";
+import Header from "../../components/layout/Header";
 import FormField from "../../components/ui/FormField";
 import { Calendar } from "../../components/ui/Calendar";
 import {
@@ -30,6 +34,7 @@ import {
   selectGrades,
   selectSubjects,
   selectGradesLoading,
+  selectSubjectsLoading,
 } from "../../features/trial/student/studentTrialSelectors";
 import type { AppDispatch, RootState } from "../../app/store";
 import type {
@@ -40,7 +45,6 @@ import type {
 } from "../../types/trial.types";
 import type { User as AuthUser } from "../../types/auth.types";
 import { showToast } from '../../utils/toast';
-import StudentLayout from "../../components/students/StudentLayout";
 
 // Constants
 const TIME_OPTIONS = [
@@ -57,6 +61,13 @@ const TIME_OPTIONS = [
   { value: "18:00", label: "6:00 PM" },
   {value: "19:00", label: "7:00 PM"},
   {value: "20:00", label: "8:00 PM - 9:00 PM"},
+];
+
+const STATS = [
+  { number: "95%", label: "Satisfaction Rate" },
+  { number: "500+", label: "Students Helped" },
+  { number: "50+", label: "Expert Mentors" },
+  { number: "24/7", label: "Support" },
 ];
 
 const BENEFITS = [
@@ -86,6 +97,14 @@ const BENEFITS = [
   },
 ];
 
+const HOW_IT_WORKS_STEPS = [
+  { step: 1, text: "Select your grade and subject" },
+  { step: 2, text: "Choose date and time" },
+  { step: 3, text: "Get meeting link via email" },
+  { step: 4, text: "Attend 1-hour trial session" },
+  { step: 5, text: "Provide your feedback" },
+];
+
 // Interfaces
 interface FormData {
   studentName: string;
@@ -106,6 +125,8 @@ interface FormErrors {
   time?: string;
   date?: string;
 }
+
+// StudentInfo interface removed as it was unused and replaced by TrialClassStudent
 
 interface TrialSlot {
     startTime: string;
@@ -134,6 +155,26 @@ const extractStudentInfo = (booking: TrialClassResponse, currentUser: AuthUser |
   return { studentName, studentEmail };
 };
 
+const getAvailableDates = (): number[] => {
+  const dates: number[] = [];
+  const today = new Date();
+  
+  // Start from 0 to include today
+  for (let i = 0; i <= 14; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    const dayOfWeek = date.getDay();
+    
+    // Optional: You might want to allow weekends if user requested "today" specifically?
+    // For now, keeping weekend exclusion but including today if it's a weekday
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      dates.push(date.getTime());
+    }
+  }
+  
+  return dates;
+};
+
 // Helper to filter time options based on selected date and backend availability
 const getFilteredTimeOptions = (
   selectedDate: number | null,
@@ -148,18 +189,21 @@ const getFilteredTimeOptions = (
                     selected.getMonth() === now.getMonth() && 
                     selected.getFullYear() === now.getFullYear();
 
-    // Add 1 hour buffer
+    // Add 1 hour buffer (user can't book a slot starting in less than 1 hour)
     const currentHour = now.getHours() + 1; 
 
     return TIME_OPTIONS.map(option => {
-        if (!option.value) return option;
+        if (!option.value) return option; // "Select time" placeholder
         
         const [slotHour] = option.value.split(':').map(Number);
         
+        // 1. Check if it's in the past (only for today)
         if (isToday && slotHour <= currentHour) {
             return { ...option, disabled: true, label: `${option.label} (passed)` };
         }
 
+        // 2. Check if there's mentor availability from backend
+        // Note: backend slots are like "09:00", so we can match by startTime
         const isAvailable = availableBackendSlots.some(s => s.startTime === option.value && s.mentorCount > 0);
         
         if (!isAvailable) {
@@ -172,6 +216,7 @@ const getFilteredTimeOptions = (
 
 const TrialBookingPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
 
   // Redux Selectors
   const { user } = useSelector((state: RootState) => state.auth);
@@ -180,6 +225,7 @@ const TrialBookingPage: React.FC = () => {
   const grades = useSelector(selectGrades);
   const subjects = useSelector(selectSubjects);
   const gradesLoading = useSelector(selectGradesLoading);
+  const subjectsLoading = useSelector(selectSubjectsLoading);
   const studentProfile = useSelector((state: RootState) => state.student.profile);
 
   // State
@@ -239,22 +285,33 @@ const TrialBookingPage: React.FC = () => {
   useEffect(() => {
     dispatch(fetchGrades());
     checkExistingBookings();
-  }, [dispatch, checkExistingBookings]);
+    
+    // Safety check: ensure profile is loaded if missing (though ProtectedRoute should handle this)
+    if (!studentProfile && user) {
+        // dispatch(fetchStudentProfile()); // optional
+    }
+  }, [dispatch, checkExistingBookings, studentProfile, user]);
 
   // Pre-fill form from Student Profile
   useEffect(() => {
     if (studentProfile && !hasExistingBooking && !formData.grade) {
+        console.log('📝 Pre-filling form from profile:', studentProfile);
+        
         let targetGradeId = '';
         
+        // 1. Try to find grade ID directly
         if (studentProfile.gradeId) {
             const gradeIdVal = studentProfile.gradeId as unknown as string | { _id: string };
             targetGradeId = typeof gradeIdVal === 'string' 
                 ? gradeIdVal 
                 : gradeIdVal._id || String(gradeIdVal);
-        } else if (studentProfile.academicDetails?.grade && grades.length > 0) {
+        } 
+        // 2. Try to match by grade name if no ID
+        else if (studentProfile.academicDetails?.grade && grades.length > 0) {
             const gradeName = studentProfile.academicDetails.grade;
+            // Try to find a grade object that matches the name
             const matchingGrade = grades.find(g => g.name === gradeName || g.name.includes(gradeName));
-            if (matchingGrade) targetGradeId = matchingGrade._id;
+            if (matchingGrade) targetGradeId = matchingGrade.id;
         }
 
         const targetSyllabus = studentProfile.academicDetails?.syllabus || '';
@@ -267,6 +324,8 @@ const TrialBookingPage: React.FC = () => {
                 grade: targetGradeId,
                 syllabus: targetSyllabus
             }));
+            
+            // Trigger syllabus options population
             dispatch(setSelectedGrade(targetGradeId));
         }
     }
@@ -285,6 +344,7 @@ const TrialBookingPage: React.FC = () => {
         const uniqueSyllabi = [...new Set(syllabiForThisGrade)];
         setAvailableSyllabi(uniqueSyllabi);
         
+        // Auto-select syllabus if there's only one option and it's not set
         if (uniqueSyllabi.length === 1 && !formData.syllabus) {
              setFormData(prev => ({ ...prev, syllabus: uniqueSyllabi[0] }));
         }
@@ -328,6 +388,7 @@ const TrialBookingPage: React.FC = () => {
         } catch (error) {
           console.error('Failed to fetch availability:', error);
           setAvailableBackendSlots([]);
+          // Non-blocking error, we'll just show no slots
         } finally {
           setAvailabilityLoading(false);
         }
@@ -374,6 +435,8 @@ const TrialBookingPage: React.FC = () => {
     };
   }, [dispatch]);
 
+
+
   const getUniqueGrades = (): Grade[] => {
     const uniqueGrades: Grade[] = [];
     const seenNames = new Set();
@@ -390,10 +453,14 @@ const TrialBookingPage: React.FC = () => {
 
   // Event Handlers
   const handleEditBooking = () => {
-    if (!existingBooking) return;
+    if (!existingBooking) {
+      showToast.error('No existing booking found');
+      return;
+    }
 
     const { studentName, studentEmail } = extractStudentInfo(existingBooking, user);
     const matchingGrade = grades.find(grade => {
+      // Use direct ID comparison now that we have gradeId
       return grade.id === existingBooking.subject.gradeId && 
              grade.syllabus === existingBooking.subject.syllabus;
     });
@@ -402,7 +469,7 @@ const TrialBookingPage: React.FC = () => {
       setFormData({
         studentName,
         email: studentEmail,
-        grade: matchingGrade._id,
+        grade: matchingGrade.id,
         syllabus: existingBooking.subject.syllabus,
         subject: existingBooking.subject.id,
         time: existingBooking.preferredTime,
@@ -410,8 +477,11 @@ const TrialBookingPage: React.FC = () => {
       });
       setSelectedDate(new Date(existingBooking.preferredDate).getTime());
       setIsEditing(true);
-      showToast.success('Editing your existing booking.');
+      showToast.success('Editing your existing booking. Make changes and click "Update Booking".');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      showToast.error('Could not load booking details. Please contact support.');
+      console.error('Failed to match grade. Existing booking:', existingBooking);
     }
   };
 
@@ -447,21 +517,42 @@ const TrialBookingPage: React.FC = () => {
     dispatch(setSelectedGrade(gradeId));
   };
 
+  const handleSyllabusSelect = (syllabus: string) => {
+    handleInputChange("syllabus", syllabus);
+  };
+
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    if (!formData.studentName.trim()) newErrors.studentName = "Student name is required";
+    if (!formData.studentName.trim()) {
+      newErrors.studentName = "Student name is required";
+    }
+
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Email is invalid";
     }
 
-    if (!formData.grade) newErrors.grade = "Please select a grade";
-    if (!formData.syllabus) newErrors.syllabus = "Please select a syllabus";
-    if (!formData.subject) newErrors.subject = "Please select a subject";
-    if (!selectedDate) newErrors.date = "Please select a date";
-    if (!formData.time) newErrors.time = "Please select a time";
+    if (!formData.grade) {
+      newErrors.grade = "Please select a grade";
+    }
+
+    if (!formData.syllabus) {
+      newErrors.syllabus = "Please select a syllabus";
+    }
+
+    if (!formData.subject) {
+      newErrors.subject = "Please select a subject";
+    }
+
+    if (!selectedDate) {
+      newErrors.date = "Please select a date";
+    }
+
+    if (!formData.time) {
+      newErrors.time = "Please select a time";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -478,16 +569,26 @@ const TrialBookingPage: React.FC = () => {
       return;
     }
 
+    if (!selectedDate) {
+      setErrors(prev => ({ ...prev, date: 'Please select a date' }));
+      showToast.error('Please select a date');
+      return;
+    }
+
     const bookingData: TrialClassRequest = {
       studentName: formData.studentName,
       email: formData.email,
       grade: formData.grade,
       syllabus: formData.syllabus,
       subject: formData.subject,
-      preferredDate: new Date(selectedDate!).toISOString(),
+      preferredDate: new Date(selectedDate).toISOString(),
       preferredTime: formData.time,
       notes: formData.notes
     };
+
+    const loadingToast = showToast.loading(
+      isEditing ? 'Updating your booking...' : 'Booking your trial class...'
+    );
 
     try {
       if (isEditing && existingBooking) {
@@ -500,8 +601,17 @@ const TrialBookingPage: React.FC = () => {
         await dispatch(requestTrialClass(bookingData)).unwrap();
       }
     } catch (error: unknown) {
+      showToast.dismiss(loadingToast);
       console.error('Booking error:', error);
     }
+  };
+
+  const handleLoginClick = (): void => {
+    navigate("/login");
+  };
+
+  const handleGetStartedClick = (): void => {
+    navigate("/register");
   };
 
   // Render Functions
@@ -513,12 +623,12 @@ const TrialBookingPage: React.FC = () => {
       const timeString = existingBooking.preferredTime;
       
       let hours, minutes;
-      if (timeString.includes('M')) {
+      if (timeString.includes('M')) { // AM/PM format
         const [time, modifier] = timeString.split(' ');
         [hours, minutes] = time.split(':').map(Number);
         if (modifier === 'PM' && hours < 12) hours += 12;
         if (modifier === 'AM' && hours === 12) hours = 0;
-      } else {
+      } else { // 24-hour format
         [hours, minutes] = timeString.split(':').map(Number);
       }
       
@@ -527,7 +637,8 @@ const TrialBookingPage: React.FC = () => {
       const now = new Date();
       const diffInMinutes = (scheduledDate.getTime() - now.getTime()) / (1000 * 60);
       
-      return diffInMinutes <= 15 && diffInMinutes >= -60;
+      // Allow joining 15 minutes before
+      return diffInMinutes <= 15 && diffInMinutes >= -60; // Allow joining up to 1 hour late
     };
 
     const canJoin = isJoinable();
@@ -591,7 +702,8 @@ const TrialBookingPage: React.FC = () => {
           )}
 
           <p className="text-green-700 text-sm mb-4">
-            Your trial class is all set. You can edit the details if needed.
+            Your trial class is all set. You can edit the details if needed, 
+            or wait for the scheduled time to join the session.
           </p>
           <button
             onClick={handleEditBooking}
@@ -605,250 +717,386 @@ const TrialBookingPage: React.FC = () => {
   };
 
   const renderBookingForm = () => (
-    <div className="bg-white rounded-2xl shadow-xl overflow-hidden animate-fade-in">
-        <div className="p-8">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-bold text-gray-900">
-                {isEditing ? "Update Your Booking" : "Book Your Free Trial"}
-              </h2>
-              {isEditing && (
-                <button
-                  onClick={handleCancelEdit}
-                  className="text-gray-500 hover:text-gray-700 font-medium transition"
-                >
-                  Cancel Edit
-                </button>
-              )}
-            </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid md:grid-cols-2 gap-6">
+        <FormField
+          label="Student Name"
+          type="text"
+          value={formData.studentName}
+          onChange={(value: string) => handleInputChange("studentName", value)}
+          placeholder="Enter your full name"
+          required
+          error={errors.studentName}
+        />
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <FormField
-                  label="Student Name"
-                  type="text"
-                  value={formData.studentName}
-                  onChange={(value: string) => handleInputChange("studentName", value)}
-                  placeholder="Enter your full name"
-                  required
-                  error={errors.studentName}
-                />
+        <FormField
+          label="Email Address"
+          type="email"
+          value={formData.email}
+          onChange={(value: string) => handleInputChange("email", value)}
+          placeholder="Enter your email"
+          required
+          error={errors.email}
+        />
+      </div>
 
-                <FormField
-                  label="Email Address"
-                  type="email"
-                  value={formData.email}
-                  onChange={(value: string) => handleInputChange("email", value)}
-                  placeholder="Enter your email"
-                  required
-                  error={errors.email}
-                />
-              </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Select Grade <span className="text-red-500">*</span>
+        </label>
+        <select
+          value={formData.grade}
+          onChange={(e) => handleGradeChange(e.target.value)}
+          className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
+          disabled={gradesLoading}
+        >
+          <option value="">
+            {gradesLoading ? "Loading grades..." : "Select your grade"}
+          </option>
+          {getUniqueGrades().map((grade) => (
+            <option key={grade.id} value={grade.id}>
+              {grade.name}
+            </option>
+          ))}
+        </select>
+        {errors.grade && (
+          <p className="mt-1 text-sm text-red-500">{errors.grade}</p>
+        )}
+      </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Grade <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={formData.grade}
-                  onChange={(e) => handleGradeChange(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-                  disabled={gradesLoading}
-                >
-                  <option value="">
-                    {gradesLoading ? "Loading grades..." : "Select your grade"}
-                  </option>
-                  {getUniqueGrades().map((grade) => (
-                    <option key={grade._id} value={grade._id}>
-                        {grade.name} ({grade.syllabus})
-                    </option>
-                  ))}
-                </select>
-                {errors.grade && (
-                  <p className="mt-1 text-sm text-red-500">{errors.grade}</p>
-                )}
-              </div>
-
-              {formData.grade && availableSyllabi.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Education Board <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.syllabus}
-                    onChange={(e) => handleInputChange("syllabus", e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-                  >
-                    <option value="">Select education board</option>
-                    {availableSyllabi.map((syllabus) => (
-                      <option key={syllabus} value={syllabus}>
-                        {syllabus}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.syllabus && (
-                    <p className="mt-1 text-sm text-red-500">{errors.syllabus}</p>
-                  )}
-                </div>
-              )}
-
-              {formData.grade && formData.syllabus && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Choose Subject <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.subject}
-                    onChange={(e) => handleInputChange("subject", e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-                  >
-                    <option value="">
-                      {gradesLoading ? "Loading subjects..." : "Select a subject"}
-                    </option>
-                    {subjects.map((subject) => (
-                      <option key={subject.id} value={subject.id}>
-                        {subject.subjectName}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.subject && (
-                    <p className="mt-1 text-sm text-red-500">{errors.subject}</p>
-                  )}
-                </div>
-              )}
-
-              <div className="grid md:grid-cols-2 gap-8">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-4">
-                    Choose Date <span className="text-red-500">*</span>
-                  </label>
-                  <Calendar
-                    {...({
-                      selected: selectedDate ? new Date(selectedDate) : undefined,
-                      onSelect: (date: any) => setSelectedDate(date ? date.getTime() : null),
-                      mode: "single"
-                    } as any)}
-                    className="rounded-xl border border-gray-200 p-4"
-                  />
-                  {errors.date && (
-                    <p className="mt-1 text-sm text-red-500">{errors.date}</p>
-                  )}
-                </div>
-
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Choose Time <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={formData.time}
-                      onChange={(e) => handleInputChange("time", e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-                      disabled={availabilityLoading || !selectedDate || !formData.subject}
-                    >
-                      <option value="">
-                        {availabilityLoading 
-                          ? "Checking slots..." 
-                          : (!selectedDate || !formData.subject)
-                            ? "Select subject and date first"
-                            : "Select a time"}
-                      </option>
-                      {getFilteredTimeOptions(selectedDate, availableBackendSlots).map((option) => (
-                        <option
-                          key={option.value}
-                          value={option.value}
-                          disabled={option.disabled}
-                        >
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.time && (
-                      <p className="mt-1 text-sm text-red-500">{errors.time}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                       Special Requirements (Optional)
-                    </label>
-                    <textarea
-                      value={formData.notes}
-                      onChange={(e) => handleInputChange("notes", e.target.value)}
-                      rows={4}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition resize-none"
-                      placeholder="Tell us about your learning goals or any specific topics you want to cover..."
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-6">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className={`w-full py-4 px-6 rounded-xl font-bold text-white transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 active:scale-95 ${
-                    isSubmitting
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700"
-                  }`}
-                >
-                  {isSubmitting
-                    ? isEditing ? "Updating..." : "Processing..."
-                    : isEditing ? "Update Booking" : "Confirm Trial Booking"}
-                </button>
-                <p className="text-center text-xs text-gray-500 mt-4">
-                  By booking, you agree to our Terms of Service and Privacy Policy.
-                </p>
-              </div>
-            </form>
+      {formData.grade && availableSyllabi.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Education Board <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={formData.syllabus}
+            onChange={(e) => handleSyllabusSelect(e.target.value)}
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
+          >
+            <option value="">Select education board</option>
+            {availableSyllabi.map((syllabus) => (
+              <option key={syllabus} value={syllabus}>
+                {syllabus}
+              </option>
+            ))}
+          </select>
+          {errors.syllabus && (
+            <p className="mt-1 text-sm text-red-500">{errors.syllabus}</p>
+          )}
         </div>
-    </div>
+      )}
+
+      {formData.grade && formData.syllabus && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Choose Subject <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={formData.subject}
+            onChange={(e) => handleInputChange("subject", e.target.value)}
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
+            disabled={subjectsLoading || subjects.length === 0}
+          >
+            <option value="">
+              {subjectsLoading
+                ? "Loading subjects..."
+                : subjects.length === 0
+                ? "No subjects available for this combination"
+                : "Select a subject"}
+            </option>
+            {subjects.map((subject) => (
+              <option key={subject.id} value={subject.id}>
+                {subject.subjectName}
+              </option>
+            ))}
+          </select>
+          {errors.subject && (
+            <p className="mt-1 text-sm text-red-500">{errors.subject}</p>
+          )}
+        </div>
+      )}
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Select Date <span className="text-red-500">*</span>
+          </label>
+          <Calendar
+            selectedDate={selectedDate}
+            onDateSelect={setSelectedDate}
+            availableDates={getAvailableDates()}
+          />
+          {errors.date && (
+            <p className="mt-1 text-sm text-red-500">{errors.date}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Preferred Time <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={formData.time}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              handleInputChange("time", e.target.value)
+            }
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition appearance-none cursor-pointer"
+          >
+            {getFilteredTimeOptions(selectedDate, availableBackendSlots).map((option) => (
+              <option
+                key={option.value}
+                value={option.value}
+                disabled={option.disabled || availabilityLoading}
+                className={option.disabled ? "text-gray-400 bg-gray-100 placeholder:text-gray-400" : ""}
+              >
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {availabilityLoading && (
+            <p className="mt-1 text-xs text-teal-600 animate-pulse font-medium">
+              Checking available mentors...
+            </p>
+          )}
+          {errors.time && (
+            <p className="mt-1 text-sm text-red-500">{errors.time}</p>
+          )}
+        </div>
+      </div>
+
+      <FormField
+        label="Additional Notes (Optional)"
+        type="textarea"
+        value={formData.notes}
+        onChange={(value: string) => handleInputChange("notes", value)}
+        placeholder="Any specific topics you want to cover? Learning goals? Questions for the mentor?"
+        rows={4}
+      />
+
+      <div className="space-y-4">
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full bg-gradient-to-r from-teal-500 to-teal-600 text-white py-4 px-6 rounded-xl hover:from-teal-600 hover:to-teal-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+        >
+          {isSubmitting ? (
+            <span className="flex items-center justify-center gap-3">
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              {isEditing ? 'Updating Booking...' : 'Booking Your Class...'}
+            </span>
+          ) : (
+            <span className="flex items-center justify-center gap-3">
+              <Video className="w-5 h-5" />
+              {isEditing ? 'Update Booking' : 'Book Free Trial Class'}
+            </span>
+          )}
+        </button>
+
+        {isEditing && (
+          <button
+            type="button"
+            onClick={handleCancelEdit}
+            className="w-full bg-gray-500 text-white py-3 px-6 rounded-xl hover:bg-gray-600 transition-all duration-200 font-semibold"
+          >
+            Cancel Edit
+          </button>
+        )}
+      </div>
+
+      <p className="text-center text-sm text-gray-500">
+        📧 You'll receive a confirmation email with the meeting link
+        immediately after booking.
+      </p>
+    </form>
   );
 
-  return (
-    <StudentLayout title="Book Free Trial">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid lg:grid-cols-12 gap-12 items-start">
-          {/* Left Column - Benefits & Info */}
-          <div className="lg:col-span-5 space-y-12">
-            <div>
-              <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 leading-tight">
-                Start Your Journey to <span className="text-teal-600">Success</span>
-              </h1>
-              <p className="mt-6 text-lg text-gray-600 leading-relaxed">
-                Experience world-class personalized tutoring. Book your free
-                trial class today and see the difference our expert mentors can
-                make.
-              </p>
-            </div>
+  const renderMainContent = () => {
+    const shouldShowBookingInfo = hasExistingBooking && !isEditing;
+    return shouldShowBookingInfo ? renderBookingInfo() : renderBookingForm();
+  };
 
-            <div className="grid grid-cols-1 gap-8">
-              {BENEFITS.map((benefit) => (
-                <div key={benefit.title} className="flex gap-4">
-                  <div className={`flex-shrink-0 w-12 h-12 rounded-xl bg-${benefit.color}-50 flex items-center justify-center`}>
-                    <benefit.icon className={`w-6 h-6 text-${benefit.color}-600`} />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900">{benefit.title}</h3>
-                    <p className="mt-1 text-gray-600">{benefit.description}</p>
-                  </div>
-                </div>
-              ))}
+  const renderHeaderContent = () => {
+    if (hasExistingBooking && !isEditing) {
+      return {
+        title: "Your Trial Class Booking",
+        description: "You have an upcoming trial class. You can edit your booking details if needed."
+      };
+    } else if (isEditing) {
+      return {
+        title: "Update Your Trial Class",
+        description: "Update your trial class details below"
+      };
+    } else {
+      return {
+        title: "Schedule Your Trial Class",
+        description: "Fill in your details to book a 1-hour free session"
+      };
+    }
+  };
+
+  const headerContent = renderHeaderContent();
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
+      <Header
+        onLoginClick={handleLoginClick}
+        onGetStartedClick={handleGetStartedClick}
+      />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="text-center mb-16">
+          <div className="flex justify-center items-center gap-4 mb-6">
+            <div className="p-4 bg-teal-500 rounded-2xl shadow-lg">
+              <BookOpen className="w-10 h-10 text-white" />
+            </div>
+            <div>
+              <h1 className="text-5xl font-bold text-gray-900 mb-3">
+                Book Your Free Trial Class
+              </h1>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+                Experience personalized 1-on-1 learning with our expert mentors.
+                Discover your potential with zero commitment.
+              </p>
             </div>
           </div>
 
-          {/* Right Column - Booking System */}
-          <div className="lg:col-span-7">
-            {hasExistingBooking && !isEditing 
-                ? renderBookingInfo() 
-                : renderBookingForm()
-            }
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-2xl mx-auto mt-12">
+            {STATS.map((stat, index) => (
+              <div key={index} className="text-center">
+                <div className="text-2xl font-bold text-teal-600">
+                  {stat.number}
+                </div>
+                <div className="text-sm text-gray-600 mt-1">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-2xl shadow-xl p-8">
+              <div className="flex items-center gap-3 mb-8 pb-6 border-b border-gray-200">
+                <CalendarIcon className="w-7 h-7 text-teal-500" />
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {headerContent.title}
+                  </h2>
+                  <p className="text-gray-600 mt-1">
+                    {headerContent.description}
+                  </p>
+
+                  {isEditing && (
+                    <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-yellow-900">
+                            ✏️ Editing your booking
+                          </p>
+                          <p className="text-xs text-yellow-700 mt-1">
+                            Make your changes and click "Update Booking" below
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleCancelEdit}
+                          className="ml-4 px-3 py-1 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600 transition"
+                        >
+                          Cancel Edit
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {renderMainContent()}
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <Star className="w-5 h-5 text-teal-500" />
+                Why Choose Trial Class?
+              </h3>
+              <div className="space-y-5">
+                {BENEFITS.map((benefit, index) => (
+                  <div
+                    key={index}
+                    className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition group"
+                  >
+                    <div
+                      className={`p-2 bg-${benefit.color}-100 rounded-lg group-hover:scale-110 transition`}
+                    >
+                      <benefit.icon
+                        className={`w-4 h-4 text-${benefit.color}-600`}
+                      />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">
+                        {benefit.title}
+                      </h4>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {benefit.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl p-6 text-white">
+              <h3 className="text-xl font-bold mb-4">How It Works</h3>
+              <div className="space-y-4">
+                {HOW_IT_WORKS_STEPS.map((item) => (
+                  <div key={item.step} className="flex items-center gap-3">
+                    <div className="w-6 h-6 bg-white text-teal-600 rounded-full flex items-center justify-center text-xs font-bold">
+                      {item.step}
+                    </div>
+                    <span className="text-sm font-medium">{item.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-3">
+                Need Help?
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Our support team is here to help you with any questions.
+              </p>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500">📧</span>
+                  <span>support@mentora.com</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500">📞</span>
+                  <span>+91 98765 43210</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500">💬</span>
+                  <span>Live Chat Available</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-teal-50 rounded-2xl p-6 border border-teal-200">
+              <div className="text-center">
+                <Shield className="w-8 h-8 text-teal-600 mx-auto mb-2" />
+                <h4 className="font-semibold text-teal-900">100% Secure</h4>
+                <p className="text-sm text-teal-700 mt-1">
+                  Your information is protected and secure
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </StudentLayout>
+    </div>
   );
 };
 
 export default TrialBookingPage;
-
