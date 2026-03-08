@@ -8,6 +8,7 @@ import {
   loginUser,
   refreshAccessToken,
 } from "./authThunks";
+import { fetchStudentProfile } from "../student/studentThunk";
 import { adminLoginThunk } from "../admin/adminThunk";
 
 const storedToken =
@@ -163,6 +164,19 @@ const authSlice = createSlice({
         state.isTrialCompleted = undefined;
         localStorage.removeItem("accessToken");
         localStorage.removeItem("userRole");
+      })
+      .addCase(fetchStudentProfile.fulfilled, (state, action) => {
+        // Synchronize auth state with student profile if student slice is populated
+        if (action.payload && state.user?.role === 'student') {
+          state.user = {
+            ...state.user,
+            ...action.payload,
+            isProfileComplete: action.payload.isProfileCompleted ?? state.user.isProfileComplete,
+            onboardingStatus: action.payload.onboardingStatus ?? state.user.onboardingStatus,
+            hasPaid: action.payload.hasPaid ?? state.user.hasPaid
+          };
+          state.isAuthenticated = true;
+        }
       });
   },
 });

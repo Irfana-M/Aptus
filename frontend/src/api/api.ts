@@ -119,14 +119,26 @@ api.interceptors.response.use(
         processQueue(refreshError, null);
         isRefreshing = false;
 
+        // DEFENSIVE GUARD: Don't wipe tokens if we have a fresh valid session
+        // (e.g. Google OAuth finished while this refresh was backgrounding)
+        const authContext = AuthContext.getInstance();
+        const hasToken = !!authContext.getTokenForCurrentRole();
         
-        const roles = ['admin', 'student', 'mentor'];
-        roles.forEach(role => localStorage.removeItem(`${role}_accessToken`));
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('userId');
-        sessionStorage.clear();
-        
-        console.warn("🚨 api.ts: Refresh failed, CLEARING localStorage!");
+        import("../app/store").then(({ store }) => {
+            const hasUserInRedux = !!store.getState().auth.user;
+            if (hasToken || hasUserInRedux) {
+                console.warn("🛡️ api.ts: Refresh failed but current session looks valid. SKIP CLEARING.");
+                return;
+            }
+
+            console.warn("🚨 api.ts: Refresh failed, CLEARING localStorage!");
+            const roles = ['admin', 'student', 'mentor'];
+            roles.forEach(role => localStorage.removeItem(`${role}_accessToken`));
+            localStorage.removeItem('userRole');
+            localStorage.removeItem('userId');
+            sessionStorage.clear();
+        });
+
         return Promise.reject(refreshError);
       }
     }

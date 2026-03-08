@@ -4,7 +4,6 @@ import { ROUTES } from "../../constants/routes.constants";
 import { toast } from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "../../features/auth/authSlice";
-import { store } from "../../app/store";
 import { AuthContext } from "../../utils/authContext";
 import { StudentOnboardingStatus } from "../../utils/StudentOnboardingGuard";
 
@@ -137,63 +136,15 @@ export default function GoogleCallback() {
             })
           );
 
-          // MONKEY PATCH localStorage to catch the culprit
-          const originalSetItem = localStorage.setItem.bind(localStorage);
-          const originalRemoveItem = localStorage.removeItem.bind(localStorage);
-          
-          localStorage.setItem = (key, val) => {
-            console.log(`📦 localStorage.setItem("${key}", "${val?.substring(0, 10)}...")`);
-            return originalSetItem(key, val);
-          };
-          
-          localStorage.removeItem = (key) => {
-            console.warn(`🗑️ localStorage.removeItem("${key}")`);
-            // Capture stack trace
-            console.warn(new Error("Stack Trace for RemoveItem").stack);
-            return originalRemoveItem(key);
-          };
-
-          console.log(`🔍 DEBUG: Setting localStorage for role "${role}" with value: ${token?.substring(0, 10)}...`);
           localStorage.setItem(`${role}_accessToken`, token as string);
-          
-          // VERIFY LOOP
-          let count = 0;
-          const checkInterval = setInterval(() => {
-            const currentVal = localStorage.getItem(`${role}_accessToken`);
-            if (!currentVal) {
-              console.error(`🚨 ALERT: Token was WIPED at check #${count}`);
-              clearInterval(checkInterval);
-            } else if (count > 20) {
-              clearInterval(checkInterval);
-            }
-            count++;
-          }, 10);
-
           localStorage.setItem("userRole", role as string);
           localStorage.setItem("userId", id || "");
           
-          console.log(`✅ Google Auth state committed. Role: ${role}, Status: ${onboardingStatus}`);
           localStorage.setItem("hasPaid", String(!!isPaid));
           localStorage.setItem("isTrialCompleted", String(!!isTrialCompleted));
           localStorage.setItem(
             "isProfileComplete",
             String(!!isProfileComplete),
-          );
-
-          console.log("Tokens and user info saved to localStorage");
-          console.log("FINAL localStorage CHECK BEFORE REDIRECT:");
-          console.log(`  student_accessToken: ${localStorage.getItem("student_accessToken")?.substring(0, 10)}...`);
-          console.log(`  mentor_accessToken: ${localStorage.getItem("mentor_accessToken")?.substring(0, 10)}...`);
-          console.log(`  userRole: ${localStorage.getItem("userRole")}`);
-
-          console.log("Google OAuth successful:", { user, token: token?.substring(0, 10) + "..." });
-          console.log(
-            "Token stored in Redux:",
-            store.getState().auth.accessToken?.substring(0, 10) + "...",
-          );
-          console.log(
-            "Token stored in localStorage (via role):",
-            localStorage.getItem(`${role}_accessToken`)?.substring(0, 10) + "...",
           );
 
           const redirectPath = getRedirectPath(
@@ -204,7 +155,6 @@ export default function GoogleCallback() {
             isTrialCompleted,
           );
 
-          console.log(`🎯 Redirecting to: ${redirectPath}`);
           toast.success(`Google ${role} login successful!`);
           setTimeout(() => {
             navigate(redirectPath, { replace: true });
