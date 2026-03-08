@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { AUTH_ROUTES } from "../constants/routes.js";
 import passport from "../config/passport.config.js";
-import { generateAccessToken } from "../utils/jwt.util.js";
+import { generateAccessToken, generateRefreshToken } from "../utils/jwt.util.js";
+import { config } from "../config/app.config.js";
 import { env } from "../utils/env.js";
 import type { Request, Response, NextFunction } from "express";
 import { container } from "../inversify.config.js";
@@ -104,11 +105,21 @@ router.get(
           return res.redirect(`${env.frontend.loginUrl}?error=no_email`);
         }
 
-        const token = generateAccessToken({
+        const tokenPayload = {
           email: userEmail,
           id: googleUser.id || `google-${Date.now()}`,
           role: role as "student" | "mentor",
-        });
+        };
+
+        const token = generateAccessToken(tokenPayload);
+        const refreshToken = generateRefreshToken(tokenPayload);
+
+        // Set refresh token cookie consistently with normal login
+        res.cookie(
+          "refreshToken",
+          refreshToken,
+          config.cookie.refreshToken
+        );
 
         console.log(`Google auth successful for ${role}: ${userEmail}`);
 

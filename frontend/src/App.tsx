@@ -138,12 +138,19 @@ const AppContent: React.FC = () => {
         // 2. Refresh User if on user path or generic refresh needed
         // Fallback to genericToken if role-specific tokens are missing
         const isGoogleCallbackPath = path === ROUTES.AUTH.GOOGLE_CALLBACK;
-
-        if ((studentToken || mentorToken || (genericToken && !isAdminPath)) && (!isAdminPath) && !isGoogleCallbackPath) {
-            import("./features/auth/authThunks").then(({ refreshAccessToken }) => {
-                dispatch(refreshAccessToken());
-            });
-        }
+        
+        // Skip refresh if we already have the user in state (e.g. just logged in via Google)
+        // or if we are on the callback path
+        import("./app/store").then(({ store }) => {
+            const state = store.getState();
+            const hasUser = !!state.auth.user;
+            
+            if ((studentToken || mentorToken || (genericToken && !isAdminPath)) && (!isAdminPath) && !isGoogleCallbackPath && !hasUser) {
+                import("./features/auth/authThunks").then(({ refreshAccessToken }) => {
+                    dispatch(refreshAccessToken());
+                });
+            }
+        });
     }, [dispatch]);
 
   return (
