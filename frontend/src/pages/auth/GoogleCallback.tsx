@@ -99,10 +99,12 @@ export default function GoogleCallback() {
         try {
           // Calculate onboarding status for students
           let onboardingStatus: string | undefined = undefined;
-          if (role === 'student') {
+          if (role === "student") {
             onboardingStatus = StudentOnboardingStatus.REGISTERED;
             if (isProfileComplete) {
-              onboardingStatus = isTrialCompleted ? StudentOnboardingStatus.TRIAL_BOOKED : StudentOnboardingStatus.PROFILE_COMPLETE;
+              onboardingStatus = isTrialCompleted
+                ? StudentOnboardingStatus.TRIAL_BOOKED
+                : StudentOnboardingStatus.PROFILE_COMPLETE;
             }
             if (isPaid) {
               onboardingStatus = StudentOnboardingStatus.SUBSCRIBED;
@@ -110,40 +112,37 @@ export default function GoogleCallback() {
           }
 
           const user = {
-            email,
-            role,
-            isProfileComplete,
-            approvalStatus: approvalStatus || "pending",
-            isPaid: isPaid || false,
-            isTrialCompleted,
+            email: email, // Assuming 'email' from params is the userEmail
+            role: role,
+            id: id || "",
             _id: id || "",
-            onboardingStatus,
+            fullName: email.split("@")[0],
+            isProfileComplete: isProfileComplete,
+            isTrialCompleted: isTrialCompleted,
+            hasPaid: isPaid,
+            onboardingStatus: onboardingStatus,
+            approvalStatus: approvalStatus || "pending", // Keep approvalStatus for mentors
           };
 
-          // Update AuthContext role explicitly for this tab session
-          AuthContext.getInstance().setRole(role);
-
-          // dispatch(
-          //   setCredentials({
-          //     user,
-          //     accessToken: token,
-          //   })
-          // );
-
+          // 6. Update context and Redux
+          AuthContext.getInstance().setRole(role as "student" | "mentor" | "admin");
+          
           dispatch(
-            setCredentials({
-              user,
+            setCredentials({ 
+              user, 
               accessToken: token,
               isProfileComplete,
               hasPaid: isPaid,
-              isTrialCompleted,
-            }),
+              isTrialCompleted
+            })
           );
 
-          localStorage.setItem(`${role}_accessToken`, token); // ← THIS IS CRITICAL
+          localStorage.setItem(`${role}_accessToken`, token);
           localStorage.setItem("userRole", role);
           localStorage.setItem("userId", id || "");
-
+          
+          console.log(`✅ Google Auth state committed. Role: ${role}, Status: ${onboardingStatus}`);
+          console.log("Token stored in localStorage key:", `${role}_accessToken`);
           localStorage.setItem("hasPaid", String(!!isPaid));
           localStorage.setItem("isTrialCompleted", String(!!isTrialCompleted));
           localStorage.setItem(
@@ -173,7 +172,9 @@ export default function GoogleCallback() {
 
           console.log(`🎯 Redirecting to: ${redirectPath}`);
           toast.success(`Google ${role} login successful!`);
-          navigate(redirectPath, { replace: true });
+          setTimeout(() => {
+            navigate(redirectPath, { replace: true });
+          }, 50);
         } catch (error) {
           console.error("Google auth processing error:", error);
           toast.error("Failed to process Google login");

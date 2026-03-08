@@ -105,9 +105,12 @@ router.get(
           return res.redirect(`${env.frontend.loginUrl}?error=no_email`);
         }
 
+        // Get the MongoDB _id if present (preferred for tokens)
+        const userId = googleUser._id ? googleUser._id.toString() : (googleUser.id || `google-${Date.now()}`);
+
         const tokenPayload = {
           email: userEmail,
-          id: googleUser.id || `google-${Date.now()}`,
+          id: userId,
           role: role as "student" | "mentor",
         };
 

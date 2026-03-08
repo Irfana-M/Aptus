@@ -19,18 +19,43 @@ passport.use(
         const email = profile.emails?.[0]?.value;
         if (!email) return done(new Error("No email found"), undefined);
 
-        let user =
-          (await StudentModel.findOne({ email })) ||
-          (await MentorModel.findOne({ email }));
+        // Decode state to get requested role
+        let requestedRole = 'student';
+        if (req.query && req.query.state) {
+          try {
+            const stateData = JSON.parse(Buffer.from(req.query.state as string, 'base64').toString());
+            requestedRole = stateData.role || 'student';
+          } catch (e) {
+            console.warn('Passport: Failed to decode state, defaulting to student');
+          }
+        }
 
+        // Check BOTH collections regardless of requested role (to find existing users)
+        let user: any = await StudentModel.findOne({ email });
         if (!user) {
-          user = await StudentModel.create({
-            fullName: profile.displayName,
-            email,
-            password: "",
-            phoneNumber: "",
-            isVerified: true,
-          });
+          user = await MentorModel.findOne({ email });
+        }
+
+        // If user doesn't exist, create them in the CORRECT collection
+        if (!user) {
+          if (requestedRole === 'mentor') {
+            user = await MentorModel.create({
+              fullName: profile.displayName,
+              email,
+              password: "",
+              phoneNumber: "",
+              isVerified: true,
+              approvalStatus: "approved", 
+            });
+          } else {
+            user = await StudentModel.create({
+              fullName: profile.displayName,
+              email,
+              password: "",
+              phoneNumber: "",
+              isVerified: true,
+            });
+          }
         }
 
         done(null, user);

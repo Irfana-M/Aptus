@@ -89,19 +89,25 @@ export const refreshAccessToken = createAsyncThunk<
     const isAuthError = (err as any)?.response?.status === 401;
     
     if (isAuthError) {
-        console.warn("🔐 Refresh failed with 401. Clearing tokens.");
-        const tokens = [
-          "accessToken", 
-          "student_accessToken", 
-          "mentor_accessToken", 
-          "admin_accessToken", 
-          "userRole",
-          "userId",
-          "isTrialCompleted", 
-          "hasPaid",
-          "isProfileComplete"
-        ];
-        tokens.forEach(key => localStorage.removeItem(key));
+        // Double check state before clearing
+        const currentState = store.getState() as RootState;
+        if (!currentState.auth.user) {
+            console.warn("🔐 Refresh failed with 401. No active session, clearing tokens.");
+            const tokens = [
+              "accessToken", 
+              "student_accessToken", 
+              "mentor_accessToken", 
+              "admin_accessToken", 
+              "userRole",
+              "userId",
+              "isTrialCompleted", 
+              "hasPaid",
+              "isProfileComplete"
+            ];
+            tokens.forEach(key => localStorage.removeItem(key));
+        } else {
+            console.warn("🛡️ Refresh failed with 401 but an active session exists. Skipping token wipe.");
+        }
     }
     
     return rejectWithValue(

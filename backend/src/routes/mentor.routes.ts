@@ -10,6 +10,7 @@ import { TYPES } from "../types.js";
 import { MentorTrialClassController } from "../controllers/mentorTrialClass.controller.js";
 import { CourseController } from "../controllers/course.controller.js";
 import { StudyMaterialController } from "../controllers/studyMaterial.controller.js";
+import { MentorDashboardController } from "../controllers/mentorDashboard.controller.js";
 
 const mentorRouter = Router();
 
@@ -17,6 +18,7 @@ const mentorController = container.get<MentorController>(TYPES.MentorController)
 const mentorTrialClassController = container.get<MentorTrialClassController>(TYPES.MentorTrialClassController);
 const courseController = container.get<CourseController>(TYPES.CourseController);
 const studyMaterialController = container.get<StudyMaterialController>(TYPES.StudyMaterialController);
+const mentorDashboardController = container.get<MentorDashboardController>(TYPES.MentorDashboardController);
 
 // validateBody, updateMentorProfileSchema removed as they are temporarily unused in this file
 
@@ -184,6 +186,14 @@ mentorRouter.get(
   requireAuth,
   requireRole("mentor"),
   studyMaterialController.getDownloadUrl.bind(studyMaterialController)
+);
+ 
+// === DASHBOARD ROUTES ===
+mentorRouter.get(
+  MENTOR_ROUTES.DASHBOARD,
+  requireAuth,
+  requireRole("mentor"),
+  mentorDashboardController.getDashboardData.bind(mentorDashboardController)
 );
 
 export default mentorRouter;

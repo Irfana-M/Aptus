@@ -334,7 +334,7 @@ const TrialBookingPage: React.FC = () => {
   // Form Data Effects
   useEffect(() => {
     if (formData.grade) {
-      const selectedGrade = grades.find((grade) => grade.id === formData.grade);
+      const selectedGrade = grades.find((grade) => grade._id === formData.grade);
       if (selectedGrade) {
         const gradeName = selectedGrade.name;
         const syllabiForThisGrade = grades
@@ -356,7 +356,7 @@ const TrialBookingPage: React.FC = () => {
 
   useEffect(() => {
     if (formData.grade && formData.syllabus) {
-      const selectedGrade = grades.find((grade) => grade.id === formData.grade);
+      const selectedGrade = grades.find((grade) => grade._id === formData.grade);
       if (selectedGrade) {
         const gradeNumber = extractGradeNumber(selectedGrade.name);
         if (gradeNumber) {
@@ -461,7 +461,7 @@ const TrialBookingPage: React.FC = () => {
     const { studentName, studentEmail } = extractStudentInfo(existingBooking, user);
     const matchingGrade = grades.find(grade => {
       // Use direct ID comparison now that we have gradeId
-      return grade.id === existingBooking.subject.gradeId && 
+      return grade._id === existingBooking.subject.gradeId && 
              grade.syllabus === existingBooking.subject.syllabus;
     });
     
@@ -472,7 +472,7 @@ const TrialBookingPage: React.FC = () => {
         email: studentEmail,
         grade: matchingGrade._id,
         syllabus: existingBooking.subject.syllabus,
-        subject: existingBooking.subject.id,
+        subject: existingBooking.subject._id || (existingBooking.subject as any).id,
         time: existingBooking.preferredTime,
         notes: existingBooking.notes || ''
       });
@@ -755,7 +755,7 @@ const TrialBookingPage: React.FC = () => {
             {gradesLoading ? "Loading grades..." : "Select your grade"}
           </option>
           {getUniqueGrades().map((grade) => (
-            <option key={grade.id} value={grade.id}>
+            <option key={grade._id} value={grade._id}>
               {grade.name}
             </option>
           ))}
@@ -807,7 +807,7 @@ const TrialBookingPage: React.FC = () => {
                 : "Select a subject"}
             </option>
             {subjects.map((subject) => (
-              <option key={subject.id} value={subject.id}>
+              <option key={subject._id} value={subject._id}>
                 {subject.subjectName}
               </option>
             ))}

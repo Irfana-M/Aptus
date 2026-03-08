@@ -84,4 +84,5 @@ export const MENTOR_ROUTES = {
   STUDENTS_ONE_TO_ONE: "/students/one-to-one",
   BATCHES: "/batches",
   ASSIGNMENTS: "/assignments",
+  DASHBOARD: "/dashboard",
 };

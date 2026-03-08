@@ -8,6 +8,7 @@ export interface FeedbackRequest {
 export type { Subject, Grade };
 
 export interface TrialClassStudent {
+  _id?: string;
   id: string;
   fullName: string;
   email: string;
@@ -15,6 +16,7 @@ export interface TrialClassStudent {
 }
 
 export interface TrialClassSubject {
+  _id?: string;
   id: string;
   subjectName: string;
   syllabus: string;

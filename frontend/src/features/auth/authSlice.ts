@@ -10,16 +10,17 @@ import {
 } from "./authThunks";
 import { adminLoginThunk } from "../admin/adminThunk";
 
-const hasToken = !!(
-  localStorage.getItem("student_accessToken") || 
-  localStorage.getItem("mentor_accessToken") || 
-  localStorage.getItem("accessToken")
-);
+const storedToken =
+  localStorage.getItem("student_accessToken") ||
+  localStorage.getItem("mentor_accessToken") ||
+  localStorage.getItem("accessToken");
+
+const hasToken = !!storedToken;
 
 const initialState: AuthState = {
   loading: hasToken, // Initialize as loading if we have a token to rehydrate
   user: null,
-  accessToken: null,
+  accessToken: storedToken,
   error: null,
   isVerified: false,
   isAuthenticated: false,
@@ -54,6 +55,7 @@ const authSlice = createSlice({
       state.isProfileComplete = isProfileComplete;
       state.hasPaid = hasPaid;
       state.isTrialCompleted = isTrialCompleted;
+      state.loading = false;
       state.error = null;
     },
     updateProfileStatus: (state, action) => {
@@ -130,9 +132,16 @@ const authSlice = createSlice({
       })
       .addCase(refreshAccessToken.rejected, (state) => {
         state.loading = false;
-        state.accessToken = null;
-        state.user = null;
-        state.isAuthenticated = false;
+        // ONLY clear authentication if we don't already have a valid user
+        // This prevents a failed background refresh of a STALE session
+        // from wiping out a NEWLY successful session (e.g. from Google OAuth)
+        if (!state.user) {
+          state.accessToken = null;
+          state.user = null;
+          state.isAuthenticated = false;
+        } else {
+          console.warn("🛡️ Preserving active session despite refresh failure");
+        }
       })
       .addCase(logoutUser.fulfilled, (state) => {
         state.user = null;

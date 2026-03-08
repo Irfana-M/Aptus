@@ -15,15 +15,19 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const authContext = AuthContext.getInstance();
+    
+    // Ensure role is synchronized with current path for the interceptor
+    authContext.setRoleFromPath(window.location.pathname);
+    
     const activeRole = authContext.getCurrentRole();
     const token = authContext.getTokenForCurrentRole();
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      
-      if (activeRole) {
-        config.headers['X-User-Role'] = activeRole;
-      }
+    }
+
+    if (activeRole) {
+      config.headers['X-User-Role'] = activeRole;
     }
     
     return config;
