@@ -48,6 +48,7 @@ export const Calendar: React.FC<CalendarProps> = ({
     
     // Pass the timestamp (number) to match the expected type
     onDateSelect(selectedDateObj.getTime());
+    console.log('📅 Date selected in Calendar component:', selectedDateObj.toDateString(), 'Timestamp:', selectedDateObj.getTime());
   };
   
   const days: JSX.Element[] = [];

@@ -335,6 +335,7 @@ const TrialBookingPage: React.FC = () => {
   useEffect(() => {
     if (formData.grade) {
       const selectedGrade = grades.find((grade) => grade.id === formData.grade || grade._id === formData.grade);
+      console.log('🔍 Grade selected:', formData.grade, 'Matched object:', selectedGrade);
       if (selectedGrade) {
         const gradeName = selectedGrade.name;
         const syllabiForThisGrade = grades
@@ -342,6 +343,7 @@ const TrialBookingPage: React.FC = () => {
           .map((grade) => grade.syllabus);
 
         const uniqueSyllabi = [...new Set(syllabiForThisGrade)];
+        console.log('📚 Available syllabi for grade:', uniqueSyllabi);
         setAvailableSyllabi(uniqueSyllabi);
         
         // Auto-select syllabus if there's only one option and it's not set
@@ -359,6 +361,7 @@ const TrialBookingPage: React.FC = () => {
       const selectedGrade = grades.find((grade) => grade.id === formData.grade || grade._id === formData.grade);
       if (selectedGrade) {
         const gradeNumber = extractGradeNumber(selectedGrade.name);
+        console.log('📖 Fetching subjects for grade number:', gradeNumber, 'Syllabus:', formData.syllabus);
         if (gradeNumber) {
           dispatch(
             fetchSubjectsByGradeAndSyllabus({
@@ -379,6 +382,7 @@ const TrialBookingPage: React.FC = () => {
           setAvailabilityLoading(true);
           const d = new Date(selectedDate);
           const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          console.log('⏰ Fetching availability for subject:', formData.subject, 'Date:', dateStr);
           const result = await dispatch(fetchAvailableTrialSlots({ 
             subjectId: formData.subject, 
             date: dateStr 
@@ -386,9 +390,8 @@ const TrialBookingPage: React.FC = () => {
           
           setAvailableBackendSlots(result.slots || []);
         } catch (error) {
-          console.error('Failed to fetch availability:', error);
+          console.error('❌ Failed to fetch availability:', error);
           setAvailableBackendSlots([]);
-          // Non-blocking error, we'll just show no slots
         } finally {
           setAvailabilityLoading(false);
         }
@@ -400,12 +403,37 @@ const TrialBookingPage: React.FC = () => {
     fetchAvailability();
   }, [formData.subject, selectedDate, dispatch]);
 
+  // Clear validation errors when data changes
+  useEffect(() => {
+    if (selectedDate && errors.date) {
+        setErrors(prev => ({ ...prev, date: undefined }));
+    }
+  }, [selectedDate, errors.date]);
+
+  useEffect(() => {
+    if (formData.time && errors.time) {
+        setErrors(prev => ({ ...prev, time: undefined }));
+    }
+  }, [formData.time, errors.time]);
+
+  useEffect(() => {
+    if (formData.subject && errors.subject) {
+        setErrors(prev => ({ ...prev, subject: undefined }));
+    }
+  }, [formData.subject, errors.subject]);
+
+  useEffect(() => {
+    if (formData.grade && errors.grade) {
+        setErrors(prev => ({ ...prev, grade: undefined }));
+    }
+  }, [formData.grade, errors.grade]);
+
   // Booking Status Effects
   useEffect(() => {
     if (bookingStatus === 'success') {
       const message = isEditing 
-        ? ' Trial class updated successfully! Check your email for updates.'
-        : ' Trial class booked successfully! Check your email for the meeting link.';
+        ? 'Trial class updated successfully! Check your email for updates.'
+        : 'Trial class booked successfully! Check your email for the meeting link.';
       
       showToast.success(message);
       resetForm();
@@ -893,12 +921,12 @@ const TrialBookingPage: React.FC = () => {
           {isSubmitting ? (
             <span className="flex items-center justify-center gap-3">
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              {isEditing ? 'Updating Booking...' : 'Booking Your Class...'}
+              {isEditing ? 'Updating Booking...' : 'Confirming Trial booking...'}
             </span>
           ) : (
             <span className="flex items-center justify-center gap-3">
               <Video className="w-5 h-5" />
-              {isEditing ? 'Update Booking' : 'Book Free Trial Class'}
+              {isEditing ? 'Update Booking' : 'Confirm Trial Booking'}
             </span>
           )}
         </button>
