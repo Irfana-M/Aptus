@@ -84,9 +84,11 @@ export const refreshAccessToken = createAsyncThunk<
         isTrialCompleted,
     };
   } catch (err: unknown) {
-    // ONLY clear tokens if it's a definitive authentication failure (401)
+    // ONLY clear tokens if it's a definitive authentication failure (401/403)
     // and not a network error or potential race condition with a new login
-    const isAuthError = (err as any)?.response?.status === 401;
+    // @ts-ignore
+    const errStatus = err?.response?.status;
+    const isAuthError = errStatus === 401 || errStatus === 403;
     
     if (isAuthError) {
         // Double check state before clearing

@@ -132,12 +132,17 @@ api.interceptors.response.use(
                 return;
             }
 
-            console.warn("🚨 api.ts: Refresh failed, CLEARING localStorage!");
-            const roles = ['admin', 'student', 'mentor'];
-            roles.forEach(role => localStorage.removeItem(`${role}_accessToken`));
-            localStorage.removeItem('userRole');
-            localStorage.removeItem('userId');
-            sessionStorage.clear();
+            const errorStatus = (refreshError as any).response?.status;
+            if (errorStatus === 401 || errorStatus === 403) {
+                console.warn(`🚨 api.ts: Refresh failed with ${errorStatus}, CLEARING localStorage!`);
+                const roles = ['admin', 'student', 'mentor'];
+                roles.forEach(role => localStorage.removeItem(`${role}_accessToken`));
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('userId');
+                sessionStorage.clear();
+            } else {
+                console.warn("🛡️ api.ts: Network/CORS error during refresh. SKIP CLEARING.");
+            }
         });
 
         return Promise.reject(refreshError);
