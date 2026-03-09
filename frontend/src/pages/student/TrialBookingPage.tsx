@@ -38,7 +38,6 @@ import {
 } from "../../features/trial/student/studentTrialSelectors";
 import type { AppDispatch, RootState } from "../../app/store";
 import type {
-  Grade,
   TrialClassRequest,
   TrialClassResponse,
   TrialClassStudent,
@@ -297,36 +296,18 @@ const TrialBookingPage: React.FC = () => {
     if (studentProfile && !hasExistingBooking && !formData.grade) {
         console.log('📝 Pre-filling form from profile:', studentProfile);
         
-        let targetGradeId = '';
-        
-        // 1. Try to find grade ID directly
-        if (studentProfile.gradeId) {
-            const gradeIdVal = studentProfile.gradeId as unknown as string | { _id: string };
-            targetGradeId = typeof gradeIdVal === 'string' 
-                ? gradeIdVal 
-                : gradeIdVal._id || String(gradeIdVal);
-        } 
-        // 2. Try to match by grade name if no ID
-        else if (studentProfile.academicDetails?.grade && grades.length > 0) {
-            const gradeName = studentProfile.academicDetails.grade;
-            // Try to find a grade object that matches the name
-            const matchingGrade = grades.find(g => g.name === gradeName || g.name.includes(gradeName));
-            if (matchingGrade) targetGradeId = (matchingGrade.id || matchingGrade._id) as string;
-        }
-
-        const targetSyllabus = studentProfile.academicDetails?.syllabus || '';
-
-        if (targetGradeId) {
-            setFormData(prev => ({
-                ...prev,
-                studentName: studentProfile.fullName || prev.studentName,
-                email: studentProfile.email || prev.email,
-                grade: targetGradeId,
-                syllabus: targetSyllabus
-            }));
-            
-            // Trigger syllabus options population
-            dispatch(setSelectedGrade(targetGradeId));
+        // 1. Try to match by grade name from academic details
+        if (studentProfile.academicDetails?.grade) {
+            const gradeNum = extractGradeNumber(studentProfile.academicDetails.grade);
+            if (gradeNum) {
+                setFormData(prev => ({
+                    ...prev,
+                    studentName: studentProfile.fullName || prev.studentName,
+                    email: studentProfile.email || prev.email,
+                    grade: gradeNum.toString(),
+                    syllabus: studentProfile.academicDetails?.syllabus || ''
+                }));
+            }
         }
     }
   }, [studentProfile, grades, hasExistingBooking, formData.grade, dispatch]);
@@ -334,45 +315,37 @@ const TrialBookingPage: React.FC = () => {
   // Form Data Effects
   useEffect(() => {
     if (formData.grade) {
-      const selectedGrade = grades.find((grade) => grade.id === formData.grade || grade._id === formData.grade);
-      console.log('🔍 Grade selected:', formData.grade, 'Matched object:', selectedGrade);
-      if (selectedGrade) {
-        const gradeName = selectedGrade.name;
-        const syllabiForThisGrade = grades
-          .filter((grade) => grade.name === gradeName)
-          .map((grade) => grade.syllabus);
+      const gradeNum = parseInt(formData.grade);
+      const syllabi = grades
+        .filter(g => extractGradeNumber(g.name) === gradeNum)
+        .map(g => g.syllabus)
+        .filter((s): s is string => !!s);
+      
+      const uniqueSyllabi = [...new Set(syllabi)];
+      console.log('📚 Unique boards for grade', gradeNum, ':', uniqueSyllabi);
+      setAvailableSyllabi(uniqueSyllabi);
 
-        const uniqueSyllabi = [...new Set(syllabiForThisGrade)];
-        console.log('📚 Available syllabi for grade:', uniqueSyllabi);
-        setAvailableSyllabi(uniqueSyllabi);
-        
-        // Auto-select syllabus if there's only one option and it's not set
-        if (uniqueSyllabi.length === 1 && !formData.syllabus) {
-             setFormData(prev => ({ ...prev, syllabus: uniqueSyllabi[0] }));
-        }
+      // If existing syllabus is not in the new list, clear it
+      if (formData.syllabus && !uniqueSyllabi.includes(formData.syllabus)) {
+        setFormData(prev => ({ ...prev, syllabus: '' }));
       }
     } else {
       setAvailableSyllabi([]);
     }
-  }, [formData.grade, grades, formData.syllabus]);
+  }, [formData.grade, grades]);
 
   useEffect(() => {
     if (formData.grade && formData.syllabus) {
-      const selectedGrade = grades.find((grade) => grade.id === formData.grade || grade._id === formData.grade);
-      if (selectedGrade) {
-        const gradeNumber = extractGradeNumber(selectedGrade.name);
-        console.log('📖 Fetching subjects for grade number:', gradeNumber, 'Syllabus:', formData.syllabus);
-        if (gradeNumber) {
-          dispatch(
-            fetchSubjectsByGradeAndSyllabus({
-              grade: gradeNumber,
-              syllabus: formData.syllabus,
-            })
-          );
-        }
-      }
+      const gradeNum = parseInt(formData.grade);
+      console.log('📖 Fetching subjects for grade:', gradeNum, 'Syllabus:', formData.syllabus);
+      dispatch(
+        fetchSubjectsByGradeAndSyllabus({
+          grade: gradeNum,
+          syllabus: formData.syllabus,
+        })
+      );
     }
-  }, [formData.grade, formData.syllabus, grades, dispatch]);
+  }, [formData.grade, formData.syllabus, dispatch]);
 
   // Fetch real-time availability
   useEffect(() => {
@@ -465,18 +438,9 @@ const TrialBookingPage: React.FC = () => {
 
 
 
-  const getUniqueGrades = (): Grade[] => {
-    const uniqueGrades: Grade[] = [];
-    const seenNames = new Set();
-
-    grades.forEach((grade) => {
-      if (!seenNames.has(grade.name)) {
-        seenNames.add(grade.name);
-        uniqueGrades.push(grade);
-      }
-    });
-    
-    return uniqueGrades;
+  const getUniqueGradeNumbers = (): number[] => {
+    const numbers = grades.map(g => extractGradeNumber(g.name)).filter((n): n is number => n !== null);
+    return [...new Set(numbers)].sort((a, b) => a - b);
   };
 
   // Event Handlers
@@ -487,18 +451,14 @@ const TrialBookingPage: React.FC = () => {
     }
 
     const { studentName, studentEmail } = extractStudentInfo(existingBooking, user);
-    const matchingGrade = grades.find(grade => {
-      // Use direct ID comparison now that we have gradeId
-      const targetId = existingBooking.subject.gradeId;
-      return (grade.id === targetId || grade._id === targetId) && 
-             grade.syllabus === existingBooking.subject.syllabus;
-    });
+    if (existingBooking) {
+      const gradeNum = existingBooking.subject.grade; // assuming grade is numeric or name string
+      const gradeValue = typeof gradeNum === 'string' ? extractGradeNumber(gradeNum) : gradeNum;
 
-    if (matchingGrade) {
       setFormData({
         studentName,
         email: studentEmail,
-        grade: (matchingGrade.id || matchingGrade._id) as string,
+        grade: gradeValue?.toString() || '',
         syllabus: existingBooking.subject.syllabus,
         subject: existingBooking.subject.id || (existingBooking.subject as any)._id,
         time: existingBooking.preferredTime,
@@ -508,9 +468,6 @@ const TrialBookingPage: React.FC = () => {
       setIsEditing(true);
       showToast.success('Editing your existing booking. Make changes and click "Update Booking".');
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      showToast.error('Could not load booking details. Please contact support.');
-      console.error('Failed to match grade. Existing booking:', existingBooking);
     }
   };
 
@@ -781,11 +738,11 @@ const TrialBookingPage: React.FC = () => {
             disabled={gradesLoading}
           >
             <option value="">
-              {gradesLoading ? "Loading grades..." : "Select your grade"}
+              {gradesLoading ? "Loading..." : "Select grade"}
             </option>
-            {getUniqueGrades().map((grade) => (
-              <option key={grade.id || grade._id} value={grade.id || grade._id}>
-                {grade.name}
+            {getUniqueGradeNumbers().map((num) => (
+              <option key={num} value={num.toString()}>
+                Grade {num}
               </option>
             ))}
           </select>

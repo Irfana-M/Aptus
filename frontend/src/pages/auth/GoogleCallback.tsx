@@ -5,7 +5,6 @@ import { toast } from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "../../features/auth/authSlice";
 import { AuthContext } from "../../utils/authContext";
-import { StudentOnboardingStatus } from "../../utils/StudentOnboardingGuard";
 
 export default function GoogleCallback() {
   const navigate = useNavigate();
@@ -97,21 +96,8 @@ export default function GoogleCallback() {
       if (token && email && role) {
         try {
           // Calculate onboarding status for students
-          let onboardingStatus: string | undefined = undefined;
-          if (role === "student") {
-            onboardingStatus = StudentOnboardingStatus.REGISTERED;
-            if (isProfileComplete) {
-              onboardingStatus = isTrialCompleted
-                ? StudentOnboardingStatus.TRIAL_BOOKED
-                : StudentOnboardingStatus.PROFILE_COMPLETE;
-            }
-            if (isPaid) {
-              onboardingStatus = StudentOnboardingStatus.SUBSCRIBED;
-            }
-          }
-
           const user = {
-            email: email, // Assuming 'email' from params is the userEmail
+            email: email,
             role: role,
             id: id || "",
             _id: id || "",
@@ -119,8 +105,7 @@ export default function GoogleCallback() {
             isProfileComplete: isProfileComplete,
             isTrialCompleted: isTrialCompleted,
             hasPaid: isPaid,
-            onboardingStatus: onboardingStatus,
-            approvalStatus: approvalStatus || "pending", // Keep approvalStatus for mentors
+            approvalStatus: approvalStatus || "pending",
           };
 
           // 6. Update context and Redux
@@ -129,16 +114,16 @@ export default function GoogleCallback() {
           );
 
           // Keep Redux + localStorage in sync — use the SAME key everyone expects
-          localStorage.setItem("accessToken", token as string); // ← change here
+          localStorage.setItem("accessToken", token as string);
           localStorage.setItem("userRole", role as string);
 
-          // Optional: also keep role-specific for safety (but not required)
+          // Optional: also keep role-specific for safety
           localStorage.setItem(`${role}_accessToken`, token as string);
 
           dispatch(
             setCredentials({
               user,
-              accessToken: token, // same token
+              accessToken: token,
               isProfileComplete,
               hasPaid: isPaid,
               isTrialCompleted,

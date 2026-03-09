@@ -110,29 +110,26 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Fetch student profile to get accurate onboardingStatus when accessing student paths
   useEffect(() => {
     const studentToken = localStorage.getItem("student_accessToken");
-    const status =
-      studentProfile?.onboardingStatus ?? authState.user?.onboardingStatus;
 
     // SKIP profile fetch if on a call route - those components handle their own data
     const isCallRoute =
       path.includes("/trial-class/") && path.endsWith("/call");
 
-    // If status is missing, we need to fetch the profile to determine the onboarding state
+    // If profile is missing, we need to fetch it to determine accurate onboarding state
     if (
       pathRole === ROLES.STUDENT &&
       studentToken &&
-      !status &&
+      !studentProfile &&
       !studentLoading &&
       !isCallRoute
     ) {
-      console.log("📥 Fetching student profile for onboarding check...");
+      console.log("📥 Proactively fetching student profile for onboarding guard...");
       dispatch(fetchStudentProfile());
     }
   }, [
     pathRole,
     studentProfile,
     studentLoading,
-    authState.user,
     dispatch,
     path,
   ]);
@@ -220,10 +217,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Show loading while state is being fetched
-  if (pathRole === ROLES.STUDENT && studentLoading && !studentProfile) {
+  // Show loading while student profile is being fetched for the guard
+  if (pathRole === ROLES.STUDENT && (!studentProfile || studentLoading) && token) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Loader size="lg" color="teal" text="Verifying your session..." />
+        <Loader size="lg" color="teal" text="Verifying your student profile..." />
       </div>
     );
   }

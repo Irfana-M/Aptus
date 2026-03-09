@@ -52,9 +52,11 @@ const authSlice = createSlice({
       const { user, accessToken, role, isProfileComplete, hasPaid, isTrialCompleted } = action.payload;
       state.user = user;
       state.accessToken = accessToken;
-      if (role === "student") {
+      
+      const targetRole = role || user?.role;
+      if (targetRole === "student") {
         localStorage.setItem("student_accessToken", accessToken);
-      } else if (role === "mentor") {
+      } else if (targetRole === "mentor") {
         localStorage.setItem("mentor_accessToken", accessToken);
       } else {
         localStorage.setItem("accessToken", accessToken);
@@ -121,6 +123,16 @@ const authSlice = createSlice({
         state.hasPaid = action.payload.hasPaid;
         state.isTrialCompleted = action.payload.isTrialCompleted;
         state.error = null;
+
+        // Persist token
+        const role = action.payload.user?.role;
+        if (role === "student") {
+          localStorage.setItem("student_accessToken", action.payload.accessToken);
+        } else if (role === "mentor") {
+          localStorage.setItem("mentor_accessToken", action.payload.accessToken);
+        } else {
+          localStorage.setItem("accessToken", action.payload.accessToken);
+        }
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
@@ -138,6 +150,16 @@ const authSlice = createSlice({
         state.hasPaid = action.payload.hasPaid;
         state.isTrialCompleted = action.payload.isTrialCompleted;
         state.error = null;
+
+        // Persist token
+        const role = action.payload.user?.role;
+        if (role === "student") {
+          localStorage.setItem("student_accessToken", action.payload.accessToken);
+        } else if (role === "mentor") {
+          localStorage.setItem("mentor_accessToken", action.payload.accessToken);
+        } else {
+          localStorage.setItem("accessToken", action.payload.accessToken);
+        }
       })
       .addCase(refreshAccessToken.rejected, (state) => {
         console.log("❌ refreshAccessToken rejected");
@@ -174,15 +196,23 @@ const authSlice = createSlice({
         localStorage.removeItem("userRole");
       })
       .addCase(fetchStudentProfile.fulfilled, (state, action) => {
-        // Synchronize auth state with student profile if student slice is populated
-        if (action.payload && state.user?.role === 'student') {
-          state.user = {
-            ...state.user,
-            ...action.payload,
-            isProfileComplete: action.payload.isProfileCompleted ?? state.user.isProfileComplete,
-            onboardingStatus: action.payload.onboardingStatus ?? state.user.onboardingStatus,
-            hasPaid: action.payload.hasPaid ?? state.user.hasPaid
-          };
+        // Synchronize auth state with student profile
+        if (action.payload) {
+          const isComplete = action.payload.isProfileCompleted ?? action.payload.isProfileComplete;
+          
+          if (state.user) {
+             state.user = {
+              ...state.user,
+              ...action.payload,
+              isProfileComplete: isComplete,
+              onboardingStatus: action.payload.onboardingStatus,
+              hasPaid: action.payload.hasPaid
+            };
+          }
+          
+          state.isProfileComplete = isComplete;
+          state.hasPaid = action.payload.hasPaid;
+          state.isTrialCompleted = action.payload.isTrialCompleted;
           state.isAuthenticated = true;
         }
       });
