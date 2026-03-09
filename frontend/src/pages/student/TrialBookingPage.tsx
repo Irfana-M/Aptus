@@ -561,13 +561,16 @@ const TrialBookingPage: React.FC = () => {
       return;
     }
 
+    const localDate = new Date(selectedDate);
+    const dateToSend = new Date(Date.UTC(localDate.getFullYear(), localDate.getMonth(), localDate.getDate())).toISOString();
+
     const bookingData: TrialClassRequest = {
       studentName: formData.studentName,
       email: formData.email,
       grade: formData.grade,
       syllabus: formData.syllabus,
       subject: formData.subject,
-      preferredDate: new Date(selectedDate).toISOString(),
+      preferredDate: dateToSend,
       preferredTime: formData.time,
       notes: formData.notes
     };

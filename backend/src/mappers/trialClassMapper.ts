@@ -148,7 +148,7 @@ export class TrialClassMapper {
       mentor: mentorData,
       meetLink: entity.meetLink || 
         ((entity.status === 'assigned' || entity.status === 'completed') 
-          ? `${process.env.FRONTEND_URL || 'http://localhost:5173'}/trial-class/${entityId}/call` 
+          ? `${process.env.CLIENT_URL || 'http://localhost:5173'}/trial-class/${entityId}/call` 
           : undefined),
       notes: entity.notes,
       feedback: feedbackData,

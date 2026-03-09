@@ -748,7 +748,7 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
         throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
 
-      const baseUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      const baseUrl = process.env.CLIENT_URL || "http://localhost:5173";
       const meetLink = `${baseUrl}/trial-class/${trialClassId}/call`;
 
       const updates: Partial<ITrialClassDocument> = {

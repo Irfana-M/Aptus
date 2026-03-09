@@ -113,7 +113,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
     // SKIP profile fetch if on a call route - those components handle their own data
     const isCallRoute =
-      path.includes("/trial-class/") && path.endsWith("/call");
+      path.includes("/trial-class/") && path.includes("/call");
 
     // If profile is missing, we need to fetch it to determine accurate onboarding state
     if (
@@ -211,7 +211,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const isCallPath =
     (path.includes(ROUTES.STUDENT.BOOK_FREE_TRIAL.split("/")[1]) ||
       path.includes(ROUTES.COMMON.VIDEO_CALL.split("/")[1])) &&
-    path.endsWith("/call");
+    path.includes("/call");
   if (isCallPath) {
     return children;
   }
@@ -315,7 +315,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const isHydrating =
     pathRole === ROLES.ADMIN ? adminState.loading : authState.loading;
   const isBypassRoute =
-    path.includes("/trial-class/") && path.endsWith("/call");
+    path.includes("/trial-class/") && path.includes("/call");
 
   if (
     pathRole === ROLES.ADMIN &&
