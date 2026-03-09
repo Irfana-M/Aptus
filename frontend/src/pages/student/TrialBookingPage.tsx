@@ -742,7 +742,7 @@ const TrialBookingPage: React.FC = () => {
             </option>
             {getUniqueGradeNumbers().map((num) => (
               <option key={num} value={num.toString()}>
-                Grade {num}
+                Class {num}
               </option>
             ))}
           </select>

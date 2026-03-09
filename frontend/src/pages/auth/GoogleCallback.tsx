@@ -96,6 +96,15 @@ export default function GoogleCallback() {
       if (token && email && role) {
         try {
           // Calculate onboarding status for students
+          // Heuristic status to prevent redirection bounce while profile is fetching
+          const heuristicStatus = isPaid 
+            ? 'subscribed' 
+            : isTrialCompleted 
+            ? 'trial_attended' 
+            : isProfileComplete 
+            ? 'profile_complete' 
+            : 'registered';
+
           const user = {
             email: email,
             role: role,
@@ -106,6 +115,7 @@ export default function GoogleCallback() {
             isTrialCompleted: isTrialCompleted,
             hasPaid: isPaid,
             approvalStatus: approvalStatus || "pending",
+            onboardingStatus: heuristicStatus as any,
           };
 
           // 6. Update context and Redux

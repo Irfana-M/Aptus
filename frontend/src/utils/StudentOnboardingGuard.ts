@@ -51,7 +51,12 @@ export function getStudentRedirect(user: User): string | null {
   ];
 
   // Strictly use onboardingStatus for routing decisions
-  const status = (user.onboardingStatus as StudentOnboardingStatus) || StudentOnboardingStatus.REGISTERED;
+  const status = user.onboardingStatus as StudentOnboardingStatus;
+  
+  if (!status) {
+    console.log("🤫 Status unknown - staying put while profile fetches");
+    return null;
+  }
   
   const currentPath = window.location.pathname;
   const requiredPath = StudentOnboardingPolicy.getRequiredRoute(status);
