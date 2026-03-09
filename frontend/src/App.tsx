@@ -147,6 +147,12 @@ const AppContent: React.FC = () => {
             const state = store.getState();
             const hasUser = !!state.auth.user;
             
+            if (!hasUser) {
+              import("./features/auth/authSlice").then(({ initAuthFromStorage }) => {
+                 dispatch(initAuthFromStorage());
+              });
+            }
+            
             if ((studentToken || mentorToken || (genericToken && !isAdminPath)) && (!isAdminPath) && !isGoogleCallbackPath && !hasUser) {
                 import("./features/auth/authThunks").then(({ refreshAccessToken }) => {
                     dispatch(refreshAccessToken());

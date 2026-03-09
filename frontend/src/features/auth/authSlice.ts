@@ -16,18 +16,39 @@ const storedToken =
   localStorage.getItem("mentor_accessToken") ||
   localStorage.getItem("accessToken");
 
-const hasToken = !!storedToken;
+let initialUser = null;
+if (storedToken) {
+  try {
+    const payload = JSON.parse(atob(storedToken.split('.')[1]));
+    const storedUserId = localStorage.getItem("userId") || payload.id;
+    initialUser = {
+      id: storedUserId,
+      _id: storedUserId,
+      email: payload.email || '',
+      role: payload.role || localStorage.getItem("userRole"),
+      isProfileComplete: localStorage.getItem("isProfileComplete") === "true",
+      hasPaid: localStorage.getItem("hasPaid") === "true",
+      isTrialCompleted: localStorage.getItem("isTrialCompleted") === "true",
+      fullName: payload.email ? payload.email.split('@')[0] : '',
+      onboardingStatus: 'registered' as any,
+      phoneNumber: '',
+      isVerified: false
+    };
+  } catch (e) {
+    console.error("Failed to parse token for initial state", e);
+  }
+}
 
 const initialState: AuthState = {
-  loading: hasToken, // Initialize as loading if we have a token to rehydrate
-  user: null,
+  loading: false, // We have the user synchronously, no need to show loading screen
+  user: initialUser,
   accessToken: storedToken,
   error: null,
   isVerified: false,
-  isAuthenticated: false,
-  isProfileComplete: undefined,
-  hasPaid: undefined,
-  isTrialCompleted: undefined,
+  isAuthenticated: !!initialUser,
+  isProfileComplete: localStorage.getItem("isProfileComplete") === "true" ? true : undefined,
+  hasPaid: localStorage.getItem("hasPaid") === "true" ? true : undefined,
+  isTrialCompleted: localStorage.getItem("isTrialCompleted") === "true" ? true : undefined,
 };
 
 const authSlice = createSlice({
@@ -82,6 +103,41 @@ const authSlice = createSlice({
         // Immediately set the onboarding status so guards work before profile fetch
         if (action.payload.hasPaid) {
           state.user.onboardingStatus = 'subscribed';
+        }
+      }
+    },
+    initAuthFromStorage: (state) => {
+      // Find the best available token
+      const token = 
+        localStorage.getItem("student_accessToken") || 
+        localStorage.getItem("mentor_accessToken") || 
+        localStorage.getItem("accessToken");
+        
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const storedUserId = localStorage.getItem("userId") || payload.id;
+          
+          state.user = {
+            id: storedUserId,
+            _id: storedUserId,
+            email: payload.email || '',
+            role: payload.role || localStorage.getItem("userRole"),
+            isProfileComplete: localStorage.getItem("isProfileComplete") === "true",
+            hasPaid: localStorage.getItem("hasPaid") === "true",
+            isTrialCompleted: localStorage.getItem("isTrialCompleted") === "true",
+            fullName: payload.email ? payload.email.split('@')[0] : '',
+            onboardingStatus: 'registered', // Default fallback, will be overwritten by student profile fetch
+            phoneNumber: '',
+            isVerified: false
+          };
+          state.accessToken = token;
+          state.isAuthenticated = true;
+          state.isProfileComplete = localStorage.getItem("isProfileComplete") === "true" ? true : undefined;
+          state.hasPaid = localStorage.getItem("hasPaid") === "true" ? true : undefined;
+          state.isTrialCompleted = localStorage.getItem("isTrialCompleted") === "true" ? true : undefined;
+        } catch (e) {
+          console.error("Failed to parse token for Redux hydration", e);
         }
       }
     },
@@ -164,15 +220,20 @@ const authSlice = createSlice({
       .addCase(refreshAccessToken.rejected, (state) => {
         console.log("❌ refreshAccessToken rejected");
         state.loading = false;
-        // ONLY clear authentication if we don't already have a valid user
-        // This prevents a failed background refresh of a STALE session
-        // from wiping out a NEWLY successful session (e.g. from Google OAuth)
-        if (!state.user) {
-          console.log("⚠️ Clearing auth state");
+        
+        // Double-check if the interceptors explicitly wiped the token (401/403)
+        const stillHasToken = !!(
+           localStorage.getItem("student_accessToken") || 
+           localStorage.getItem("mentor_accessToken") || 
+           localStorage.getItem("accessToken")
+        );
+        
+        if (!stillHasToken) {
+          console.log("⚠️ Clearing auth state (Unauthenticated)");
           state.user = null;
           state.isAuthenticated = false;
         } else {
-          console.warn("🛡️ Preserving active session despite refresh failure");
+          console.warn("🛡️ Preserving active session despite network/server refresh failure");
         }
       })
       .addCase(logoutUser.fulfilled, (state) => {
@@ -219,7 +280,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, clearError, setCredentials, updateProfileStatus, updatePaymentStatus } = authSlice.actions;
+export const { logout, clearError, setCredentials, updateProfileStatus, updatePaymentStatus, initAuthFromStorage } = authSlice.actions;
 export default authSlice.reducer;
 export const selectCurrentToken = (state: { auth: AuthState }) =>
   state.auth.accessToken;
