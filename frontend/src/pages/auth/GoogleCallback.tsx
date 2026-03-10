@@ -47,7 +47,11 @@ export default function GoogleCallback() {
       if (paid) {
         return ROUTES.STUDENT.DASHBOARD;
       }
-      if (isTrialCompleted && !profileComplete) {
+      if (!profileComplete) {
+        console.log("🚀 Redirecting new student to profile setup");
+        return ROUTES.STUDENT.PROFILE_SETUP;
+      }
+      if (isTrialCompleted) {
         return ROUTES.STUDENT.PROFILE;
       }
       return ROUTES.STUDENT.BOOK_FREE_TRIAL;
