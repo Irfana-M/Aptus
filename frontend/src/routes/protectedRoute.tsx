@@ -25,8 +25,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const adminState = useSelector((state: RootState) => state.admin);
   const authState = useSelector((state: RootState) => state.auth);
 
-  const studentProfile = useSelector((state: RootState) => state.student?.profile);
-  const studentLoading = useSelector((state: RootState) => state.student?.loading);
+  const studentProfile = useSelector(
+    (state: RootState) => state.student?.profile,
+  );
+  const studentLoading = useSelector(
+    (state: RootState) => state.student?.loading,
+  );
   const studentError = useSelector((state: RootState) => state.student?.error);
 
   const authContext = AuthContext.getInstance();
@@ -77,14 +81,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     ) {
       dispatch(fetchStudentProfile());
     }
-  }, [
-    pathRole,
-    studentProfile,
-    studentLoading,
-    studentError,
-    dispatch,
-    path,
-  ]);
+  }, [pathRole, studentProfile, studentLoading, studentError, dispatch, path]);
 
   /* ------------------------------------------------ */
   /* TOKEN DETECTION                                  */
@@ -145,7 +142,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (pathRole === ROLES.STUDENT && studentLoading && !studentProfile) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Loader size="lg" color="teal" text="Verifying your student profile..." />
+        <Loader
+          size="lg"
+          color="teal"
+          text="Verifying your student profile..."
+        />
       </div>
     );
   }
@@ -235,14 +236,19 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             studentProfile.isProfileCompleted ??
             (user as User).isProfileComplete,
           onboardingStatus:
-            studentProfile.onboardingStatus ??
-            (user as User).onboardingStatus,
+            studentProfile.onboardingStatus ?? (user as User).onboardingStatus,
         } as User)
       : (user as User);
 
-    const redirect = getStudentRedirect(effectiveUser);
+    const redirect = getStudentRedirect(effectiveUser, path);
 
-    if (redirect && redirect !== path) {
+    console.log("Redirect check:", {
+      currentPath: path,
+      redirectTo: redirect,
+      status: effectiveUser.onboardingStatus,
+    });
+
+    if (redirect && redirect !== path && !path.startsWith(redirect)) {
       return <Navigate to={redirect} replace />;
     }
   }
@@ -252,7 +258,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   /* ------------------------------------------------ */
 
   if (pathRole === ROLES.MENTOR && user) {
-    const approvalStatus = (user as { approvalStatus?: string })?.approvalStatus;
+    const approvalStatus = (user as { approvalStatus?: string })
+      ?.approvalStatus;
 
     if (
       path.includes(ROUTES.MENTOR.DASHBOARD) &&
