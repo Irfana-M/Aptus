@@ -50,7 +50,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   };
 
   const pathRole = getPathRole();
-
+console.log(
+    `[ProtectedRoute RENDER] path=${path} | pathRole=${getPathRole()} | currentLockedRole=${authContext.getCurrentRole()} | allowed=${allowedRoles.join(", ")}`
+  );
   /* ------------------------------------------------ */
   /* SET ROLE IN AUTH CONTEXT                         */
   /* ------------------------------------------------ */
@@ -79,6 +81,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       !studentError &&
       !isCallRoute
     ) {
+      console.log(
+        `[Profile Fetch TRIGGER] dispatching fetchStudentProfile | path=${path} | hasProfile=${!!studentProfile} | loading=${studentLoading}`
+      );
       dispatch(fetchStudentProfile());
     }
   }, [pathRole, studentProfile, studentLoading, studentError, dispatch, path]);
@@ -132,6 +137,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     path.includes("/call");
 
   if (isCallPath) {
+    console.log(`[Bypass] Call route detected → rendering children`);
+    return children;
     return children;
   }
 
@@ -140,6 +147,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   /* ------------------------------------------------ */
 
   if (pathRole === ROLES.STUDENT && studentLoading && !studentProfile) {
+    console.log(`[Loader] Student profile still loading...`);
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader
@@ -156,6 +164,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   /* ------------------------------------------------ */
 
   if (pathRole === ROLES.ADMIN && adminState.loading && !adminState.admin) {
+    console.log(`[Loader] Admin still loading...`);
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader size="lg" color="teal" text="Loading admin console..." />
@@ -169,7 +178,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (!authContext.validateRoleForPath(path)) {
     const currentRole = authContext.getCurrentRole();
-
+console.warn(
+      `[Role Mismatch] validateRoleForPath failed | current=${currentRole} | path wants=${pathRole} → redirecting`
+    );
     if (currentRole === ROLES.ADMIN)
       return <Navigate to={ROUTES.ADMIN.DASHBOARD} replace />;
 
@@ -185,6 +196,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   /* ------------------------------------------------ */
 
   if (!token) {
+    console.warn(`[No Token] No valid token for role=${pathRole} → redirecting to login`);
     if (pathRole === ROLES.ADMIN) {
       return <Navigate to={ROUTES.ADMIN.LOGIN} replace />;
     }
@@ -197,6 +209,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   /* ------------------------------------------------ */
 
   if (pathRole && !allowedRoles.includes(pathRole)) {
+    console.warn(
+      `[Role Not Allowed] pathRole=${pathRole} not in allowed=[${allowedRoles.join(",")}] → redirecting`
+    );
     if (pathRole === ROLES.ADMIN)
       return <Navigate to={ROUTES.ADMIN.DASHBOARD} replace />;
 
@@ -216,6 +231,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const user = pathRole === ROLES.ADMIN ? adminState.admin : authState.user;
 
   if (pathRole === ROLES.STUDENT && !authState.user) {
+    console.log(`[Loader] No auth.user yet for student → loading session`);
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader size="lg" color="teal" text="Loading session..." />
@@ -242,13 +258,18 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
     const redirect = getStudentRedirect(effectiveUser, path);
 
-    console.log("Redirect check:", {
+    console.log("🔍 [Onboarding Guard Check]", {
       currentPath: path,
-      redirectTo: redirect,
-      status: effectiveUser.onboardingStatus,
+      suggestedRedirect: redirect,
+      onboardingStatus: effectiveUser.onboardingStatus,
+      isProfileComplete: effectiveUser.isProfileComplete,
+      hasFreshProfile: !!studentProfile,
     });
 
     if (redirect && redirect !== path && !path.startsWith(redirect)) {
+      console.log(
+        `🚀 [ONBOARDING REDIRECT] from ${path} → ${redirect}`
+      );
       return <Navigate to={redirect} replace />;
     }
   }
@@ -265,10 +286,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       path.includes(ROUTES.MENTOR.DASHBOARD) &&
       approvalStatus !== "approved"
     ) {
+      console.log(
+        `[Mentor Guard] Not approved → redirecting to profile setup`
+      );
       return <Navigate to={ROUTES.MENTOR.PROFILE_SETUP} replace />;
     }
   }
-
+console.log(`[ProtectedRoute] All checks passed → rendering children`);
   return children;
 };
 
