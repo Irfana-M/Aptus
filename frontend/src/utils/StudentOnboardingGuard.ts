@@ -58,7 +58,9 @@ export function getStudentRedirect(user: User, currentPath: string): string | nu
   }
 
   const requiredPath = StudentOnboardingPolicy.getRequiredRoute(status);
-
+if (currentPath.includes('/trial-class/') && currentPath.endsWith('/feedback')) {
+    return null;
+  }
   const requiredParts = requiredPath.split('/').filter(Boolean);
   const requiredBase =
     requiredParts.length >= 2
