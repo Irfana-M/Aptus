@@ -26,11 +26,6 @@ export class CourseRequestController {
     try {
       const authReq = req as AuthRequest;
       const studentId = authReq.user?.userId || authReq.user?.id;
-      
-      console.log('📝 [DEBUG] createRequest called');
-      console.log('📝 [DEBUG] Body:', req.body);
-      console.log('📝 [DEBUG] StudentID:', studentId);
-
       if (!studentId) {
         res.status(HttpStatusCode.UNAUTHORIZED).json({ message: MESSAGES.COMMON.UNAUTHORIZED });
         return;
@@ -38,7 +33,7 @@ export class CourseRequestController {
 
       const { subject, grade, mentoringMode, preferredDays, timeSlot, timeRange, timezone, mentorId } = req.body;
 
-      // Handle both timeSlot and timeRange for compatibility
+      
       const finalTimeSlot = timeSlot || timeRange;
 
       if (!subject || !grade || !mentoringMode || !preferredDays || !finalTimeSlot) {

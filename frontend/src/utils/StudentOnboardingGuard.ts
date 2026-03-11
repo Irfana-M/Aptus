@@ -53,7 +53,7 @@ export function getStudentRedirect(user: User, currentPath: string): string | nu
   const status = user.onboardingStatus as StudentOnboardingStatus;
 
   if (!status) {
-    console.log("🤫 Status unknown - staying put while profile fetches");
+    console.log(" Status unknown - staying put while profile fetches");
     return null;
   }
 
