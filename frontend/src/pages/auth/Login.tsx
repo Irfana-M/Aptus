@@ -15,6 +15,7 @@ import { AuthLayout } from "../../components/layout/AuthLayout";
 
 import loginImage from "../../assets/images/register_banner.jpeg";
 import googleIcon from "../../assets/images/googleIcon.png";
+import { TokenManager } from "../../utils/tokenManager";
 
 type LoginFormValues = {
   email: string;
@@ -112,8 +113,7 @@ console.log(`student_accessToken: ${localStorage.getItem("student_accessToken") 
 
 
       
-        localStorage.setItem(`${user.role}_accessToken`, accessToken);
-        localStorage.setItem("userRole", user.role);
+        TokenManager.setToken(user.role, accessToken);
         localStorage.setItem("userId", user._id);
         
         localStorage.setItem("hasPaid", String(!!hasPaid));

@@ -19,6 +19,7 @@ import {
   selectAccessToken,
   selectAdmin,
 } from "../../features/admin/adminSelectors";
+import { TokenManager } from "../../utils/tokenManager";
 export default function AdminLoginPage() {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
@@ -57,7 +58,7 @@ export default function AdminLoginPage() {
         return;
       }
 
-      localStorage.setItem("admin_accessToken", result.accessToken);
+      TokenManager.setToken("admin", result.accessToken);
       
       // Set loginAttempted only AFTER successful login
       setLoginAttempted(true);
