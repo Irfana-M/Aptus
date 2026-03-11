@@ -1,3 +1,4 @@
+import { decodeJwt, TokenManager } from "../../utils/tokenManager";
 import { createSlice } from "@reduxjs/toolkit";
 import type { AuthState } from "../../types/auth.types";
 import {
@@ -11,10 +12,7 @@ import {
 import { fetchStudentProfile } from "../student/studentThunk";
 import { adminLoginThunk } from "../admin/adminThunk";
 
-const storedToken =
-  localStorage.getItem("student_accessToken") ||
-  localStorage.getItem("mentor_accessToken") ||
-  localStorage.getItem("accessToken");
+const storedToken = TokenManager.getToken();
 
 let initialUser = null;
 if (storedToken) {
@@ -73,15 +71,9 @@ const authSlice = createSlice({
       const { user, accessToken, role, isProfileComplete, hasPaid, isTrialCompleted } = action.payload;
       state.user = user;
       state.accessToken = accessToken;
-      
+
       const targetRole = role || user?.role;
-      if (targetRole === "student") {
-        localStorage.setItem("student_accessToken", accessToken);
-      } else if (targetRole === "mentor") {
-        localStorage.setItem("mentor_accessToken", accessToken);
-      } else {
-        localStorage.setItem("accessToken", accessToken);
-      }
+      TokenManager.setToken(targetRole, accessToken);
 
       state.isAuthenticated = true;
       state.isProfileComplete = isProfileComplete;
@@ -108,16 +100,18 @@ const authSlice = createSlice({
     },
     initAuthFromStorage: (state) => {
       // Find the best available token
-      const token = 
-        localStorage.getItem("student_accessToken") || 
-        localStorage.getItem("mentor_accessToken") || 
+      const token =
+        localStorage.getItem("student_accessToken") ||
+        localStorage.getItem("mentor_accessToken") ||
         localStorage.getItem("accessToken");
-        
+
       if (token) {
         try {
-          const payload = JSON.parse(atob(token.split('.')[1]));
+          if (!token) return;
+
+          const payload = decodeJwt(token);
           const storedUserId = localStorage.getItem("userId") || payload.id;
-          
+
           state.user = {
             id: storedUserId,
             _id: storedUserId,
@@ -180,15 +174,11 @@ const authSlice = createSlice({
         state.isTrialCompleted = action.payload.isTrialCompleted;
         state.error = null;
 
-        // Persist token
-        const role = action.payload.user?.role;
-        if (role === "student") {
-          localStorage.setItem("student_accessToken", action.payload.accessToken);
-        } else if (role === "mentor") {
-          localStorage.setItem("mentor_accessToken", action.payload.accessToken);
-        } else {
-          localStorage.setItem("accessToken", action.payload.accessToken);
-        }
+
+        TokenManager.setToken(
+          action.payload.user.role,
+          action.payload.accessToken
+        );
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
@@ -207,27 +197,18 @@ const authSlice = createSlice({
         state.isTrialCompleted = action.payload.isTrialCompleted;
         state.error = null;
 
-        // Persist token
-        const role = action.payload.user?.role;
-        if (role === "student") {
-          localStorage.setItem("student_accessToken", action.payload.accessToken);
-        } else if (role === "mentor") {
-          localStorage.setItem("mentor_accessToken", action.payload.accessToken);
-        } else {
-          localStorage.setItem("accessToken", action.payload.accessToken);
-        }
+        TokenManager.setToken(
+          action.payload.user.role,
+          action.payload.accessToken
+        );
       })
       .addCase(refreshAccessToken.rejected, (state) => {
         console.log("❌ refreshAccessToken rejected");
         state.loading = false;
-        
+
         // Double-check if the interceptors explicitly wiped the token (401/403)
-        const stillHasToken = !!(
-           localStorage.getItem("student_accessToken") || 
-           localStorage.getItem("mentor_accessToken") || 
-           localStorage.getItem("accessToken")
-        );
-        
+        const stillHasToken = !!TokenManager.getToken();
+
         if (!stillHasToken) {
           console.log("⚠️ Clearing auth state (Unauthenticated)");
           state.user = null;
@@ -237,6 +218,7 @@ const authSlice = createSlice({
         }
       })
       .addCase(logoutUser.fulfilled, (state) => {
+        TokenManager.clearAllTokens()
         state.user = null;
         state.accessToken = null;
         state.isAuthenticated = false;
@@ -253,16 +235,15 @@ const authSlice = createSlice({
         state.isProfileComplete = undefined;
         state.hasPaid = undefined;
         state.isTrialCompleted = undefined;
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("userRole");
+        TokenManager.clearAllTokens();
       })
       .addCase(fetchStudentProfile.fulfilled, (state, action) => {
         // Synchronize auth state with student profile
         if (action.payload) {
           const isComplete = action.payload.isProfileCompleted ?? action.payload.isProfileComplete;
-          
+
           if (state.user) {
-             state.user = {
+            state.user = {
               ...state.user,
               ...action.payload,
               isProfileComplete: isComplete,
@@ -270,7 +251,7 @@ const authSlice = createSlice({
               hasPaid: action.payload.hasPaid
             };
           }
-          
+
           state.isProfileComplete = isComplete;
           state.hasPaid = action.payload.hasPaid;
           state.isTrialCompleted = action.payload.isTrialCompleted;

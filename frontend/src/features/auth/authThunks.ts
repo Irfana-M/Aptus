@@ -11,6 +11,7 @@ import type { User } from "../../types/user.types";
 import { logout } from "./authSlice";
 import { getApiErrorMessage } from "../../utils/errorUtils";
 import socketService from "../../services/socketService";
+import { TokenManager } from "../../utils/tokenManager";
 
 export const registerUser = createAsyncThunk<User, RegisterUserDto>(
   "auth/register",
@@ -56,32 +57,31 @@ export const refreshAccessToken = createAsyncThunk<
   LoginResponse,
   void,
   { rejectValue: string }
-> ("auth/refreshToken", async (_, { rejectWithValue, getState }) => {
+>("auth/refreshToken", async (_, { rejectWithValue, getState }) => {
   const state = getState() as RootState;
   if (state.auth.loading) {
-      return rejectWithValue("Refresh already in progress");
+    return rejectWithValue("Refresh already in progress");
   }
   try {
     const res = await authApi.refreshToken();
     // Backend returns flat structure, contradicting ApiResponse type
     const { user, accessToken, isProfileComplete, isPaid, isTrialCompleted } = res.data as unknown as LoginResponse;
-    
+
     if (accessToken && user.role) {
-        localStorage.setItem(`${user.role}_accessToken`, accessToken);
-        localStorage.setItem("userRole", user.role);
+      TokenManager.setToken(user.role, accessToken);
     }
     return {
-        user: {
-            ...user,
-            isProfileComplete,
-            hasPaid: isPaid,
-            isTrialCompleted,
-        },
-        accessToken,
+      user: {
+        ...user,
         isProfileComplete,
-        isPaid,
         hasPaid: isPaid,
         isTrialCompleted,
+      },
+      accessToken,
+      isProfileComplete,
+      isPaid,
+      hasPaid: isPaid,
+      isTrialCompleted,
     };
   } catch (err: unknown) {
     // ONLY clear tokens if it's a definitive authentication failure (401/403)
@@ -89,29 +89,27 @@ export const refreshAccessToken = createAsyncThunk<
     // @ts-ignore
     const errStatus = err?.response?.status;
     const isAuthError = errStatus === 401 || errStatus === 403;
-    
+
     if (isAuthError) {
-        // Double check state before clearing
-        const currentState = store.getState() as RootState;
-        if (!currentState.auth.user) {
-            console.warn("🔐 Refresh failed with 401. No active session, clearing tokens.");
-            const tokens = [
-              "accessToken", 
-              "student_accessToken", 
-              "mentor_accessToken", 
-              "admin_accessToken", 
-              "userRole",
-              "userId",
-              "isTrialCompleted", 
-              "hasPaid",
-              "isProfileComplete"
-            ];
-            tokens.forEach(key => localStorage.removeItem(key));
-        } else {
-            console.warn("🛡️ Refresh failed with 401 but an active session exists. Skipping token wipe.");
-        }
+      // Double check state before clearing
+      const currentState = store.getState() as RootState;
+      if (!currentState.auth.user) {
+        console.warn("🔐 Refresh failed with 401. No active session, clearing tokens.");
+        TokenManager.clearAllTokens()
+
+        const keys = [
+          "userId",
+          "isTrialCompleted",
+          "hasPaid",
+          "isProfileComplete"
+        ];
+
+        keys.forEach(key => localStorage.removeItem(key));
+      } else {
+        console.warn("🛡️ Refresh failed with 401 but an active session exists. Skipping token wipe.");
+      }
     }
-    
+
     return rejectWithValue(
       getApiErrorMessage(err, "Token refresh failed")
     );
@@ -134,13 +132,12 @@ export const loginUser = createAsyncThunk<
       const res = await authApi.login(data);
       // Backend returns flat structure, contradicting ApiResponse type
       const { user, accessToken, isProfileComplete, isPaid, isTrialCompleted } = res.data as unknown as LoginResponse;
-      
+
       if (accessToken && user.role) {
-          localStorage.setItem(`${user.role}_accessToken`, accessToken);
-          localStorage.setItem("userRole", user.role);
-          localStorage.setItem("userId", user._id);
+        TokenManager.setToken(user.role, accessToken);
+        localStorage.setItem("userId", user._id);
       }
-      
+
       return {
         user: {
           ...user,
@@ -164,33 +161,29 @@ export const logoutUser = createAsyncThunk(
   async (_, { dispatch }) => {
     try {
       await authApi.logout?.();
-    } catch (err: unknown) {
+    } catch (err) {
       console.error("Backend logout failed", err);
     } finally {
-      // Proactively disconnect socket to ensure clean state for next user
+      // Disconnect realtime connections
       socketService.disconnect();
 
-      
-      const state = store.getState() as RootState;
-      const role = state.auth.user?.role;
-      
-      dispatch(logout());
-      
-      if (role) {
-          localStorage.removeItem(`${role}_accessToken`);
-      }
-      
-      // Clear shared user state but NOT admin state
+      // Clear tokens using TokenManager
+      TokenManager.clearAllTokens();
+
+      // Clear other session data
       const sharedKeys = [
-        "accessToken",
-        "userRole",
         "userId",
         "isTrialCompleted",
         "isProfileComplete",
         "hasPaid"
       ];
+
       sharedKeys.forEach(key => localStorage.removeItem(key));
+
       sessionStorage.clear();
+
+      // Reset redux state
+      dispatch(logout());
     }
   }
 );
