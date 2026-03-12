@@ -18,6 +18,22 @@ export const TokenManager = {
     return localStorage.getItem("userRole") as UserRole | null;
   },
 
+  getUserId(): string | null {
+    const token = this.getToken();
+    if (!token) return null;
+
+    const payload = decodeJwt(token);
+    return payload?.id || payload?._id || payload?.userId || null;
+  },
+
+  getUserName(): string | null {
+    const token = this.getToken();
+    if (!token) return null;
+
+    const payload = decodeJwt(token);
+    return payload?.fullName || payload?.name || null;
+  },
+
   clearToken(role?: UserRole) {
     const currentRole = role || (localStorage.getItem("userRole") as UserRole);
     if (!currentRole) return;

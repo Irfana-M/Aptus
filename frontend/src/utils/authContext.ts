@@ -29,4 +29,13 @@ export class AuthContext {
     this.currentRole = null;
     sessionStorage.removeItem("active_role");
   }
+
+  getRole(): "student" | "mentor" | "admin" | null {
+  return localStorage.getItem("userRole") as
+    | "student"
+    | "mentor"
+    | "admin"
+    | null;
+}
+  
 }
