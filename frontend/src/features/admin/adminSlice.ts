@@ -127,10 +127,10 @@ interface AdminState {
   trialClassesLoading: boolean;
   trialClassDetailsLoading: boolean;
   coursesLoading: boolean;
-  mentorAssignmentRequests: MentorRequestListItem[]; // strictly typed
+  mentorAssignmentRequests: MentorRequestListItem[]; 
 }
 
-const hasToken = !!(localStorage.getItem("admin_accessToken") || localStorage.getItem("adminAccessToken"));
+const hasToken = !!TokenManager.getToken("admin");
 
 const initialState: AdminState = {
   admin: null,
@@ -232,9 +232,7 @@ const adminSlice = createSlice({
       state.error = null;
       state.success = null;
       
-      localStorage.removeItem("admin_accessToken");
-      localStorage.removeItem("adminAccessToken");
-      sessionStorage.removeItem("active_role");
+      TokenManager.clearAllTokens();
     },
     clearMentorProfile(state) {
       state.mentorProfile = null;

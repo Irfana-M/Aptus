@@ -17,13 +17,13 @@ const storedToken = TokenManager.getToken();
 let initialUser = null;
 if (storedToken) {
   try {
-    const payload = JSON.parse(atob(storedToken.split('.')[1]));
-    const storedUserId = localStorage.getItem("userId") || payload.id;
+    const payload = decodeJwt(storedToken);
+    const storedUserId = TokenManager.getUserId()|| payload.id || "";
     initialUser = {
       id: storedUserId,
       _id: storedUserId,
       email: payload.email || '',
-      role: payload.role || localStorage.getItem("userRole"),
+      role: payload.role ,
       isProfileComplete: localStorage.getItem("isProfileComplete") === "true",
       hasPaid: localStorage.getItem("hasPaid") === "true",
       isTrialCompleted: localStorage.getItem("isTrialCompleted") === "true",
@@ -99,11 +99,7 @@ const authSlice = createSlice({
       }
     },
     initAuthFromStorage: (state) => {
-      // Find the best available token
-      const token =
-        localStorage.getItem("student_accessToken") ||
-        localStorage.getItem("mentor_accessToken") ||
-        localStorage.getItem("accessToken");
+      const token = TokenManager.getToken();
 
       if (token) {
         try {

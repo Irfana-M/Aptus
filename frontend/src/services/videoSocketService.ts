@@ -1,23 +1,12 @@
 import { io, Socket } from "socket.io-client";
-import { AuthContext } from "../utils/authContext";
+import { TokenManager } from "../utils/tokenManager";
 
 class VideoSocketService {
   private socket: Socket | null = null;
 
-  private resolveToken(): string | null {
-    const auth = AuthContext.getInstance();
-    const role = auth.getCurrentRole();
-    if (role) {
-      const token = localStorage.getItem(`${role}_accessToken`);
-      if (token) return token;
-    }
-
-    return (
-      localStorage.getItem("student_accessToken") ||
-      localStorage.getItem("mentor_accessToken") ||
-      null
-    );
-  }
+private resolveToken(): string | null {
+  return TokenManager.getToken();
+}
 
   connect(): Socket {
     if (this.socket?.connected) {
