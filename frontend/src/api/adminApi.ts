@@ -99,8 +99,7 @@ adminApi.interceptors.response.use(
         isRefreshing = false;
 
         store.dispatch(logoutAdmin());
-        localStorage.removeItem("admin_accessToken");
-        localStorage.removeItem("adminAccessToken");
+       TokenManager.clearToken("admin");
         sessionStorage.removeItem("active_role");
         window.location.href = "/admin/login";
         return Promise.reject(refreshError);

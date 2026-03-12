@@ -53,6 +53,7 @@ import type { AddStudentResponseDto } from "./adminApi";
 import type { MentorRequestListItem, CourseRequest } from "../../types/admin.types";
 import type { Course } from "../../types/course.types";
 import type { Enrollment } from "../../types/student.types";
+import { TokenManager } from "../../utils/tokenManager";
 
 interface Admin {
   role: "admin";
@@ -790,9 +791,9 @@ builder
   console.error("❌ Failed to fetch grades:", action.payload);
   state.gradesLoading = false;
   state.gradesError = action.payload as string;
-  state.grades = []; // Reset to empty array
+  state.grades = []; 
 })
-      // Subjects by grade
+   
       .addCase(fetchSubjectsByGradeAdmin.pending, (state) => {
         state.subjectsLoading = true;
         state.subjectsError = undefined;
@@ -806,8 +807,7 @@ builder
         state.subjectsLoading = false;
         state.subjectsError = action.payload;
       })
-      
-      // Course Requests
+ 
       .addCase(fetchAllCourseRequestsAdmin.pending, (state) => {
         state.courseRequestsLoading = true;
         state.courseRequestsError = null;
@@ -821,7 +821,7 @@ builder
         state.courseRequestsError = action.payload as string;
       })
       
-      // Paginated Course Requests
+      
       .addCase(fetchCourseRequestsPaginated.pending, (state) => {
         state.courseRequestsLoading = true;
         state.courseRequestsError = null;
@@ -845,21 +845,16 @@ builder
       
       .addCase(updateCourseRequestStatusAdmin.fulfilled, (state) => {
         state.loading = false;
-        // Optionally update the specific item in the list if not re-fetching
+    
       })
 
-      // Mentor Requests (Admin)
       .addCase(fetchAllMentorRequestsAdmin.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchAllMentorRequestsAdmin.fulfilled, (state, action) => {
         state.loading = false;
-        // We'll need to store these requests. 
-        // Assuming we add `mentorRequests` to state or just reuse courseRequests for now if structure allows? 
-        // No, let's look at defining a new state property `mentorAssignmentRequests`.
-        // Ideally we should have defined it in AdminState interface first.
-        // For now, let's assume we will add it.
+        
         state.mentorAssignmentRequests = action.payload; 
       })
       .addCase(fetchAllMentorRequestsAdmin.rejected, (state, action) => {
@@ -887,15 +882,14 @@ builder
         state.accessToken = null;
         state.refreshToken = null;
         state.mentorProfile = null;
-        localStorage.removeItem("admin_accessToken");
+        TokenManager.clearToken("admin");
       })
       .addCase(refreshAccessToken.fulfilled, (state) => {
         state.admin = null;
         state.accessToken = null;
         state.refreshToken = null;
-        localStorage.removeItem("admin_accessToken");
+        TokenManager.clearToken("admin");
       })
-      
       // Fetch All Enrollments
       .addCase(fetchAllEnrollmentsAdmin.pending, (state) => {
         state.enrollmentsLoading = true;

@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "../../features/auth/authSlice";
 import { AuthContext } from "../../utils/authContext";
+import { TokenManager } from "../../utils/tokenManager";
 
 export default function GoogleCallback() {
   const navigate = useNavigate();
@@ -99,15 +100,13 @@ export default function GoogleCallback() {
 
       if (token && email && role) {
         try {
-          // Calculate onboarding status for students
-          // Heuristic status to prevent redirection bounce while profile is fetching
-          const heuristicStatus = isPaid 
-            ? 'subscribed' 
-            : isTrialCompleted 
-            ? 'trial_attended' 
-            : isProfileComplete 
-            ? 'profile_complete' 
-            : 'registered';
+          const heuristicStatus = isPaid
+            ? "subscribed"
+            : isTrialCompleted
+              ? "trial_attended"
+              : isProfileComplete
+                ? "profile_complete"
+                : "registered";
 
           const user = {
             email: email,
@@ -122,17 +121,11 @@ export default function GoogleCallback() {
             onboardingStatus: heuristicStatus as any,
           };
 
-          // 6. Update context and Redux
           AuthContext.getInstance().setRole(
             role as "student" | "mentor" | "admin",
           );
 
-          // Keep Redux + localStorage in sync — use the SAME key everyone expects
-          localStorage.setItem("accessToken", token as string);
-          localStorage.setItem("userRole", role as string);
-
-          // Optional: also keep role-specific for safety
-          localStorage.setItem(`${role}_accessToken`, token as string);
+          TokenManager.setToken(role, token);
 
           dispatch(
             setCredentials({
@@ -144,20 +137,7 @@ export default function GoogleCallback() {
             }),
           );
 
-          // dispatch(
-          //   setCredentials({
-          //     user,
-          //     accessToken: token,
-          //     isProfileComplete,
-          //     hasPaid: isPaid,
-          //     isTrialCompleted
-          //   })
-          // );
-
-          // localStorage.setItem(`${role}_accessToken`, token as string);
-          // localStorage.setItem("userRole", role as string);
           localStorage.setItem("userId", id || "");
-
           localStorage.setItem("hasPaid", String(!!isPaid));
           localStorage.setItem("isTrialCompleted", String(!!isTrialCompleted));
           localStorage.setItem(

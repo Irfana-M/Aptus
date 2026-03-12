@@ -1,73 +1,46 @@
-import { AuthContext } from './authContext';
+import { AuthContext } from "./authContext";
+import { TokenManager } from "./tokenManager";
 
-// src/utils/videoCallPrep.ts
 export const prepareForVideoCall = (expectedRole?: string) => {
-  console.log('🧹 PREPARING FOR VIDEO CALL...', expectedRole ? `(Expecting: ${expectedRole})` : '');
-  
-  // Search for the best token
-  let token = null;
-  let sourceKey = '';
+  console.log(
+    "🧹 PREPARING FOR VIDEO CALL...",
+    expectedRole ? `(Expecting: ${expectedRole})` : ""
+  );
 
-  if (expectedRole) {
-      token = localStorage.getItem(`${expectedRole}_accessToken`);
-      sourceKey = `${expectedRole}_accessToken`;
-  }
-  
+  let token = TokenManager.getToken(expectedRole as any);
+
   if (!token) {
-      const studentToken = localStorage.getItem('student_accessToken');
-      const mentorToken = localStorage.getItem('mentor_accessToken');
-      const genericToken = localStorage.getItem('accessToken');
-      
-      token = studentToken || mentorToken || genericToken;
-      sourceKey = studentToken ? 'student_accessToken' : (mentorToken ? 'mentor_accessToken' : 'accessToken');
-  }
-  
-  if (!token) {
-    console.error('❌ No access token found (checked generic and role-specific keys)');
+    console.error("❌ No access token found");
     return false;
   }
-  
+
   try {
-    // Decode token to get actual user data
-    const payload = JSON.parse(atob(token.split('.')[1]));
+    const payload = JSON.parse(atob(token.split(".")[1]));
     const actualRole = payload.role;
     const userId = payload.id || payload._id;
 
-    console.log('👤 ACTUAL USER FROM TOKEN:', {
+    console.log("👤 ACTUAL USER FROM TOKEN:", {
       email: payload.email,
       role: actualRole,
       id: userId,
-      foundVia: sourceKey
     });
 
-    // SELF-HEALING: If token was found under the wrong key or generic key, rectify it
-    const roleKey = `${actualRole}_accessToken`;
-    if (localStorage.getItem(roleKey) !== token) {
-        console.log(`🩹 Rectifying token key: Saving to ${roleKey}`);
-        localStorage.setItem(roleKey, token);
-    }
-    
-    // Always sync shared keys
-    localStorage.setItem('userRole', actualRole);
-    localStorage.setItem('userId', userId);
-    
-    // NEW: Sync AuthContext for global API interceptors
+    // enforce single-role browser session
+    TokenManager.setToken(actualRole, token);
+
     try {
-        AuthContext.getInstance().setRole(actualRole as 'admin' | 'student' | 'mentor');
+      AuthContext.getInstance().setRole(
+        actualRole as "admin" | "student" | "mentor"
+      );
     } catch (e) {
-        console.warn('⚠️ Failed to sync AuthContext in videoCallPrep', e);
+      console.warn("⚠️ Failed to sync AuthContext", e);
     }
-    
-    console.log('✅ LocalStorage synchronized:', {
-      role: actualRole,
-      id: userId,
-      verifiedAt: new Date().toISOString()
-    });
-    
+
+    console.log("✅ Video call environment ready");
+
     return true;
   } catch (error) {
-    console.error('❌ Failed to prepare for video call:', error);
+    console.error("❌ Failed to prepare for video call:", error);
     return false;
   }
 };
-

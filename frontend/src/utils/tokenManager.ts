@@ -2,6 +2,7 @@ export type UserRole = "student" | "mentor" | "admin";
 
 export const TokenManager = {
   setToken(role: UserRole, token: string) {
+    this.clearAllTokens();
     localStorage.setItem(`${role}_accessToken`, token);
     localStorage.setItem("userRole", role);
   },
