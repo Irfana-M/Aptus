@@ -25,6 +25,14 @@ export const TokenManager = {
     localStorage.removeItem("userRole");
   },
 
+  getAnyToken(): string | null {
+    return (
+      localStorage.getItem("student_accessToken") ||
+      localStorage.getItem("mentor_accessToken") ||
+      localStorage.getItem("admin_accessToken")
+    );
+  },
+
   clearAllTokens() {
     localStorage.removeItem("student_accessToken");
     localStorage.removeItem("mentor_accessToken");

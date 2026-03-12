@@ -4,9 +4,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
-import type { AppDispatch } from "../../app/store";
+import type { AppDispatch, RootState } from "../../app/store";
 import { loginUser } from "../../features/auth/authThunks";
-import { selectAuthLoading, selectAuthError } from "../../features/auth/authSelector";
+import {
+  selectAuthLoading,
+  selectAuthError,
+} from "../../features/auth/authSelector";
 import { ROUTES } from "../../constants/routes.constants";
 
 import { Input } from "../../components/ui/Input";
@@ -27,38 +30,34 @@ export default function Login() {
   const dispatch = useDispatch<AppDispatch>();
   const loading = useSelector(selectAuthLoading);
   const error = useSelector(selectAuthError);
-
+  const auth = useSelector((state: RootState) => state.auth);
   const [role, setRole] = useState<"student" | "mentor">("student");
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-   
-    const userRole = localStorage.getItem("userRole");
-    if (userRole === 'admin') return;
+    const userRole = TokenManager.getRole();
+    const token = TokenManager.getToken();
 
-    const token = userRole ? localStorage.getItem(`${userRole}_accessToken`) : localStorage.getItem("accessToken");
-    
-    if (token && userRole) {
-        if (userRole === "mentor") {
-            navigate(ROUTES.MENTOR.DASHBOARD, { replace: true });
-        } else if (userRole === "student") {
-             // Logic: multi-stage student flow
-             const hasPaid = localStorage.getItem("hasPaid") === "true";
-             const isTrialCompleted = localStorage.getItem("isTrialCompleted") === "true";
-             const isProfileComplete = localStorage.getItem("isProfileComplete") === "true";
-             
-             if (hasPaid) {
-                 navigate(ROUTES.STUDENT.DASHBOARD, { replace: true });
-             } else if (!isTrialCompleted) {
-                 navigate(ROUTES.STUDENT.BOOK_FREE_TRIAL, { replace: true });
-             } else if (!isProfileComplete) {
-                 navigate(ROUTES.STUDENT.PROFILE_SETUP, { replace: true });
-             } else {
-                 navigate(ROUTES.STUDENT.DASHBOARD, { replace: true });
-             }
-        }
+    if (!token || !userRole) return;
+
+    if (userRole === "mentor") {
+      navigate(ROUTES.MENTOR.DASHBOARD, { replace: true });
     }
-  }, [navigate]);
+
+    if (userRole === "student") {
+      const { hasPaid, isTrialCompleted, isProfileComplete } = auth;
+
+      if (hasPaid) {
+        navigate(ROUTES.STUDENT.DASHBOARD, { replace: true });
+      } else if (!isTrialCompleted) {
+        navigate(ROUTES.STUDENT.BOOK_FREE_TRIAL, { replace: true });
+      } else if (!isProfileComplete) {
+        navigate(ROUTES.STUDENT.PROFILE_SETUP, { replace: true });
+      } else {
+        navigate(ROUTES.STUDENT.DASHBOARD, { replace: true });
+      }
+    }
+  }, [navigate,auth]);
 
   const {
     register,
@@ -72,7 +71,7 @@ export default function Login() {
     approvalStatus?: string,
     isTrialCompleted?: boolean,
     hasPaid?: boolean,
-    subscription?: unknown
+    subscription?: unknown,
   ) => {
     if (userRole === "mentor") {
       switch (approvalStatus) {
@@ -81,7 +80,9 @@ export default function Login() {
         case "rejected":
           return ROUTES.MENTOR.REJECTED;
         case "approved":
-          return profileComplete ? ROUTES.MENTOR.DASHBOARD : ROUTES.MENTOR.PROFILE_SETUP;
+          return profileComplete
+            ? ROUTES.MENTOR.DASHBOARD
+            : ROUTES.MENTOR.PROFILE_SETUP;
         default:
           return ROUTES.MENTOR.PROFILE_SETUP;
       }
@@ -89,10 +90,14 @@ export default function Login() {
 
     if (userRole === "student") {
       const sub = subscription as { status?: string; endDate?: string } | null;
-      if (sub && (sub.status === 'expired' || (sub.endDate && new Date(sub.endDate) < new Date()))) {
-          return ROUTES.STUDENT.SUBSCRIPTION_PLANS;
+      if (
+        sub &&
+        (sub.status === "expired" ||
+          (sub.endDate && new Date(sub.endDate) < new Date()))
+      ) {
+        return ROUTES.STUDENT.SUBSCRIPTION_PLANS;
       }
-        
+
       if (hasPaid) return ROUTES.STUDENT.DASHBOARD;
       if (!isTrialCompleted) return ROUTES.STUDENT.BOOK_FREE_TRIAL;
       if (!profileComplete) return ROUTES.STUDENT.PROFILE_SETUP;
@@ -107,37 +112,24 @@ export default function Login() {
       const resultAction = await dispatch(loginUser({ ...data, role }));
 
       if (loginUser.fulfilled.match(resultAction)) {
-        const { user, accessToken, isProfileComplete, hasPaid, isTrialCompleted } = resultAction.payload;
-console.log(`localStorageAccessToken:${localStorage.accessToken}`);
-console.log(`student_accessToken: ${localStorage.getItem("student_accessToken") ?? "not set"}`);
+        const { user, isProfileComplete, hasPaid, isTrialCompleted } =
+          resultAction.payload;
 
-
-      
-        TokenManager.setToken(user.role, accessToken);
         localStorage.setItem("userId", user._id);
-        
         localStorage.setItem("hasPaid", String(!!hasPaid));
         localStorage.setItem("isTrialCompleted", String(!!isTrialCompleted));
         localStorage.setItem("isProfileComplete", String(!!isProfileComplete));
 
         const redirectPath = getRedirectPath(
-            user.role,
-            isProfileComplete,
-            user.approvalStatus,        
-            isTrialCompleted,
-            hasPaid,
-            user.subscription
-          );
-        console.log("Generated Redirect Path:", redirectPath);
+          user.role,
+          isProfileComplete,
+          user.approvalStatus,
+          isTrialCompleted,
+          hasPaid,
+          user.subscription,
+        );
 
-        if (redirectPath === ROUTES.STUDENT.SUBSCRIPTION_PLANS) {
-             toast.error("Your monthly subscription has expired. Please renew to continue.");
-        } else if (user.role === "student" && !user.isTrialCompleted) {
-             toast.success("Login successful! Please book your free trial class.");
-        } else {
-             toast.success("Login successful!");
-        }
-
+        toast.success("Login successful!");
         navigate(redirectPath, { replace: true });
       } else {
         const errorMessage = resultAction.payload as string;
@@ -159,7 +151,11 @@ console.log(`student_accessToken: ${localStorage.getItem("student_accessToken") 
   };
 
   return (
-    <AuthLayout imageSrc={loginImage} title="Welcome Back!" subtitle="Login to your account to continue.">
+    <AuthLayout
+      imageSrc={loginImage}
+      title="Welcome Back!"
+      subtitle="Login to your account to continue."
+    >
       <div className="flex mx-auto mb-6 rounded-full border border-teal-500 overflow-hidden w-fit">
         <button
           type="button"
@@ -189,7 +185,9 @@ console.log(`student_accessToken: ${localStorage.getItem("student_accessToken") 
             },
           })}
         />
-        {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
+        {errors.email && (
+          <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+        )}
 
         <div className="relative">
           <Input
@@ -211,20 +209,32 @@ console.log(`student_accessToken: ${localStorage.getItem("student_accessToken") 
         </Button>
       </form>
 
-      <Button variant="secondary" className="w-full flex items-center gap-2 mt-4" type="button" onClick={handleGoogleAuth}>
+      <Button
+        variant="secondary"
+        className="w-full flex items-center gap-2 mt-4"
+        type="button"
+        onClick={handleGoogleAuth}
+      >
         <img src={googleIcon} alt="Google" className="w-5 h-5" />
         Sign in with Google
       </Button>
 
       <p className="text-sm text-gray-600 mt-4 text-center">
-        <button type="button" onClick={handleForgotPassword} className="text-blue-600 font-medium hover:underline">
+        <button
+          type="button"
+          onClick={handleForgotPassword}
+          className="text-blue-600 font-medium hover:underline"
+        >
           Forgot Password?
         </button>
       </p>
 
       <p className="text-sm text-gray-600 mt-4 text-center">
         Don't have an account?{" "}
-        <a href={ROUTES.REGISTER} className="text-blue-600 font-medium hover:underline">
+        <a
+          href={ROUTES.REGISTER}
+          className="text-blue-600 font-medium hover:underline"
+        >
           Sign up
         </a>
       </p>
@@ -233,3 +243,4 @@ console.log(`student_accessToken: ${localStorage.getItem("student_accessToken") 
     </AuthLayout>
   );
 }
+

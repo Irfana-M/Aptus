@@ -16,27 +16,21 @@ export type StudentOnboardingStatus = typeof StudentOnboardingStatus[keyof typeo
 class StudentOnboardingPolicy {
   private static readonly ROUTE_MAP: Record<StudentOnboardingStatus, string> = {
     [StudentOnboardingStatus.REGISTERED]: ROUTES.STUDENT.PROFILE_SETUP,
-    [StudentOnboardingStatus.PROFILE_COMPLETE]: ROUTES.STUDENT.BOOK_FREE_TRIAL, 
+    [StudentOnboardingStatus.PROFILE_COMPLETE]: ROUTES.STUDENT.BOOK_FREE_TRIAL,
     [StudentOnboardingStatus.TRIAL_BOOKED]: ROUTES.STUDENT.DASHBOARD, // No dedicated pending page yet, use dashboard
-    [StudentOnboardingStatus.TRIAL_ATTENDED]: ROUTES.COMMON.TRIAL_FEEDBACK, 
+    [StudentOnboardingStatus.TRIAL_ATTENDED]: ROUTES.COMMON.TRIAL_FEEDBACK,
     [StudentOnboardingStatus.FEEDBACK_SUBMITTED]: ROUTES.STUDENT.SUBSCRIPTION_PLANS,
     [StudentOnboardingStatus.SUBSCRIBED]: ROUTES.STUDENT.PREFERENCES.SUBJECTS,
     [StudentOnboardingStatus.PREFERENCES_COMPLETED]: ROUTES.STUDENT.DASHBOARD,
   };
 
-  /**
-   * Get the required route for a given status
-   */
+  
   static getRequiredRoute(status: StudentOnboardingStatus): string {
     return this.ROUTE_MAP[status] || ROUTES.STUDENT.DASHBOARD;
   }
 }
 
-/**
- * Guard function to determine if a student needs to be redirected
- * @param user The current user
- * @returns The path to redirect to, or null if no redirect is needed
- */
+
 export function getStudentRedirect(user: User, currentPath: string): string | null {
   if (user.role !== 'student') return null;
 
@@ -58,20 +52,15 @@ export function getStudentRedirect(user: User, currentPath: string): string | nu
   }
 
   const requiredPath = StudentOnboardingPolicy.getRequiredRoute(status);
-if (currentPath.includes('/trial-class/') && currentPath.endsWith('/feedback')) {
+  if (currentPath.includes('/trial-class/') && currentPath.endsWith('/feedback')) {
     return null;
   }
-  const requiredParts = requiredPath.split('/').filter(Boolean);
-  const requiredBase =
-    requiredParts.length >= 2
-      ? '/' + requiredParts.slice(0, 2).join('/')
-      : requiredPath;
-
   if (
     currentPath === requiredPath ||
-    (requiredBase !== '/' && currentPath.startsWith(requiredBase))
-  )
+    currentPath.startsWith(requiredPath + "/")
+  ) {
     return null;
+  }
 
   if (
     (status === StudentOnboardingStatus.TRIAL_ATTENDED ||
@@ -88,7 +77,7 @@ if (currentPath.includes('/trial-class/') && currentPath.endsWith('/feedback')) 
 
   if (
     statusOrder.indexOf(status) >=
-      statusOrder.indexOf(StudentOnboardingStatus.SUBSCRIBED) &&
+    statusOrder.indexOf(StudentOnboardingStatus.SUBSCRIBED) &&
     currentPath === ROUTES.STUDENT.SUBSCRIPTION_PLANS
   ) {
     return requiredPath;
@@ -96,7 +85,7 @@ if (currentPath.includes('/trial-class/') && currentPath.endsWith('/feedback')) 
 
   if (
     statusOrder.indexOf(status) >=
-      statusOrder.indexOf(StudentOnboardingStatus.TRIAL_BOOKED) &&
+    statusOrder.indexOf(StudentOnboardingStatus.TRIAL_BOOKED) &&
     (currentPath.startsWith(ROUTES.STUDENT.CLASSROOM) ||
       currentPath.startsWith(ROUTES.STUDENT.ATTENDANCE))
   ) {

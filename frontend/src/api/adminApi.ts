@@ -3,6 +3,7 @@ import { store } from "../app/store";
 import { refreshAdminToken } from "../features/admin/adminThunk";
 import { logoutAdmin } from "../features/admin/adminSlice";
 import type { AxiosRequestConfig } from "axios";
+import { TokenManager } from "../utils/tokenManager";
 
 interface OriginalRequestConfig extends AxiosRequestConfig {
   _retry?: boolean;
@@ -19,7 +20,7 @@ const adminApi = axios.create({
 adminApi.interceptors.request.use(
   (config) => {
   
-    const token = localStorage.getItem('admin_accessToken');
+   const token = TokenManager.getToken("admin");
 
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -77,7 +78,7 @@ adminApi.interceptors.response.use(
               originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
            }
            
-           localStorage.setItem("admin_accessToken", newAccessToken);
+           TokenManager.setToken("admin", newAccessToken);
 
            processQueue(null, newAccessToken);
            isRefreshing = false;
@@ -88,8 +89,7 @@ adminApi.interceptors.response.use(
           isRefreshing = false;
 
           store.dispatch(logoutAdmin());
-          localStorage.removeItem("admin_accessToken");
-          localStorage.removeItem("adminAccessToken");
+         TokenManager.clearToken("admin");
           sessionStorage.removeItem("active_role");
           window.location.href = "/admin/login";
           return Promise.reject(new Error('Admin token refresh failed'));

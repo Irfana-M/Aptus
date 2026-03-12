@@ -21,7 +21,7 @@ import { ROLES } from "./constants/roles";
 import StudentsManagement from "./pages/admin/student";
 import TrialBookingPage from "./pages/student/TrialBookingPage";
 import TrialClassesManagement from "./pages/admin/TrialClassesManagement";
-import MentorRequestsPage from './pages/admin/MentorRequestsPage';
+import MentorRequestsPage from "./pages/admin/MentorRequestsPage";
 import StudentProfilePage from "./pages/admin/StudentProfile";
 import AdminEnrollmentsPage from "./pages/admin/AdminEnrollmentsPage";
 import TrialClassDetailsPage from "./pages/admin/TrialClassDetails";
@@ -64,579 +64,547 @@ import SessionJoin from "./pages/scheduling/SessionJoin";
 import MentorLeaves from "./pages/mentor/Leaves";
 import LeaveManagement from "./pages/admin/LeaveManagement";
 
-
 import { VideoCallProvider } from "./context/VideoCallContext";
 import FloatingCallOverlay from "./components/video/FloatingCallOverlay";
 import NotificationsPage from "./pages/common/NotificationsPage";
 
 import { ROUTES } from "./constants/routes.constants";
+import { refreshAccessToken } from "./features/auth/authThunks";
+import { TokenManager } from "./utils/tokenManager";
 
 const App: React.FC = () => {
   return (
     <Router>
       <VideoCallProvider>
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: "#363636",
-            color: "#fff",
-          },
-          success: {
-            duration: 3000,
-            iconTheme: {
-              primary: "#10B981",
-              secondary: "#fff",
-            },
-          },
-          error: {
+        <Toaster
+          position="top-right"
+          toastOptions={{
             duration: 4000,
-            iconTheme: {
-              primary: "#EF4444",
-              secondary: "#fff",
+            style: {
+              background: "#363636",
+              color: "#fff",
             },
-          },
-        }}
-      />
-      <AppContent />
-      <FloatingCallOverlay />
+            success: {
+              duration: 3000,
+              iconTheme: {
+                primary: "#10B981",
+                secondary: "#fff",
+              },
+            },
+            error: {
+              duration: 4000,
+              iconTheme: {
+                primary: "#EF4444",
+                secondary: "#fff",
+              },
+            },
+          }}
+        />
+        <AppContent />
+        <FloatingCallOverlay />
       </VideoCallProvider>
     </Router>
   );
 };
 
 const AppContent: React.FC = () => {
-    const dispatch = useAppDispatch();
-    
-    useEffect(() => {
-        const path = window.location.pathname;
-        
-        // Sync AuthContext with current path to ensure interceptors have correct role
-        import("./utils/authContext").then(({ AuthContext }) => {
-            AuthContext.getInstance().setRoleFromPath(path);
-        });
+  const dispatch = useAppDispatch();
 
-        //const userRole = localStorage.getItem("userRole");
-        const studentToken = localStorage.getItem("student_accessToken");
-        const mentorToken = localStorage.getItem("mentor_accessToken");
-        const adminToken = localStorage.getItem("admin_accessToken") || localStorage.getItem("adminAccessToken");
-        const genericToken = localStorage.getItem("accessToken");
-        
-        // Prioritize refresh based on current path to avoid race conditions
-        const isAdminPath = path.startsWith(ROUTES.ADMIN.DASHBOARD.split('/')[1]);
-        const isStudentPath = path.startsWith(ROUTES.STUDENT.DASHBOARD.split('/')[1]);
-        const isMentorPath = path.startsWith(ROUTES.MENTOR.DASHBOARD.split('/')[1]);
-        
-        // 1. Refresh Admin if on admin path or generic refresh needed and we are admin
-        if (adminToken && (isAdminPath || (!isStudentPath && !isMentorPath))) {
-            import("./features/admin/adminThunk").then(({ refreshAdminToken }) => {
-                dispatch(refreshAdminToken());
-            });
-        }
-        
-        // 2. Refresh User if on user path or generic refresh needed
-        // Fallback to genericToken if role-specific tokens are missing
-        const normalizedPath = path.toLowerCase().replace(/\/$/, "");
-        const normalizedCallback = ROUTES.AUTH.GOOGLE_CALLBACK.toLowerCase().replace(/\/$/, "");
-        const isGoogleCallbackPath = normalizedPath === normalizedCallback;
-        
-        // Skip refresh if we already have the user in state (e.g. just logged in via Google)
-        // or if we are on the callback path
-        import("./app/store").then(({ store }) => {
-            const state = store.getState();
-            const hasUser = !!state.auth.user;
-            
-            if (!hasUser) {
-              import("./features/auth/authSlice").then(({ initAuthFromStorage }) => {
-                 dispatch(initAuthFromStorage());
-              });
-            }
-            
-            if ((studentToken || mentorToken || (genericToken && !isAdminPath)) && (!isAdminPath) && !isGoogleCallbackPath && !hasUser) {
-                import("./features/auth/authThunks").then(({ refreshAccessToken }) => {
-                    dispatch(refreshAccessToken());
-                });
-            }
-        });
-    }, [dispatch]);
+  useEffect(() => {
+    const token = TokenManager.getAnyToken();
 
+    if (token) {
+      dispatch(refreshAccessToken());
+    }
+  }, [dispatch]);
   return (
-      <Routes>
-        <Route path={ROUTES.HOME} element={<LandingPage />} />
-        <Route path={ROUTES.REGISTER} element={<Register />} />
-        <Route path={ROUTES.VERIFY_OTP} element={<VerifyOtp />} />
-        <Route path={ROUTES.LOGIN} element={<Login />} />
-        <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
-        <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
-        <Route path={ROUTES.AUTH.GOOGLE_CALLBACK} element={<GoogleCallback />} />
+    <Routes>
+      <Route path={ROUTES.HOME} element={<LandingPage />} />
+      <Route path={ROUTES.REGISTER} element={<Register />} />
+      <Route path={ROUTES.VERIFY_OTP} element={<VerifyOtp />} />
+      <Route path={ROUTES.LOGIN} element={<Login />} />
+      <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
+      <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
+      <Route path={ROUTES.AUTH.GOOGLE_CALLBACK} element={<GoogleCallback />} />
 
-        <Route path={ROUTES.ADMIN.LOGIN} element={<AdminLoginPage />} />
+      <Route path={ROUTES.ADMIN.LOGIN} element={<AdminLoginPage />} />
 
-        <Route
-          path={ROUTES.ADMIN.DASHBOARD}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.ADMIN.MENTORS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-              <MentorsManagement />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.ADMIN.DASHBOARD}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.ADMIN.MENTORS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <MentorsManagement />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.ADMIN.MENTOR_DETAILS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-              <MentorProfilePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.ADMIN.STUDENTS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-              <StudentsManagement />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.ADMIN.MENTOR_DETAILS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <MentorProfilePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.ADMIN.STUDENTS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <StudentsManagement />
+          </ProtectedRoute>
+        }
+      />
 
-        {/* Student Profile - plural path (primary) */}
-        <Route
-          path={ROUTES.ADMIN.STUDENT_DETAILS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-              <StudentProfilePage />
-            </ProtectedRoute>
-          }
-        />
+      {/* Student Profile - plural path (primary) */}
+      <Route
+        path={ROUTES.ADMIN.STUDENT_DETAILS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <StudentProfilePage />
+          </ProtectedRoute>
+        }
+      />
 
-        {/* Student Profile - singular path (legacy support) */}
-          <Route
-          path={ROUTES.ADMIN.STUDENT_PROFILE}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-              <StudentProfilePage />
-            </ProtectedRoute>
-          }
-        />
+      {/* Student Profile - singular path (legacy support) */}
+      <Route
+        path={ROUTES.ADMIN.STUDENT_PROFILE}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <StudentProfilePage />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route path={ROUTES.ADMIN.TRIAL_CLASSES} element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-              <TrialClassesManagement />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.ADMIN.TRIAL_CLASSES}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <TrialClassesManagement />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route path={ROUTES.ADMIN.STUDENT_TRIAL_CLASSES} element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-              <StudentTrialClassesPage />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.ADMIN.STUDENT_TRIAL_CLASSES}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <StudentTrialClassesPage />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.ADMIN.TRIAL_CLASS_DETAILS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-              <TrialClassDetailsPage />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.ADMIN.TRIAL_CLASS_DETAILS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <TrialClassDetailsPage />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.COMMON.VIDEO_CALL}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MENTOR, ROLES.STUDENT]}>
-              <VideoCallRoom />
-            </ProtectedRoute>
-          }
-        />
-        
-        <Route
-          path={ROUTES.COMMON.SESSION_CALL}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MENTOR, ROLES.STUDENT]}>
-              <VideoCallRoom />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.COMMON.VIDEO_CALL}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.MENTOR, ROLES.STUDENT]}>
+            <VideoCallRoom />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.COMMON.CLASSROOM_TOKEN}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MENTOR, ROLES.STUDENT]}>
-              <SessionJoin />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.COMMON.SESSION_CALL}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.MENTOR, ROLES.STUDENT]}>
+            <VideoCallRoom />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.COMMON.TRIAL_FEEDBACK}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <TrialClassFeedback />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.COMMON.CLASSROOM_TOKEN}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.MENTOR, ROLES.STUDENT]}>
+            <SessionJoin />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.STUDENT.BOOK_FREE_TRIAL}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <TrialBookingPage />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.COMMON.TRIAL_FEEDBACK}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <TrialClassFeedback />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.STUDENT.TIME_SLOTS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <BookTuitionSessions />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.STUDENT.BOOK_FREE_TRIAL}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <TrialBookingPage />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.STUDENT.SUBSCRIPTION_PLANS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <SubscriptionPlans />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.STUDENT.TIME_SLOTS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <BookTuitionSessions />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.STUDENT.PAYMENT}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <React.Suspense fallback={<div className="flex justify-center p-8">Loading Payment Gateway...</div>}>
-                <PaymentPage />
-              </React.Suspense>
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.STUDENT.SUBSCRIPTION_PLANS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <SubscriptionPlans />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.STUDENT.PREFERENCES.SUBJECTS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <SubjectsSelectionPage />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.STUDENT.PAYMENT}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <React.Suspense
+              fallback={
+                <div className="flex justify-center p-8">
+                  Loading Payment Gateway...
+                </div>
+              }
+            >
+              <PaymentPage />
+            </React.Suspense>
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.STUDENT.PREFERENCES.TIME_SLOTS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <TimeSlotsSelectionPage />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.STUDENT.PREFERENCES.SUBJECTS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <SubjectsSelectionPage />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.STUDENT.PREFERENCES.MENTORS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <MentorSelectionPage />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.STUDENT.PREFERENCES.TIME_SLOTS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <TimeSlotsSelectionPage />
+          </ProtectedRoute>
+        }
+      />
 
+      <Route
+        path={ROUTES.STUDENT.PREFERENCES.MENTORS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <MentorSelectionPage />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.STUDENT.PROFILE}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <StudentProfile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.STUDENT.PROFILE_SETUP}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <StudentProfile />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.STUDENT.PROFILE}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <StudentProfile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.STUDENT.PROFILE_SETUP}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <StudentProfile />
+          </ProtectedRoute>
+        }
+      />
 
+      <Route
+        path={ROUTES.STUDENT.MY_COURSES}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <MyCourses />
+          </ProtectedRoute>
+        }
+      />
 
+      <Route
+        path={ROUTES.STUDENT.DASHBOARD}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <StudentDashboard />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.STUDENT.MY_COURSES}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <MyCourses />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.STUDENT.PAYMENTS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <PaymentHistory />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.STUDENT.ATTENDANCE}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <StudentAttendance />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.STUDENT.CLASSROOM}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <StudentClassroom />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.STUDENT.STUDY_MATERIALS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <StudentStudyMaterials />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.STUDENT.EXAMS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <StudentExamList />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.STUDENT.EXAM_TAKE}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <TakeExam />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.STUDENT.RESULTS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <ExamResultPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.STUDENT.RESULT_DETAILS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <StudentExamAnalysis />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.STUDENT.DASHBOARD}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <StudentDashboard />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.MENTOR.PROFILE_SETUP}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+            <MentorProfileSetup />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.STUDENT.PAYMENTS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <PaymentHistory />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.STUDENT.ATTENDANCE}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <StudentAttendance />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.STUDENT.CLASSROOM}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <StudentClassroom />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.STUDENT.STUDY_MATERIALS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <StudentStudyMaterials />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.STUDENT.EXAMS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-               <StudentExamList />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-            path={ROUTES.STUDENT.EXAM_TAKE}
-            element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-                <TakeExam />
-            </ProtectedRoute>
-            }
-        />
-        <Route
-            path={ROUTES.STUDENT.RESULTS}
-            element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-                <ExamResultPage />
-            </ProtectedRoute>
-            }
-        />
-        <Route
-            path={ROUTES.STUDENT.RESULT_DETAILS}
-            element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-                <StudentExamAnalysis />
-            </ProtectedRoute>
-            }
-        />
+      <Route
+        path={ROUTES.MENTOR.PROFILE}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+            <MentorProfileSetup />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.MENTOR.PROFILE_SETUP}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
-              <MentorProfileSetup />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.MENTOR.DASHBOARD}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+            <MentorDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.MENTOR.STUDENTS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+            <MentorStudentsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.MENTOR.AVAILABILITY}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+            <MentorAvailabilityPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.MENTOR.ATTENDANCE}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+            <MentorAttendance />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.MENTOR.CLASSROOM}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+            <MentorClassroom />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.MENTOR.CLASS_HISTORY}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+            <ClassHistory />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.MENTOR.EXAMS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+            <MentorExamList />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.MENTOR.CREATE_EXAM}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+            <CreateExam />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.MENTOR.EXAM_RESULTS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+            <React.Suspense
+              fallback={<Loader size="lg" text="Loading Dashboard..." />}
+            >
+              <MentorExamResults />
+            </React.Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.MENTOR.EXAM_GRADING}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+            <React.Suspense
+              fallback={<Loader size="lg" text="Loading Page..." />}
+            >
+              <ExamGrading />
+            </React.Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.MENTOR.LEAVES}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+            <MentorLeaves />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.MENTOR.STUDY_MATERIALS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
+            <MentorStudyMaterials />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.MENTOR.PROFILE}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
-              <MentorProfileSetup />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.ADMIN.COURSES}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <CreateOneToOneCourse />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.MENTOR.DASHBOARD}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
-              <MentorDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.MENTOR.STUDENTS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
-              <MentorStudentsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.MENTOR.AVAILABILITY}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
-              <MentorAvailabilityPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.MENTOR.ATTENDANCE}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
-              <MentorAttendance />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.MENTOR.CLASSROOM}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
-              <MentorClassroom />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.MENTOR.CLASS_HISTORY}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
-              <ClassHistory />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.MENTOR.EXAMS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
-              <MentorExamList />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.MENTOR.CREATE_EXAM}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
-              <CreateExam />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.MENTOR.EXAM_RESULTS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
-              <React.Suspense fallback={<Loader size="lg" text="Loading Dashboard..." />}>
-                  <MentorExamResults />
-              </React.Suspense>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.MENTOR.EXAM_GRADING}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
-               <React.Suspense fallback={<Loader size="lg" text="Loading Page..." />}>
-                  <ExamGrading />
-               </React.Suspense>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.MENTOR.LEAVES}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
-              <MentorLeaves />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.MENTOR.STUDY_MATERIALS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MENTOR]}>
-              <MentorStudyMaterials />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.ADMIN.FINANCE}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <Finance />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.ADMIN.MENTOR_REQUESTS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <MentorRequestsPage />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.ADMIN.COURSES}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-              <CreateOneToOneCourse />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.ADMIN.ENROLLMENTS}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <AdminEnrollmentsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={ROUTES.ADMIN.LEAVES}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <LeaveManagement />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path={ROUTES.ADMIN.FINANCE}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-              <Finance />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.ADMIN.MENTOR_REQUESTS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-              <MentorRequestsPage />
-            </ProtectedRoute>
-          }
-        />
-        
-        <Route
-          path={ROUTES.ADMIN.ENROLLMENTS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-              <AdminEnrollmentsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.ADMIN.LEAVES}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-              <LeaveManagement />
-            </ProtectedRoute>
-          }
-        />
+      <Route path={ROUTES.ADMIN.LOGOUT} element={<AdminLoginPage />} />
 
-        <Route path={ROUTES.ADMIN.LOGOUT} element={<AdminLoginPage />} />
-        
-        <Route
-          path={ROUTES.ADMIN.ATTENDANCE}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-              <AdminAttendance />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path={ROUTES.ADMIN.ATTENDANCE}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <AdminAttendance />
+          </ProtectedRoute>
+        }
+      />
 
-
-        <Route
-          path={ROUTES.COMMON.NOTIFICATIONS}
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.STUDENT, ROLES.MENTOR, ROLES.ADMIN]}>
-              <NotificationsPage />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
+      <Route
+        path={ROUTES.COMMON.NOTIFICATIONS}
+        element={
+          <ProtectedRoute
+            allowedRoles={[ROLES.STUDENT, ROLES.MENTOR, ROLES.ADMIN]}
+          >
+            <NotificationsPage />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
   );
 };
 
