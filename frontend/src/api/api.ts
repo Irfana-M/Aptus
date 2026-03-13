@@ -6,6 +6,11 @@ const api = axios.create({
   withCredentials: true,
 });
 
+const skip401For: string[] = [
+  "/auth/login",
+  "/auth/refresh"
+];
+
 api.interceptors.request.use(
   (config) => {
     const token = TokenManager.getToken();
@@ -22,10 +27,14 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const config = error.config;
+    const isSkipped = skip401For.some((url: string) => config.url?.includes(url));
+
+    if (error.response?.status === 401 && !isSkipped) {
       TokenManager.clearAllTokens();
       window.location.href = "/login";
     }
+
     return Promise.reject(error);
   }
 );
