@@ -277,7 +277,7 @@ export function useWebRTC({ trialClassId, userId, userType }: UseWebRTCProps) {
       console.log('🚀 [WebRTC] STARTING JOIN CALL PROCESS');
       
       setStatus('Connecting Socket...');
-      socketRef.current = socketService.connect(userType);
+      socketRef.current = socketService.connect();
       
       if (socketRef.current.connected) setIsSocketConnected(true);
       socketRef.current.on('connect', () => setIsSocketConnected(true));

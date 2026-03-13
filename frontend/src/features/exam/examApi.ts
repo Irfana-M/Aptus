@@ -1,5 +1,5 @@
 import api from "../../api/api";
-import type { ApiResponse } from "../../api/api";
+import type { ApiResponse } from "../../types/api.types";
 import type { CreateExamDTO, SubmitExamDTO, IExam, IExamResult } from "../../types/exam.types";
 
 export const examApi = {
