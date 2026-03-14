@@ -169,12 +169,6 @@ const authSlice = createSlice({
         state.hasPaid = action.payload.hasPaid;
         state.isTrialCompleted = action.payload.isTrialCompleted;
         state.error = null;
-
-
-        TokenManager.setToken(
-          action.payload.user.role,
-          action.payload.accessToken
-        );
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
