@@ -34,13 +34,21 @@ export const TokenManager = {
     return payload?.fullName || payload?.name || null;
   },
 
-  clearToken(role?: UserRole) {
-    const currentRole = role || (localStorage.getItem("userRole") as UserRole);
-    if (!currentRole) return;
+clearToken(role?: UserRole) {
+  const currentRole = role || (localStorage.getItem("userRole") as UserRole);
+  if (!currentRole) return;
 
-    localStorage.removeItem(`${currentRole}_accessToken`);
+  localStorage.removeItem(`${currentRole}_accessToken`);
+
+  const remainingToken =
+    localStorage.getItem("student_accessToken") ||
+    localStorage.getItem("mentor_accessToken") ||
+    localStorage.getItem("admin_accessToken");
+
+  if (!remainingToken) {
     localStorage.removeItem("userRole");
-  },
+  }
+},
 
   getAnyToken(): string | null {
     return (
@@ -59,7 +67,10 @@ export const TokenManager = {
 };
 export const decodeJwt = (token: string) => {
   try {
-    return JSON.parse(atob(token.split('.')[1]));
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+
+    return JSON.parse(atob(payload));
   } catch {
     return null;
   }

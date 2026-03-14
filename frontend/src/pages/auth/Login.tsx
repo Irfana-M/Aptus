@@ -51,12 +51,20 @@ export default function Login() {
         reduxIsProfileComplete: auth.isProfileComplete,
       },
     });
-    console.log("[Login useEffect] Existing session check", { token: !!token, userRole, auth });
+    console.log("[Login useEffect] Existing session check", {
+      token: !!token,
+      userRole,
+      auth,
+    });
 
     if (!token || !userRole) return;
 
     if (userRole === "mentor") {
-      Sentry.addBreadcrumb({ category: "auth", message: "Login useEffect: redirecting mentor to dashboard", level: "info" });
+      Sentry.addBreadcrumb({
+        category: "auth",
+        message: "Login useEffect: redirecting mentor to dashboard",
+        level: "info",
+      });
       navigate(ROUTES.MENTOR.DASHBOARD, { replace: true });
     }
 
@@ -66,10 +74,10 @@ export default function Login() {
       const redirectTarget = hasPaid
         ? ROUTES.STUDENT.DASHBOARD
         : !isTrialCompleted
-        ? ROUTES.STUDENT.BOOK_FREE_TRIAL
-        : !isProfileComplete
-        ? ROUTES.STUDENT.PROFILE_SETUP
-        : ROUTES.STUDENT.DASHBOARD;
+          ? ROUTES.STUDENT.BOOK_FREE_TRIAL
+          : !isProfileComplete
+            ? ROUTES.STUDENT.PROFILE_SETUP
+            : ROUTES.STUDENT.DASHBOARD;
 
       Sentry.addBreadcrumb({
         category: "auth",
@@ -77,7 +85,12 @@ export default function Login() {
         level: "info",
         data: { hasPaid, isTrialCompleted, isProfileComplete, redirectTarget },
       });
-      console.log("[Login useEffect] Student redirect", { hasPaid, isTrialCompleted, isProfileComplete, redirectTarget });
+      console.log("[Login useEffect] Student redirect", {
+        hasPaid,
+        isTrialCompleted,
+        isProfileComplete,
+        redirectTarget,
+      });
 
       navigate(redirectTarget, { replace: true });
     }
@@ -176,6 +189,13 @@ export default function Login() {
 
         toast.success("Login successful!");
         sessionStorage.setItem("justLoggedIn", "true");
+        const userId = TokenManager.getUserId();
+        const username = TokenManager.getUserName();
+
+        Sentry.setUser({
+          id: userId ?? undefined,
+          username: username ?? undefined,
+        });
         navigate(redirectPath, { replace: true });
       } else {
         const errorMessage = resultAction.payload as string;
@@ -289,4 +309,3 @@ export default function Login() {
     </AuthLayout>
   );
 }
-
