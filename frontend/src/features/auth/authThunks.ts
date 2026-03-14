@@ -1,4 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
+import * as Sentry from "@sentry/react";
 import { store, type RootState } from "../../app/store";
 import { authApi } from "./authApi";
 import type {
@@ -67,6 +68,20 @@ export const refreshAccessToken = createAsyncThunk<
     // Backend returns flat structure, contradicting ApiResponse type
     const { user, accessToken, isProfileComplete, isPaid, isTrialCompleted } = res.data as unknown as LoginResponse;
 
+    Sentry.addBreadcrumb({
+      category: "auth",
+      message: "refreshAccessToken: SUCCESS — new token received",
+      level: "info",
+      data: {
+        hasAccessToken: !!accessToken,
+        userRole: user?.role,
+        isProfileComplete,
+        isPaid,
+        isTrialCompleted,
+      },
+    });
+    console.log("[refreshAccessToken] ✅ Refresh succeeded", { role: user?.role, hasToken: !!accessToken });
+
     if (accessToken && user.role) {
       TokenManager.setToken(user.role, accessToken);
     }
@@ -90,11 +105,36 @@ export const refreshAccessToken = createAsyncThunk<
     const errStatus = err?.response?.status;
     const isAuthError = errStatus === 401 || errStatus === 403;
 
+    const hasToken = !!TokenManager.getAnyToken();
+    const currentState = store.getState() as RootState;
+
+    Sentry.captureMessage("refreshAccessToken: FAILED", {
+      level: "warning",
+      extra: {
+        errorStatus: errStatus,
+        isAuthError,
+        reduxUserExists: !!currentState.auth.user,
+        anyTokenInStorage: hasToken,
+        studentToken: !!localStorage.getItem("student_accessToken"),
+        mentorToken: !!localStorage.getItem("mentor_accessToken"),
+        adminToken: !!localStorage.getItem("admin_accessToken"),
+        userRole: localStorage.getItem("userRole"),
+      },
+    });
+    console.warn("[refreshAccessToken] ❌ Refresh failed", {
+      errStatus,
+      isAuthError,
+      reduxUserExists: !!currentState.auth.user,
+      anyTokenInStorage: hasToken,
+      studentToken: !!localStorage.getItem("student_accessToken"),
+      mentorToken: !!localStorage.getItem("mentor_accessToken"),
+      userRole: localStorage.getItem("userRole"),
+    });
+
     if (isAuthError) {
-      const hasToken = !!TokenManager.getAnyToken();
-      const currentState = store.getState() as RootState;
       if (!currentState.auth.user && !hasToken) {
         console.warn("🔐 Refresh failed with 401. No active session, clearing tokens.");
+        Sentry.addBreadcrumb({ category: "auth", message: "refreshAccessToken: WIPING tokens — no user + no token", level: "error" });
         TokenManager.clearAllTokens()
 
         const keys = [
@@ -107,6 +147,7 @@ export const refreshAccessToken = createAsyncThunk<
         keys.forEach(key => localStorage.removeItem(key));
       } else {
         console.warn("🛡️ Refresh failed with 401 but an active session exists. Skipping token wipe.");
+        Sentry.addBreadcrumb({ category: "auth", message: "refreshAccessToken: Skipped token wipe — session still active", level: "warning" });
       }
     }
 
@@ -133,9 +174,54 @@ export const loginUser = createAsyncThunk<
       // Backend returns flat structure, contradicting ApiResponse type
       const { user, accessToken, isProfileComplete, isPaid, isTrialCompleted } = res.data as unknown as LoginResponse;
 
+      Sentry.addBreadcrumb({
+        category: "auth",
+        message: "loginUser thunk: API response received",
+        level: "info",
+        data: {
+          hasAccessToken: !!accessToken,
+          hasUser: !!user,
+          userRole: user?.role,
+          userId: user?._id,
+          isPaid,
+          isProfileComplete,
+          isTrialCompleted,
+        },
+      });
+      console.log("[loginUser] ✅ API response received", {
+        role: user?.role,
+        hasToken: !!accessToken,
+        isPaid,
+        isProfileComplete,
+        isTrialCompleted,
+      });
+
       if (accessToken && user.role) {
         TokenManager.setToken(user.role, accessToken);
         localStorage.setItem("userId", user._id);
+
+        Sentry.addBreadcrumb({
+          category: "auth",
+          message: "loginUser thunk: Token stored via TokenManager",
+          level: "info",
+          data: {
+            storedRole: user.role,
+            tokenKey: `${user.role}_accessToken`,
+            tokenExistsAfterSet: !!localStorage.getItem(`${user.role}_accessToken`),
+            userRoleInStorage: localStorage.getItem("userRole"),
+          },
+        });
+        console.log("[loginUser] 🔑 Token stored", {
+          key: `${user.role}_accessToken`,
+          tokenExists: !!localStorage.getItem(`${user.role}_accessToken`),
+          userRole: localStorage.getItem("userRole"),
+        });
+      } else {
+        Sentry.captureMessage("loginUser thunk: Token NOT stored — missing accessToken or user.role", {
+          level: "error",
+          extra: { hasAccessToken: !!accessToken, userRole: user?.role },
+        });
+        console.error("[loginUser] ❌ Token NOT stored", { hasAccessToken: !!accessToken, userRole: user?.role });
       }
 
       return {

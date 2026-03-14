@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import * as Sentry from "@sentry/react";
 
 import type { AppDispatch, RootState } from "../../app/store";
 import { loginUser } from "../../features/auth/authThunks";
@@ -38,24 +39,47 @@ export default function Login() {
     const userRole = TokenManager.getRole();
     const token = TokenManager.getToken();
 
+    Sentry.addBreadcrumb({
+      category: "auth",
+      message: "Login.tsx useEffect: checking existing session",
+      level: "info",
+      data: {
+        hasToken: !!token,
+        userRole,
+        reduxHasPaid: auth.hasPaid,
+        reduxIsTrialCompleted: auth.isTrialCompleted,
+        reduxIsProfileComplete: auth.isProfileComplete,
+      },
+    });
+    console.log("[Login useEffect] Existing session check", { token: !!token, userRole, auth });
+
     if (!token || !userRole) return;
 
     if (userRole === "mentor") {
+      Sentry.addBreadcrumb({ category: "auth", message: "Login useEffect: redirecting mentor to dashboard", level: "info" });
       navigate(ROUTES.MENTOR.DASHBOARD, { replace: true });
     }
 
     if (userRole === "student") {
       const { hasPaid, isTrialCompleted, isProfileComplete } = auth;
 
-      if (hasPaid) {
-        navigate(ROUTES.STUDENT.DASHBOARD, { replace: true });
-      } else if (!isTrialCompleted) {
-        navigate(ROUTES.STUDENT.BOOK_FREE_TRIAL, { replace: true });
-      } else if (!isProfileComplete) {
-        navigate(ROUTES.STUDENT.PROFILE_SETUP, { replace: true });
-      } else {
-        navigate(ROUTES.STUDENT.DASHBOARD, { replace: true });
-      }
+      const redirectTarget = hasPaid
+        ? ROUTES.STUDENT.DASHBOARD
+        : !isTrialCompleted
+        ? ROUTES.STUDENT.BOOK_FREE_TRIAL
+        : !isProfileComplete
+        ? ROUTES.STUDENT.PROFILE_SETUP
+        : ROUTES.STUDENT.DASHBOARD;
+
+      Sentry.addBreadcrumb({
+        category: "auth",
+        message: `Login useEffect: redirecting student to ${redirectTarget}`,
+        level: "info",
+        data: { hasPaid, isTrialCompleted, isProfileComplete, redirectTarget },
+      });
+      console.log("[Login useEffect] Student redirect", { hasPaid, isTrialCompleted, isProfileComplete, redirectTarget });
+
+      navigate(redirectTarget, { replace: true });
     }
   }, [navigate]);
 
@@ -128,6 +152,27 @@ export default function Login() {
           hasPaid,
           user.subscription,
         );
+
+        Sentry.addBreadcrumb({
+          category: "auth",
+          message: "Login.tsx onSubmit: navigating after fulfilled",
+          level: "info",
+          data: {
+            redirectPath,
+            userRole: user.role,
+            hasPaid,
+            isProfileComplete,
+            isTrialCompleted,
+            approvalStatus: user.approvalStatus,
+            tokenInStorage: !!localStorage.getItem(`${user.role}_accessToken`),
+            userRoleInStorage: localStorage.getItem("userRole"),
+          },
+        });
+        console.log("[Login onSubmit] ✅ Navigating to", redirectPath, {
+          role: user.role,
+          tokenExists: !!localStorage.getItem(`${user.role}_accessToken`),
+          userRole: localStorage.getItem("userRole"),
+        });
 
         toast.success("Login successful!");
         sessionStorage.setItem("justLoggedIn", "true");

@@ -71,6 +71,7 @@ import NotificationsPage from "./pages/common/NotificationsPage";
 import { ROUTES } from "./constants/routes.constants";
 import { refreshAccessToken } from "./features/auth/authThunks";
 import { TokenManager } from "./utils/tokenManager";
+import * as Sentry from "@sentry/react";
 
 const App: React.FC = () => {
   return (
@@ -113,6 +114,29 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const token = TokenManager.getAnyToken();
     const justLoggedIn = sessionStorage.getItem("justLoggedIn");
+
+    Sentry.addBreadcrumb({
+      category: "auth",
+      message: "AppContent mount: token check",
+      level: "info",
+      data: {
+        anyTokenExists: !!token,
+        justLoggedIn: !!justLoggedIn,
+        studentToken: !!localStorage.getItem("student_accessToken"),
+        mentorToken: !!localStorage.getItem("mentor_accessToken"),
+        adminToken: !!localStorage.getItem("admin_accessToken"),
+        userRole: localStorage.getItem("userRole"),
+        willDispatchRefresh: !!token && !justLoggedIn,
+      },
+    });
+    console.log("[AppContent] 🚀 Mount token check", {
+      anyTokenExists: !!token,
+      justLoggedIn: !!justLoggedIn,
+      studentToken: !!localStorage.getItem("student_accessToken"),
+      mentorToken: !!localStorage.getItem("mentor_accessToken"),
+      userRole: localStorage.getItem("userRole"),
+      willDispatchRefresh: !!token && !justLoggedIn,
+    });
 
     if (token  && !justLoggedIn) {
       dispatch(refreshAccessToken());

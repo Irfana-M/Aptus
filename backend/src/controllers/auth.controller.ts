@@ -53,7 +53,7 @@ export class AuthController {
       );
 
       logger.info(
-        `User login success: ${email}, role: ${role}}`
+        `[login] ✅ Login success: ${email} | role: ${role} | hasAccessToken: ${!!result.accessToken} | isProfileComplete: ${result.isProfileComplete} | isPaid: ${result.isPaid} | isTrialCompleted: ${result.isTrialCompleted}`
       );
 
       return res.status(HttpStatusCode.OK).json({
@@ -82,7 +82,13 @@ export class AuthController {
   ) => {
     try {
       const refreshToken = req.cookies?.refreshToken;
+
+      logger.info(
+        `[refreshAccessToken] Request received | hasCookie: ${!!refreshToken} | origin: ${req.headers.origin} | cookieKeys: ${Object.keys(req.cookies || {}).join(", ") || "none"}`
+      );
+
       if (!refreshToken) {
+        logger.warn(`[refreshAccessToken] ❌ BLOCKED — no refreshToken cookie present | origin: ${req.headers.origin}`);
         throw new AppError(
           MESSAGES.AUTH.REFRESH_TOKEN_REQUIRED,
           HttpStatusCode.UNAUTHORIZED
@@ -106,7 +112,7 @@ export class AuthController {
       const userData = await this._authService.getUserById(payload.id, payload.role);
 
       logger.info(
-        `Access token refreshed for user ${payload.id} (${payload.role})`
+        `[refreshAccessToken] ✅ Token refreshed | userId: ${payload.id} | role: ${payload.role}`
       );
 
       const userResponse: Record<string, unknown> = {
@@ -132,6 +138,9 @@ export class AuthController {
         message: MESSAGES.AUTH.REFRESH_SUCCESS,
       });
     } catch (error) {
+      logger.error(
+        `[refreshAccessToken] ❌ Failed | hasCookie: ${!!req.cookies?.refreshToken} | origin: ${req.headers.origin} | error: ${error instanceof Error ? error.message : String(error)}`
+      );
       
       res.clearCookie("refreshToken", {
         httpOnly: true,
