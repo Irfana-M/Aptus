@@ -186,11 +186,12 @@ const authSlice = createSlice({
         state.hasPaid = action.payload.hasPaid;
         state.isTrialCompleted = action.payload.isTrialCompleted;
         state.error = null;
-
-        TokenManager.setToken(
-          action.payload.user.role,
-          action.payload.accessToken
-        );
+        if (action.payload.user?.role) {
+          TokenManager.setToken(
+            action.payload.user.role,
+            action.payload.accessToken
+          );
+        }
       })
       .addCase(refreshAccessToken.rejected, (state) => {
         console.log("❌ refreshAccessToken rejected");

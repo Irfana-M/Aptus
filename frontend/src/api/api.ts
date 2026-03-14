@@ -31,8 +31,11 @@ api.interceptors.response.use(
     const isSkipped = skip401For.some((url: string) => config.url?.includes(url));
 
     if (error.response?.status === 401 && !isSkipped) {
-      TokenManager.clearAllTokens();
-      window.location.href = "/login";
+      const justLoggedIn = sessionStorage.getItem("justLoggedIn");
+      if (!justLoggedIn) {
+        TokenManager.clearAllTokens();
+        window.location.href = "/login";
+      }
     }
 
     return Promise.reject(error);
