@@ -4,7 +4,7 @@ import { ROUTES } from "../constants/routes.constants";
 
 interface ProtectedRouteProps {
   children: JSX.Element;
-  allowedRoles: UserRole[]
+  allowedRoles: UserRole[];
 }
 
 export default function ProtectedRoute({
@@ -14,7 +14,7 @@ export default function ProtectedRoute({
   const location = useLocation();
 
   const role = TokenManager.getRole();
-const token = role ? TokenManager.getToken(role) : null;
+  const token = TokenManager.getToken();
 
   if (!token) {
     return <Navigate to={ROUTES.LOGIN} replace state={{ from: location }} />;

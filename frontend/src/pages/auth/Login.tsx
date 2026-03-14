@@ -57,7 +57,7 @@ export default function Login() {
         navigate(ROUTES.STUDENT.DASHBOARD, { replace: true });
       }
     }
-  }, [navigate,auth]);
+  }, [navigate]);
 
   const {
     register,
