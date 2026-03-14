@@ -91,9 +91,9 @@ export const refreshAccessToken = createAsyncThunk<
     const isAuthError = errStatus === 401 || errStatus === 403;
 
     if (isAuthError) {
-      // Double check state before clearing
+      const hasToken = !!TokenManager.getAnyToken();
       const currentState = store.getState() as RootState;
-      if (!currentState.auth.user) {
+      if (!currentState.auth.user && !hasToken) {
         console.warn("🔐 Refresh failed with 401. No active session, clearing tokens.");
         TokenManager.clearAllTokens()
 

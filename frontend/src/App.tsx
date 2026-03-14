@@ -112,10 +112,12 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     const token = TokenManager.getAnyToken();
+    const justLoggedIn = sessionStorage.getItem("justLoggedIn");
 
-    if (token) {
+    if (token  && !justLoggedIn) {
       dispatch(refreshAccessToken());
     }
+     sessionStorage.removeItem("justLoggedIn");
   }, [dispatch]);
   return (
     <Routes>

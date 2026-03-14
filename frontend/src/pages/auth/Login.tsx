@@ -130,6 +130,7 @@ export default function Login() {
         );
 
         toast.success("Login successful!");
+        sessionStorage.setItem("justLoggedIn", "true");
         navigate(redirectPath, { replace: true });
       } else {
         const errorMessage = resultAction.payload as string;
