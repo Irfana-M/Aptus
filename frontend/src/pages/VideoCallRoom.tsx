@@ -35,6 +35,7 @@ export default function VideoCallRoom() {
   const [isPreparing, setIsPreparing] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
   const [joinAttempted, setJoinAttempted] = useState(false);
+  const [hasUserJoined, setHasUserJoined] = useState(false);
   const [trialDetails, setTrialDetails] = useState<TrialClassResponse | null>(
     null,
   );
@@ -279,7 +280,8 @@ export default function VideoCallRoom() {
       roleLoading ||
       !effectiveId ||
       !activeUserId ||
-      !activeRole
+      !activeRole||
+      !hasUserJoined
     )
       return;
     if (!TokenManager.getToken()) {
@@ -314,6 +316,7 @@ export default function VideoCallRoom() {
     userIdFromStore,
     joinCall,
     navigate,
+    hasUserJoined
   ]);
 
   useEffect(() => {
@@ -346,19 +349,16 @@ export default function VideoCallRoom() {
         remoteVideoRef.current.srcObject = remoteStream;
       }
 
-      const playRemote = async () => {
-        try {
-          if (remoteVideoRef.current) {
-            await remoteVideoRef.current.play();
-            console.log("✅ [VideoCall] Remote video playing");
-          }
-        } catch (e) {
-          console.warn(
-            "⚠️ [VideoCall] Remote video play failed, waiting for user interaction or track:",
-            e,
-          );
-        }
-      };
+    const playRemote = async () => {
+  try {
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = remoteStream;
+      await remoteVideoRef.current.play();
+    }
+  } catch (e) {
+    console.warn("Remote video autoplay blocked, waiting interaction");
+  }
+};
 
       playRemote();
 
@@ -515,6 +515,22 @@ export default function VideoCallRoom() {
       </div>
     );
   }
+  if (!hasUserJoined) {
+  return (
+    <div className="h-screen flex items-center justify-center bg-[#F4FBFB]">
+      <div className="bg-white p-10 rounded-3xl shadow-lg text-center">
+        <h2 className="text-2xl font-bold mb-6">Ready to Join?</h2>
+
+        <button
+          onClick={() => setHasUserJoined(true)}
+          className="px-8 py-4 bg-[#3CB4B4] text-white font-bold rounded-xl hover:bg-[#329898]"
+        >
+          Join Class
+        </button>
+      </div>
+    </div>
+  );
+}
 
   if (error) {
     console.log("Call state:", { isConnected });

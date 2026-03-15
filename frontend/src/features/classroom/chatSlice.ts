@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
-import { chatApi } from '../../api/chatApi'; 
+import { chatApi } from '../../api/chatApi';
 import type { ChatMessage } from '../../types/classroom.types';
 import type { ChatState } from './types';
 import { getErrorMessage } from '../../utils/errorUtils';
@@ -40,9 +40,14 @@ const chatSlice = createSlice({
   initialState,
   reducers: {
     addMessage: (state, action: PayloadAction<ChatMessage>) => {
-      // Avoid duplicates
-      if (!state.messages.some((m: ChatMessage) => m._id === action.payload._id)) {
-        state.messages.push(action.payload);
+      const newMsg = action.payload;
+
+      const exists = state.messages.some(
+        (m: ChatMessage) => String(m._id) === String(newMsg._id)
+      );
+
+      if (!exists) {
+        state.messages.push(newMsg);
       }
     },
     setActiveSession: (state, action: PayloadAction<string | null>) => {
@@ -70,9 +75,14 @@ const chatSlice = createSlice({
         state.error = action.payload as string;
       })
       .addCase(sendChatMessage.fulfilled, (state, action) => {
-        
-        if (!state.messages.some((m: ChatMessage) => m._id === action.payload._id)) {
-          state.messages.push(action.payload);
+        const newMsg = action.payload;
+
+        const exists = state.messages.some(
+          (m: ChatMessage) => String(m._id) === String(newMsg._id)
+        );
+
+        if (!exists) {
+          state.messages.push(newMsg);
         }
       });
   }

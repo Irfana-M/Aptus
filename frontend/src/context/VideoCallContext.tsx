@@ -30,17 +30,18 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
   const pcRef = React.useRef<RTCPeerConnection | null>(null);
   const socketRef = React.useRef<Socket | null>(null);
   const remoteSocketIdRef = React.useRef<string | null>(null);
-  const hasCreatedOffer = React.useRef(false);
   const iceCandidatesBuffer = React.useRef<RTCIceCandidateInit[]>([]);
   const isPoliteRef = React.useRef(false);
   const iceServers = React.useMemo(
     () => ({
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" },
-        { urls: "stun:stun2.l.google.com:19302" },
-        { urls: "stun:stun3.l.google.com:19302" },
-        { urls: "stun:stun4.l.google.com:19302" },
+
+        {
+          urls: "turn:your-turn-server.com:3478",
+          username: "user",
+          credential: "pass",
+        },
       ],
     }),
     [],
@@ -168,11 +169,13 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       };
 
       pc.ontrack = (event) => {
-        console.log("📺 [Media] Received remote track:", event.track.kind);
+        console.log("📺 Remote track:", event.track.kind);
 
         setRemoteStream((prev) => {
           const stream = prev ?? new MediaStream();
+
           stream.addTrack(event.track);
+
           return new MediaStream(stream.getTracks());
         });
       };
@@ -198,22 +201,32 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     console.log("🔗 [Socket] Registering synchronized listeners...");
 
     const handleUserJoined = async ({ socketId }: { socketId: string }) => {
-      console.log("👋 [Socket] user-joined:", socketId);
+      console.log("👋 user joined:", socketId);
+
       remoteSocketIdRef.current = socketId;
-      if (socket.id) {
-        isPoliteRef.current = socket.id > socketId;
-      }
+
+      if (!socket.id) return;
+
+      // polite peer rule
+      isPoliteRef.current = socket.id > socketId;
+
       const pc = createPeerConnection(socketId);
       if (!pc) return;
 
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      socket.emit("webrtc-offer", {
-        toSocketId: socketId,
-        sdp: pc.localDescription,
-        trialClassId: trialClassIdRef.current,
-      });
-      hasCreatedOffer.current = true;
+      // Only ONE side creates offer
+      if (!isPoliteRef.current) {
+        console.log("📤 Creating offer");
+
+        const offer = await pc.createOffer();
+
+        await pc.setLocalDescription(offer);
+
+        socket.emit("webrtc-offer", {
+          toSocketId: socketId,
+          sdp: pc.localDescription,
+          trialClassId: trialClassIdRef.current,
+        });
+      }
     };
 
     const handleOffer = async ({
@@ -231,9 +244,13 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       const offerCollision =
         sdp.type === "offer" && pc.signalingState !== "stable";
 
-      if (offerCollision && !isPoliteRef.current) {
-        console.warn("⚠️ Ignoring offer due to collision");
-        return;
+      if (offerCollision) {
+        if (!isPoliteRef.current) {
+          console.warn("Ignoring offer collision");
+          return;
+        }
+
+        await pc.setLocalDescription({ type: "rollback" });
       }
 
       await pc.setRemoteDescription(new RTCSessionDescription(sdp));
@@ -247,9 +264,13 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
 
       iceCandidatesBuffer.current.forEach(async (candidate) => {
         try {
-          await pc.addIceCandidate(new RTCIceCandidate(candidate));
-        } catch (e) {
-          console.warn("Error adding buffered ice candidate", e);
+          if (pc.remoteDescription) {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          } else {
+            iceCandidatesBuffer.current.push(candidate);
+          }
+        } catch (err) {
+          console.warn("ICE candidate error", err);
         }
       });
       iceCandidatesBuffer.current = [];
