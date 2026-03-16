@@ -73,10 +73,10 @@ export default function Login() {
 
       const redirectTarget = hasPaid
         ? ROUTES.STUDENT.DASHBOARD
-        : !isTrialCompleted
-          ? ROUTES.STUDENT.BOOK_FREE_TRIAL
-          : !isProfileComplete
-            ? ROUTES.STUDENT.PROFILE_SETUP
+        : !isProfileComplete
+          ? ROUTES.STUDENT.PROFILE_SETUP
+          : !isTrialCompleted
+            ? ROUTES.STUDENT.BOOK_FREE_TRIAL
             : ROUTES.STUDENT.DASHBOARD;
 
       Sentry.addBreadcrumb({
@@ -136,8 +136,8 @@ export default function Login() {
       }
 
       if (hasPaid) return ROUTES.STUDENT.DASHBOARD;
-      if (!isTrialCompleted) return ROUTES.STUDENT.BOOK_FREE_TRIAL;
       if (!profileComplete) return ROUTES.STUDENT.PROFILE_SETUP;
+      if (!isTrialCompleted) return ROUTES.STUDENT.BOOK_FREE_TRIAL;
       return ROUTES.STUDENT.DASHBOARD;
     }
 
