@@ -1,4 +1,5 @@
 import React from "react";
+import * as Sentry from "@sentry/react";
 import { Socket } from "socket.io-client";
 import videoSocketService from "../services/videoSocketService";
 import { getErrorMessage } from "../utils/errorUtils";
@@ -15,9 +16,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
   const [localStream, setLocalStream] = React.useState<MediaStream | null>(
     null,
   );
-  const [remoteStream, setRemoteStream] = React.useState<MediaStream | null>(
-    null,
-  );
+  const [remoteStreams, setRemoteStreams] = React.useState<Record<string, MediaStream>>({});
+  const [participants, setParticipants] = React.useState<string[]>([]);
   const [isConnected, setIsConnected] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [isMuted, setIsMuted] = React.useState(false);
@@ -31,11 +31,10 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
   const sessionTypeRef = React.useRef<'trial' | 'regular' | null>(null);
   const sessionModeRef = React.useRef<'one-to-one' | 'group' | null>(null);
   const localStreamRef = React.useRef<MediaStream | null>(null);
-  const pcRef = React.useRef<RTCPeerConnection | null>(null);
+  const pcsRef = React.useRef<Map<string, RTCPeerConnection>>(new Map());
   const socketRef = React.useRef<Socket | null>(null);
-  const remoteSocketIdRef = React.useRef<string | null>(null);
-  const iceCandidatesBuffer = React.useRef<RTCIceCandidateInit[]>([]);
-  const isPoliteRef = React.useRef(false);
+  const iceBuffersRef = React.useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+  const politePeersRef = React.useRef<Set<string>>(new Set());
   const iceServers = React.useMemo(
     () => ({
       iceServers: [
@@ -51,11 +50,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     [],
   );
 
-  const [remoteMediaState, setRemoteMediaState] =
-    React.useState<RemoteMediaState>({
-      isMuted: false,
-      isVideoOff: false,
-    });
+  const [remoteMediaStates, setRemoteMediaStates] =
+    React.useState<Record<string, RemoteMediaState>>({});
 
   const createFakeStream = React.useCallback((): MediaStream => {
     const canvas = document.createElement("canvas");
@@ -78,7 +74,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       ctx.arc((x % 400) + 120, 320, 10, 0, Math.PI * 2);
       ctx.fill();
       x += 3;
-      if (pcRef.current) requestAnimationFrame(draw);
+      if (pcsRef.current.size > 0) requestAnimationFrame(draw);
     };
     draw();
     const stream = (
@@ -140,21 +136,23 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const createPeerConnection = React.useCallback(
     (targetSocketId: string) => {
-      if (
-        pcRef.current &&
-        (pcRef.current.connectionState === "connected" ||
-          pcRef.current.connectionState === "connecting")
-      ) {
+      if (pcsRef.current.has(targetSocketId)) {
         console.warn(
-          "⚠️ [WebRTC] PeerConnection already active. Skipping duplicate creation.",
+          `⚠️ [WebRTC] PeerConnection already exists for ${targetSocketId}.`,
         );
-        return pcRef.current;
+        return pcsRef.current.get(targetSocketId);
       }
 
       console.log("🔄 [WebRTC] Creating new PC for:", targetSocketId);
+      Sentry.addBreadcrumb({
+        category: "webrtc",
+        message: "Peer connection created",
+        level: "info",
+        data: { targetSocketId, sessionId: sessionIdRef.current }
+      });
 
       const pc = new RTCPeerConnection(iceServers);
-      pcRef.current = pc;
+      pcsRef.current.set(targetSocketId, pc);
 
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => {
@@ -175,19 +173,22 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       };
 
       pc.ontrack = (event) => {
-        console.log("📺 Remote track:", event.track.kind);
-
-        setRemoteStream((prev) => {
-          const stream = prev ?? new MediaStream();
-
+        console.log(`📺 Remote track from ${targetSocketId}:`, event.track.kind);
+        setRemoteStreams((prev) => {
+          const stream = prev[targetSocketId] ?? new MediaStream();
           stream.addTrack(event.track);
-
-          return new MediaStream(stream.getTracks());
+          return { ...prev, [targetSocketId]: new MediaStream(stream.getTracks()) };
         });
       };
 
       pc.onconnectionstatechange = () => {
-        console.log("📊 [PC] Connection state:", pc.connectionState);
+        console.log(`📊 [PC:${targetSocketId}] Connection state:`, pc.connectionState);
+        Sentry.addBreadcrumb({
+          category: "webrtc",
+          message: "Peer connection state change",
+          level: "info",
+          data: { targetSocketId, connectionState: pc.connectionState }
+        });
         setConnectionState(pc.connectionState);
         if (pc.connectionState === "connected") {
           setIsConnected(true);
@@ -208,23 +209,33 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const handleUserJoined = async ({ socketId }: { socketId: string }) => {
       console.log("👋 user joined:", socketId);
-
-      remoteSocketIdRef.current = socketId;
+      Sentry.addBreadcrumb({
+        category: "webrtc",
+        message: "User joined call",
+        level: "info",
+        data: { socketId, sessionId: sessionIdRef.current }
+      });
+      setParticipants((prev) => !prev.includes(socketId) ? [...prev, socketId] : prev);
 
       if (!socket.id) return;
 
       // polite peer rule
-      isPoliteRef.current = socket.id > socketId;
+      if (socket.id > socketId) {
+        politePeersRef.current.add(socketId);
+      }
 
       const pc = createPeerConnection(socketId);
       if (!pc) return;
 
       // Only ONE side creates offer
-      if (!isPoliteRef.current) {
-        console.log("📤 Creating offer");
-
+      if (!politePeersRef.current.has(socketId)) {
+        console.log(`📤 Creating offer for ${socketId}`);
+        Sentry.addBreadcrumb({
+          category: "webrtc",
+          message: "WebRTC offer sent",
+          data: { toSocketId: socketId }
+        });
         const offer = await pc.createOffer();
-
         await pc.setLocalDescription(offer);
 
         socket.emit("webrtc-offer", {
@@ -245,7 +256,11 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       offer: RTCSessionDescriptionInit;
     }) => {
       console.log("📥 [Socket] webrtc-offer from:", fromSocketId);
-      remoteSocketIdRef.current = fromSocketId;
+      Sentry.addBreadcrumb({
+        category: "webrtc",
+        message: "WebRTC offer received",
+        data: { fromSocketId }
+      });
       const pc = createPeerConnection(fromSocketId);
       if (!pc) return;
 
@@ -253,11 +268,10 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
         offer.type === "offer" && pc.signalingState !== "stable";
 
       if (offerCollision) {
-        if (!isPoliteRef.current) {
-          console.warn("Ignoring offer collision");
+        if (!politePeersRef.current.has(fromSocketId)) {
+          console.warn("Ignoring offer collision (impolite)");
           return;
         }
-
         await pc.setLocalDescription({ type: "rollback" });
       }
 
@@ -272,75 +286,139 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
         sessionMode: sessionModeRef.current,
       });
 
-      iceCandidatesBuffer.current.forEach(async (candidate) => {
+      const buffer = iceBuffersRef.current.get(fromSocketId) || [];
+      buffer.forEach(async (candidate) => {
         try {
-          if (pc.remoteDescription) {
-            await pc.addIceCandidate(new RTCIceCandidate(candidate));
-          } else {
-            iceCandidatesBuffer.current.push(candidate);
-          }
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          Sentry.addBreadcrumb({
+            category: "webrtc",
+            message: "ICE candidate added (buffered)",
+            data: { fromSocketId }
+          });
         } catch (err) {
-          console.warn("ICE candidate error", err);
+          console.warn(`ICE buffered error for ${fromSocketId}`, err);
+          Sentry.captureException(err, { extra: { fromSocketId, context: "addIceCandidate_buffered" } });
         }
       });
-      iceCandidatesBuffer.current = [];
+      iceBuffersRef.current.delete(fromSocketId);
     };
 
     const handleAnswer = async ({
+      fromSocketId,
       answer,
     }: {
+      fromSocketId: string;
       answer: RTCSessionDescriptionInit;
     }) => {
-      console.log("📥 [Socket] webrtc-answer received");
+      console.log(`📥 [Socket] webrtc-answer received from ${fromSocketId}`);
+      Sentry.addBreadcrumb({
+        category: "webrtc",
+        message: "WebRTC answer received",
+        data: { fromSocketId }
+      });
+      const pc = pcsRef.current.get(fromSocketId);
+      if (!pc) return;
 
-      if (!pcRef.current) return;
+      await pc.setRemoteDescription(new RTCSessionDescription(answer));
 
-      await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
-
-      // flush buffered ICE candidates
-      iceCandidatesBuffer.current.forEach(async (candidate) => {
+      const buffer = iceBuffersRef.current.get(fromSocketId) || [];
+      buffer.forEach(async (candidate) => {
         try {
-          await pcRef.current?.addIceCandidate(new RTCIceCandidate(candidate));
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          Sentry.addBreadcrumb({
+            category: "webrtc",
+            message: "ICE candidate added (buffered_answer)",
+            data: { fromSocketId }
+          });
         } catch (e) {
-          console.warn("Error adding buffered ICE", e);
+          console.warn(`Error adding buffered ICE for ${fromSocketId}`, e);
+          Sentry.captureException(e, { extra: { fromSocketId, context: "addIceCandidate_answer" } });
         }
       });
-
-      iceCandidatesBuffer.current = [];
+      iceBuffersRef.current.delete(fromSocketId);
     };
 
     const handleIceCandidate = async ({
+      fromSocketId,
       candidate,
     }: {
+      fromSocketId: string;
       candidate: RTCIceCandidateInit;
     }) => {
-      if (pcRef.current && pcRef.current.remoteDescription) {
+      console.log(`🧊 [Socket] ICE candidate from ${fromSocketId}`);
+      Sentry.addBreadcrumb({
+        category: "webrtc",
+        message: "ICE candidate received",
+        data: { fromSocketId }
+      });
+      const pc = pcsRef.current.get(fromSocketId);
+
+      if (pc && pc.remoteDescription) {
         try {
-          await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          Sentry.addBreadcrumb({
+            category: "webrtc",
+            message: "ICE candidate added",
+            data: { fromSocketId }
+          });
         } catch (e) {
-          console.warn("Error adding ice candidate", e);
+          console.warn(`Error adding ice candidate for ${fromSocketId}`, e);
+          Sentry.captureException(e, { extra: { fromSocketId, context: "addIceCandidate_direct" } });
         }
       } else {
-        iceCandidatesBuffer.current.push(candidate);
+        const buffer = iceBuffersRef.current.get(fromSocketId) || [];
+        buffer.push(candidate);
+        iceBuffersRef.current.set(fromSocketId, buffer);
       }
     };
 
-    const handleUserLeft = () => {
-      console.log("👋 [Socket] user-left");
-      setIsConnected(false);
-      setRemoteStream(null);
-      remoteSocketIdRef.current = null;
-      setStatus("User Left");
-      if (pcRef.current) {
-        pcRef.current.close();
-        pcRef.current = null;
+    const handleUserLeft = ({ socketId }: { socketId: string }) => {
+      console.log(`👋 [Socket] user-left: ${socketId}`);
+      Sentry.addBreadcrumb({
+        category: "webrtc",
+        message: "User left call",
+        level: "info",
+        data: { socketId, sessionId: sessionIdRef.current }
+      });
+      
+      const pc = pcsRef.current.get(socketId);
+      if (pc) {
+        pc.close();
+        pcsRef.current.delete(socketId);
+      }
+
+      setRemoteStreams((prev) => {
+        const next = { ...prev };
+        delete next[socketId];
+        return next;
+      });
+
+      setRemoteMediaStates((prev) => {
+        const next = { ...prev };
+        delete next[socketId];
+        return next;
+      });
+
+      setParticipants((prev) => prev.filter(id => id !== socketId));
+      iceBuffersRef.current.delete(socketId);
+      politePeersRef.current.delete(socketId);
+
+      if (pcsRef.current.size === 0) {
+        setIsConnected(false);
+        setStatus("Waiting for participants...");
       }
     };
 
-    const handleMediaChange = (data: { type: string; enabled: boolean }) => {
-      setRemoteMediaState((prev) => ({
+    const handleMediaChange = (data: { fromSocketId?: string; toSocketId?: string; type: string; enabled: boolean }) => {
+      const socketId = data.fromSocketId;
+      if (!socketId) return;
+
+      setRemoteMediaStates((prev) => ({
         ...prev,
-        [data.type === "audio" ? "isMuted" : "isVideoOff"]: !data.enabled,
+        [socketId]: {
+          ...prev[socketId],
+          [data.type === "audio" ? "isMuted" : "isVideoOff"]: !data.enabled,
+        },
       }));
     };
 
@@ -428,14 +506,17 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     });
     setIsMuted(newMutedState);
     const currentSid = sessionIdRef.current;
-    if (socketRef.current && remoteSocketIdRef.current && currentSid) {
-      socketRef.current.emit("media-state-change", {
-        type: "audio",
-        enabled: !newMutedState,
-        sessionId: currentSid,
-        sessionType: sessionTypeRef.current,
-        sessionMode: sessionModeRef.current,
-        toSocketId: remoteSocketIdRef.current,
+    if (socketRef.current && currentSid) {
+      // Broadcast to all active peers
+      pcsRef.current.forEach((_, targetSocketId) => {
+        socketRef.current?.emit("media-state-change", {
+          type: "audio",
+          enabled: !newMutedState,
+          sessionId: currentSid,
+          sessionType: sessionTypeRef.current,
+          sessionMode: sessionModeRef.current,
+          toSocketId: targetSocketId,
+        });
       });
     }
   }, [isMuted]);
@@ -447,14 +528,17 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     });
     setIsVideoOff(newVideoState);
     const currentSid = sessionIdRef.current;
-    if (socketRef.current && remoteSocketIdRef.current && currentSid) {
-      socketRef.current.emit("media-state-change", {
-        type: "video",
-        enabled: !newVideoState,
-        sessionId: currentSid,
-        sessionType: sessionTypeRef.current,
-        sessionMode: sessionModeRef.current,
-        toSocketId: remoteSocketIdRef.current,
+    if (socketRef.current && currentSid) {
+      // Broadcast to all active peers
+      pcsRef.current.forEach((_, targetSocketId) => {
+        socketRef.current?.emit("media-state-change", {
+          type: "video",
+          enabled: !newVideoState,
+          sessionId: currentSid,
+          sessionType: sessionTypeRef.current,
+          sessionMode: sessionModeRef.current,
+          toSocketId: targetSocketId,
+        });
       });
     }
   }, [isVideoOff]);
@@ -470,10 +554,11 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       localStreamRef.current = null;
     }
 
-    if (pcRef.current) {
-      pcRef.current.close();
-      pcRef.current = null;
-    }
+    pcsRef.current.forEach((pc, id) => {
+      console.log(`Closing PC for: ${id}`);
+      pc.close();
+    });
+    pcsRef.current.clear();
 
     if (socketRef.current) {
       socketRef.current.emit("leave-room", {
@@ -486,7 +571,9 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     setLocalStream(null);
-    setRemoteStream(null);
+    setRemoteStreams({});
+    setRemoteMediaStates({});
+    setParticipants([]);
     setIsConnected(false);
     setIsSocketConnected(false);
     setSessionId(null);
@@ -498,6 +585,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     hasJoinedRef.current = false; // Reset for next session
     setStatus("Idle");
     setError(null);
+    iceBuffersRef.current.clear();
+    politePeersRef.current.clear();
   }, []);
 
   return (
@@ -507,7 +596,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
         sessionType,
         sessionMode,
         localStream,
-        remoteStream,
+        remoteStreams,
+        participants,
         isConnected,
         isSocketConnected,
         connectionState,
@@ -515,7 +605,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
         error,
         isMuted,
         isVideoOff,
-        remoteMediaState,
+        remoteMediaStates,
         socket: socketRef.current,
         joinCall,
         endCall,

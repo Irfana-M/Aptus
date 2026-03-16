@@ -155,6 +155,15 @@ export class ChatService implements IChatService {
 
     // Notify participants via socket
     const chatRoom = `chat:${session.sessionType}:${session.sessionMode}:${sessionId}`;
+    
+    logger.info("Chat message broadcasted", {
+        sessionId,
+        sessionType: session.sessionType,
+        sessionMode: session.sessionMode,
+        senderId,
+        messageId: message._id
+    });
+
     this._socketService.emitToRoom(chatRoom, 'new_message', message);
 
     return message;

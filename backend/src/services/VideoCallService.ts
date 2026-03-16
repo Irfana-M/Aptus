@@ -81,6 +81,13 @@ export class VideoCallService implements IVideoCallService {
         ],
       });
 
+      logger.info("Video call initialized", {
+        sessionId,
+        meetLink,
+        initializedBy: userId,
+        userRole
+      });
+
       return { success: true, meetLink };
     } catch (error: unknown) {
       logger.error("Error initializing call", error);

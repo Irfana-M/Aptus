@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, MoreHorizontal, ChevronDown, Maximize2, Pin, Minus } from 'lucide-react';
+import React from 'react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, MoreHorizontal, ChevronDown, Minus, Users } from 'lucide-react';
+import RemoteVideoPlayer from './RemoteVideoPlayer';
+import type { RemoteMediaState } from '../../../types/video.types';
+import { Loader } from '../../../components/ui/Loader';
 
 interface ClassroomVideoGridProps {
   localVideoRef: React.RefObject<HTMLVideoElement>;
-  remoteVideoRef: React.RefObject<HTMLVideoElement>;
-  remoteStream: MediaStream | null;
+  remoteStreams: Record<string, MediaStream>;
+  participants: string[];
   isMuted: boolean;
   isVideoOff: boolean;
-  remoteMediaState: { isMuted: boolean; isVideoOff: boolean };
+  remoteMediaStates: Record<string, RemoteMediaState>;
   onToggleMute: () => void;
   onToggleVideo: () => void;
   onEndCall: () => void;
@@ -19,11 +22,11 @@ interface ClassroomVideoGridProps {
 
 export const ClassroomVideoGrid: React.FC<ClassroomVideoGridProps> = ({
   localVideoRef,
-  remoteVideoRef,
-  remoteStream,
+  remoteStreams,
+  participants,
   isMuted,
   isVideoOff,
-  remoteMediaState,
+  remoteMediaStates,
   onToggleMute,
   onToggleVideo,
   onEndCall,
@@ -39,20 +42,9 @@ export const ClassroomVideoGrid: React.FC<ClassroomVideoGridProps> = ({
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const toggleFullscreen = () => {
-    if (!remoteVideoRef.current) return;
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      remoteVideoRef.current.requestFullscreen().catch((err: unknown) => {
-        const error = err as Error;
-        console.error(`Error attempting to enable full-screen mode: ${error.message}`);
-      });
-    }
-  };
 
-  const [isSwapped, setIsSwapped] = useState(false);
-  const toggleSwap = () => setIsSwapped(!isSwapped);
+  const remoteParticipants = participants;
+  const remoteStreamCount = Object.keys(remoteStreams).length;
 
   return (
     <div className="flex flex-col gap-4">
@@ -85,123 +77,59 @@ export const ClassroomVideoGrid: React.FC<ClassroomVideoGridProps> = ({
         </div>
 
         {/* Main Grid */}
-        <div className="grid grid-cols-12 gap-4 h-full pt-12 lg:pt-0">
-          {/* Main Display Area */}
-          <div className="col-span-12 lg:col-span-8 bg-gray-900 rounded-2xl overflow-hidden relative shadow-2xl border-2 lg:border-4 border-white aspect-video lg:aspect-auto">
-            {!isSwapped ? (
-              remoteStream ? (
-                <video
-                  ref={remoteVideoRef}
-                  autoPlay
-                  playsInline
-                  className={`w-full h-full object-cover ${remoteMediaState.isVideoOff ? 'hidden' : ''}`}
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-white/50 bg-gray-800">
-                  <div className="w-12 lg:w-20 h-12 lg:h-20 rounded-full bg-indigo-600/30 flex items-center justify-center mb-4">
-                    <Video size={30} />
-                  </div>
-                  <p className="text-xs lg:text-sm font-medium">Waiting for participant...</p>
-                </div>
-              )
-            ) : (
-                <video
+        <div className="flex flex-col h-full pt-12 lg:pt-0">
+          <div className={`flex-1 grid gap-4 ${
+            remoteStreamCount <= 1 ? 'grid-cols-1' : 
+            remoteStreamCount <= 2 ? 'grid-cols-2' : 
+            'grid-cols-2 lg:grid-cols-3'
+          }`}>
+            {/* Local Video - Always visible in the grid if not swapped, or as a small float if preferred */}
+            {/* For this mesh refactor, let's keep local separate or first in grid */}
+            <div className={`relative bg-gray-900 rounded-2xl overflow-hidden shadow-2xl border-2 lg:border-4 border-white aspect-video order-first`}>
+               <video
                   ref={localVideoRef}
                   autoPlay
                   playsInline
                   muted
                   className={`w-full h-full object-cover scale-x-[-1] ${isVideoOff ? 'hidden' : ''}`}
                 />
-            )}
-            
-            {/* Overlay buttons for the main area */}
-            <div className="absolute top-4 right-4 flex gap-2 z-20">
-              <button 
-                onClick={toggleSwap}
-                className={`bg-black/40 backdrop-blur p-2 rounded-lg text-white hover:bg-black/60 transition-all ${isSwapped ? 'text-[#3CB4B4]' : ''}`}
-                title="Swap Video"
-              >
-                <Pin size={18} className={isSwapped ? 'fill-[#3CB4B4]' : ''} />
-              </button>
-              <button 
-                onClick={toggleFullscreen}
-                className="bg-black/40 backdrop-blur p-2 rounded-lg text-white hover:bg-black/60 transition-all"
-                title="Fullscreen"
-              >
-                <Maximize2 size={18} />
-              </button>
-            </div>
-
-            {((!isSwapped && remoteMediaState.isVideoOff) || (isSwapped && isVideoOff) || (isSwapped && status?.includes('Camera'))) && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-800 transition-all duration-500">
-                <div className="text-center group">
-                  <div className="w-16 lg:w-24 h-16 lg:h-24 bg-[#3CB4B4] rounded-full mx-auto flex items-center justify-center mb-4 shadow-xl group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-xl lg:text-2xl font-bold text-white">
-                      {!isSwapped ? (userType === 'mentor' ? 'ST' : 'ME') : 'YOU'}
-                    </span>
+                {isVideoOff && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+                    <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold text-xl">{userType === 'mentor' ? 'ME' : 'ST'}</span>
+                    </div>
                   </div>
-                  <p className="text-white/60 text-[10px] lg:text-sm font-medium">
-                    {isSwapped && status?.includes('Camera') ? status : 'Camera is off'}
-                  </p>
+                )}
+                <div className="absolute bottom-4 left-4 bg-black/40 backdrop-blur px-3 py-1 rounded-lg text-[10px] text-white font-bold">
+                  You ({userType})
+                  {isMuted && <MicOff size={10} className="inline ml-2 text-red-400" />}
                 </div>
+            </div>
+
+            {/* Remote Participants */}
+            {remoteParticipants.map((sid) => (
+              remoteStreams[sid] ? (
+                <RemoteVideoPlayer
+                  key={sid}
+                  stream={remoteStreams[sid]}
+                  isMuted={remoteMediaStates[sid]?.isMuted ?? false}
+                  isVideoOff={remoteMediaStates[sid]?.isVideoOff ?? false}
+                  label={`Participant (${sid.slice(0, 4)})`}
+                />
+              ) : (
+                <div key={sid} className="bg-gray-800 rounded-2xl flex flex-col items-center justify-center text-white/50 aspect-video border-2 border-dashed border-gray-600">
+                  <Loader size="sm" color="teal" />
+                  <p className="text-[10px] mt-2">Connecting to {sid.slice(0, 4)}...</p>
+                </div>
+              )
+            ))}
+
+            {remoteStreamCount === 0 && (
+              <div className="col-span-full flex flex-col items-center justify-center text-gray-500 py-20">
+                <Users size={48} className="mb-4 opacity-20" />
+                <p className="font-bold opacity-50 uppercase tracking-widest text-sm">Waiting for participants to join...</p>
               </div>
             )}
-
-            {/* Stream Label */}
-            <div className="absolute bottom-4 left-4 bg-black/40 backdrop-blur px-3 py-1 rounded-lg text-[10px] text-white font-bold">
-               {!isSwapped ? (userType === 'mentor' ? 'Student' : 'Mentor') : `You (${userType})`}
-               {(!isSwapped ? remoteMediaState.isMuted : isMuted) && <MicOff size={10} className="inline ml-2 text-red-400" />}
-            </div>
-          </div>
-
-          {/* Side View Column */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col gap-4">
-              <div className="flex-1 bg-gray-900 rounded-2xl overflow-hidden relative shadow-xl border-2 lg:border-4 border-white min-h-[180px] lg:min-h-[220px]">
-                {isSwapped ? (
-                  remoteStream ? (
-                    <video
-                      ref={remoteVideoRef}
-                      autoPlay
-                      playsInline
-                      className={`w-full h-full object-cover ${remoteMediaState.isVideoOff ? 'hidden' : ''}`}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-gray-800">
-                      <div className="w-10 lg:w-12 h-10 lg:h-12 rounded-full bg-indigo-600/20 flex items-center justify-center mb-2">
-                        <Video size={20} className="text-indigo-400" />
-                      </div>
-                      <span className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Connecting...</span>
-                    </div>
-                  )
-                ) : (
-                  isVideoOff ? (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                        <div className="w-12 lg:w-16 h-12 lg:h-16 rounded-full bg-gray-700 flex items-center justify-center">
-                            <span className="text-sm lg:text-lg font-bold text-white/40">YOU</span>
-                        </div>
-                    </div>
-                  ) : (
-                    <video
-                        ref={localVideoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        className="w-full h-full object-cover scale-x-[-1]"
-                    />
-                  )
-                )}
-                
-                {((isSwapped && remoteMediaState.isVideoOff) || (!isSwapped && isVideoOff)) && (
-                   <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-                      <span className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Camera Off</span>
-                   </div>
-                )}
-
-                <div className="absolute bottom-4 left-4 bg-black/40 backdrop-blur px-3 py-1 rounded-lg text-[10px] text-white font-bold">
-                    {isSwapped ? (userType === 'mentor' ? 'Student' : 'Mentor') : 'You'}
-                    {(isSwapped ? remoteMediaState.isMuted : isMuted) && <MicOff size={10} className="inline ml-2 text-red-400" />}
-                </div>
-              </div>
           </div>
         </div>
 

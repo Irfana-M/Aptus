@@ -189,7 +189,14 @@ export class SocketService implements ISocketService {
             socketId: socket.id
           });
 
-          logger.info(`${data.userType} (${socketUser.email}) joined room ${videoRoom}`);
+          logger.info("User joined call room", {
+            socketId: socket.id,
+            sessionId: data.sessionId,
+            sessionType: data.sessionType,
+            sessionMode: data.sessionMode,
+            userId: data.userId,
+            email: socketUser.email
+          });
         } catch (error) {
           console.error('[JOIN-CALL] Error:', error);
           socket.emit('join-error', { error: 'Internal server error' });
@@ -203,7 +210,11 @@ export class SocketService implements ISocketService {
       });
       // ===== WEBRTC SIGNALING =====
       socket.on('webrtc-offer', (data: WebRTCOfferDto) => {
-        console.log('📨 [OFFER] Forwarding offer to:', data.toSocketId);
+        logger.info("WebRTC offer forwarded", {
+          fromSocketId: socket.id,
+          toSocketId: data.toSocketId,
+          sessionId: data.sessionId
+        });
         socket.to(data.toSocketId).emit('webrtc-offer', {
           ...data,
           fromSocketId: socket.id
@@ -211,7 +222,11 @@ export class SocketService implements ISocketService {
       });
 
       socket.on('webrtc-answer', (data: WebRTCAnswerDto) => {
-        console.log('📨 [ANSWER] Forwarding answer to:', data.toSocketId);
+        logger.info("WebRTC answer forwarded", {
+          fromSocketId: socket.id,
+          toSocketId: data.toSocketId,
+          sessionId: data.sessionId
+        });
         socket.to(data.toSocketId).emit('webrtc-answer', {
           ...data,
           fromSocketId: socket.id
@@ -219,7 +234,11 @@ export class SocketService implements ISocketService {
       });
 
       socket.on('webrtc-ice-candidate', (data: WebRTCIceCandidateDto) => {
-        console.log('🧊 [ICE] Forwarding candidate to:', data.toSocketId);
+        logger.info("ICE candidate forwarded", {
+          fromSocketId: socket.id,
+          toSocketId: data.toSocketId,
+          sessionId: data.sessionId
+        });
         socket.to(data.toSocketId).emit('webrtc-ice-candidate', {
           ...data,
           fromSocketId: socket.id
@@ -263,6 +282,11 @@ export class SocketService implements ISocketService {
       socket.on('leave-room', (data: { sessionId: string, sessionType: 'trial' | 'regular', sessionMode: 'one-to-one' | 'group' }) => {
         const videoRoom = `call:${data.sessionType}:${data.sessionMode}:${data.sessionId}`;
         const chatRoom = `chat:${data.sessionType}:${data.sessionMode}:${data.sessionId}`;
+
+        logger.info("User left call room", {
+          socketId: socket.id,
+          sessionId: data.sessionId
+        });
 
         socket.leave(videoRoom);
         socket.leave(chatRoom);

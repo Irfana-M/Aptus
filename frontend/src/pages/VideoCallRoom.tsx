@@ -48,7 +48,6 @@ export default function VideoCallRoom() {
   const roleLoading = useSelector((state: RootState) => state.role.loading);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const hasJoinedRef = useRef(false);
 
   const currentUser = useMemo(() => {
@@ -69,7 +68,7 @@ export default function VideoCallRoom() {
   const userId = currentUser?.userId ?? "";
   const userType = currentUser?.userType ?? "student";
 
-  const participants = useMemo(() => {
+  const participantDetails = useMemo(() => {
     const list = [
       {
         id: currentUser?.userId || "me",
@@ -242,7 +241,8 @@ export default function VideoCallRoom() {
 
   const {
     localStream,
-    remoteStream,
+    remoteStreams,
+    participants,
     isConnected,
     error,
     isMuted,
@@ -251,7 +251,7 @@ export default function VideoCallRoom() {
     endCall,
     toggleMute,
     toggleVideo,
-    remoteMediaState,
+    remoteMediaStates,
     status,
     isSocketConnected,
     socket,
@@ -337,48 +337,7 @@ export default function VideoCallRoom() {
     }
   }, [localStream, isPreparing, joinAttempted]); // Trigger on join state changes too
 
-  useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      const hasVideo = remoteStream.getVideoTracks().length > 0;
-      const hasAudio = remoteStream.getAudioTracks().length > 0;
-
-      console.log("📺 [VideoCall] Remote stream state:", {
-        hasVideo,
-        hasAudio,
-        trackCount: remoteStream.getTracks().length,
-        videoReadyState: remoteStream.getVideoTracks()[0]?.readyState,
-        audioReadyState: remoteStream.getAudioTracks()[0]?.readyState,
-      });
-
-      if (remoteVideoRef.current.srcObject !== remoteStream) {
-        console.log("📺 [VideoCall] Attaching remote stream to element");
-        remoteVideoRef.current.srcObject = remoteStream;
-      }
-
-    const playRemote = async () => {
-  try {
-    if (remoteVideoRef.current) {
-      remoteVideoRef.current.srcObject = remoteStream;
-      await remoteVideoRef.current.play();
-    }
-  } catch (e) {
-    console.warn("Remote video autoplay blocked, waiting interaction");
-  }
-};
-
-      playRemote();
-
-      const handleTrackAdded = () => {
-        console.log("📺 [VideoCall] Track added to existing remote stream");
-        playRemote();
-      };
-
-      remoteStream.addEventListener("addtrack", handleTrackAdded);
-      return () => {
-        remoteStream.removeEventListener("addtrack", handleTrackAdded);
-      };
-    }
-  }, [remoteStream, isPreparing]);
+  // Remote stream management is now handled inside ClassroomVideoGrid via RemoteVideoPlayer
 
   useEffect(() => {
     let timer: ReturnType<typeof setInterval>;
@@ -568,11 +527,11 @@ export default function VideoCallRoom() {
         <div className="space-y-8 animate-in fade-in duration-700">
           <ClassroomVideoGrid
             localVideoRef={localVideoRef}
-            remoteVideoRef={remoteVideoRef}
-            remoteStream={remoteStream}
+            remoteStreams={remoteStreams}
+            participants={participants}
             isMuted={isMuted}
             isVideoOff={isVideoOff}
-            remoteMediaState={remoteMediaState}
+            remoteMediaStates={remoteMediaStates}
             onToggleMute={toggleMute}
             onToggleVideo={toggleVideo}
             onEndCall={handleEndCall}
@@ -617,7 +576,7 @@ export default function VideoCallRoom() {
             name: currentUser?.name || "User",
             role: currentUser?.userType === "mentor" ? "Mentor" : "Student",
           }}
-          participants={participants}
+          participants={participantDetails}
           onFeedback={
             userType === "student" && isTrialSession
               ? () =>
