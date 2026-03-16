@@ -1,15 +1,17 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import * as Sentry from "@sentry/react";
 import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '../../../app/store';
 import { fetchAvailableMentorsForCourse } from '../../../features/admin/adminThunk';
 import type { AvailableMentorDto } from '../../../features/admin/adminThunk';
 import { X, Check } from 'lucide-react';
-import { adminCourseApi } from '../../../features/admin/adminApi';
+import { adminCourseApi, adminStudentProfileApi } from '../../../features/admin/adminApi';
 import toast from 'react-hot-toast';
 import { Button } from '../../../components/ui/Button';
 import { formatTo12Hour } from '../../../utils/timeFormat';
 import { Loader } from '../../../components/ui/Loader';
+import type { StudentProfile } from '../../../types/student.types';
 
 // Local interface compatible with both CourseRequest and StudentProfile MatchRequest
 interface GeneralMatchRequest {
@@ -54,6 +56,8 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
     const [creating, setCreating] = useState(false);
     const [showSchedule, setShowSchedule] = useState(false);
     const [lastSearchedId, setLastSearchedId] = useState<string | null>(null);
+    const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
+    const [studentLoading, setStudentLoading] = useState(false);
     const isSearchingRef = useRef(false);
     const scheduleSectionRef = useRef<HTMLDivElement>(null);
 
@@ -65,9 +69,47 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
             setLoading(false);
             setSelectedMentor(null);
             setSelectedDays([]);
+            setStudentProfile(null);
+            setStudentLoading(false);
             isSearchingRef.current = false;
         }
     }, [isOpen]);
+
+    // Fetch full student profile data when modal opens
+    useEffect(() => {
+        const fetchStudentData = async () => {
+            if (!isOpen || !request?.student) return;
+            
+            const studentId = typeof request.student === 'object' 
+                ? (request.student._id || request.student.id) 
+                : request.student;
+            
+            if (!studentId) return;
+
+            setStudentLoading(true);
+            try {
+                const response = await adminStudentProfileApi.getStudentProfile(studentId);
+                if (response.data?.success) {
+                    setStudentProfile(response.data.data);
+                    Sentry.addBreadcrumb({
+                        category: "admin",
+                        message: `Successfully fetched student profile for matching: ${studentId}`,
+                        level: "info",
+                    });
+                }
+            } catch (error) {
+                console.error("Error fetching student profile:", error);
+                Sentry.captureException(error, {
+                    extra: { studentId, context: "FindMatchModal fetchStudentData" }
+                });
+                // Non-critical error, just log it
+            } finally {
+                setStudentLoading(false);
+            }
+        };
+
+        fetchStudentData();
+    }, [isOpen, request?.student]);
 
     // Scroll to schedule section when a mentor is selected
     useEffect(() => {
@@ -202,20 +244,96 @@ const FindMatchModal: React.FC<FindMatchModalProps> = ({ isOpen, onClose, reques
                     </button>
                 </div>
 
-                <div className="mb-6 bg-teal-50 border border-teal-100 p-5 rounded-2xl flex justify-between items-center">
-                    <div>
-                        <div className="flex items-center gap-2">
-                             <span className="px-2 py-0.5 bg-teal-500 text-white text-[10px] font-black rounded uppercase">
-                                {request?.subjectName || request?.subject}
-                             </span>
-                             <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">
-                                {typeof request?.student === 'object' ? request.student.fullName : 'Student'}
-                             </span>
+                <div className="mb-6 bg-teal-50 border border-teal-100 p-5 rounded-2xl">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <span className="px-2 py-0.5 bg-teal-500 text-white text-[10px] font-black rounded uppercase">
+                                    {request?.subjectName || request?.subject}
+                                </span>
+                                <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">
+                                    {typeof request?.student === 'object' ? request.student.fullName : 'Student'}
+                                </span>
+                            </div>
+                            <p className="text-sm text-slate-700 mt-2 font-bold">
+                                {request?.preferredDays?.join(', ')} at {(request?.timeSlot || request?.timeRange || '').split('-').map((t: string) => formatTo12Hour(t.trim())).join(' - ')}
+                            </p>
+                            <span className="text-[10px] bg-white/50 px-2 py-0.5 rounded text-slate-400 border border-teal-100 mt-1 inline-block">ID: {request?.id || request?._id}</span>
                         </div>
-                        <p className="text-sm text-slate-700 mt-2 font-bold">
-                            {request?.preferredDays?.join(', ')} at {(request?.timeSlot || request?.timeRange || '').split('-').map((t: string) => formatTo12Hour(t.trim())).join(' - ')}
-                        </p>
+                        {studentProfile && (
+                            <div className="text-right">
+                                <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${
+                                    studentProfile.subscription?.planType === 'premium' 
+                                        ? 'bg-amber-100 text-amber-700 border border-amber-200' 
+                                        : 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                                }`}>
+                                    {studentProfile.subscription?.planType || 'Basic'} Plan
+                                </span>
+                                <div className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-tighter">
+                                    Status: {request?.status}
+                                </div>
+                            </div>
+                        )}
                     </div>
+
+                    {studentLoading ? (
+                        <div className="py-2 flex justify-center">
+                            <Loader size="sm" color="teal" />
+                        </div>
+                    ) : studentProfile && (
+                        <div className="border-t border-teal-100/50 mt-4 pt-4">
+                            <h4 className="text-[10px] font-black text-teal-600 uppercase tracking-widest mb-2">Student Preferences</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-[9px] uppercase font-bold text-slate-400 tracking-tighter">Preferred Subjects</p>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                        {(studentProfile.preferredSubjects && studentProfile.preferredSubjects.length > 0) ? (
+                                            studentProfile.preferredSubjects.map((sub: any, idx: number) => (
+                                                <span key={idx} className="bg-white px-2 py-0.5 rounded text-[9px] text-slate-600 border border-slate-100">
+                                                    {typeof sub === 'string' ? sub : (sub.subjectName || sub._id)}
+                                                </span>
+                                            ))
+                                        ) : (
+                                            <span className="text-[9px] text-slate-400 italic">None specified</span>
+                                        )}
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-[9px] uppercase font-bold text-slate-400 tracking-tighter">Active Time Slots</p>
+                                    <div className="space-y-1 mt-1">
+                                        {studentProfile.preferredTimeSlots && studentProfile.preferredTimeSlots.length > 0 ? (
+                                            studentProfile.preferredTimeSlots.map((pref, idx) => (
+                                                <div key={idx} className="text-[9px] text-slate-600 flex flex-col">
+                                                    <span className="font-bold text-teal-700">
+                                                        {typeof pref.subjectId === 'object' ? pref.subjectId.subjectName : 'General'}
+                                                    </span>
+                                                    {pref.slots.map((slot, sIdx) => (
+                                                        <span key={sIdx} className="ml-1 opacity-75">
+                                                            • {slot.day}: {slot.startTime}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <span className="text-[9px] text-slate-400 italic">None specified</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            {studentProfile.preferredTimeSlots?.find(p => p.assignedMentorId) && (
+                                <div className="mt-3">
+                                    <p className="text-[9px] uppercase font-bold text-slate-400 tracking-tighter">Current Mentor Choice</p>
+                                    <p className="text-[10px] font-bold text-slate-700 mt-0.5">
+                                        {(() => {
+                                            const pref = studentProfile.preferredTimeSlots.find(p => p.assignedMentorId);
+                                            const mentor = pref?.assignedMentorId as any;
+                                            return typeof mentor === 'object' ? mentor.fullName : mentor;
+                                        })()}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-6">

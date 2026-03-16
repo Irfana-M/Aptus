@@ -338,10 +338,11 @@ export class StudentService implements IStudentService {
       const profile = await this._studentRepo.findStudentProfileById(id);
       
       if (!profile) {
+        logger.warn(`Student profile not found: ${id}`);
         throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
 
-      logger.info(`Student profile retrieved successfully: ${id}`);
+      logger.info(`Complete student profile retrieved for student: ${id}`);
       return profile as StudentProfile;
     } catch (error: unknown) {
       logger.error(`Error fetching student profile ${id}`, { error: getErrorMessage(error) });

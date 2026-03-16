@@ -575,6 +575,7 @@ async findAllWithTrialStats(page: number, limit: number) {
   async findStudentProfileById(id: string): Promise<DetailedStudentProfile | null> {
     try {
       logger.debug(`Finding complete student profile by ID: ${id}`);
+      logger.info(`Initiating detailed student profile fetch: ${id}`);
       
       const student = await this.model
         .findById(id)

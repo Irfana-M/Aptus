@@ -97,6 +97,8 @@ export class StudentController {
 
       const profile = await this._studentService.getStudentProfileById(studentId);
 
+      logger.info(`Admin fetched student profile for matching: ${studentId}`, { adminId: (req as any).user?.id });
+
       res.status(HttpStatusCode.OK).json({
         success: true,
         message: MESSAGES.STUDENT.PROFILE_FETCH_SUCCESS,
