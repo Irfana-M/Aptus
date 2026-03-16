@@ -5,9 +5,9 @@ import { Maximize2, Mic, MicOff, Video, VideoOff, PhoneOff } from 'lucide-react'
 
 const FloatingCallOverlay: React.FC = () => {
     const { 
-        trialClassId, 
+        sessionId, 
         localStream, 
-        remoteStream, 
+        remoteStreams, 
         isConnected,
         isMuted,
         isVideoOff,
@@ -20,10 +20,10 @@ const FloatingCallOverlay: React.FC = () => {
     const location = useLocation();
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const remoteVideoRef = useRef<HTMLVideoElement>(null);
-
+    const remoteStream = Object.values(remoteStreams)[0] || null;
     // Hide if no call is active OR if we are already on the call page
-    const isOnCallRoute = location.pathname.includes(`/trial-class/${trialClassId}/call`);
-    const shouldHide = !trialClassId || isOnCallRoute;
+    const isOnCallRoute = location.pathname.includes(`/trial-class/${sessionId}/call`);
+    const shouldHide = !sessionId || isOnCallRoute;
 
     useEffect(() => {
         if (shouldHide) return;
@@ -41,7 +41,7 @@ const FloatingCallOverlay: React.FC = () => {
     }, [remoteStream, shouldHide]);
 
     const handleMaximize = () => {
-        navigate(`/trial-class/${trialClassId}/call`);
+        navigate(`/trial-class/${sessionId}/call`);
     };
 
     if (shouldHide) return null;

@@ -13,7 +13,7 @@ import { CallStatus } from '@/enums/videoCall.enum.js';
 
 @injectable()
 export class VideoCallController {
-  constructor(@inject(TYPES.IVideoCallService) private _videoCallService: IVideoCallService) {}
+  constructor(@inject(TYPES.IVideoCallService) private _videoCallService: IVideoCallService) { }
 
   startCall = async (req: Request, res: Response) => {
     try {
@@ -21,21 +21,21 @@ export class VideoCallController {
       const userId = req.user!.id;
       const userRole = req.user!.role as UserRole;
 
-      
+
       if (![UserRole.MENTOR, UserRole.STUDENT].includes(userRole)) {
         throw new AppError(MESSAGES.VIDEO_CALL.UNAUTHORIZED_ROLE, HttpStatusCode.FORBIDDEN);
       }
-      
+
       if (!trialClassId) throw new AppError(MESSAGES.TRIAL_CLASS.ID_REQUIRED, HttpStatusCode.BAD_REQUEST);
 
       const result = await this._videoCallService.initializeCall(
-        trialClassId, 
-        userId, 
+        trialClassId,
+        userId,
         userRole as UserRole.MENTOR | UserRole.STUDENT
       );
-      res.status(HttpStatusCode.OK).json({ 
-        success: true, 
-        data: { meetLink: result.meetLink, callStatus: CallStatus.ACTIVE }, 
+      res.status(HttpStatusCode.OK).json({
+        success: true,
+        data: { meetLink: result.meetLink, callStatus: CallStatus.ACTIVE },
         message: MESSAGES.VIDEO_CALL.START_SUCCESS
       });
     } catch (error: unknown) {
@@ -52,7 +52,7 @@ export class VideoCallController {
       if (!trialClassId) throw new AppError(MESSAGES.TRIAL_CLASS.ID_REQUIRED, HttpStatusCode.BAD_REQUEST);
 
       res.set('Cache-Control', 'no-store');
-      res.set('ETag', Date.now().toString()); 
+      res.set('ETag', Date.now().toString());
 
       const status = await this._videoCallService.getCallStatus(trialClassId);
       res.status(HttpStatusCode.OK).json({ success: true, data: status });
@@ -71,7 +71,13 @@ export class VideoCallController {
       const { reason } = req.body;
       if (!trialClassId) throw new AppError(MESSAGES.TRIAL_CLASS.ID_REQUIRED, HttpStatusCode.BAD_REQUEST);
 
-      const result = await this._videoCallService.endCall({ trialClassId, endedBy: userId, reason });
+      const result = await this._videoCallService.endCall({
+        sessionId: trialClassId,
+        sessionType: 'trial',
+        sessionMode: 'one-to-one',
+        endedBy: userId,
+        reason
+      });
       res.status(HttpStatusCode.OK).json({ success: result.success, message: MESSAGES.VIDEO_CALL.END_SUCCESS });
     } catch (error: unknown) {
       logger.error('Error ending call', error);
