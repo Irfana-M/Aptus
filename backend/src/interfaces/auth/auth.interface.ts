@@ -86,9 +86,10 @@ export interface StudentAuthUser extends Omit<AuthUser, 'role'> {
   authProvider?: "local" | "google" | undefined;
   googleId?: string | undefined;
   gradeId?: string | undefined;
-  preferredSubjects?: string[] | undefined;
+  preferredSubjects?: (string | any)[] | undefined;
   preferredTimeSlots?: {
-    subjectId: string;
+    subjectId: string | any;
     slots: import("../models/student.interface.js").Availability[];
+    status?: string;
   }[] | undefined;
 }

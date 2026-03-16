@@ -92,7 +92,7 @@ export interface StudentProfile {
   gradeId?: string | { _id: string; name: string };
   onboardingStatus?: string;
   preferencesCompleted?: boolean;
-  preferredSubjects?: string[];
+  preferredSubjects?: (string | { _id: string; subjectName: string })[];
   preferredTimeSlots?: SubjectPreference[];
   isPaid?: boolean;
   trialClasses?: TrialClass[];

@@ -222,9 +222,16 @@ export class StudentMapper {
       onboardingStatus: s.onboardingStatus || StudentOnboardingStatus.REGISTERED,
       gradeId: s.gradeId?.toString(),
       preferencesCompleted: s.preferencesCompleted,
-      preferredSubjects: s.preferredSubjects?.map(id => id.toString()),
+      preferredSubjects: s.preferredSubjects?.map(id => {
+        if (typeof id === 'object' && id !== null && (id as any).subjectName) {
+            return id;
+        }
+        return id.toString();
+      }),
       preferredTimeSlots: s.preferredTimeSlots?.map((slot) => ({
-        subjectId: slot.subjectId?.toString() || "",
+        subjectId: (slot.subjectId && typeof slot.subjectId === 'object' && (slot.subjectId as any).subjectName)
+            ? slot.subjectId
+            : slot.subjectId?.toString() || "",
         slots: slot.slots,
         status: (slot as unknown as { status?: string }).status || ""
       })),

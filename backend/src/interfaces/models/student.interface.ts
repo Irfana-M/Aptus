@@ -103,7 +103,7 @@ export interface StudentProfile {
   referredBy?: string | undefined;
   onboardingStatus?: string | undefined;
   preferencesCompleted?: boolean | undefined;
-  preferredSubjects?: Types.ObjectId[] | undefined;
-  preferredTimeSlots?: SubjectPreference[] | undefined;
+  preferredSubjects?: (Types.ObjectId | any)[] | undefined;
+  preferredTimeSlots?: any[] | undefined;
   cancellationCount?: number;
 }
