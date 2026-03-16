@@ -4,24 +4,16 @@ import { fetchChatHistory, sendChatMessage, addMessage } from '../chatSlice';
 import { Send } from 'lucide-react';
 import { format } from 'date-fns';
 import type { ChatMessage } from '../../../api/chatApi';
-import socketService from '../../../services/socketService';
+import videoSocketService from '../../../services/videoSocketService';
 import type { RootState } from '../../../app/store';
 
 interface ChatWindowProps {
   sessionId: string;
   currentUserId: string;
   isSocketConnected: boolean; 
-  sessionType?: 'trial' | 'regular';
-  sessionMode?: 'one-to-one' | 'group';
 }
 
-export const ChatWindow: React.FC<ChatWindowProps> = ({ 
-  sessionId, 
-  currentUserId, 
-  isSocketConnected,
-  sessionType = 'regular',
-  sessionMode = 'one-to-one'
-}) => {
+export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, currentUserId, isSocketConnected }) => {
   const dispatch = useAppDispatch();
   const { messages, loading } = useAppSelector((state: RootState) => state.chat);
   const [inputText, setInputText] = useState('');
@@ -32,18 +24,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [sessionId, dispatch]);
 
   useEffect(() => {
-    if (!isSocketConnected) return;
-    const socket = socketService.getSocket();
-    if (!socket) return;
-
-    socket.emit('join-chat', { sessionId, sessionType, sessionMode });
-  }, [isSocketConnected, sessionId, sessionType, sessionMode]);
-
-  useEffect(() => {
     
     if (!isSocketConnected) return;
 
-    const socket = socketService.getSocket();
+    const socket = videoSocketService.getSocket();
     if (!socket) return;
     
     console.log('💬 [ChatWindow] Socket connected, attaching listeners');

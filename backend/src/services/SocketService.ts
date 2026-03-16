@@ -156,10 +156,13 @@ export class SocketService implements ISocketService {
           const videoRoom = `call:${data.sessionType}:${data.sessionMode}:${data.sessionId}`;
           const chatRoom = `chat:${data.sessionType}:${data.sessionMode}:${data.sessionId}`;
           
+          // Get existing members BEFORE joining
+          const existingParticipants = Array.from(this._io.sockets.adapter.rooms.get(videoRoom) || []);
+          
           await socket.join(videoRoom);
           await socket.join(chatRoom);
 
-          console.log(`[JOIN-CALL] User ${socketUser.email} joined rooms: ${videoRoom}, ${chatRoom}.`);
+          console.log(`[JOIN-CALL] User ${socketUser.email} joined rooms: ${videoRoom}, ${chatRoom}. Existing: ${existingParticipants.length}`);
 
           // Call video service to join call
           const result = await this._videoCallService.joinCall({
@@ -173,7 +176,6 @@ export class SocketService implements ISocketService {
           }
 
           // Notify OTHERS in the room (exclude sender)
-          console.log(`[JOIN-CALL] Broadcasting user-joined to room: ${videoRoom} (excluding sender)`);
           socket.to(videoRoom).emit('user-joined', {
             userId: data.userId,
             userType: data.userType,
@@ -186,7 +188,8 @@ export class SocketService implements ISocketService {
 
           socket.emit('join-success', {
             room: videoRoom,
-            socketId: socket.id
+            socketId: socket.id,
+            existingParticipants
           });
 
           logger.info("User joined call room", {

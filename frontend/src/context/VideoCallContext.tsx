@@ -10,13 +10,19 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [sessionId, setSessionId] = React.useState<string | null>(null);
-  const [sessionType, setSessionType] = React.useState<'trial' | 'regular' | null>(null);
-  const [sessionMode, setSessionMode] = React.useState<'one-to-one' | 'group' | null>(null);
+  const [sessionType, setSessionType] = React.useState<
+    "trial" | "regular" | null
+  >(null);
+  const [sessionMode, setSessionMode] = React.useState<
+    "one-to-one" | "group" | null
+  >(null);
 
   const [localStream, setLocalStream] = React.useState<MediaStream | null>(
     null,
   );
-  const [remoteStreams, setRemoteStreams] = React.useState<Record<string, MediaStream>>({});
+  const [remoteStreams, setRemoteStreams] = React.useState<
+    Record<string, MediaStream>
+  >({});
   const [participants, setParticipants] = React.useState<string[]>([]);
   const [isConnected, setIsConnected] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -28,12 +34,14 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isMinimized, setMinimized] = React.useState(false);
 
   const sessionIdRef = React.useRef<string | null>(null);
-  const sessionTypeRef = React.useRef<'trial' | 'regular' | null>(null);
-  const sessionModeRef = React.useRef<'one-to-one' | 'group' | null>(null);
+  const sessionTypeRef = React.useRef<"trial" | "regular" | null>(null);
+  const sessionModeRef = React.useRef<"one-to-one" | "group" | null>(null);
   const localStreamRef = React.useRef<MediaStream | null>(null);
   const pcsRef = React.useRef<Map<string, RTCPeerConnection>>(new Map());
   const socketRef = React.useRef<Socket | null>(null);
-  const iceBuffersRef = React.useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+  const iceBuffersRef = React.useRef<Map<string, RTCIceCandidateInit[]>>(
+    new Map(),
+  );
   const politePeersRef = React.useRef<Set<string>>(new Set());
   const iceServers = React.useMemo(
     () => ({
@@ -50,8 +58,9 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     [],
   );
 
-  const [remoteMediaStates, setRemoteMediaStates] =
-    React.useState<Record<string, RemoteMediaState>>({});
+  const [remoteMediaStates, setRemoteMediaStates] = React.useState<
+    Record<string, RemoteMediaState>
+  >({});
 
   const createFakeStream = React.useCallback((): MediaStream => {
     const canvas = document.createElement("canvas");
@@ -148,7 +157,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
         category: "webrtc",
         message: "Peer connection created",
         level: "info",
-        data: { targetSocketId, sessionId: sessionIdRef.current }
+        data: { targetSocketId, sessionId: sessionIdRef.current },
       });
 
       const pc = new RTCPeerConnection(iceServers);
@@ -173,21 +182,35 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       };
 
       pc.ontrack = (event) => {
-        console.log(`📺 Remote track from ${targetSocketId}:`, event.track.kind);
+        console.log(
+          `📺 Remote track from ${targetSocketId}:`,
+          event.track.kind,
+        );
+
+        const [stream] = event.streams;
+
+        if (!stream) return;
+
         setRemoteStreams((prev) => {
-          const stream = prev[targetSocketId] ?? new MediaStream();
-          stream.addTrack(event.track);
-          return { ...prev, [targetSocketId]: new MediaStream(stream.getTracks()) };
+          if (prev[targetSocketId]) return prev;
+
+          return {
+            ...prev,
+            [targetSocketId]: stream,
+          };
         });
       };
 
       pc.onconnectionstatechange = () => {
-        console.log(`📊 [PC:${targetSocketId}] Connection state:`, pc.connectionState);
+        console.log(
+          `📊 [PC:${targetSocketId}] Connection state:`,
+          pc.connectionState,
+        );
         Sentry.addBreadcrumb({
           category: "webrtc",
           message: "Peer connection state change",
           level: "info",
-          data: { targetSocketId, connectionState: pc.connectionState }
+          data: { targetSocketId, connectionState: pc.connectionState },
         });
         setConnectionState(pc.connectionState);
         if (pc.connectionState === "connected") {
@@ -213,9 +236,11 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
         category: "webrtc",
         message: "User joined call",
         level: "info",
-        data: { socketId, sessionId: sessionIdRef.current }
+        data: { socketId, sessionId: sessionIdRef.current },
       });
-      setParticipants((prev) => !prev.includes(socketId) ? [...prev, socketId] : prev);
+      setParticipants((prev) =>
+        !prev.includes(socketId) ? [...prev, socketId] : prev,
+      );
 
       if (!socket.id) return;
 
@@ -233,7 +258,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
         Sentry.addBreadcrumb({
           category: "webrtc",
           message: "WebRTC offer sent",
-          data: { toSocketId: socketId }
+          data: { toSocketId: socketId },
         });
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
@@ -259,8 +284,13 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       Sentry.addBreadcrumb({
         category: "webrtc",
         message: "WebRTC offer received",
-        data: { fromSocketId }
+        data: { fromSocketId },
       });
+      
+      setParticipants((prev) =>
+        !prev.includes(fromSocketId) ? [...prev, fromSocketId] : prev,
+      );
+
       const pc = createPeerConnection(fromSocketId);
       if (!pc) return;
 
@@ -293,11 +323,13 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
           Sentry.addBreadcrumb({
             category: "webrtc",
             message: "ICE candidate added (buffered)",
-            data: { fromSocketId }
+            data: { fromSocketId },
           });
         } catch (err) {
           console.warn(`ICE buffered error for ${fromSocketId}`, err);
-          Sentry.captureException(err, { extra: { fromSocketId, context: "addIceCandidate_buffered" } });
+          Sentry.captureException(err, {
+            extra: { fromSocketId, context: "addIceCandidate_buffered" },
+          });
         }
       });
       iceBuffersRef.current.delete(fromSocketId);
@@ -314,8 +346,13 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       Sentry.addBreadcrumb({
         category: "webrtc",
         message: "WebRTC answer received",
-        data: { fromSocketId }
+        data: { fromSocketId },
       });
+
+      setParticipants((prev) =>
+        !prev.includes(fromSocketId) ? [...prev, fromSocketId] : prev,
+      );
+
       const pc = pcsRef.current.get(fromSocketId);
       if (!pc) return;
 
@@ -328,11 +365,13 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
           Sentry.addBreadcrumb({
             category: "webrtc",
             message: "ICE candidate added (buffered_answer)",
-            data: { fromSocketId }
+            data: { fromSocketId },
           });
         } catch (e) {
           console.warn(`Error adding buffered ICE for ${fromSocketId}`, e);
-          Sentry.captureException(e, { extra: { fromSocketId, context: "addIceCandidate_answer" } });
+          Sentry.captureException(e, {
+            extra: { fromSocketId, context: "addIceCandidate_answer" },
+          });
         }
       });
       iceBuffersRef.current.delete(fromSocketId);
@@ -349,7 +388,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       Sentry.addBreadcrumb({
         category: "webrtc",
         message: "ICE candidate received",
-        data: { fromSocketId }
+        data: { fromSocketId },
       });
       const pc = pcsRef.current.get(fromSocketId);
 
@@ -359,11 +398,13 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
           Sentry.addBreadcrumb({
             category: "webrtc",
             message: "ICE candidate added",
-            data: { fromSocketId }
+            data: { fromSocketId },
           });
         } catch (e) {
           console.warn(`Error adding ice candidate for ${fromSocketId}`, e);
-          Sentry.captureException(e, { extra: { fromSocketId, context: "addIceCandidate_direct" } });
+          Sentry.captureException(e, {
+            extra: { fromSocketId, context: "addIceCandidate_direct" },
+          });
         }
       } else {
         const buffer = iceBuffersRef.current.get(fromSocketId) || [];
@@ -378,9 +419,9 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
         category: "webrtc",
         message: "User left call",
         level: "info",
-        data: { socketId, sessionId: sessionIdRef.current }
+        data: { socketId, sessionId: sessionIdRef.current },
       });
-      
+
       const pc = pcsRef.current.get(socketId);
       if (pc) {
         pc.close();
@@ -399,7 +440,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
         return next;
       });
 
-      setParticipants((prev) => prev.filter(id => id !== socketId));
+      setParticipants((prev) => prev.filter((id) => id !== socketId));
       iceBuffersRef.current.delete(socketId);
       politePeersRef.current.delete(socketId);
 
@@ -409,7 +450,12 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     };
 
-    const handleMediaChange = (data: { fromSocketId?: string; toSocketId?: string; type: string; enabled: boolean }) => {
+    const handleMediaChange = (data: {
+      fromSocketId?: string;
+      toSocketId?: string;
+      type: string;
+      enabled: boolean;
+    }) => {
       const socketId = data.fromSocketId;
       if (!socketId) return;
 
@@ -422,6 +468,22 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       }));
     };
 
+    const handleJoinSuccess = ({
+      existingParticipants,
+    }: {
+      room: string;
+      socketId: string;
+      existingParticipants: string[];
+    }) => {
+      console.log("✅ [Socket] Join success. Existing:", existingParticipants);
+      if (existingParticipants && existingParticipants.length > 0) {
+        existingParticipants.forEach((pid) => {
+          handleUserJoined({ socketId: pid });
+        });
+      }
+    };
+
+    socket.on("join-success", handleJoinSuccess);
     socket.on("user-joined", handleUserJoined);
     socket.on("webrtc-offer", handleOffer);
     socket.on("webrtc-answer", handleAnswer);
@@ -431,6 +493,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
 
     return () => {
       console.log("🧹 [Socket] Cleaning up listeners...");
+      socket.off("join-success", handleJoinSuccess);
       socket.off("user-joined", handleUserJoined);
       socket.off("webrtc-offer", handleOffer);
       socket.off("webrtc-answer", handleAnswer);
