@@ -192,7 +192,7 @@ const MentorDashboard = () => {
                                 <Video size={18} /> Join
                             </button>
                             <button 
-                                onClick={() => handleUpdateTrialStatus(trial._id || '', 'completed')}
+                                onClick={() => handleUpdateTrialStatus(trial.id || '', 'completed')}
                                 className="flex-1 bg-white border-2 border-slate-100 text-slate-900 py-3 rounded-xl font-bold hover:border-teal-500 hover:text-teal-600 transition-all"
                             >
                                 Done

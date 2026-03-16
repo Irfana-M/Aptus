@@ -35,7 +35,7 @@ const TrialClassFeedback: React.FC = () => {
       
       if (rating >= 4 || satisfaction === 'satisfied') {
         setTimeout(() => {
-          navigate(ROUTES.STUDENT.PROFILE_SETUP);
+          navigate(ROUTES.STUDENT.SUBSCRIPTION_PLANS);
         }, 1500);
       } else {
         setTimeout(() => {

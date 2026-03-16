@@ -9,6 +9,7 @@ import { setError } from "../features/videoCall/videoCallSlice";
 import type { AppDispatch } from "../app/store";
 import { verifyUserRole } from "../features/role/roleSlice";
 import { fetchStudentProfile } from "../features/student/studentThunk";
+import { updateTrialClassStatus } from "../features/mentor/mentorThunk";
 import { VideoOff } from "lucide-react";
 import { sessionApi } from "../features/session/sessionApi";
 import { ROUTES } from "../constants/routes.constants";
@@ -386,7 +387,17 @@ export default function VideoCallRoom() {
             await studentTrialApi.completeTrialClass(trialClassId);
             await dispatch(fetchStudentProfile());
           } catch (e) {
-            console.error("❌ Failed to complete trial:", e);
+            console.error("❌ Failed to complete trial (student):", e);
+          }
+        } else {
+          console.log(
+            "🏁 [VideoCall] Mentor ending trial class:",
+            trialClassId,
+          );
+          try {
+            await dispatch(updateTrialClassStatus({ id: trialClassId, status: "completed" }));
+          } catch (e) {
+            console.error("❌ Failed to complete trial (mentor):", e);
           }
         }
       } else if (!isTrialSession && sessionId && userType === "mentor") {
