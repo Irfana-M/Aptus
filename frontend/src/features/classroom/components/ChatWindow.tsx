@@ -10,7 +10,7 @@ import type { RootState } from '../../../app/store';
 interface ChatWindowProps {
   sessionId: string;
   currentUserId: string;
-  isSocketConnected: boolean; // Add prop
+  isSocketConnected: boolean; 
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, currentUserId, isSocketConnected }) => {
@@ -24,7 +24,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, currentUserId
   }, [sessionId, dispatch]);
 
   useEffect(() => {
-    // Only attempt to attach listeners if socket is actually connected
+    
     if (!isSocketConnected) return;
 
     const socket = socketService.getSocket();

@@ -74,17 +74,10 @@ const chatSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-      .addCase(sendChatMessage.fulfilled, (state, action) => {
-        const newMsg = action.payload;
-
-        const exists = state.messages.some(
-          (m: ChatMessage) => String(m._id) === String(newMsg._id)
-        );
-
-        if (!exists) {
-          state.messages.push(newMsg);
-        }
-      });
+   .addCase(sendChatMessage.fulfilled, () => {
+  // Do nothing
+  // Message will arrive through socket event
+});
   }
 });
 

@@ -5,12 +5,12 @@ import { logger } from "@/utils/logger.js";
 import { TYPES } from "@/types.js";
 import type { IVideoCallService } from "@/interfaces/services/IVideoCallService.js";
 import type { ISocketService } from "@/interfaces/services/ISocketService.js";
-import type { 
-  JoinCallRequestDto, 
-  WebRTCOfferDto, 
-  WebRTCAnswerDto, 
-  WebRTCIceCandidateDto, 
-  CallEndedDto 
+import type {
+  JoinCallRequestDto,
+  WebRTCOfferDto,
+  WebRTCAnswerDto,
+  WebRTCIceCandidateDto,
+  CallEndedDto
 } from "../dtos/webrtcDTO.js";
 import fs from "fs";
 import jwt from 'jsonwebtoken';
@@ -36,7 +36,7 @@ export class SocketService implements ISocketService {
   constructor(
     @inject(TYPES.IVideoCallService) private _videoCallService: IVideoCallService,
     @inject(TYPES.IUserRoleService) private _userRoleService: IUserRoleService
-  ) {}
+  ) { }
 
   public static attach(server: HttpServer): void {
     SocketService.httpServer = server;
@@ -60,15 +60,15 @@ export class SocketService implements ISocketService {
 
     // ========== SOCKET AUTH MIDDLEWARE ==========
     this._io.use(async (socket, next) => {
-      
-       try { fs.appendFileSync('debug_socket.log', `[SOCKET AUTH] Middleware triggered for socket ${socket.id}\n`); } catch { /* ignore */ } console.log('🔐 [SOCKET AUTH] Middleware triggered');
-      
+
+      try { fs.appendFileSync('debug_socket.log', `[SOCKET AUTH] Middleware triggered for socket ${socket.id}\n`); } catch { /* ignore */ } console.log('🔐 [SOCKET AUTH] Middleware triggered');
+
       // Get token from auth or headers
-      const token = socket.handshake.auth?.token || 
-                   socket.handshake.headers?.authorization?.split(' ')?.[1];
-      
+      const token = socket.handshake.auth?.token ||
+        socket.handshake.headers?.authorization?.split(' ')?.[1];
+
       console.log('[SOCKET AUTH] Token present:', !!token);
-      
+
       if (!token) {
         console.error('[SOCKET AUTH] No token provided');
         return next(new Error('No token provided'));
@@ -78,36 +78,36 @@ export class SocketService implements ISocketService {
         // Verify and decode token
         const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
         const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-        
+
         console.log('[SOCKET AUTH] Token decoded:', {
           id: decoded.id,
           email: decoded.email,
           role: decoded.role
         });
-        
+
         if (!['student', 'mentor', 'admin'].includes(decoded.role)) {
           console.error('[SOCKET AUTH] Invalid role:', decoded.role);
           return next(new Error('Invalid role'));
         }
-        
+
         // Verify user exists in database with correct role
         const verification = await this._userRoleService.verifyUserRole(
-          decoded.id, 
+          decoded.id,
           decoded.role
         );
-        
+
         if (!verification.success) {
           console.error('[SOCKET AUTH] User verification failed:', verification.error);
           return next(new Error(verification.error || 'User verification failed'));
         }
-        
+
         // Attach verified user to socket
         (socket as SocketWithUser).user = {
           id: decoded.id,
           email: decoded.email,
           role: decoded.role
         };
-        
+
         console.log('[SOCKET AUTH] User attached to socket:', (socket as SocketWithUser).user);
         next();
       } catch (error: unknown) {
@@ -129,7 +129,7 @@ export class SocketService implements ISocketService {
       socket.on('join-call', async (data: JoinCallRequestDto) => {
         try {
           const socketUser = (socket as SocketWithUser).user;
-          
+
           console.log('📞 [JOIN-CALL] Event received:', {
             socketId: socket.id,
             socketUser: socketUser,
@@ -153,7 +153,7 @@ export class SocketService implements ISocketService {
             return socket.emit('join-error', { error: 'Role mismatch' });
           }
 
-          const roomName = `trial-class-${data.trialClassId}`;
+          const roomName = `call-room-${data.trialClassId}`;
           const chatRoomName = `session_chat_${data.trialClassId}`;
           await socket.join(roomName);
           await socket.join(chatRoomName);
@@ -185,11 +185,11 @@ export class SocketService implements ISocketService {
             userEmail: socketUser.email
           });
 
-          socket.emit('join-success', { 
+          socket.emit('join-success', {
             room: roomName,
-            socketId: socket.id 
+            socketId: socket.id
           });
-          
+
           logger.info(`${data.userType} (${socketUser.email}) joined room ${roomName}`);
         } catch (error) {
           console.error('[JOIN-CALL] Error:', error);
@@ -200,33 +200,33 @@ export class SocketService implements ISocketService {
       // ===== WEBRTC SIGNALING =====
       socket.on('webrtc-offer', (data: WebRTCOfferDto) => {
         console.log('📨 [OFFER] Forwarding offer to:', data.toSocketId);
-        socket.to(data.toSocketId).emit('webrtc-offer', { 
-          ...data, 
-          fromSocketId: socket.id 
+        socket.to(data.toSocketId).emit('webrtc-offer', {
+          ...data,
+          fromSocketId: socket.id
         });
       });
 
       socket.on('webrtc-answer', (data: WebRTCAnswerDto) => {
         console.log('📨 [ANSWER] Forwarding answer to:', data.toSocketId);
-        socket.to(data.toSocketId).emit('webrtc-answer', { 
-          ...data, 
-          fromSocketId: socket.id 
+        socket.to(data.toSocketId).emit('webrtc-answer', {
+          ...data,
+          fromSocketId: socket.id
         });
       });
 
       socket.on('webrtc-ice-candidate', (data: WebRTCIceCandidateDto) => {
         console.log('🧊 [ICE] Forwarding candidate to:', data.toSocketId);
-        socket.to(data.toSocketId).emit('webrtc-ice-candidate', { 
-          ...data, 
-          fromSocketId: socket.id 
+        socket.to(data.toSocketId).emit('webrtc-ice-candidate', {
+          ...data,
+          fromSocketId: socket.id
         });
       });
 
       socket.on('webrtc-is-speaking', (data: { isSpeaking: boolean, trialClassId: string, toSocketId: string }) => {
-         socket.to(data.toSocketId).emit('webrtc-is-speaking', {
-            isSpeaking: data.isSpeaking,
-            fromSocketId: socket.id
-         });
+        socket.to(data.toSocketId).emit('webrtc-is-speaking', {
+          isSpeaking: data.isSpeaking,
+          fromSocketId: socket.id
+        });
       });
 
       socket.on('media-state-change', (data: { type: 'audio' | 'video', enabled: boolean, trialClassId: string, toSocketId: string }) => {
@@ -240,13 +240,25 @@ export class SocketService implements ISocketService {
       socket.on('end-call', async (data: CallEndedDto) => {
         console.log('📞 [END-CALL] Ending call:', data);
         await this._videoCallService.endCall(data);
-        this._io.to(`trial-class-${data.trialClassId}`).emit('call-ended', data);
+        this._io.to(`call-room-${data.trialClassId}`).emit('call-ended', data);
       });
 
       socket.on('disconnect', () => {
         console.log(`🔌 [DISCONNECT] Socket ${socket.id} disconnected`);
         logger.info(`Client disconnected: ${socket.id}`);
       });
+      socket.on('leave-room', (data: { trialClassId: string }) => {
+        const videoRoom = `call-room-${data.trialClassId}`;
+        const chatRoom = `session_chat_${data.trialClassId}`;
+
+        socket.leave(videoRoom);
+        socket.leave(chatRoom);
+
+        socket.to(videoRoom).emit('user-left', {
+          socketId: socket.id
+        });
+      });
+
     });
   }
 
