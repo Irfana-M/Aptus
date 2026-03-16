@@ -3,14 +3,14 @@ import type { IVideoCallDocument } from "@/interfaces/models/videoCall.interface
 export interface IVideoCallRepository {
   create(videoCallData: Partial<IVideoCallDocument>): Promise<IVideoCallDocument>;
   findById(id: string): Promise<IVideoCallDocument | null>;
-  findByTrialClassId(trialClassId: string): Promise<IVideoCallDocument | null>;
+  findBySessionId(sessionId: string): Promise<IVideoCallDocument | null>;
   updateCallStatus(
-    trialClassId: string, 
+    sessionId: string, 
     status: 'active' | 'completed' | 'cancelled' | 'failed',
     updates?: Partial<IVideoCallDocument>
   ): Promise<IVideoCallDocument | null>;
   addParticipant(
-    trialClassId: string,
+    sessionId: string,
     participant: {
       userId: string;
       userType: 'student' | 'mentor' | 'admin';
@@ -18,12 +18,12 @@ export interface IVideoCallRepository {
     }
   ): Promise<IVideoCallDocument | null>;
   removeParticipant(
-    trialClassId: string,
+    sessionId: string,
     userId: string
   ): Promise<IVideoCallDocument | null>;
   updateCallDuration(
-    trialClassId: string,
+    sessionId: string,
     duration: number
   ): Promise<IVideoCallDocument | null>;
-  isUserInCall(trialClassId: string, userId: string): Promise<boolean>;
+  isUserInCall(sessionId: string, userId: string): Promise<boolean>;
 }

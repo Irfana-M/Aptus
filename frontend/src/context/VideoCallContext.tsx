@@ -8,7 +8,9 @@ import { VideoCallContext } from "./videoCallContextStore";
 export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [trialClassId, setTrialClassId] = React.useState<string | null>(null);
+  const [sessionId, setSessionId] = React.useState<string | null>(null);
+  const [sessionType, setSessionType] = React.useState<'trial' | 'regular' | null>(null);
+  const [sessionMode, setSessionMode] = React.useState<'one-to-one' | 'group' | null>(null);
 
   const [localStream, setLocalStream] = React.useState<MediaStream | null>(
     null,
@@ -25,7 +27,9 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isSocketConnected, setIsSocketConnected] = React.useState(false);
   const [isMinimized, setMinimized] = React.useState(false);
 
-  const trialClassIdRef = React.useRef<string | null>(null);
+  const sessionIdRef = React.useRef<string | null>(null);
+  const sessionTypeRef = React.useRef<'trial' | 'regular' | null>(null);
+  const sessionModeRef = React.useRef<'one-to-one' | 'group' | null>(null);
   const localStreamRef = React.useRef<MediaStream | null>(null);
   const pcRef = React.useRef<RTCPeerConnection | null>(null);
   const socketRef = React.useRef<Socket | null>(null);
@@ -163,7 +167,9 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
           socketRef.current.emit("webrtc-ice-candidate", {
             toSocketId: targetSocketId,
             candidate: event.candidate,
-            trialClassId: trialClassIdRef.current,
+            sessionId: sessionIdRef.current,
+            sessionType: sessionTypeRef.current,
+            sessionMode: sessionModeRef.current,
           });
         }
       };
@@ -223,18 +229,20 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
 
         socket.emit("webrtc-offer", {
           toSocketId: socketId,
-          sdp: pc.localDescription,
-          trialClassId: trialClassIdRef.current,
+          offer: pc.localDescription,
+          sessionId: sessionIdRef.current,
+          sessionType: sessionTypeRef.current,
+          sessionMode: sessionModeRef.current,
         });
       }
     };
 
     const handleOffer = async ({
       fromSocketId,
-      sdp,
+      offer,
     }: {
       fromSocketId: string;
-      sdp: RTCSessionDescriptionInit;
+      offer: RTCSessionDescriptionInit;
     }) => {
       console.log("📥 [Socket] webrtc-offer from:", fromSocketId);
       remoteSocketIdRef.current = fromSocketId;
@@ -242,7 +250,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!pc) return;
 
       const offerCollision =
-        sdp.type === "offer" && pc.signalingState !== "stable";
+        offer.type === "offer" && pc.signalingState !== "stable";
 
       if (offerCollision) {
         if (!isPoliteRef.current) {
@@ -253,13 +261,15 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
         await pc.setLocalDescription({ type: "rollback" });
       }
 
-      await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+      await pc.setRemoteDescription(new RTCSessionDescription(offer));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       socket.emit("webrtc-answer", {
         toSocketId: fromSocketId,
-        sdp: pc.localDescription,
-        trialClassId: trialClassIdRef.current,
+        answer: pc.localDescription,
+        sessionId: sessionIdRef.current,
+        sessionType: sessionTypeRef.current,
+        sessionMode: sessionModeRef.current,
       });
 
       iceCandidatesBuffer.current.forEach(async (candidate) => {
@@ -277,15 +287,15 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     const handleAnswer = async ({
-      sdp,
+      answer,
     }: {
-      sdp: RTCSessionDescriptionInit;
+      answer: RTCSessionDescriptionInit;
     }) => {
       console.log("📥 [Socket] webrtc-answer received");
 
       if (!pcRef.current) return;
 
-      await pcRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
 
       // flush buffered ICE candidates
       iceCandidatesBuffer.current.forEach(async (candidate) => {
@@ -364,8 +374,12 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
 
       try {
         console.log("🚀 [VideoCall] Initializing signaling and media...");
-        setTrialClassId(props.trialClassId);
-        trialClassIdRef.current = props.trialClassId;
+        setSessionId(props.sessionId);
+        setSessionType(props.sessionType);
+        setSessionMode(props.sessionMode);
+        sessionIdRef.current = props.sessionId;
+        sessionTypeRef.current = props.sessionType;
+        sessionModeRef.current = props.sessionMode;
 
         const stream = await initializeMedia();
         setLocalStream(stream);
@@ -378,7 +392,9 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
           console.log("✅ [Socket] Connected. Emitting join-call...");
           setIsSocketConnected(true);
           socket.emit("join-call", {
-            trialClassId: props.trialClassId,
+            sessionId: props.sessionId,
+            sessionType: props.sessionType,
+            sessionMode: props.sessionMode,
             userId: props.userId,
             userType: props.userType,
           });
@@ -411,12 +427,14 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       t.enabled = !newMutedState;
     });
     setIsMuted(newMutedState);
-    const currentTid = trialClassIdRef.current;
-    if (socketRef.current && remoteSocketIdRef.current && currentTid) {
+    const currentSid = sessionIdRef.current;
+    if (socketRef.current && remoteSocketIdRef.current && currentSid) {
       socketRef.current.emit("media-state-change", {
         type: "audio",
         enabled: !newMutedState,
-        trialClassId: currentTid,
+        sessionId: currentSid,
+        sessionType: sessionTypeRef.current,
+        sessionMode: sessionModeRef.current,
         toSocketId: remoteSocketIdRef.current,
       });
     }
@@ -428,12 +446,14 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       t.enabled = !newVideoState;
     });
     setIsVideoOff(newVideoState);
-    const currentTid = trialClassIdRef.current;
-    if (socketRef.current && remoteSocketIdRef.current && currentTid) {
+    const currentSid = sessionIdRef.current;
+    if (socketRef.current && remoteSocketIdRef.current && currentSid) {
       socketRef.current.emit("media-state-change", {
         type: "video",
         enabled: !newVideoState,
-        trialClassId: currentTid,
+        sessionId: currentSid,
+        sessionType: sessionTypeRef.current,
+        sessionMode: sessionModeRef.current,
         toSocketId: remoteSocketIdRef.current,
       });
     }
@@ -457,7 +477,9 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
 
     if (socketRef.current) {
       socketRef.current.emit("leave-room", {
-        trialClassId: trialClassIdRef.current,
+        sessionId: sessionIdRef.current,
+        sessionType: sessionTypeRef.current,
+        sessionMode: sessionModeRef.current,
       });
       socketRef.current.disconnect();
       socketRef.current = null;
@@ -467,8 +489,12 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     setRemoteStream(null);
     setIsConnected(false);
     setIsSocketConnected(false);
-    setTrialClassId(null);
-    trialClassIdRef.current = null;
+    setSessionId(null);
+    setSessionType(null);
+    setSessionMode(null);
+    sessionIdRef.current = null;
+    sessionTypeRef.current = null;
+    sessionModeRef.current = null;
     hasJoinedRef.current = false; // Reset for next session
     setStatus("Idle");
     setError(null);
@@ -477,7 +503,9 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <VideoCallContext.Provider
       value={{
-        trialClassId,
+        sessionId,
+        sessionType,
+        sessionMode,
         localStream,
         remoteStream,
         isConnected,

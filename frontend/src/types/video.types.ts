@@ -6,15 +6,20 @@ export interface RemoteMediaState {
 }
 
 export interface JoinCallProps {
-  trialClassId: string;
+  sessionId: string;
+  sessionType: 'trial' | 'regular';
+  sessionMode: 'one-to-one' | 'group';
   userId: string;
   userType: 'student' | 'mentor';
 }
 
 export interface VideoCallContextType {
-  trialClassId: string | null;
+  sessionId: string | null;
+  sessionType: 'trial' | 'regular' | null;
+  sessionMode: 'one-to-one' | 'group' | null;
   localStream: MediaStream | null;
-  remoteStream: MediaStream | null;
+  remoteStreams: Record<string, MediaStream>;
+  participants: string[];
   isConnected: boolean;
   isSocketConnected: boolean;
   connectionState: string;
@@ -22,7 +27,7 @@ export interface VideoCallContextType {
   error: string | null;
   isMuted: boolean;
   isVideoOff: boolean;
-  remoteMediaState: RemoteMediaState;
+  remoteMediaStates: Record<string, RemoteMediaState>;
   socket: Socket | null;
   joinCall: (props: JoinCallProps) => Promise<void>;
   endCall: () => void;

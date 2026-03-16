@@ -9,7 +9,7 @@ export interface IVideoCallParticipant {
 }
 
 export interface IVideoCall {
-  trialClassId: Types.ObjectId;
+  sessionId: Types.ObjectId;
   callStatus: 'active' | 'completed' | 'cancelled' | 'failed';
   meetLink: string;
   participants: IVideoCallParticipant[];

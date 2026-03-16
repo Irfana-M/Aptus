@@ -11,7 +11,7 @@ import { AppError } from "@/utils/AppError.js";
 export class VideoCallRepository implements IVideoCallRepository {
   async create(videoCallData: Partial<IVideoCallDocument>): Promise<IVideoCallDocument> {
     try {
-      logger.info("Creating new video call", { trialClassId: videoCallData.trialClassId });
+      logger.info("Creating new video call", { sessionId: videoCallData.sessionId });
       const videoCall = new VideoCall(videoCallData);
       const savedCall = await videoCall.save();
       logger.info("Video call created successfully", { callId: savedCall._id });
@@ -35,27 +35,27 @@ export class VideoCallRepository implements IVideoCallRepository {
     }
   }
 
-  async findByTrialClassId(trialClassId: string): Promise<IVideoCallDocument | null> {
+  async findBySessionId(sessionId: string): Promise<IVideoCallDocument | null> {
     try {
-      if (!Types.ObjectId.isValid(trialClassId)) {
-        throw new AppError("Invalid trial class ID", HttpStatusCode.BAD_REQUEST);
+      if (!Types.ObjectId.isValid(sessionId)) {
+        throw new AppError("Invalid session ID", HttpStatusCode.BAD_REQUEST);
       }
-      return await VideoCall.findOne({ trialClassId });
+      return await VideoCall.findOne({ sessionId });
     } catch (error: unknown) {
-      logger.error("Error finding video call by trial class ID", error);
+      logger.error("Error finding video call by session ID", error);
       if (error instanceof AppError) throw error;
       throw new AppError("Failed to find video call", HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
   async updateCallStatus(
-    trialClassId: string,
+    sessionId: string,
     status: "completed" | "cancelled" | "active" | "failed",
     updates?: Partial<IVideoCallDocument>
   ): Promise<IVideoCallDocument | null> {
     try {
-      if (!Types.ObjectId.isValid(trialClassId)) {
-        throw new AppError("Invalid trial class ID", HttpStatusCode.BAD_REQUEST);
+      if (!Types.ObjectId.isValid(sessionId)) {
+        throw new AppError("Invalid session ID", HttpStatusCode.BAD_REQUEST);
       }
 
       const updateData: Partial<IVideoCallDocument> = { callStatus: status, ...updates };
@@ -65,14 +65,14 @@ export class VideoCallRepository implements IVideoCallRepository {
       } else if (status === 'completed' || status === 'failed' || status === 'cancelled') {
         updateData.callEndedAt = new Date();
         // Calculate duration if needed
-        const existingCall = await VideoCall.findOne({ trialClassId });
+        const existingCall = await VideoCall.findOne({ sessionId });
         if (existingCall?.callStartedAt) {
              const duration = Math.floor((new Date().getTime() - existingCall.callStartedAt.getTime()) / 1000);
              updateData.callDuration = duration;
         }
       }
 
-      return await VideoCall.findOneAndUpdate({ trialClassId }, updateData, { new: true, runValidators: true });
+      return await VideoCall.findOneAndUpdate({ sessionId }, updateData, { new: true, runValidators: true });
     } catch (error: unknown) {
       logger.error("Error updating call status", error);
       if (error instanceof AppError) throw error;
@@ -81,7 +81,7 @@ export class VideoCallRepository implements IVideoCallRepository {
   }
 
   async addParticipant(
-    trialClassId: string,
+    sessionId: string,
     participant: {
       userId: string;
       userType: 'student' | 'mentor' | 'admin';
@@ -89,8 +89,8 @@ export class VideoCallRepository implements IVideoCallRepository {
     }
   ): Promise<IVideoCallDocument | null> {
     try {
-      if (!Types.ObjectId.isValid(trialClassId)) {
-        throw new AppError("Invalid trial class ID", HttpStatusCode.BAD_REQUEST);
+      if (!Types.ObjectId.isValid(sessionId)) {
+        throw new AppError("Invalid session ID", HttpStatusCode.BAD_REQUEST);
       }
 
       const participantData = {
@@ -101,7 +101,7 @@ export class VideoCallRepository implements IVideoCallRepository {
       };
 
       return await VideoCall.findOneAndUpdate(
-        { trialClassId },
+        { sessionId },
         { $push: { participants: participantData } },
         { new: true, runValidators: true }
       );
@@ -112,16 +112,16 @@ export class VideoCallRepository implements IVideoCallRepository {
   }
 
   async removeParticipant(
-    trialClassId: string,
+    sessionId: string,
     userId: string
   ): Promise<IVideoCallDocument | null> {
     try {
-      if (!Types.ObjectId.isValid(trialClassId)) {
-        throw new AppError("Invalid trial class ID", HttpStatusCode.BAD_REQUEST);
+      if (!Types.ObjectId.isValid(sessionId)) {
+        throw new AppError("Invalid session ID", HttpStatusCode.BAD_REQUEST);
       }
 
       return await VideoCall.findOneAndUpdate(
-        { trialClassId },
+        { sessionId },
         { $set: { "participants.$[elem].leftAt": new Date() } },
         {
           arrayFilters: [{ "elem.userId": new Types.ObjectId(userId), "elem.leftAt": { $exists: false } }],
@@ -135,21 +135,21 @@ export class VideoCallRepository implements IVideoCallRepository {
   }
 
   async updateCallDuration(
-    trialClassId: string,
+    sessionId: string,
     duration: number
   ): Promise<IVideoCallDocument | null> {
     try {
-      return await VideoCall.findOneAndUpdate({ trialClassId }, { callDuration: duration }, { new: true });
+      return await VideoCall.findOneAndUpdate({ sessionId }, { callDuration: duration }, { new: true });
     } catch (error: unknown) {
       logger.error("Error updating call duration", error);
       throw new AppError("Failed to update call duration", HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async isUserInCall(trialClassId: string, userId: string): Promise<boolean> {
+  async isUserInCall(sessionId: string, userId: string): Promise<boolean> {
     try {
       const videoCall = await VideoCall.findOne({
-        trialClassId: new Types.ObjectId(trialClassId),
+        sessionId: new Types.ObjectId(sessionId),
         'participants.userId': new Types.ObjectId(userId),
         'participants.leftAt': { $exists: false }
       });

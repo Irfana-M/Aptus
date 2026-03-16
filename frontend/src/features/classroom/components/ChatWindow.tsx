@@ -11,9 +11,17 @@ interface ChatWindowProps {
   sessionId: string;
   currentUserId: string;
   isSocketConnected: boolean; 
+  sessionType?: 'trial' | 'regular';
+  sessionMode?: 'one-to-one' | 'group';
 }
 
-export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, currentUserId, isSocketConnected }) => {
+export const ChatWindow: React.FC<ChatWindowProps> = ({ 
+  sessionId, 
+  currentUserId, 
+  isSocketConnected,
+  sessionType = 'regular',
+  sessionMode = 'one-to-one'
+}) => {
   const dispatch = useAppDispatch();
   const { messages, loading } = useAppSelector((state: RootState) => state.chat);
   const [inputText, setInputText] = useState('');
@@ -22,6 +30,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, currentUserId
   useEffect(() => {
     dispatch(fetchChatHistory(sessionId));
   }, [sessionId, dispatch]);
+
+  useEffect(() => {
+    if (!isSocketConnected) return;
+    const socket = socketService.getSocket();
+    if (!socket) return;
+
+    socket.emit('join-chat', { sessionId, sessionType, sessionMode });
+  }, [isSocketConnected, sessionId, sessionType, sessionMode]);
 
   useEffect(() => {
     

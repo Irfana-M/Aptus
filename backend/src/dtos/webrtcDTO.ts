@@ -1,8 +1,10 @@
 export interface JoinCallRequestDto {
-  trialClassId: string;
+  sessionId: string;
+  sessionType: 'trial' | 'regular';
+  sessionMode: 'one-to-one' | 'group';
   userId: string;
-  userType: 'student' | 'mentor' ;
-  socketId?: string ;
+  userType: 'student' | 'mentor';
+  socketId?: string;
 }
 type RTCSdpType = 'offer' | 'answer' | 'pranswer' | 'rollback';
 interface RTCSessionDescriptionInit {
@@ -11,14 +13,18 @@ interface RTCSessionDescriptionInit {
 }
 export interface WebRTCOfferDto {
   offer: RTCSessionDescriptionInit;
-  trialClassId: string;
+  sessionId: string;
+  sessionType: 'trial' | 'regular';
+  sessionMode: 'one-to-one' | 'group';
   toSocketId: string;
   fromUserId: string;
 }
 
 export interface WebRTCAnswerDto {
   answer: RTCSessionDescriptionInit;
-  trialClassId: string;
+  sessionId: string;
+  sessionType: 'trial' | 'regular';
+  sessionMode: 'one-to-one' | 'group';
   toSocketId: string;
   fromUserId: string;
 }
@@ -32,13 +38,17 @@ interface RTCIceCandidateInit {
 
 export interface WebRTCIceCandidateDto {
   candidate: RTCIceCandidateInit;
-  trialClassId: string;
+  sessionId: string;
+  sessionType: 'trial' | 'regular';
+  sessionMode: 'one-to-one' | 'group';
   toSocketId: string;
   fromUserId: string;
 }
 
 export interface CallEndedDto {
-  trialClassId: string;
+  sessionId: string;
+  sessionType: 'trial' | 'regular';
+  sessionMode: 'one-to-one' | 'group';
   endedBy: string;
   reason?: string;
 }
@@ -47,5 +57,8 @@ export interface UserJoinedDto {
   userId: string;
   userType: 'student' | 'mentor' | 'admin';
   socketId: string;
-  trialClassId: string;
+  sessionId: string;
+  sessionType: 'trial' | 'regular';
+  sessionMode: 'one-to-one' | 'group';
+  userEmail?: string;
 }

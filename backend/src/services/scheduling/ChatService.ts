@@ -28,6 +28,8 @@ export class ChatService implements IChatService {
       participants: { studentId: string }[]; 
       status: string;
       title?: string;
+      sessionType: 'trial' | 'regular';
+      sessionMode: 'one-to-one' | 'group';
   } | null> {
     // 1. Try finding a standard Session (Booking)
     try {
@@ -41,13 +43,15 @@ export class ChatService implements IChatService {
                status: string,
                title?: string
              };
-             return {
-                 _id: s._id.toString(),
-                 mentorId: s.mentorId ? s.mentorId.toString() : (s.mentor ? s.mentor.toString() : ''),
-                 participants: s.participants ? s.participants.map((participant) => ({ studentId: participant.studentId.toString() })) : [],
-                 status: s.status,
-                 title: s.title || 'Session'
-             };
+              return {
+                  _id: s._id.toString(),
+                  mentorId: s.mentorId ? s.mentorId.toString() : (s.mentor ? s.mentor.toString() : ''),
+                  participants: s.participants ? s.participants.map((participant) => ({ studentId: participant.studentId.toString() })) : [],
+                  status: s.status,
+                  title: s.title || 'Session',
+                  sessionType: 'regular',
+                  sessionMode: (session as unknown as { sessionType: string }).sessionType === 'group' ? 'group' : 'one-to-one'
+              };
         }
     } catch(_e) {
         // Session not found, this is expected in some cases. Proceed to check Trial Class.
@@ -78,7 +82,9 @@ export class ChatService implements IChatService {
                 mentorId,
                 participants: [{ studentId }],
                 status: trialWithIds.status === 'assigned' ? 'in_progress' : trialWithIds.status, 
-                title: 'Trial Class'
+                title: 'Trial Class',
+                sessionType: 'trial',
+                sessionMode: 'one-to-one'
             };
         }
     } catch (_e) {
@@ -148,7 +154,8 @@ export class ChatService implements IChatService {
     });
 
     // Notify participants via socket
-    this._socketService.emitToRoom(`session_chat_${sessionId}`, 'new_message', message);
+    const chatRoom = `chat:${session.sessionType}:${session.sessionMode}:${sessionId}`;
+    this._socketService.emitToRoom(chatRoom, 'new_message', message);
 
     return message;
   }
@@ -191,7 +198,9 @@ export class ChatService implements IChatService {
       content
     });
 
-    this._socketService.emitToRoom(`session_chat_${sessionId}`, 'system_message', message);
+    const session = await this._findSessionOrTrial(sessionId);
+    const chatRoom = session ? `chat:${session.sessionType}:${session.sessionMode}:${sessionId}` : `chat:regular:one-to-one:${sessionId}`;
+    this._socketService.emitToRoom(chatRoom, 'system_message', message);
     return message;
   }
 }

@@ -19,9 +19,8 @@ const VideoCallParticipantSchema = new Schema({
 
 const VideoCallSchema = new Schema<IVideoCallDocument>(
   {
-    trialClassId: { 
+    sessionId: { 
       type: Schema.Types.ObjectId, 
-      ref: "TrialClass", 
       required: true,
       unique: true 
     },

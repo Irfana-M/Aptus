@@ -32,16 +32,16 @@ export class VideoCallService implements IVideoCallService {
 
 
   async initializeCall(
-    trialClassId: string,
+    sessionId: string,
     userId: string,
     userRole: 'mentor' | 'student'
   ): Promise<{ success: boolean; meetLink?: string }> {
     try {
-      let trialClass = await this._trialClassRepo.findById(trialClassId);
+      let trialClass = await this._trialClassRepo.findById(sessionId);
       let isSession = false;
 
       if (!trialClass) {
-        const session = await this._sessionRepo.findById(trialClassId);
+        const session = await this._sessionRepo.findById(sessionId);
         if (session) {
           isSession = true;
           trialClass = ({ ...session, meetLink: (session as unknown as { webRTCId?: string }).webRTCId } as unknown as ITrialClassDocument);
@@ -50,7 +50,7 @@ export class VideoCallService implements IVideoCallService {
         }
       }
 
-      let videoCall = await this._videoCallRepo.findByTrialClassId(trialClassId);
+      let videoCall = await this._videoCallRepo.findBySessionId(sessionId);
 
       if (videoCall) {
         return { success: true, meetLink: videoCall.meetLink };
@@ -59,17 +59,17 @@ export class VideoCallService implements IVideoCallService {
       let meetLink = trialClass.meetLink;
 
       if (!meetLink) {
-        meetLink = this._generateMeetLink(trialClassId);
+        meetLink = this._generateMeetLink(sessionId);
        
         if (!isSession) {
-          await this._trialClassRepo.updateById(trialClassId, { meetLink });
+          await this._trialClassRepo.updateById(sessionId, { meetLink });
         } else {
-          logger.info(`ℹ️ Session detected in initializeCall, skipping TrialClass update for ${trialClassId}`);
+          logger.info(`ℹ️ Session detected in initializeCall, skipping TrialClass update for ${sessionId}`);
         }
       }
 
       videoCall = await this._videoCallRepo.create({
-        trialClassId: new Types.ObjectId(trialClassId),
+        sessionId: new Types.ObjectId(sessionId),
         callStatus: "active",
         meetLink,
         participants: [
@@ -97,8 +97,8 @@ export class VideoCallService implements IVideoCallService {
     data: JoinCallRequestDto
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      fileLogger(`🎥 JOIN CALL REQUEST - User: ${data.userId}, Type: ${data.userType}, Trial: ${data.trialClassId}`);
-      logger.info(`🎥 JOIN CALL REQUEST - User: ${data.userId}, Type: ${data.userType}, Trial: ${data.trialClassId}`);
+      fileLogger(`🎥 JOIN CALL REQUEST - User: ${data.userId}, Type: ${data.userType}, ${data.sessionType}: ${data.sessionId}`);
+      logger.info(`🎥 JOIN CALL REQUEST - User: ${data.userId}, Type: ${data.userType}, ${data.sessionType}: ${data.sessionId}`);
 
       
       const userVerification = await this._userRoleService.verifyUserRole(
@@ -119,7 +119,7 @@ export class VideoCallService implements IVideoCallService {
 
       
       const authCheck = await this._userRoleService.verifyTrialClassAuthorization(
-        data.trialClassId,
+        data.sessionId,
         data.userId,
         data.userType
       );
@@ -132,38 +132,36 @@ export class VideoCallService implements IVideoCallService {
         };
       }
 
-      logger.info(`✅ User authorized for trial class ${data.trialClassId}`);
+      logger.info(`✅ User authorized for ${data.sessionType} class ${data.sessionId}`);
 
       
-      let videoCall = await this._videoCallRepo.findByTrialClassId(
-        data.trialClassId
+      let videoCall = await this._videoCallRepo.findBySessionId(
+        data.sessionId
       );
 
       if (!videoCall) {
-        logger.info(`📹 No existing call found - creating new VideoCall for trial class ${data.trialClassId}`);
+        logger.info(`📹 No existing call found - creating new VideoCall for ${data.sessionType} class ${data.sessionId}`);
 
-        
         let meetLink = (authCheck.trialClass as { meetLink?: string })?.meetLink;
 
         if (!meetLink) {
-          meetLink = this._generateMeetLink(data.trialClassId);
+          meetLink = this._generateMeetLink(data.sessionId);
           
           if (!(authCheck as unknown as { isSession?: boolean }).isSession) {
-            await this._trialClassRepo.updateById(data.trialClassId, { meetLink });
+            await this._trialClassRepo.updateById(data.sessionId, { meetLink });
           } else {
-            logger.info(`ℹ️ Session detected, skipping TrialClass update for ${data.trialClassId}`);
+            logger.info(`ℹ️ Session detected, skipping TrialClass update for ${data.sessionId}`);
           }
           logger.info(`🔗 Generated meet link: ${meetLink}`);
         }
 
-        
         videoCall = await this._videoCallRepo.create({
-          trialClassId: new Types.ObjectId(data.trialClassId),
+          sessionId: new Types.ObjectId(data.sessionId),
           callStatus: "active",
           meetLink,
         });
 
-        logger.info(`✅ Video call created by ${data.userType} for trial class ${data.trialClassId}, CallID: ${videoCall._id}`);
+        logger.info(`✅ Video call created by ${data.userType} for ${data.sessionType} class ${data.sessionId}, CallID: ${videoCall._id}`);
       } else {
         logger.info(`📹 Found existing VideoCall: ${videoCall._id}, Status: ${videoCall.callStatus}`);
       }
@@ -183,7 +181,7 @@ export class VideoCallService implements IVideoCallService {
 
       logger.info(`👤 Adding participant ${data.userId} (${data.userType}) to call ${videoCall._id}`);
       await this._videoCallRepo.addParticipant(
-        data.trialClassId,
+        data.sessionId,
         participantData
       );
 
@@ -193,11 +191,10 @@ export class VideoCallService implements IVideoCallService {
       try {
         const sessionModel = (authCheck as unknown as { isSession?: boolean }).isSession ? 'Session' : 'TrialClass';
         
-        await this._attendanceService.markPresent(data.trialClassId, data.userId, sessionModel);
-        logger.info(`📝 Attendance marked for ${data.userId} in ${sessionModel} ${data.trialClassId}`);
+        await this._attendanceService.markPresent(data.sessionId, data.userId, sessionModel);
+        logger.info(`📝 Attendance marked for ${data.userId} in ${sessionModel} ${data.sessionId}`);
       } catch (attError) {
-        logger.error(`⚠️ Failed to auto-mark attendance for ${data.trialClassId}: ${attError}`);
-       
+        logger.error(`⚠️ Failed to auto-mark attendance for ${data.sessionId}: ${attError}`);
       }
 
       return { success: true };
@@ -217,12 +214,12 @@ export class VideoCallService implements IVideoCallService {
 
   async endCall(data: CallEndedDto): Promise<{ success: boolean }> {
     try {
-      const videoCall = await this._videoCallRepo.findByTrialClassId(
-        data.trialClassId
+      const videoCall = await this._videoCallRepo.findBySessionId(
+        data.sessionId
       );
 
       if (!videoCall) {
-        logger.info(`End call requested for ${data.trialClassId} but no active call found - already ended`);
+        logger.info(`End call requested for ${data.sessionId} but no active call found - already ended`);
         return { success: true };
       }
 
@@ -233,7 +230,7 @@ export class VideoCallService implements IVideoCallService {
         return { success: true };
 
       await this._videoCallRepo.updateCallStatus(
-        data.trialClassId,
+        data.sessionId,
         "completed",
         { callEndedAt: new Date() }
       );
@@ -249,12 +246,12 @@ export class VideoCallService implements IVideoCallService {
   }
 
   async getCallStatus(
-    trialClassId: string
+    sessionId: string
   ): Promise<{ status: string; participants: Record<string, unknown>[]; meetLink?: string }> {
     try {
       
-      const videoCall = await this._videoCallRepo.findByTrialClassId(
-        trialClassId
+      const videoCall = await this._videoCallRepo.findBySessionId(
+        sessionId
       );
 
       if (videoCall) {
@@ -273,7 +270,7 @@ export class VideoCallService implements IVideoCallService {
       }
 
       
-      const trialClass = await this._trialClassRepo.findById(trialClassId);
+      const trialClass = await this._trialClassRepo.findById(sessionId);
       if (trialClass?.meetLink) {
         
         return {
@@ -323,8 +320,8 @@ export class VideoCallService implements IVideoCallService {
     return false;
   }
 
-  private _generateMeetLink(trialClassId: string): string {
+  private _generateMeetLink(sessionId: string): string {
     const baseUrl = process.env.CLIENT_URL || "http://localhost:5173";
-    return `${baseUrl}/trial-class/${trialClassId}/call`;
+    return `${baseUrl}/session/${sessionId}/call`;
   }
 }
