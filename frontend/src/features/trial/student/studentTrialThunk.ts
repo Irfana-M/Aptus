@@ -18,8 +18,12 @@ export const requestTrialClass = createAsyncThunk<
   "studentTrial/requestTrialClass",
   async (data: TrialClassRequest, { rejectWithValue }) => {
     try {
-      return await studentTrialApi.requestTrialClass(data);
+      console.log('🚀 [Thunk] Requesting trial class...', data);
+      const response = await studentTrialApi.requestTrialClass(data);
+      console.log('✅ [Thunk] Trial class requested successfully');
+      return response;
     } catch (error: unknown) {
+      console.error('❌ [Thunk] Error requesting trial class:', error);
       return rejectWithValue(
         getApiErrorMessage(error, "Failed to request trial class")
       );
@@ -33,8 +37,12 @@ export const fetchStudentTrialClasses = createAsyncThunk<
   { rejectValue: string }
 >("studentTrial/fetchStudentTrialClasses", async (_, { rejectWithValue }) => {
   try {
-    return await studentTrialApi.getStudentTrialClasses();
+    console.log('📡 [Thunk] Fetching student trial classes...');
+    const response = await studentTrialApi.getStudentTrialClasses();
+    console.log(`✅ [Thunk] Received ${response.length} trial classes`);
+    return response;
   } catch (error: unknown) {
+    console.error('❌ [Thunk] Error fetching trial classes:', error);
     return rejectWithValue(
       getApiErrorMessage(error, "Failed to fetch trial classes")
     );
@@ -189,11 +197,14 @@ export const fetchAvailableTrialSlots = createAsyncThunk<
   "studentTrial/fetchAvailableTrialSlots",
   async ({ subjectId, date }, { rejectWithValue }) => {
     try {
-      return await studentTrialApi.getAvailableTrialSlots(subjectId, date);
+      console.log(`📡 [Thunk] Fetching available trial slots for Subject: ${subjectId}, Date: ${date}`);
+      const response = await studentTrialApi.getAvailableTrialSlots(subjectId, date);
+      console.log(`✅ [Thunk] Received ${response.slots.length} slots (Availability: ${response.hasAvailability})`);
+      return response;
     } catch (error: unknown) {
+      console.error('❌ [Thunk] Error fetching trial slots:', error);
       return rejectWithValue(
         getApiErrorMessage(error, "Failed to fetch available slots")
       );
     }
-  }
-);
+  });

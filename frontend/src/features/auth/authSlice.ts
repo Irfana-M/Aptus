@@ -18,12 +18,12 @@ let initialUser = null;
 if (storedToken) {
   try {
     const payload = decodeJwt(storedToken);
-    const storedUserId = TokenManager.getUserId()|| payload.id || "";
+    const storedUserId = TokenManager.getUserId() || payload.id || "";
     initialUser = {
       id: storedUserId,
       _id: storedUserId,
       email: payload.email || '',
-      role: payload.role ,
+      role: payload.role,
       isProfileComplete: localStorage.getItem("isProfileComplete") === "true",
       hasPaid: localStorage.getItem("hasPaid") === "true",
       isTrialCompleted: localStorage.getItem("isTrialCompleted") === "true",
@@ -83,9 +83,20 @@ const authSlice = createSlice({
       state.error = null;
     },
     updateProfileStatus: (state, action) => {
-      state.isProfileComplete = action.payload.isProfileComplete;
+      console.log("Redux user state:", state.user);
+      const payload = action.payload || {};
+
+      const isComplete =
+        payload.isProfileComplete ?? payload.isProfileCompleted ?? false;
+
+      state.isProfileComplete = isComplete;
+
       if (state.user) {
-        state.user.isProfileComplete = action.payload.isProfileComplete;
+        state.user.isProfileComplete = isComplete;
+
+        if (payload.onboardingStatus) {
+          state.user.onboardingStatus = payload.onboardingStatus;
+        }
       }
     },
     updatePaymentStatus: (state, action) => {

@@ -17,26 +17,30 @@ export class CronService {
   ) {}
 
   public start(): void {
-    logger.info('Starting Cron Jobs...');
+    logger.info('⏰ [CronService] Starting Cron Jobs...');
 
     
     nodeCron.schedule('* * * * *', () => {
-      this._notificationService.processQueue().catch(err => logger.error('Cron Error (Queue):', err));
+      logger.info('⏰ [Cron] Executing Notification Queue Processor');
+      this._notificationService.processQueue().catch(err => logger.error('❌ Cron Error (Queue):', err));
     });
 
    
     nodeCron.schedule('*/15 * * * *', () => {
-      this._activateJoinLinks().catch(err => logger.error('Cron Error (Join Links):', err));
+      logger.info('⏰ [Cron] Executing Join Link Activation');
+      this._activateJoinLinks().catch(err => logger.error('❌ Cron Error (Join Links):', err));
     });
 
     
     nodeCron.schedule('0 0 * * *', () => {
-      this._schedulingService.generateSlots(7).catch(err => logger.error('Cron Error (Slot Gen):', err));
+      logger.info('⏰ [Cron] Executing Daily Slot Generation (7 days)');
+      this._schedulingService.generateSlots(7).catch(err => logger.error('❌ Cron Error (Slot Gen):', err));
     });
 
     
     nodeCron.schedule('30 3 * * *', () => {
-      this._sendAssignmentReminders().catch(err => logger.error('Cron Error (Assignment Reminders):', err));
+      logger.info('⏰ [Cron] Executing Assignment Reminders');
+      this._sendAssignmentReminders().catch(err => logger.error('❌ Cron Error (Assignment Reminders):', err));
     });
 
 
@@ -68,9 +72,12 @@ export class CronService {
   private _runStartupTasks(): void {
     this._schedulingService.generateSlots(7)
       .then(() => {
-        logger.info('Initial Slot Generation completed on startup');
+        logger.info('✅ [Cron] Initial Slot Generation completed on startup');
         return this._activateJoinLinks();
       })
-      .catch(err => logger.error('Startup Task Error:', err));
+      .then(() => {
+        logger.info('✅ [Cron] Startup Join Link Activation completed');
+      })
+      .catch(err => logger.error('❌ Startup Task Error:', err));
   }
 }

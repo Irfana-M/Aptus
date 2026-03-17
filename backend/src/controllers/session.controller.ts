@@ -4,6 +4,7 @@ import { HttpStatusCode } from "../constants/httpStatus.js";
 import { AppError } from "../utils/AppError.js";
 import { MESSAGES } from "../constants/messages.constants.js";
 import { getPaginationParams, formatStandardizedPaginatedResult } from "../utils/pagination.util.js";
+import { logger } from "../utils/logger.js";
 
 export class SessionController {
   constructor(private _sessionService: ISessionService) {}
@@ -12,7 +13,9 @@ export class SessionController {
       try {
         if (!req.user) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
         const { page, limit } = getPaginationParams(req.query as Record<string, unknown>);
+        logger.info(`📡 [API] Fetching upcoming sessions for student ${req.user.id}`);
         const { items, total } = await this._sessionService.getStudentUpcomingSessionsPaginated(req.user.id, page, limit);
+        logger.info(`✅ [API] Returning ${items.length} sessions for student ${req.user.id}`);
         res.status(HttpStatusCode.OK).json(
           formatStandardizedPaginatedResult(items, total, { page, limit }, MESSAGES.COMMON.DATA_FETCHED)
         );
@@ -25,7 +28,9 @@ export class SessionController {
       try {
           if (!req.user) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
           const { page, limit } = getPaginationParams(req.query as Record<string, unknown>);
+          logger.info(`📡 [API] Fetching upcoming sessions for mentor ${req.user.id}`);
           const { items, total } = await this._sessionService.getMentorUpcomingSessionsPaginated(req.user.id, page, limit);
+          logger.info(`✅ [API] Returning ${items.length} sessions for mentor ${req.user.id}`);
           res.status(HttpStatusCode.OK).json(
             formatStandardizedPaginatedResult(items, total, { page, limit }, MESSAGES.COMMON.DATA_FETCHED)
           );
@@ -37,7 +42,9 @@ export class SessionController {
   async getMentorTodaySessions(req: Request, res: Response, next: NextFunction) {
       try {
           if (!req.user) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
+          logger.info(`📡 [API] Fetching today's sessions for mentor ${req.user.id}`);
           const sessions = await this._sessionService.getMentorTodaySessions(req.user.id);
+          logger.info(`✅ [API] Returning ${sessions.length} today sessions for mentor ${req.user.id}`);
           res.status(HttpStatusCode.OK).json({ success: true, data: sessions });
       } catch (error) {
           next(error);

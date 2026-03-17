@@ -40,6 +40,11 @@ export const MentorLayout: React.FC<MentorLayoutProps> = ({ children, title }) =
     { icon: <BookOpen size={20} />, label: 'Classroom', path: ROUTES.MENTOR.CLASSROOM },
     { icon: <FileText size={20} />, label: 'Study & Assignments', path: ROUTES.MENTOR.STUDY_MATERIALS },
     { icon: <ClipboardList size={20} />, label: 'Class History', path: ROUTES.MENTOR.CLASS_HISTORY },
+    {
+  icon: <ClipboardList size={20} />,
+  label: 'Exams',
+  path: ROUTES.MENTOR.EXAMS
+},
     { icon: <Clock size={20} />, label: 'Availability', path: ROUTES.MENTOR.AVAILABILITY },
     { icon: <Calendar size={20} />, label: 'Leaves', path: ROUTES.MENTOR.LEAVES },
     { icon: <Bell size={20} />, label: 'Notifications', path: ROUTES.COMMON.NOTIFICATIONS },

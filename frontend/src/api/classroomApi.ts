@@ -84,6 +84,7 @@ export const getStudentMaterials = async (): Promise<ApiResponse<StudyMaterial[]
 
 export const getStudentAssignments = async (): Promise<ApiResponse<StudyMaterial[]>> => {
   const response = await api.get<ApiResponse<StudyMaterial[]>>(API_ROUTES.CLASSROOM.STUDENT_ASSIGNMENTS);
+  console.log(response.data);
   return response.data;
 };
 

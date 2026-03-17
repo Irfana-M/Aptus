@@ -34,6 +34,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { icon: <FileText className="w-5 h-5" />, label: 'Study Materials', path: ROUTES.MENTOR.MATERIALS },
     { icon: <ClipboardList className="w-5 h-5" />, label: 'Assignments', path: ROUTES.MENTOR.ASSIGNMENTS },
     { icon: <ClipboardList className="w-5 h-5" />, label: 'Class History', path: ROUTES.MENTOR.CLASS_HISTORY },
+    {
+  icon: <ClipboardList className="w-5 h-5" />,
+  label: 'Exams',
+  path: ROUTES.MENTOR.EXAMS
+},
     { icon: <Bell className="w-5 h-5" />, label: 'Notifications', path: ROUTES.MENTOR.NOTIFICATIONS },
     { icon: <Clock className="w-5 h-5" />, label: 'Availability', path: ROUTES.MENTOR.AVAILABILITY },
     { icon: <MessageSquare className="w-5 h-5" />, label: 'Chats', path: ROUTES.MENTOR.CHATS },

@@ -26,16 +26,17 @@ export class SlotGenerationService implements ISlotGenerationService {
 
   async generateSlots(projectionDays: number): Promise<void> {
     try {
-      logger.info(`Generating slots for the next ${projectionDays} days for all approved mentors`);
+      logger.info(`🚀 [SlotGen] Starting generation for ${projectionDays} days for all approved mentors`);
       const mentors = await this._mentorRepo.getAllMentors();
       const approvedMentors = mentors.filter(m => m.approvalStatus === 'approved' && m.isActive);
+      logger.info(`📊 [SlotGen] Found ${approvedMentors.length} approved mentors to process`);
 
       for (const mentor of approvedMentors) {
         if (mentor._id) {
           await this.generateMentorSlots(mentor._id.toString(), projectionDays);
         }
       }
-      logger.info('Slot generation completed for all mentors');
+      logger.info('✅ [SlotGen] Slot generation completed for all mentors');
     } catch (error) {
       logger.error(`Error in generateSlots: ${getErrorMessage(error)}`);
       throw error;
@@ -44,7 +45,7 @@ export class SlotGenerationService implements ISlotGenerationService {
 
   async generateMentorSlots(mentorId: string, projectionDays: number): Promise<void> {
     try {
-      logger.info(`Generating slots for mentor ${mentorId} for the next ${projectionDays} days`);
+      logger.info(`🚀 [SlotGen] Generating slots for mentor ${mentorId} for the next ${projectionDays} days`);
       
       const availabilities = await this._mentorAvailabilityRepo.findActiveByMentor(mentorId);
       
@@ -60,6 +61,8 @@ export class SlotGenerationService implements ISlotGenerationService {
       const dayNames: ('Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday')[] = 
         ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+      let generatedCount = 0;
+
       for (let i = 0; i <= projectionDays; i++) { 
         const currentPathDate = new Date(startDate);
         currentPathDate.setDate(startDate.getDate() + i);
@@ -72,7 +75,7 @@ export class SlotGenerationService implements ISlotGenerationService {
         );
 
         if (isOnLeave) {
-          logger.info(`[GenSlots] Mentor ${mentorId} is on approved leave on ${currentPathDate.toDateString()}. Skipping slot generation.`);
+          logger.info(`[GenSlots] 🏝️ Mentor ${mentorId} is on approved leave on ${currentPathDate.toDateString()}. Skipping.`);
           continue;
         }
 
@@ -141,7 +144,9 @@ export class SlotGenerationService implements ISlotGenerationService {
                 currentStudentCount: currentCount
               }
             );
-
+            
+            if (timeSlot) generatedCount++;
+            
             // If it's a booked course slot, ensure Bookings exist for enrolled students
             if (matchingCourse && timeSlot) {
               const tsId = (timeSlot as unknown as { _id: { toString(): string } })._id.toString();
@@ -161,6 +166,7 @@ export class SlotGenerationService implements ISlotGenerationService {
           }
         }
       }
+      logger.info(`✅ [SlotGen] Completed: Generated/Updated ${generatedCount} slots for mentor ${mentorId}`);
     } catch (error) {
       logger.error(`Error in generateMentorSlots: ${getErrorMessage(error)}`);
       throw error;

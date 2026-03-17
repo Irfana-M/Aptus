@@ -25,6 +25,7 @@ export class NotificationService implements INotificationService {
     payload: Record<string, unknown>,
     channels: NotificationChannel[] = ['web']
   ): Promise<void> {
+    logger.info(`🔔 [Notification] Creating notification for user ${userId} (${userRole}), Type: ${type}`);
     const { title, message } = this._applyTemplate(type, payload);
 
     await this._notificationRepo.create({
@@ -46,7 +47,9 @@ export class NotificationService implements INotificationService {
 
   async processQueue(): Promise<void> {
     const pending = await this._notificationRepo.findPendingNotifications();
-    logger.info(`Processing ${pending.length} pending notifications...`);
+    if (pending.length > 0) {
+      logger.info(`📊 [Notification] Processing ${pending.length} pending items from queue...`);
+    }
 
     for (const notification of pending) {
       try {
@@ -60,6 +63,9 @@ export class NotificationService implements INotificationService {
         logger.error(`Failed to deliver notification ${notification._id}:`, error);
         await this._notificationRepo.updateStatus((notification._id as { toString(): string }).toString(), 'failed', err.message);
       }
+    }
+    if (pending.length > 0) {
+      logger.info(`✅ [Notification] Processed ${pending.length} items`);
     }
   }
 
@@ -209,6 +215,7 @@ export class NotificationService implements INotificationService {
     message: string,
     metadata?: Record<string, unknown>
   ): Promise<INotification> {
+    logger.info(`🔔 [Notification] Creating manual notification for user ${userId}, Title: ${title}`);
     return this._notificationRepo.create({
       userId: new Types.ObjectId(userId) as unknown as Schema.Types.ObjectId,
       userRole,

@@ -17,14 +17,23 @@ import { fetchStudentTrialClasses } from '../../features/trial/student/studentTr
 
 const Dashboard: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { profile, enrollments } = useSelector((state: RootState) => state.student);
-  const { trialClasses } = useSelector((state: RootState) => state.studentTrial);
+   const { profile, enrollments } = useSelector((state: RootState) => state.student);
+   const { user } = useSelector((state: RootState) => state.auth);
+   const { trialClasses } = useSelector((state: RootState) => state.studentTrial);
 
-  React.useEffect(() => {
-      dispatch(fetchStudentProfile());
-      dispatch(fetchStudentTrialClasses());
-      dispatch(fetchStudentAssignments());
-  }, [dispatch]);
+   React.useEffect(() => {
+       dispatch(fetchStudentProfile());
+       
+       // Only fetch trial classes if profile is complete (needs weight 3)
+       if (profile?.isProfileCompleted || user?.isProfileComplete) {
+           dispatch(fetchStudentTrialClasses());
+       }
+       
+       // Only fetch assignments if student has paid (needs weight 6)
+       if (profile?.hasPaid || user?.hasPaid) {
+           dispatch(fetchStudentAssignments());
+       }
+   }, [dispatch, profile?.isProfileCompleted, user?.isProfileComplete, profile?.hasPaid, user?.hasPaid]);
 
   const isProcessingPayment = !!(profile && profile.hasPaid && enrollments.length === 0);
   

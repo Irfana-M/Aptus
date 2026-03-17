@@ -5,6 +5,7 @@ import type { Request, Response, NextFunction } from "express";
 import type { IAvailabilityService } from "../interfaces/services/IAvailabilityService.js";
 import { HttpStatusCode } from "@/constants/httpStatus.js";
 import { MESSAGES } from "@/constants/messages.constants.js";
+import { logger } from "../utils/logger.js";
 
 @injectable()
 export class AvailabilityController {
@@ -42,8 +43,8 @@ export class AvailabilityController {
 
   public findMatches = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        
         const { subject, grade, days, timeSlot } = req.query;
+        logger.info(`📡 [API] Finding matching mentors for Subject: ${subject}, Grade: ${grade}`);
         
         
         if (!subject) {
@@ -62,6 +63,7 @@ export class AvailabilityController {
             (timeSlot as string) || ""
         );
 
+        logger.info(`✅ [API] Found ${matchedMentors.matches.length} direct matches and ${matchedMentors.alternates.length} alternates`);
         res.status(HttpStatusCode.OK).json({ data: matchedMentors });
     } catch (error) {
         next(error);

@@ -49,6 +49,7 @@ export class StudentController {
         authReq.user.id,
         req.body
       );
+      logger.info("Updated onboardingStatus:", updatedProfile.onboardingStatus);
 
       res.status(HttpStatusCode.OK).json({
         success: true,
@@ -220,7 +221,9 @@ export class StudentController {
         throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
       }
 
+      logger.info(`📡 [API] Fetching upcoming sessions for Student: ${authReq.user.id}`);
       const eligibilityData = await this._sessionService.getStudentUpcomingSessionsWithEligibility(authReq.user.id);
+      logger.info(`✅ [API] Returning ${eligibilityData.sessions.length} upcoming sessions with eligibility`);
 
       res.status(HttpStatusCode.OK).json({
         success: true,

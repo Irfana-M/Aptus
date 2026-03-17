@@ -37,10 +37,12 @@ export class TrialClassController {
         return;
       }
 
+      logger.info(`🚀 [API] Creating trial request for student ${studentId}, Subject: ${subject}`);
       const trialClass = await this._trialService.requestTrialClass(
         { subject, preferredDate, preferredTime },
         studentId
       );
+      logger.info(`✅ [API] Trial request created successfully for student ${studentId}`);
 
       res.status(HttpStatusCode.CREATED).json({
         success: true,
@@ -66,7 +68,9 @@ export class TrialClassController {
 
       const { page, limit } = getPaginationParams(req.query);
 
+      logger.info(`📡 [API] Fetching trial classes for student ${studentId}`);
       const { items, total } = await this._trialService.getStudentTrialClasses(studentId, page, limit);
+      logger.info(`✅ [API] Returning ${items.length} trial classes for student ${studentId}`);
 
       const result = formatStandardizedPaginatedResult(
         items,
@@ -127,10 +131,12 @@ export class TrialClassController {
         return;
       }
 
+      logger.info(`📡 [API] Fetching available trial slots for Subject: ${subject}, Date: ${date}`);
       const availableSlots = await this._trialService.getAvailableSlots(
         subject as string,
         date as string
       );
+      logger.info(`✅ [API] Returning ${(availableSlots as any).slots?.length || 0} slots (Availability: ${availableSlots.hasAvailability})`);
 
       res.status(HttpStatusCode.OK).json({
         success: true,
