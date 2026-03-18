@@ -104,8 +104,8 @@ export class VideoCallService implements IVideoCallService {
     data: JoinCallRequestDto
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      fileLogger(`🎥 JOIN CALL REQUEST - User: ${data.userId}, Type: ${data.userType}, ${data.sessionType}: ${data.sessionId}`);
-      logger.info(`🎥 JOIN CALL REQUEST - User: ${data.userId}, Type: ${data.userType}, ${data.sessionType}: ${data.sessionId}`);
+      fileLogger(`🎥 JOIN CALL REQUEST - User: ${data.userId}, Type: ${data.userType}, Session: ${data.sessionId}`);
+      logger.info(`🎥 JOIN CALL REQUEST - User: ${data.userId}, Type: ${data.userType}, Session: ${data.sessionId}`);
 
 
       const userVerification = await this._userRoleService.verifyUserRole(
@@ -139,7 +139,7 @@ export class VideoCallService implements IVideoCallService {
         };
       }
 
-      logger.info(`✅ User authorized for ${data.sessionType} class ${data.sessionId}`);
+      logger.info(`✅ User authorized for session ${data.sessionId}`);
 
 
       let videoCall = await this._videoCallRepo.findBySessionId(
@@ -147,7 +147,7 @@ export class VideoCallService implements IVideoCallService {
       );
 
       if (!videoCall) {
-        logger.info(`📹 No existing call found - creating new VideoCall for ${data.sessionType} class ${data.sessionId}`);
+        logger.info(`📹 No existing call found - creating new VideoCall for session ${data.sessionId}`);
 
 
       let meetLink = (authCheck.trialClass as { meetLink?: string })?.meetLink;
@@ -177,7 +177,7 @@ logger.info("🚀 Creating VideoCall (JOIN) with:", {
           meetLink,
         });
 
-        logger.info(`✅ Video call created by ${data.userType} for ${data.sessionType} class ${data.sessionId}, CallID: ${videoCall._id}`);
+        logger.info(`✅ Video call created by ${data.userType} for session ${data.sessionId}, CallID: ${videoCall._id}`);
       } else {
         logger.info(`📹 Found existing VideoCall: ${videoCall._id}, Status: ${videoCall.callStatus}`);
       }

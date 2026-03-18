@@ -150,8 +150,8 @@ export class SocketService implements ISocketService {
             return socket.emit('join-error', { error: 'Role mismatch' });
           }
 
-          const videoRoom = `call:${data.sessionType}:${data.sessionMode}:${data.sessionId}`;
-          const chatRoom = `chat:${data.sessionType}:${data.sessionMode}:${data.sessionId}`;
+          const videoRoom = `call:${data.sessionId}`;
+          const chatRoom = `chat:${data.sessionId}`;
           
           // Get existing members BEFORE joining
           const existingParticipants = Array.from(this._io.sockets.adapter.rooms.get(videoRoom) || []);
@@ -179,8 +179,6 @@ export class SocketService implements ISocketService {
             userType: data.userType,
             socketId: socket.id,
             sessionId: data.sessionId,
-            sessionType: data.sessionType,
-            sessionMode: data.sessionMode,
             userEmail: socketUser.email
           });
 
@@ -194,8 +192,6 @@ export class SocketService implements ISocketService {
           logger.info("User joined call room", {
             socketId: socket.id,
             sessionId: data.sessionId,
-            sessionType: data.sessionType,
-            sessionMode: data.sessionMode,
             userId: data.userId,
             email: socketUser.email
           });
@@ -205,8 +201,8 @@ export class SocketService implements ISocketService {
         }
       });
 
-      socket.on('join-chat', async (data: { sessionId: string, sessionType: 'trial' | 'regular', sessionMode: 'one-to-one' | 'group' }) => {
-        const chatRoom = `chat:${data.sessionType}:${data.sessionMode}:${data.sessionId}`;
+      socket.on('join-chat', async (data: { sessionId: string }) => {
+        const chatRoom = `chat:${data.sessionId}`;
         await socket.join(chatRoom);
         console.log(`💬 [JOIN-CHAT] User joined room: ${chatRoom}`);
       });
@@ -265,8 +261,6 @@ export class SocketService implements ISocketService {
         type: 'audio' | 'video', 
         enabled: boolean, 
         sessionId: string, 
-        sessionType: 'trial' | 'regular',
-        sessionMode: 'one-to-one' | 'group',
         toSocketId: string 
       }) => {
         console.log(`🎥 [MEDIA-STATE] ${data.type} is now ${data.enabled ? 'enabled' : 'disabled'} for ${socket.id}`);
@@ -279,7 +273,7 @@ export class SocketService implements ISocketService {
       socket.on('end-call', async (data: CallEndedDto) => {
         console.log('📞 [END-CALL] Ending call:', data);
         await this._videoCallService.endCall(data);
-        const videoRoom = `call:${data.sessionType}:${data.sessionMode}:${data.sessionId}`;
+        const videoRoom = `call:${data.sessionId}`;
         this._io.to(videoRoom).emit('call-ended', data);
       });
 
@@ -287,9 +281,9 @@ export class SocketService implements ISocketService {
         console.log(`🔌 [DISCONNECT] Socket ${socket.id} disconnected`);
         logger.info(`Client disconnected: ${socket.id}`);
       });
-      socket.on('leave-room', (data: { sessionId: string, sessionType: 'trial' | 'regular', sessionMode: 'one-to-one' | 'group' }) => {
-        const videoRoom = `call:${data.sessionType}:${data.sessionMode}:${data.sessionId}`;
-        const chatRoom = `chat:${data.sessionType}:${data.sessionMode}:${data.sessionId}`;
+      socket.on('leave-room', (data: { sessionId: string }) => {
+        const videoRoom = `call:${data.sessionId}`;
+        const chatRoom = `chat:${data.sessionId}`;
 
         logger.info("User left call room", {
           socketId: socket.id,

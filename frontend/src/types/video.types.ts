@@ -7,8 +7,6 @@ export interface RemoteMediaState {
 
 export interface JoinCallProps {
   sessionId: string;
-  sessionType: 'trial' | 'regular';
-  sessionMode: 'one-to-one' | 'group';
   userId: string;
   userType: 'student' | 'mentor';
 }

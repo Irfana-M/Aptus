@@ -176,8 +176,6 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
             toSocketId: targetSocketId,
             candidate: event.candidate,
             sessionId: sessionIdRef.current,
-            sessionType: sessionTypeRef.current,
-            sessionMode: sessionModeRef.current,
           });
           console.log(`[CLIENT] [ICE] Sent candidate to ${targetSocketId}`);
           Sentry.addBreadcrumb({
@@ -279,8 +277,6 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
           toSocketId: socketId,
           offer: pc.localDescription,
           sessionId: sessionIdRef.current,
-          sessionType: sessionTypeRef.current,
-          sessionMode: sessionModeRef.current,
         });
         console.log(`[CLIENT] [WEBRTC] Sending webrtc-offer to ${socketId}`);
       } else {
@@ -336,8 +332,6 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
         toSocketId: fromSocketId,
         answer: pc.localDescription,
         sessionId: sessionIdRef.current,
-        sessionType: sessionTypeRef.current,
-        sessionMode: sessionModeRef.current,
       });
       console.log(`[CLIENT] [WEBRTC] Sending webrtc-answer to ${fromSocketId}`);
       Sentry.addBreadcrumb({
@@ -539,8 +533,6 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       hasJoinedRoomRef.current = true;
       socket.emit("join-call", {
         sessionId: sessionIdRef.current,
-        sessionType: sessionTypeRef.current,
-        sessionMode: sessionModeRef.current,
         userId: userIdRef.current,
         userType: userTypeRef.current,
       });
@@ -576,11 +568,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         console.log("🚀 [VideoCall] Initializing signaling and media...");
         setSessionId(props.sessionId);
-        setSessionType(props.sessionType);
-        setSessionMode(props.sessionMode);
         sessionIdRef.current = props.sessionId;
-        sessionTypeRef.current = props.sessionType;
-        sessionModeRef.current = props.sessionMode;
         userIdRef.current = props.userId;
         userTypeRef.current = props.userType;
 
@@ -629,8 +617,6 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
           type: "audio",
           enabled: !newMutedState,
           sessionId: currentSid,
-          sessionType: sessionTypeRef.current,
-          sessionMode: sessionModeRef.current,
           toSocketId: targetSocketId,
         });
       });
@@ -651,8 +637,6 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
           type: "video",
           enabled: !newVideoState,
           sessionId: currentSid,
-          sessionType: sessionTypeRef.current,
-          sessionMode: sessionModeRef.current,
           toSocketId: targetSocketId,
         });
       });
@@ -679,8 +663,6 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     if (socketRef.current) {
       socketRef.current.emit("leave-room", {
         sessionId: sessionIdRef.current,
-        sessionType: sessionTypeRef.current,
-        sessionMode: sessionModeRef.current,
       });
       socketRef.current.disconnect();
       socketRef.current = null;

@@ -298,14 +298,8 @@ export default function VideoCallRoom() {
       hasJoinedRef.current = true;
       setJoinAttempted(true);
 
-      const isTrial = !!trialClassId;
-      const sessionType: 'trial' | 'regular' = isTrial ? 'trial' : 'regular';
-      const sessionMode: 'one-to-one' | 'group' = 'one-to-one'; // Default for now, can be enhanced
-
       joinCall({
         sessionId: effectiveId,
-        sessionType,
-        sessionMode,
         userId: activeUserId as string,
         userType: activeRole as "mentor" | "student",
       });
