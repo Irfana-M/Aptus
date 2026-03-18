@@ -127,7 +127,12 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
         video: true,
         audio: true,
       });
-      console.log("✅ [Media] Local stream acquired");
+      console.log(`[CLIENT] [MEDIA] Local stream acquired. Tracks: ${stream.getTracks().length}`);
+      Sentry.addBreadcrumb({
+        category: "media",
+        message: "Local stream acquired",
+        data: { trackCount: stream.getTracks().length },
+      });
       return stream;
     } catch (e) {
       console.warn("⚠️ [Media] Error getting real media, using fallback:", e);
@@ -146,18 +151,19 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
         return pcsRef.current.get(targetSocketId);
       }
 
-      console.log("🔄 [WebRTC] Creating new PC for:", targetSocketId);
+      const pc = new RTCPeerConnection(iceServers);
+      pcsRef.current.set(targetSocketId, pc);
+
+      console.log(`[CLIENT] [WEBRTC] Creating new PC for: ${targetSocketId} Socket: ${socketRef.current?.id} Session: ${sessionIdRef.current}`);
       Sentry.addBreadcrumb({
         category: "webrtc",
         message: "Peer connection created",
         level: "info",
-        data: { targetSocketId, sessionId: sessionIdRef.current },
+        data: { targetSocketId, socketId: socketRef.current?.id, sessionId: sessionIdRef.current },
       });
 
-      const pc = new RTCPeerConnection(iceServers);
-      pcsRef.current.set(targetSocketId, pc);
-
       if (localStreamRef.current) {
+        console.log(`[CLIENT] [MEDIA] Adding ${localStreamRef.current.getTracks().length} tracks to PC for ${targetSocketId}`);
         localStreamRef.current.getTracks().forEach((track) => {
           pc.addTrack(track, localStreamRef.current!);
         });
@@ -165,6 +171,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
 
       pc.onicecandidate = (event) => {
         if (event.candidate && socketRef.current) {
+          console.log(`[CLIENT] [ICE] Generated candidate for ${targetSocketId} Socket: ${socketRef.current.id}`);
           socketRef.current.emit("webrtc-ice-candidate", {
             toSocketId: targetSocketId,
             candidate: event.candidate,
@@ -172,14 +179,22 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
             sessionType: sessionTypeRef.current,
             sessionMode: sessionModeRef.current,
           });
+          console.log(`[CLIENT] [ICE] Sent candidate to ${targetSocketId}`);
+          Sentry.addBreadcrumb({
+            category: "webrtc",
+            message: "ICE candidate sent",
+            data: { toSocketId: targetSocketId },
+          });
         }
       };
 
       pc.ontrack = (event) => {
-        console.log(
-          `📺 Remote track from ${targetSocketId}:`,
-          event.track.kind,
-        );
+        console.log(`[CLIENT] [TRACK] ontrack fires from ${targetSocketId}: Kind: ${event.track.kind} StreamID: ${event.streams[0]?.id}`);
+        Sentry.addBreadcrumb({
+          category: "webrtc",
+          message: "Remote track received",
+          data: { fromSocketId: targetSocketId, kind: event.track.kind },
+        });
 
         const [stream] = event.streams;
 
@@ -192,15 +207,12 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       };
 
       pc.onconnectionstatechange = () => {
-        console.log(
-          `📊 [PC:${targetSocketId}] Connection state:`,
-          pc.connectionState,
-        );
+        console.log(`[CLIENT] [STATE] [PC:${targetSocketId}] Connection state changed: ${pc.connectionState} Signaling state: ${pc.signalingState} Socket: ${socketRef.current?.id}`);
         Sentry.addBreadcrumb({
           category: "webrtc",
           message: "Peer connection state change",
           level: "info",
-          data: { targetSocketId, connectionState: pc.connectionState },
+          data: { targetSocketId, connectionState: pc.connectionState, signalingState: pc.signalingState },
         });
         setConnectionState(pc.connectionState);
         if (pc.connectionState === "connected") {
@@ -221,20 +233,26 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     console.log("🔗 [Socket] Registering synchronized listeners...");
 
     const handleUserJoined = async ({ socketId }: { socketId: string }) => {
-      console.log("👋 user joined:", socketId);
+      console.log(`[CLIENT] [SOCKET] user-joined: ${socketId} MySocket: ${socket.id} Session: ${sessionIdRef.current}`);
       Sentry.addBreadcrumb({
         category: "webrtc",
         message: "User joined call",
         level: "info",
-        data: { socketId, sessionId: sessionIdRef.current },
+        data: { remoteSocketId: socketId, mySocketId: socket.id, sessionId: sessionIdRef.current },
       });
       setParticipants((prev) =>
         !prev.includes(socketId) ? [...prev, socketId] : prev,
       );
 
-      if (!socket.id) return;
+      if (!socket.id) {
+        console.warn("[CLIENT] [SOCKET] No socket.id available in handleUserJoined");
+        return;
+      }
 
       // polite peer rule
+      const willCreateOffer = socket.id < socketId;
+      console.log(`[CLIENT] [NEGOTIATION] myId: ${socket.id} remoteId: ${socketId} willCreateOffer: ${willCreateOffer}`);
+
       if (socket.id > socketId) {
         politePeersRef.current.add(socketId);
       }
@@ -243,15 +261,19 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!pc) return;
 
       // Only ONE side creates offer
-      if (socket.id < socketId) {
-        console.log(`📤 Creating offer for ${socketId}`);
+      if (willCreateOffer) {
+        console.log(`[CLIENT] [WEBRTC] Before createOffer() for ${socketId}. SignalingState: ${pc.signalingState}. Tracks: ${pc.getSenders().length}`);
         Sentry.addBreadcrumb({
           category: "webrtc",
-          message: "WebRTC offer sent",
-          data: { toSocketId: socketId },
+          message: "Creating WebRTC offer",
+          data: { toSocketId: socketId, trackCount: pc.getSenders().length },
         });
+        
         const offer = await pc.createOffer();
+        console.log(`[CLIENT] [WEBRTC] After createOffer() for ${socketId}`);
+        
         await pc.setLocalDescription(offer);
+        console.log(`[CLIENT] [WEBRTC] After setLocalDescription(offer) for ${socketId} SignalingState: ${pc.signalingState}`);
 
         socket.emit("webrtc-offer", {
           toSocketId: socketId,
@@ -260,6 +282,9 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
           sessionType: sessionTypeRef.current,
           sessionMode: sessionModeRef.current,
         });
+        console.log(`[CLIENT] [WEBRTC] Sending webrtc-offer to ${socketId}`);
+      } else {
+        console.log(`[CLIENT] [NEGOTIATION] Skipping offer creation for ${socketId} (I am the responder)`);
       }
     };
 
@@ -270,11 +295,11 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       fromSocketId: string;
       offer: RTCSessionDescriptionInit;
     }) => {
-      console.log("📥 [Socket] webrtc-offer from:", fromSocketId);
+      console.log(`[CLIENT] [WEBRTC] Receiving webrtc-offer from ${fromSocketId} Socket: ${socket.id} Session: ${sessionIdRef.current}`);
       Sentry.addBreadcrumb({
         category: "webrtc",
         message: "WebRTC offer received",
-        data: { fromSocketId },
+        data: { fromSocketId, sessionId: sessionIdRef.current },
       });
       
       setParticipants((prev) =>
@@ -288,22 +313,37 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
         offer.type === "offer" && pc.signalingState !== "stable";
 
       if (offerCollision) {
+        console.log(`[CLIENT] [NEGOTIATION] Offer collision detected with ${fromSocketId}. signalingState: ${pc.signalingState}`);
         if (!politePeersRef.current.has(fromSocketId)) {
-          console.warn("Ignoring offer collision (impolite)");
+          console.warn(`[CLIENT] [NEGOTIATION] Ignoring offer collision (impolite) from ${fromSocketId}`);
           return;
         }
+        console.log(`[CLIENT] [NEGOTIATION] Rolling back local offer for ${fromSocketId} (polite)`);
         await pc.setLocalDescription({ type: "rollback" });
       }
 
+      console.log(`[CLIENT] [WEBRTC] Before setRemoteDescription(offer) from ${fromSocketId}`);
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      
+      console.log(`[CLIENT] [WEBRTC] Before createAnswer() for ${fromSocketId}. SignalingState: ${pc.signalingState}`);
       const answer = await pc.createAnswer();
+      console.log(`[CLIENT] [WEBRTC] After createAnswer() for ${fromSocketId}`);
+      
       await pc.setLocalDescription(answer);
+      console.log(`[CLIENT] [WEBRTC] After setLocalDescription(answer) for ${fromSocketId}. SignalingState: ${pc.signalingState}`);
+
       socket.emit("webrtc-answer", {
         toSocketId: fromSocketId,
         answer: pc.localDescription,
         sessionId: sessionIdRef.current,
         sessionType: sessionTypeRef.current,
         sessionMode: sessionModeRef.current,
+      });
+      console.log(`[CLIENT] [WEBRTC] Sending webrtc-answer to ${fromSocketId}`);
+      Sentry.addBreadcrumb({
+        category: "webrtc",
+        message: "WebRTC answer sent",
+        data: { toSocketId: fromSocketId },
       });
 
       const buffer = iceBuffersRef.current.get(fromSocketId) || [];
@@ -332,11 +372,11 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       fromSocketId: string;
       answer: RTCSessionDescriptionInit;
     }) => {
-      console.log(`📥 [Socket] webrtc-answer received from ${fromSocketId}`);
+      console.log(`[CLIENT] [WEBRTC] Receiving webrtc-answer from ${fromSocketId} Socket: ${socket.id} Session: ${sessionIdRef.current}`);
       Sentry.addBreadcrumb({
         category: "webrtc",
         message: "WebRTC answer received",
-        data: { fromSocketId },
+        data: { fromSocketId, sessionId: sessionIdRef.current },
       });
 
       setParticipants((prev) =>
@@ -344,9 +384,14 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       );
 
       const pc = pcsRef.current.get(fromSocketId);
-      if (!pc) return;
+      if (!pc) {
+        console.warn(`[CLIENT] [WEBRTC] No PC found for answer from ${fromSocketId}`);
+        return;
+      }
 
+      console.log(`[CLIENT] [WEBRTC] Before setRemoteDescription(answer) for ${fromSocketId}. SignalingState: ${pc.signalingState}`);
       await pc.setRemoteDescription(new RTCSessionDescription(answer));
+      console.log(`[CLIENT] [WEBRTC] After setRemoteDescription(answer) for ${fromSocketId}. SignalingState: ${pc.signalingState}`);
 
       const buffer = iceBuffersRef.current.get(fromSocketId) || [];
       buffer.forEach(async (candidate) => {
@@ -374,16 +419,17 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       fromSocketId: string;
       candidate: RTCIceCandidateInit;
     }) => {
-      console.log(`🧊 [Socket] ICE candidate from ${fromSocketId}`);
+      console.log(`[CLIENT] [ICE] candidate received from ${fromSocketId} Socket: ${socket.id} Session: ${sessionIdRef.current}`);
       Sentry.addBreadcrumb({
         category: "webrtc",
         message: "ICE candidate received",
-        data: { fromSocketId },
+        data: { fromSocketId, sessionId: sessionIdRef.current },
       });
       const pc = pcsRef.current.get(fromSocketId);
 
       if (pc && pc.remoteDescription) {
         try {
+          console.log(`[CLIENT] [ICE] Adding candidate directly for ${fromSocketId}`);
           await pc.addIceCandidate(new RTCIceCandidate(candidate));
           Sentry.addBreadcrumb({
             category: "webrtc",
@@ -391,12 +437,13 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
             data: { fromSocketId },
           });
         } catch (e) {
-          console.warn(`Error adding ice candidate for ${fromSocketId}`, e);
+          console.warn(`[CLIENT] [ICE] Error adding candidate for ${fromSocketId}`, e);
           Sentry.captureException(e, {
             extra: { fromSocketId, context: "addIceCandidate_direct" },
           });
         }
       } else {
+        console.log(`[CLIENT] [ICE] Buffering candidate for ${fromSocketId} (Reason: no remoteDescription)`);
         const buffer = iceBuffersRef.current.get(fromSocketId) || [];
         buffer.push(candidate);
         iceBuffersRef.current.set(fromSocketId, buffer);
@@ -465,7 +512,12 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       socketId: string;
       existingParticipants: string[];
     }) => {
-      console.log("✅ [Socket] Join success. Existing:", existingParticipants);
+      console.log(`[CLIENT] [SOCKET] join-success received. MySocket: ${socket.id} Session: ${sessionIdRef.current} Existing: ${existingParticipants.length}`);
+      Sentry.addBreadcrumb({
+        category: "socket",
+        message: "Join success received",
+        data: { socketId: socket.id, sessionId: sessionIdRef.current, existingCount: existingParticipants.length },
+      });
       if (existingParticipants && existingParticipants.length > 0) {
         existingParticipants.forEach((pid) => {
           handleUserJoined({ socketId: pid });
@@ -483,7 +535,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // After all listeners are registered, emit join-call if we haven't yet
     if (!hasJoinedRoomRef.current && sessionIdRef.current && userIdRef.current) {
-      console.log("🚀 [Socket] All listeners ready. Emitting join-call signal.");
+      console.log(`[CLIENT] [SOCKET] All listeners ready. Emitting join-call signal. Session: ${sessionIdRef.current} MyId: ${userIdRef.current}`);
       hasJoinedRoomRef.current = true;
       socket.emit("join-call", {
         sessionId: sessionIdRef.current,
@@ -491,6 +543,11 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
         sessionMode: sessionModeRef.current,
         userId: userIdRef.current,
         userType: userTypeRef.current,
+      });
+      Sentry.addBreadcrumb({
+        category: "socket",
+        message: "Emit join-call",
+        data: { sessionId: sessionIdRef.current, userId: userIdRef.current },
       });
     }
 
@@ -528,6 +585,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
         userTypeRef.current = props.userType;
 
         const stream = await initializeMedia();
+        console.log("✅ Media fully ready BEFORE socket connect");
         setLocalStream(stream);
         localStreamRef.current = stream;
 

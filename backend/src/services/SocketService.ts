@@ -130,11 +130,8 @@ export class SocketService implements ISocketService {
         try {
           const socketUser = (socket as SocketWithUser).user;
 
-          console.log('📞 [JOIN-CALL] Event received:', {
-            socketId: socket.id,
-            socketUser: socketUser,
-            requestData: data
-          });
+          console.log(`[SERVER] [JOIN-CALL] Event received. Socket: ${socket.id} Session: ${data.sessionId} User: ${data.userId}`);
+          logger.info(`[SERVER] [JOIN-CALL] Event received: ${socket.id}`, { sessionId: data.sessionId, userId: data.userId });
 
           // Verify socket user exists
           if (!socketUser) {
@@ -175,6 +172,7 @@ export class SocketService implements ISocketService {
             return;
           }
 
+          console.log(`[SERVER] [SIGNALING] Emitting user-joined to room ${videoRoom}. New user: ${socket.id}`);
           // Notify OTHERS in the room (exclude sender)
           socket.to(videoRoom).emit('user-joined', {
             userId: data.userId,
@@ -186,6 +184,7 @@ export class SocketService implements ISocketService {
             userEmail: socketUser.email
           });
 
+          console.log(`[SERVER] [JOIN-SUCCESS] Emitting to ${socket.id} Session: ${data.sessionId}`);
           socket.emit('join-success', {
             room: videoRoom,
             socketId: socket.id,
@@ -213,11 +212,13 @@ export class SocketService implements ISocketService {
       });
       // ===== WEBRTC SIGNALING =====
       socket.on('webrtc-offer', (data: WebRTCOfferDto) => {
-        logger.info("WebRTC offer forwarded", {
+        console.log(`[SERVER] [SIGNALING] Receiving webrtc-offer from ${socket.id} to ${data.toSocketId} Session: ${data.sessionId}`);
+        logger.info("[SERVER] [SIGNALING] WebRTC offer received", {
           fromSocketId: socket.id,
           toSocketId: data.toSocketId,
           sessionId: data.sessionId
         });
+        console.log(`[SERVER] [SIGNALING] Forwarding webrtc-offer to ${data.toSocketId}`);
         socket.to(data.toSocketId).emit('webrtc-offer', {
           ...data,
           fromSocketId: socket.id
@@ -225,11 +226,13 @@ export class SocketService implements ISocketService {
       });
 
       socket.on('webrtc-answer', (data: WebRTCAnswerDto) => {
-        logger.info("WebRTC answer forwarded", {
+        console.log(`[SERVER] [SIGNALING] Receiving webrtc-answer from ${socket.id} to ${data.toSocketId} Session: ${data.sessionId}`);
+        logger.info("[SERVER] [SIGNALING] WebRTC answer received", {
           fromSocketId: socket.id,
           toSocketId: data.toSocketId,
           sessionId: data.sessionId
         });
+        console.log(`[SERVER] [SIGNALING] Forwarding webrtc-answer to ${data.toSocketId}`);
         socket.to(data.toSocketId).emit('webrtc-answer', {
           ...data,
           fromSocketId: socket.id
@@ -237,11 +240,13 @@ export class SocketService implements ISocketService {
       });
 
       socket.on('webrtc-ice-candidate', (data: WebRTCIceCandidateDto) => {
-        logger.info("ICE candidate forwarded", {
+        console.log(`[SERVER] [SIGNALING] Receiving ICE candidate from ${socket.id} to ${data.toSocketId} Session: ${data.sessionId}`);
+        logger.info("[SERVER] [SIGNALING] ICE candidate received", {
           fromSocketId: socket.id,
           toSocketId: data.toSocketId,
           sessionId: data.sessionId
         });
+        console.log(`[SERVER] [SIGNALING] Forwarding ICE candidate to ${data.toSocketId}`);
         socket.to(data.toSocketId).emit('webrtc-ice-candidate', {
           ...data,
           fromSocketId: socket.id
