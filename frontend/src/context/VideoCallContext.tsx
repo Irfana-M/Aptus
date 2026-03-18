@@ -230,6 +230,14 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
 
     console.log("🔗 [Socket] Registering synchronized listeners...");
 
+    socket.on("join-error", (err: { error: string }) => {
+      console.error("[CLIENT] [SOCKET] ❌ join-error received:", err);
+      if (err && err.error) {
+        setError(err.error);
+        setStatus("Join Failed: " + err.error);
+      }
+    });
+
     const handleUserJoined = async ({ socketId }: { socketId: string }) => {
       console.log(`[CLIENT] [SOCKET] user-joined: ${socketId} MySocket: ${socket.id} Session: ${sessionIdRef.current}`);
       Sentry.addBreadcrumb({
@@ -530,7 +538,11 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     // After all listeners are registered, emit join-call if we haven't yet
     if (!hasJoinedRoomRef.current && sessionIdRef.current && userIdRef.current) {
       console.log(`[CLIENT] [SOCKET] All listeners ready. Emitting join-call signal. Session: ${sessionIdRef.current} MyId: ${userIdRef.current}`);
-      hasJoinedRoomRef.current = true;
+      console.log(`[CLIENT] [SOCKET] Emitting join-call. Payload:`, {
+        sessionId: sessionIdRef.current,
+        userId: userIdRef.current,
+        userType: userTypeRef.current,
+      });
       socket.emit("join-call", {
         sessionId: sessionIdRef.current,
         userId: userIdRef.current,
