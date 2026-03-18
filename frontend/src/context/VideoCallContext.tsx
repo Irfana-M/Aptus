@@ -43,20 +43,11 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     new Map(),
   );
   const politePeersRef = React.useRef<Set<string>>(new Set());
-  const iceServers = React.useMemo(
-    () => ({
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-
-        {
-          urls: "turn:your-turn-server.com:3478",
-          username: "user",
-          credential: "pass",
-        },
-      ],
-    }),
-    [],
-  );
+ const iceServers = {
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" }
+  ],
+};
 
   const [remoteMediaStates, setRemoteMediaStates] = React.useState<
     Record<string, RemoteMediaState>
@@ -191,14 +182,10 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (!stream) return;
 
-        setRemoteStreams((prev) => {
-          if (prev[targetSocketId]) return prev;
-
-          return {
-            ...prev,
-            [targetSocketId]: stream,
-          };
-        });
+   setRemoteStreams((prev) => ({
+  ...prev,
+  [targetSocketId]: stream,
+}));
       };
 
       pc.onconnectionstatechange = () => {
@@ -253,7 +240,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!pc) return;
 
       // Only ONE side creates offer
-      if (!politePeersRef.current.has(socketId)) {
+      if (socket.id < socketId) {
         console.log(`📤 Creating offer for ${socketId}`);
         Sentry.addBreadcrumb({
           category: "webrtc",
