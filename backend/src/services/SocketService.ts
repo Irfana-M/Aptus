@@ -140,7 +140,7 @@ export class SocketService implements ISocketService {
           }
 
           // Verify request matches socket user
-          if (socketUser.id !== data.userId) {
+          if (socketUser.id.toString() !== data.userId) {
             console.error(`[JOIN-CALL] User ID mismatch! Socket: ${socketUser.id}, Request: ${data.userId}`);
             return socket.emit('join-error', { error: 'User ID mismatch' });
           }

@@ -59,6 +59,9 @@ private resolveToken(): string | null {
         this.socket.auth = { token: newToken };
       }
     });
+    this.socket.on("join-error", (err) => {
+  console.error("[CLIENT] [SOCKET] join-error:", err);
+});
 
     return this.socket;
   }
