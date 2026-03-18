@@ -141,13 +141,13 @@ export class SocketService implements ISocketService {
 
           // Verify request matches socket user
           if (socketUser.id.toString() !== data.userId) {
-            console.error(`[JOIN-CALL] User ID mismatch! Socket: ${socketUser.id}, Request: ${data.userId}`);
-            return socket.emit('join-error', { error: 'User ID mismatch' });
+            console.error(`[JOIN-CALL] ❌ User ID mismatch! Socket: "${socketUser.id.toString()}", Request: "${data.userId}"`);
+            return socket.emit('join-error', { error: `User ID mismatch. Expected ${socketUser.id}, got ${data.userId}` });
           }
 
           if (socketUser.role !== data.userType) {
-            console.error(`[JOIN-CALL] Role mismatch! Socket: ${socketUser.role}, Request: ${data.userType}`);
-            return socket.emit('join-error', { error: 'Role mismatch' });
+            console.error(`[JOIN-CALL] ❌ Role mismatch! Socket: "${socketUser.role}", Request: "${data.userType}"`);
+            return socket.emit('join-error', { error: `Role mismatch. Socket is ${socketUser.role}, Request is ${data.userType}` });
           }
 
           const videoRoom = `call:${data.sessionId}`;

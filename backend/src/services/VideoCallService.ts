@@ -132,13 +132,15 @@ export class VideoCallService implements IVideoCallService {
       );
 
       if (!authCheck.authorized) {
+        console.warn(`[VideoCallService] ❌ Unauthorized join attempt by ${data.userId} for session ${data.sessionId}: ${authCheck.error}`);
         logger.warn(`❌ Unauthorized: ${authCheck.error}`);
         return {
           success: false,
-          error: authCheck.error || "Unauthorized to join this call"
+          error: `Auth failure: ${authCheck.error || "Unauthorized to join this call"}`
         };
       }
 
+      console.log(`[VideoCallService] ✅ User ${data.userId} authorized for session ${data.sessionId}`);
       logger.info(`✅ User authorized for session ${data.sessionId}`);
 
 
