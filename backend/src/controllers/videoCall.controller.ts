@@ -73,8 +73,6 @@ export class VideoCallController {
 
       const result = await this._videoCallService.endCall({
         sessionId: trialClassId,
-        sessionType: 'trial',
-        sessionMode: 'one-to-one',
         endedBy: userId,
         reason
       });

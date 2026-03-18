@@ -154,7 +154,7 @@ export class ChatService implements IChatService {
     });
 
     // Notify participants via socket
-    const chatRoom = `chat:${session.sessionType}:${session.sessionMode}:${sessionId}`;
+    const chatRoom = `chat:${sessionId}`;
     
     logger.info("Chat message broadcasted", {
         sessionId,
@@ -208,7 +208,7 @@ export class ChatService implements IChatService {
     });
 
     const session = await this._findSessionOrTrial(sessionId);
-    const chatRoom = session ? `chat:${session.sessionType}:${session.sessionMode}:${sessionId}` : `chat:regular:one-to-one:${sessionId}`;
+    const chatRoom = `chat:${sessionId}`;
     this._socketService.emitToRoom(chatRoom, 'system_message', message);
     return message;
   }
