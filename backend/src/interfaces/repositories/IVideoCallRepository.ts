@@ -1,4 +1,5 @@
 import type { IVideoCallDocument } from "@/interfaces/models/videoCall.interface.js";
+import { Types } from "mongoose";
 
 export interface IVideoCallRepository {
   create(videoCallData: Partial<IVideoCallDocument>): Promise<IVideoCallDocument>;

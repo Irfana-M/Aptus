@@ -60,7 +60,7 @@ export class VideoCallService implements IVideoCallService {
 
       if (!meetLink) {
         meetLink = this._generateMeetLink(sessionId);
-       
+
         if (!isSession) {
           await this._trialClassRepo.updateById(sessionId, { meetLink });
         } else {
@@ -107,7 +107,7 @@ export class VideoCallService implements IVideoCallService {
       fileLogger(`🎥 JOIN CALL REQUEST - User: ${data.userId}, Type: ${data.userType}, ${data.sessionType}: ${data.sessionId}`);
       logger.info(`🎥 JOIN CALL REQUEST - User: ${data.userId}, Type: ${data.userType}, ${data.sessionType}: ${data.sessionId}`);
 
-      
+
       const userVerification = await this._userRoleService.verifyUserRole(
         data.userId,
         data.userType
@@ -124,7 +124,7 @@ export class VideoCallService implements IVideoCallService {
 
       logger.info(`✅ User verified: ${userVerification.user?.email} as ${data.userType}`);
 
-      
+
       const authCheck = await this._userRoleService.verifyTrialClassAuthorization(
         data.sessionId,
         data.userId,
@@ -141,7 +141,7 @@ export class VideoCallService implements IVideoCallService {
 
       logger.info(`✅ User authorized for ${data.sessionType} class ${data.sessionId}`);
 
-      
+
       let videoCall = await this._videoCallRepo.findBySessionId(
         data.sessionId
       );
@@ -149,18 +149,27 @@ export class VideoCallService implements IVideoCallService {
       if (!videoCall) {
         logger.info(`📹 No existing call found - creating new VideoCall for ${data.sessionType} class ${data.sessionId}`);
 
-        let meetLink = (authCheck.trialClass as { meetLink?: string })?.meetLink;
 
-        if (!meetLink) {
-          meetLink = this._generateMeetLink(data.sessionId);
-          
-          if (!(authCheck as unknown as { isSession?: boolean }).isSession) {
-            await this._trialClassRepo.updateById(data.sessionId, { meetLink });
-          } else {
-            logger.info(`ℹ️ Session detected, skipping TrialClass update for ${data.sessionId}`);
-          }
-          logger.info(`🔗 Generated meet link: ${meetLink}`);
-        }
+      let meetLink = (authCheck.trialClass as { meetLink?: string })?.meetLink;
+
+if (!meetLink || typeof meetLink !== "string" || meetLink.trim() === "") {
+  meetLink = this._generateMeetLink(data.sessionId);
+
+  if (!(authCheck as unknown as { isSession?: boolean }).isSession) {
+    await this._trialClassRepo.updateById(data.sessionId, { meetLink });
+  } else {
+    logger.info(`ℹ️ Session detected, skipping TrialClass update for ${data.sessionId}`);
+  }
+
+  logger.info(`🔗 Generated meet link: ${meetLink}`);
+}
+
+logger.info("🚀 Creating VideoCall (JOIN) with:", {
+  sessionId: data.sessionId,
+  meetLink,
+  userId: data.userId,
+  userType: data.userType,
+});
 
         videoCall = await this._videoCallRepo.create({
           sessionId: new Types.ObjectId(data.sessionId),
@@ -179,7 +188,7 @@ export class VideoCallService implements IVideoCallService {
         return { success: false, error: `Call is ${videoCall.callStatus}` };
       }
 
-      
+
       const participantData = {
         userId: data.userId,
         userType: data.userType,
@@ -194,10 +203,10 @@ export class VideoCallService implements IVideoCallService {
 
       logger.info(`✅ Participant added successfully`);
 
-      
+
       try {
         const sessionModel = (authCheck as unknown as { isSession?: boolean }).isSession ? 'Session' : 'TrialClass';
-        
+
         await this._attendanceService.markPresent(data.sessionId, data.userId, sessionModel);
         logger.info(`📝 Attendance marked for ${data.userId} in ${sessionModel} ${data.sessionId}`);
       } catch (attError) {
@@ -209,12 +218,12 @@ export class VideoCallService implements IVideoCallService {
     } catch (error) {
       logger.error("❌ Error joining call", error);
 
-    
+
       if (error instanceof AppError) {
         return { success: false, error: error.message };
       }
 
-      return { success: false, error: "Failed to join call. Please try again." };
+      return { success: false, error: (error as Error).message };
     }
   }
 
@@ -256,7 +265,7 @@ export class VideoCallService implements IVideoCallService {
     sessionId: string
   ): Promise<{ status: string; participants: Record<string, unknown>[]; meetLink?: string }> {
     try {
-      
+
       const videoCall = await this._videoCallRepo.findBySessionId(
         sessionId
       );
@@ -276,10 +285,10 @@ export class VideoCallService implements IVideoCallService {
         };
       }
 
-      
+
       const trialClass = await this._trialClassRepo.findById(sessionId);
       if (trialClass?.meetLink) {
-        
+
         return {
           status: "not_started",
           participants: [],
@@ -287,7 +296,7 @@ export class VideoCallService implements IVideoCallService {
         };
       }
 
-      
+
       return { status: "not_started", participants: [] };
     } catch (error) {
       logger.error("Error getting call status", error);

@@ -17,8 +17,13 @@ export class VideoCallRepository implements IVideoCallRepository {
       logger.info("Video call created successfully", { callId: savedCall._id });
       return savedCall;
     } catch (error: unknown) {
-      logger.error("Error creating video call", error);
-      throw new AppError("Failed to create video call", HttpStatusCode.INTERNAL_SERVER_ERROR);
+      logger.error("❌ REAL MONGOOSE ERROR:", {
+        message: (error as Error).message,
+        stack: (error as Error).stack,
+        error
+      });
+
+      throw error;
     }
   }
 
@@ -40,7 +45,7 @@ export class VideoCallRepository implements IVideoCallRepository {
       if (!Types.ObjectId.isValid(sessionId)) {
         throw new AppError("Invalid session ID", HttpStatusCode.BAD_REQUEST);
       }
-      return await VideoCall.findOne({ sessionId });
+      return await VideoCall.findOne({ sessionId: new Types.ObjectId(sessionId) });
     } catch (error: unknown) {
       logger.error("Error finding video call by session ID", error);
       if (error instanceof AppError) throw error;
@@ -59,7 +64,7 @@ export class VideoCallRepository implements IVideoCallRepository {
       }
 
       const updateData: Partial<IVideoCallDocument> = { callStatus: status, ...updates };
-      
+
       if (status === 'active') {
         updateData.callStartedAt = new Date();
       } else if (status === 'completed' || status === 'failed' || status === 'cancelled') {
@@ -67,12 +72,12 @@ export class VideoCallRepository implements IVideoCallRepository {
         // Calculate duration if needed
         const existingCall = await VideoCall.findOne({ sessionId });
         if (existingCall?.callStartedAt) {
-             const duration = Math.floor((new Date().getTime() - existingCall.callStartedAt.getTime()) / 1000);
-             updateData.callDuration = duration;
+          const duration = Math.floor((new Date().getTime() - existingCall.callStartedAt.getTime()) / 1000);
+          updateData.callDuration = duration;
         }
       }
 
-      return await VideoCall.findOneAndUpdate({ sessionId }, updateData, { new: true, runValidators: true });
+      return await VideoCall.findOneAndUpdate({ sessionId: new Types.ObjectId(sessionId) }, updateData, { new: true, runValidators: true });
     } catch (error: unknown) {
       logger.error("Error updating call status", error);
       if (error instanceof AppError) throw error;
@@ -88,6 +93,10 @@ export class VideoCallRepository implements IVideoCallRepository {
       socketId?: string;
     }
   ): Promise<IVideoCallDocument | null> {
+    logger.info("🔍 addParticipant query:", {
+  sessionId,
+  objectId: new Types.ObjectId(sessionId)
+});
     try {
       if (!Types.ObjectId.isValid(sessionId)) {
         throw new AppError("Invalid session ID", HttpStatusCode.BAD_REQUEST);
@@ -100,11 +109,15 @@ export class VideoCallRepository implements IVideoCallRepository {
         joinedAt: new Date()
       };
 
-      return await VideoCall.findOneAndUpdate(
-        { sessionId },
+      const updated = await VideoCall.findOneAndUpdate(
+        { sessionId: new Types.ObjectId(sessionId) },
         { $push: { participants: participantData } },
         { new: true, runValidators: true }
       );
+      if (!updated) {
+        throw new Error("VideoCall not found for sessionId");
+      }
+      return updated;
     } catch (error: unknown) {
       logger.error("Error adding participant", error);
       throw new AppError("Failed to add participant", HttpStatusCode.INTERNAL_SERVER_ERROR);
@@ -139,7 +152,7 @@ export class VideoCallRepository implements IVideoCallRepository {
     duration: number
   ): Promise<IVideoCallDocument | null> {
     try {
-      return await VideoCall.findOneAndUpdate({ sessionId }, { callDuration: duration }, { new: true });
+      return await VideoCall.findOneAndUpdate({ sessionId: new Types.ObjectId(sessionId) }, { callDuration: duration }, { new: true });
     } catch (error: unknown) {
       logger.error("Error updating call duration", error);
       throw new AppError("Failed to update call duration", HttpStatusCode.INTERNAL_SERVER_ERROR);
