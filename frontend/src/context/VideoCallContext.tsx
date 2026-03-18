@@ -43,6 +43,9 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     new Map(),
   );
   const politePeersRef = React.useRef<Set<string>>(new Set());
+  const userIdRef = React.useRef<string | null>(null);
+  const userTypeRef = React.useRef<string | null>(null);
+  const hasJoinedRoomRef = React.useRef(false);
  const iceServers = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" }
@@ -478,6 +481,19 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     socket.on("user-left", handleUserLeft);
     socket.on("media-state-change", handleMediaChange);
 
+    // After all listeners are registered, emit join-call if we haven't yet
+    if (!hasJoinedRoomRef.current && sessionIdRef.current && userIdRef.current) {
+      console.log("🚀 [Socket] All listeners ready. Emitting join-call signal.");
+      hasJoinedRoomRef.current = true;
+      socket.emit("join-call", {
+        sessionId: sessionIdRef.current,
+        sessionType: sessionTypeRef.current,
+        sessionMode: sessionModeRef.current,
+        userId: userIdRef.current,
+        userType: userTypeRef.current,
+      });
+    }
+
     return () => {
       console.log("🧹 [Socket] Cleaning up listeners...");
       socket.off("join-success", handleJoinSuccess);
@@ -508,6 +524,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
         sessionIdRef.current = props.sessionId;
         sessionTypeRef.current = props.sessionType;
         sessionModeRef.current = props.sessionMode;
+        userIdRef.current = props.userId;
+        userTypeRef.current = props.userType;
 
         const stream = await initializeMedia();
         setLocalStream(stream);
@@ -516,25 +534,15 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
         const socket = videoSocketService.connect();
         socketRef.current = socket;
 
-        const emitJoinCall = () => {
-          console.log("✅ [Socket] Connected. Emitting join-call...");
+        const setSocketReady = () => {
+          console.log("✅ [Socket] Connected. Triggering listener registration...");
           setIsSocketConnected(true);
-          socket.emit("join-call", {
-            sessionId: props.sessionId,
-            sessionType: props.sessionType,
-            sessionMode: props.sessionMode,
-            userId: props.userId,
-            userType: props.userType,
-          });
         };
 
         if (socket.connected) {
-          console.log(
-            "⚡ [Socket] Already connected — emitting join-call immediately",
-          );
-          emitJoinCall();
+          setSocketReady();
         } else {
-          socket.once("connect", emitJoinCall);
+          socket.once("connect", setSocketReady);
         }
 
         socket.on("disconnect", () => {
@@ -632,7 +640,10 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     sessionIdRef.current = null;
     sessionTypeRef.current = null;
     sessionModeRef.current = null;
+    userIdRef.current = null;
+    userTypeRef.current = null;
     hasJoinedRef.current = false; // Reset for next session
+    hasJoinedRoomRef.current = false;
     setStatus("Idle");
     setError(null);
     iceBuffersRef.current.clear();
