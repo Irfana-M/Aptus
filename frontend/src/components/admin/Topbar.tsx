@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { NotificationBell } from "../shared/NotificationBell";
 import { BaseTopbar } from "../base/BaseTopbar";
 
@@ -24,26 +24,10 @@ export const Topbar: React.FC<TopbarProps> = ({
 }) => {
   const subtitle = `Welcome back, ${user.name}`;
 
-  const search = (
-    <div className="relative group">
-      <Search
-        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-cyan-500 transition-colors"
-        size={20}
-      />
-      <input
-        type="text"
-        placeholder="Search here..."
-        className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all duration-200 w-64"
-      />
-    </div>
-  );
-
   const actions = (
     <>
       <NotificationBell />
       <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 group">
-       
-        
       </button>
     </>
   );
@@ -76,7 +60,6 @@ export const Topbar: React.FC<TopbarProps> = ({
       onMenuToggle={onMenuToggle}
       title={title}
       subtitle={subtitle}
-      search={search}
       actions={actions}
       profile={profile}
       sticky={false}

@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, MessageSquare, ChevronDown } from "lucide-react";
+import { MessageSquare, ChevronDown } from "lucide-react";
 import { NotificationBell } from "../shared/NotificationBell";
 import { BaseTopbar } from "../base/BaseTopbar";
 import { type UserProfile } from "../../types/layout.types";
@@ -28,19 +28,6 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
               {user.role}
           </span>
        )}
-    </div>
-  );
-
-  const search = (
-    <div className="relative group">
-      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-        <Search size={18} className="text-gray-400 group-focus-within:text-cyan-500 transition-colors" />
-      </div>
-      <input
-        type="text"
-        placeholder="Search..."
-        className="pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all duration-200 w-64"
-      />
     </div>
   );
 
@@ -85,7 +72,6 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
       onMenuToggle={onMenuToggle}
       title={title}
       subtitle={subtitle}
-      search={search}
       actions={actions}
       profile={profile}
     />

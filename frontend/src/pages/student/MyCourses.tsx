@@ -113,22 +113,13 @@ const MyCourses: React.FC = () => {
                                         <span>Ends: {new Date(course.endDate).toLocaleDateString()}</span>
                                     </div>
                                     
-                                    <div className="flex gap-2">
-                                        <Button 
-                                            onClick={() => navigate(ROUTES.STUDENT.CLASSROOM)}
-                                            className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs"
-                                        >
-                                            <Video size={14} /> 
-                                            JOIN
-                                        </Button>
-                                        <Button 
-                                            onClick={() => navigate(`${ROUTES.STUDENT.COURSE_EXAMS_BASE}/${course._id}/exams`)}
-                                            className="flex-1 bg-white border-2 border-indigo-100 hover:bg-indigo-50 text-indigo-600 py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs"
-                                        >
-                                            <RefreshCcw size={14} className="rotate-90" /> 
-                                            EXAMS
-                                        </Button>
-                                    </div>
+                                    <Button 
+                                        onClick={() => navigate(ROUTES.STUDENT.CLASSROOM)}
+                                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs"
+                                    >
+                                        <Video size={14} /> 
+                                        JOIN
+                                    </Button>
                                 </div>
                             </div>
                         ))}

@@ -24,6 +24,7 @@ import {
   Clock,
   CreditCard,
   ArrowLeft,
+  UserPlus,
 } from "lucide-react";
 
 export const StudentProfilePage: React.FC = () => {
@@ -174,7 +175,7 @@ export const StudentProfilePage: React.FC = () => {
         onClose={() => setSidebarOpen(false)}
       />
 
-      <main className="flex-1 flex flex-col overflow-hidden">
+    <main className="flex-1 flex flex-col overflow-hidden">
         <Topbar
           onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
           title="Student Profile"
@@ -182,14 +183,17 @@ export const StudentProfilePage: React.FC = () => {
         />
 
         <div className="flex-1 overflow-y-auto p-6">
-          {/* Back Button */}
-          <button
-            onClick={() => navigate(ROUTES.ADMIN.STUDENTS)}
-            className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
-          >
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Students
-          </button>
+          {/* Header with Back Button */}
+          <div className="flex items-center mb-6">
+            <button
+              onClick={() => navigate(ROUTES.ADMIN.STUDENTS)}
+              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Back to Students"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h1 className="text-2xl font-bold text-gray-900 ml-2">Student Profile</h1>
+          </div>
 
           {/* Profile Header */}
           <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm mb-6">
@@ -502,162 +506,87 @@ export const StudentProfilePage: React.FC = () => {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {profile.preferredTimeSlots.map((pref, idx) => {
-                  // Skip if it doesn't have slots (legacy format)
                   if (!pref.slots) return null;
-                  
+
                   const subjectIdStr = typeof pref.subjectId === 'object' && pref.subjectId !== null
-                      ? (pref.subjectId as { _id: string })._id 
-                      : pref.subjectId as string;
-                  
-                  // Find active enrollment for this subject
+                    ? (pref.subjectId as { _id: string })._id
+                    : pref.subjectId as string;
+
                   const activeEnrollment = profile.enrollments?.find((e) => {
-                      const subj = e.course?.subject;
-                      const enrollmentSubjectId = typeof subj === 'object' && subj !== null ? (subj as { _id: string })._id : subj;
-                      return enrollmentSubjectId === subjectIdStr && e.status === 'active';
+                    const subj = e.course?.subject;
+                    const enrollmentSubjectId = typeof subj === 'object' && subj !== null ? (subj as { _id: string })._id : subj;
+                    return enrollmentSubjectId === subjectIdStr && e.status === 'active';
                   });
 
-                  // Determine display data: Use Course Schedule if active, else Use Preferences
-                  const displayDays = activeEnrollment?.course?.schedule?.days || pref.slots.map((s) => s.day).sort();
-                  
-                  // Priority for displayTimeSlot:
-                  // 1. Detailed slots from course schedule (new format)
-                  // 2. timeSlot from course schedule (summarized)
-                  // 3. First preference slot (fallback)
-                  let displayTimeSlot = "";
-                  const schedule = activeEnrollment?.course?.schedule;
-                  
-                  if (schedule?.slots && schedule.slots.length > 0) {
-                      // If we have detailed slots, use them. If they all match, show one. 
-                      // Otherwise it's already "Multiple Times" or summarized in timeSlot.
-                      displayTimeSlot = schedule.timeSlot;
-                  } else if (schedule?.timeSlot) {
-                      displayTimeSlot = schedule.timeSlot;
-                  } else {
-                      displayTimeSlot = (pref.slots.length > 0 ? `${pref.slots[0].startTime} - ${pref.slots[0].endTime}` : "");
-                  }
-
-                  // Group class specific formatting for piped slots if still in timeSlot
-                  if (displayTimeSlot.includes('|')) {
-                      const slotsArr = displayTimeSlot.split('|').map(s => s.trim());
-                      displayTimeSlot = slotsArr.join(' / ');
-                  }
-                  
                   const isEnrolled = !!activeEnrollment;
+                  const schedule = activeEnrollment?.course?.schedule;
+
+                  // 1. Determine Days (Unique)
+                  const rawDays = schedule?.days || pref.slots.map((s) => s.day);
+                  const displayDays = Array.from(new Set(rawDays)).sort();
+
+                  // 2. Determine Time Slots
+                  let displayTimeSlots: string[] = [];
+                  if (schedule?.slots && schedule.slots.length > 0) {
+                    displayTimeSlots = schedule.slots.map(s => `${s.startTime} - ${s.endTime}`);
+                  } else if (schedule?.timeSlot && schedule.timeSlot !== "Multiple Times") {
+                    displayTimeSlots = [schedule.timeSlot];
+                  } else if (pref.slots.length > 0) {
+                    displayTimeSlots = pref.slots.map(s => `${s.startTime} - ${s.endTime}`);
+                  }
 
                   return (
-                    <div key={idx} className={`border rounded-lg p-4 ${isEnrolled ? 'bg-indigo-50/50 border-indigo-100' : 'bg-gray-50/50 border-gray-100'}`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-bold text-gray-900">
+                    <div key={idx} className={`border rounded-xl p-4 transition-all ${isEnrolled ? 'bg-indigo-50/50 border-indigo-100 shadow-sm' : 'bg-gray-50/50 border-gray-100'}`}>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-gray-900 truncate pr-2">
                           {typeof pref.subjectId === 'object' ? pref.subjectId.subjectName : `Subject ID: ${pref.subjectId}`}
                         </h3>
-                        {isEnrolled ? (
-                             <span className="px-2 py-1 bg-green-100 text-green-700 text-[10px] font-bold uppercase rounded flex items-center gap-1">
-                                <CheckCircle size={10} /> Enrolled
-                             </span>
-                        ) : (
-                             <span className="px-2 py-1 bg-purple-100 text-purple-700 text-[10px] font-bold uppercase rounded">
-                               {pref.slots.length} Slots Requested
-                             </span>
+                        {isEnrolled && (
+                          <span className="flex-shrink-0 px-2 py-1 bg-green-100 text-green-700 text-[10px] font-bold uppercase rounded flex items-center gap-1">
+                            <CheckCircle size={10} /> Enrolled
+                          </span>
                         )}
                       </div>
-                      
-                      <div className="flex flex-col gap-3">
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                                  isEnrolled ? 'bg-indigo-100 text-indigo-800' :
-                                  pref.status === 'mentor_requested' ? 'bg-yellow-100 text-yellow-800' :
-                                  pref.status === 'mentor_assigned' ? 'bg-green-100 text-green-800' :
-                                  'bg-gray-100 text-gray-800'
-                              }`}>
-                                  {isEnrolled ? 'Course Scheduled' : (pref.status ? pref.status.replace('_', ' ') : 'Preferences Submitted')}
-                              </span>
-                          </div>
-                          
-                          {/* Display Schedule (Either Course or Preferences) */}
-                          {displayDays && displayDays.length > 0 ? (
-                              <div className="flex flex-col gap-1">
-                                  {isEnrolled ? (
-                                      <div className="text-sm bg-white p-2 rounded border border-indigo-100 shadow-sm">
-                                          <div className="flex items-center gap-2 mb-1">
-                                              <Calendar size={14} className="text-indigo-500"/>
-                                              <span className="font-semibold text-gray-900">{Array.isArray(displayDays) ? displayDays.join(', ') : displayDays}</span>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                              <Clock size={14} className="text-indigo-500"/>
-                                              <span className="text-gray-600">{displayTimeSlot}</span>
-                                          </div>
-                                      </div>
-                                  ) : (
-                                       pref.slots.map((slot, sIdx) => (
-                                        <div key={sIdx} className="flex items-center justify-between text-sm bg-white p-2 rounded border border-gray-100 shadow-sm">
-                                          <span className="font-medium text-gray-700">{slot.day}</span>
-                                          <span className="text-gray-500">{slot.startTime} - {slot.endTime}</span>
-                                        </div>
-                                      ))
-                                  )}
-                              </div>
-                          ) : (
-                              <p className="text-sm text-gray-500 italic">No schedule details available</p>
-                          )}
-                          
-                          {/* Display Assigned Mentor if available */}
-                          {((pref as { assignedMentorId?: unknown }).assignedMentorId || activeEnrollment?.course?.mentor) && (
-                            <div className="mt-2 p-2 bg-purple-50 rounded border border-purple-100">
-                                <span className="text-xs text-purple-600 font-bold block mb-1">ASSIGNED MENTOR</span>
-                                <div className="text-sm font-medium text-gray-800">
-                                    {activeEnrollment?.course?.mentor?.fullName || 
-                                     (typeof (pref as any).assignedMentorId === 'object' && (pref as any).assignedMentorId?.fullName 
-                                        ? (pref as any).assignedMentorId.fullName 
-                                        : 'Mentor Assigned')}
-                                </div>
-                            </div>
-                          )}
+
+                      <div className="space-y-3 mb-4">
+                        {/* Days */}
+                        <div className="flex items-start">
+                          <Calendar className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
+                          <p className="text-gray-900 text-sm font-medium">
+                            {displayDays.join(', ')}
+                          </p>
                         </div>
 
-                        {/* Improved State Display */}
-                        {(() => {
-                           // Logic for button display
-                           const isMentorAssigned = 
-                               (pref as { status?: string }).status === 'mentor_assigned' || 
-                               isEnrolled || 
-                               profile.onboardingStatus === 'mentor_assigned';
+                        {/* Slots */}
+                        <div className="flex items-start">
+                          <Clock className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
+                          <div className="space-y-1">
+                            {displayTimeSlots.length > 0 ? (
+                              displayTimeSlots.map((time, tIdx) => (
+                                <p key={tIdx} className="text-gray-900 text-sm">{time}</p>
+                              ))
+                            ) : (
+                              <p className="text-gray-500 text-xs italic">Not scheduled</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
 
-                           if (isMentorAssigned) {
-                               return (
-                                 <div className="space-y-3">
-                                   {!isEnrolled && (
-                                       <div className="flex items-center gap-2 px-3 py-2 bg-green-50 text-green-700 rounded-lg border border-green-100 text-xs font-bold shadow-sm">
-                                          <CheckCircle size={14} />
-                                          MENTOR ASSIGNED
-                                       </div>
-                                   )}
-                                   
-                                   <button
-                                      onClick={() => handleOpenMatchModal(pref)}
-                                      className="w-full py-2 bg-white text-indigo-600 border border-indigo-200 text-xs font-bold rounded-lg hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2"
-                                   >
-                                      <Clock size={14} />
-                                      {isEnrolled ? "Edit / Reassign" : "Reassign Mentor"}
-                                   </button>
-                                 </div>
-                               );
-                           }
-
-                           return (
-                             <button
-                               onClick={() => handleOpenMatchModal(pref)}
-                               className={`flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg text-xs font-bold transition-all duration-200 ${
-                                 pref.status === 'mentor_requested'
-                                   ? "bg-amber-600 text-white hover:bg-amber-700 shadow-sm hover:shadow"
-                                   : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow"
-                               }`}
-                             >
-                               <BookOpen size={14} />
-                               {pref.status === 'mentor_requested' ? 'Assign Mentor' : 'Find Mentor & Book'}
-                             </button>
-                           );
-                        })()}
+                      <div className="pt-4 border-t border-gray-200/60 flex items-center justify-between">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                          isEnrolled ? 'bg-indigo-100 text-indigo-700' : 'bg-purple-100 text-purple-700'
+                        }`}>
+                          {isEnrolled ? 'Active Course' : 'Requested'}
+                        </span>
+                        {!isEnrolled && (
+                          <button
+                            onClick={() => handleOpenMatchModal(pref)}
+                            className="text-indigo-600 hover:text-indigo-800 text-xs font-bold flex items-center gap-1 transition-colors"
+                          >
+                            <UserPlus className="w-4 h-4" />
+                            Match Mentor
+                          </button>
+                        )}
                       </div>
                     </div>
                   );

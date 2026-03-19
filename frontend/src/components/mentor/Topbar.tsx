@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Bell, MessageSquare } from 'lucide-react';
+import { Bell, MessageSquare } from 'lucide-react';
 import { BaseTopbar } from '../base/BaseTopbar';
 
 interface TopbarProps {
@@ -15,17 +15,6 @@ const Topbar: React.FC<TopbarProps> = ({
   mentorRole = "Subject Mentor",
   profileImage = "https://api.dicebear.com/7.x/avataaars/svg?seed=Mentor"
 }) => {
-  const search = (
-    <div className="relative w-full">
-      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-      <input
-        type="text"
-        placeholder="Search"
-        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-      />
-    </div>
-  );
-
   const actions = (
     <div className="flex items-center gap-4">
       <button className="relative">
@@ -55,7 +44,6 @@ const Topbar: React.FC<TopbarProps> = ({
     <BaseTopbar
       onMenuToggle={onMenuClick}
       title="Dashboard"
-      search={search}
       actions={actions}
       profile={profile}
       sticky={false}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, Video, Search } from 'lucide-react';
+import { Bell, Video } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../app/store';
 import { BaseTopbar } from '../base/BaseTopbar';
@@ -21,17 +21,6 @@ const Topbar: React.FC<TopbarProps> = ({ sidebarOpen, setSidebarOpen, title = 'D
   const profileImage = studentProfile?.profileImageUrl 
     || user?.profileImageUrl 
     || `https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`;
-
-  const search = (
-    <div className="relative w-64 lg:w-80">
-      <input
-        type="text"
-        placeholder="Search..."
-        className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
-      />
-      <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-    </div>
-  );
 
   const actions = (
     <div className="flex items-center gap-3">
@@ -63,7 +52,6 @@ const Topbar: React.FC<TopbarProps> = ({ sidebarOpen, setSidebarOpen, title = 'D
     <BaseTopbar
       onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
       title={title}
-      search={search}
       actions={actions}
       profile={profile}
       className="bg-white border-b border-gray-200"
