@@ -21,7 +21,7 @@ const paymentSlice = createSlice({
             })
             .addCase(fetchStudentPaymentHistory.fulfilled, (state, action) => {
                 state.loading = false;
-                state.paymentHistory = action.payload;
+                state.paymentHistory = Array.isArray(action.payload) ? action.payload : [];
             })
             .addCase(fetchStudentPaymentHistory.rejected, (state, action) => {
                 state.loading = false;

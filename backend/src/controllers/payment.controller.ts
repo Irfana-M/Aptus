@@ -9,6 +9,7 @@ import { HttpStatusCode } from '@/constants/httpStatus.js';
 import { MESSAGES } from '@/constants/messages.constants.js';
 import { SubscriptionStatus } from '@/enums/subscription.enum.js';
 import { PaymentStatus } from '@/enums/payment.enum.js';
+import { logger } from '@/utils/logger.js';
 
 @injectable()
 export class PaymentController {
@@ -139,6 +140,7 @@ createIntent = async (req: Request, res: Response): Promise<void> => {
             return;
           }
           const payments = await this._paymentService.getStudentPayments(studentId);
+          logger.info(`student payments:${payments}`);
           res.status(HttpStatusCode.OK).json({ success: true, data: payments });
       } catch (error: unknown) {
           const message = error instanceof Error ? error.message : "Unknown error";

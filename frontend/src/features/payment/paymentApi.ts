@@ -16,5 +16,5 @@ export const confirmPayment = async (data: ConfirmPaymentDto) => {
 
 export const fetchStudentPaymentHistory = async (studentId: string) => {
     const response = await api.get(`/payment/student/${studentId}`);
-    return response.data;
+    return response.data.data; // Return the payments array directly
 };

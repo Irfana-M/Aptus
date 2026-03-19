@@ -104,7 +104,10 @@ Thank you for choosing Aptus for your learning!
   };
 
   const handleDownloadStatement = () => {
-    if (!paymentHistory || paymentHistory.length === 0) return;
+    if (!Array.isArray(paymentHistory) || paymentHistory.length === 0) {
+      console.warn("⚠️ No payment history available to download");
+      return;
+    }
 
     let statement = "APTUS LEARNING - PAYMENT STATEMENT\n";
     statement += `Student: ${user?.fullName}\n`;
@@ -113,10 +116,10 @@ Thank you for choosing Aptus for your learning!
     statement += "--------------------------------------------------\n";
 
     paymentHistory.forEach((p) => {
-      const date = new Date(
-        p.createdAt || p.paymentDate || "",
-      ).toLocaleDateString();
-      statement += `${date} | ${p.purpose || "Subscription"} | ₹${p.amount} | ${p.status} | ${p.invoiceId}\n`;
+      const date = p.createdAt || p.paymentDate 
+        ? new Date(p.createdAt || p.paymentDate || "").toLocaleDateString()
+        : "N/A";
+      statement += `${date} | ${p.purpose || "Subscription"} | ₹${p.amount} | ${p.status} | ${p.invoiceId || "N/A"}\n`;
     });
 
     const blob = new Blob([statement], { type: "text/plain" });
@@ -215,7 +218,7 @@ Thank you for choosing Aptus for your learning!
           </div>
         </div>
 
-        {paymentHistory && paymentHistory.length > 0 ? (
+        {Array.isArray(paymentHistory) && paymentHistory.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
@@ -302,7 +305,7 @@ Thank you for choosing Aptus for your learning!
                   ))}
               </tbody>
             </table>
-            {paymentHistory.length > ITEMS_PER_PAGE && (
+            {Array.isArray(paymentHistory) && paymentHistory.length > ITEMS_PER_PAGE && (
               <div className="px-6 py-4 border-t border-gray-100">
                 <Pagination
                   currentPage={currentPage}
