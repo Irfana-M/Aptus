@@ -18,6 +18,7 @@ import { TrialClassMapper } from "@/mappers/trialClassMapper.js";
 import { Types } from "mongoose";
 import type { IMentorRepository } from "@/interfaces/repositories/IMentorRepository.js";
 import type { ICourseRepository } from "@/interfaces/repositories/ICourseRepository.js";
+import type { ISessionRepository } from "@/interfaces/repositories/ISessionRepository.js";
 import { InternalEventEmitter, EVENTS } from "@/utils/InternalEventEmitter.js";
 
 @injectable()
@@ -38,7 +39,9 @@ export class TrialClassService implements ITrialClassService {
     @inject(TYPES.InternalEventEmitter)
     private eventEmitter: InternalEventEmitter,
     @inject(TYPES.IAttendanceService)
-    private attendanceService: IAttendanceService
+    private attendanceService: IAttendanceService,
+    @inject(TYPES.ISessionRepository)
+    private sessionRepo: ISessionRepository
   ) {}
 
   private getStringId(
@@ -180,6 +183,24 @@ export class TrialClassService implements ITrialClassService {
       if (!trial) throw new AppError(MESSAGES.TRIAL_CLASS.NOT_FOUND, HttpStatusCode.NOT_FOUND);
       
       this.policy.canAssignMentor(trial);
+
+      // Validate mentor availability and conflicts using precise time checks
+      let startTimeForConflict: Date;
+      let endTimeForConflict: Date;
+      if (trial.preferredTime && trial.preferredTime.includes('-')) {
+         const parts = trial.preferredTime.split('-');
+         startTimeForConflict = this._combineDateAndTime(new Date(trial.preferredDate), parts[0] as string);
+         endTimeForConflict = this._combineDateAndTime(new Date(trial.preferredDate), parts[1] as string);
+      } else {
+         startTimeForConflict = this._combineDateAndTime(new Date(trial.preferredDate), trial.preferredTime || "00:00");
+         endTimeForConflict = this._combineDateAndTime(new Date(trial.preferredDate), trial.preferredTime || "00:00", 60);
+      }
+
+      const conflictCheck = await this.getConflicts(mentorId, startTimeForConflict, endTimeForConflict);
+      if (conflictCheck.hasConflict) {
+        if (conflictCheck.reason === "LEAVE") throw new AppError("Mentor is on approved leave on this date.", HttpStatusCode.CONFLICT);
+        throw new AppError(`Mentor already has a conflicting ${conflictCheck.reason?.toLowerCase()} mapped to this time slot.`, HttpStatusCode.CONFLICT);
+      }
 
       const updated = await this.trialRepo.updateTrial(trialClassId, {
         mentor: new Types.ObjectId(mentorId) as unknown as Types.ObjectId,
@@ -430,35 +451,88 @@ export class TrialClassService implements ITrialClassService {
     if (!subject.isActive) throw new AppError(MESSAGES.ADMIN.COURSE_NOT_AVAILABLE, HttpStatusCode.BAD_REQUEST);
   }
 
+  private _combineDateAndTime(date: Date, timeStr: string, durationMinutes: number = 0): Date {
+    const d = new Date(date);
+    const timeParts = timeStr.split(':').map(Number);
+    const hours = timeParts[0] ?? 0;
+    const minutes = timeParts[1] ?? 0;
+    d.setHours(hours, minutes, 0, 0);
+    if (durationMinutes > 0) {
+        d.setMinutes(d.getMinutes() + durationMinutes);
+    }
+    return d;
+  }
+
   // Helper to get day name from date
   private getDayName(date: Date): string {
     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     return days[date.getDay()] || '';
   }
 
-  // Get conflicts for a mentor on a specific date
-  private async getConflicts(mentorId: string, date: string): Promise<string[]> {
-    const dateObj = new Date(date);
-    const dayOfWeek = this.getDayName(dateObj);
-    
-    // Get courses on this day of week
+  // Get conflicts for a mentor using precise Date overlap checks
+  private async getConflicts(mentorId: string, startTime: Date, endTime: Date): Promise<{ hasConflict: boolean; reason: "SESSION" | "LEAVE" | "TRIAL" | "COURSE" | null }> {
+    // 1. Check Mentor Leaves
+    const mentor = await this.mentorRepo.findById(mentorId);
+    if (mentor && mentor.leaves) {
+      const isDayBlockedByLeave = Array.isArray(mentor.leaves) && mentor.leaves.some((leave: any) => {
+        if (leave.status !== 'approved') return false;
+        const leaveStart = new Date(leave.startDate);
+        leaveStart.setHours(0, 0, 0, 0);
+        const leaveEnd = new Date(leave.endDate);
+        leaveEnd.setHours(23, 59, 59, 999);
+        return startTime <= leaveEnd && endTime >= leaveStart;
+      });
+      if (isDayBlockedByLeave) {
+        return { hasConflict: true, reason: "LEAVE" };
+      }
+    }
+
+    // 2. Get active Sessions
+    const startOfDay = new Date(startTime);
+    startOfDay.setHours(0, 0, 0, 0);
+    const dailySessions = await this.sessionRepo.findTodayByMentor(mentorId, startOfDay);
+    const hasSessionConflict = dailySessions.some(s => {
+      if (!['scheduled', 'rescheduling'].includes(s.status)) return false;
+      const sessionStart = new Date(s.startTime);
+      const sessionEnd = new Date(s.endTime);
+      return startTime < sessionEnd && endTime > sessionStart;
+    });
+    if (hasSessionConflict) return { hasConflict: true, reason: "SESSION" };
+
+    // 3. Get courses on this day of week (legacy support)
+    const dayOfWeek = this.getDayName(startTime);
     const courses = await this.courseRepo.findByMentor(mentorId) as any[];
-    const courseSlotsOnDay = courses
-      .filter((c) => c.schedule?.days?.includes(dayOfWeek))
-      .map((c) => c.schedule.timeSlot)
-      .filter((slot: string | undefined): slot is string => !!slot);
+    const hasCourseConflict = courses.some(c => {
+      if (!c.schedule?.days?.includes(dayOfWeek) || !c.schedule?.timeSlot) return false;
+      const times = c.schedule.timeSlot.split('-');
+      if (times.length !== 2) return false;
+      const courseStart = this._combineDateAndTime(new Date(startTime), times[0]);
+      const courseEnd = this._combineDateAndTime(new Date(startTime), times[1]);
+      return startTime < courseEnd && endTime > courseStart;
+    });
+    if (hasCourseConflict) return { hasConflict: true, reason: "COURSE" };
     
-    // Get trial classes on this specific date - ONLY active ones
+    // 4. Get active trial classes
     const trials = await this.trialRepo.findByMentorId(mentorId);
-    const trialSlots = trials
-      .filter((t) => 
-        new Date(t.preferredDate).toDateString() === dateObj.toDateString() &&
-        ['requested', 'assigned'].includes(t.status)
-      )
-      .map((t) => t.preferredTime)
-      .filter((slot: string | undefined): slot is string => !!slot);
+    const hasTrialConflict = trials.some((t) => {
+      if (!['requested', 'assigned'].includes(t.status)) return false;
+      if (!t.preferredTime) return false;
+      
+      let trialStart: Date;
+      let trialEnd: Date;
+      if (t.preferredTime.includes('-')) {
+         const parts = t.preferredTime.split('-');
+         trialStart = this._combineDateAndTime(new Date(t.preferredDate), parts[0] as string);
+         trialEnd = this._combineDateAndTime(new Date(t.preferredDate), parts[1] as string);
+      } else {
+         trialStart = this._combineDateAndTime(new Date(t.preferredDate), t.preferredTime);
+         trialEnd = this._combineDateAndTime(new Date(t.preferredDate), t.preferredTime, 60);
+      }
+      return startTime < trialEnd && endTime > trialStart;
+    });
+    if (hasTrialConflict) return { hasConflict: true, reason: "TRIAL" };
     
-    return [...courseSlotsOnDay, ...trialSlots];
+    return { hasConflict: false, reason: null };
   }
 
   // Get available time slots aggregated across all mentors
@@ -492,14 +566,21 @@ export class TrialClassService implements ITrialClassService {
         const daySchedule = mentor.availability?.find((a) => a.day === dayOfWeek);
         if (!daySchedule?.slots) continue;
         
-        const conflicts = await this.getConflicts(mentor._id.toString(), date);
+        // Fast-fail if whole day is blocked by leave
+        const dayStart = new Date(dateObj); dayStart.setHours(8, 0, 0, 0);
+        const dayEnd = new Date(dateObj); dayEnd.setHours(22, 0, 0, 0);
+        const leaveCheck = await this.getConflicts(mentor._id.toString(), dayStart, dayEnd);
+        if (leaveCheck.hasConflict && leaveCheck.reason === "LEAVE") continue;
         
         for (const slot of daySchedule.slots) {
           if (!slot.startTime || !slot.endTime) continue; // Skip invalid slots
           const slotKey = `${slot.startTime}-${slot.endTime}`;
           
-          // Skip if this specific slot has a conflict
-          if (conflicts.includes(slotKey)) continue;
+          const slotStart = this._combineDateAndTime(new Date(dateObj), slot.startTime);
+          const slotEnd = this._combineDateAndTime(new Date(dateObj), slot.endTime);
+          
+          const slotConflictCheck = await this.getConflicts(mentor._id.toString(), slotStart, slotEnd);
+          if (slotConflictCheck.hasConflict) continue;
           
           // Increment mentor count for this slot
           slotMap.set(slotKey, (slotMap.get(slotKey) || 0) + 1);
@@ -565,9 +646,14 @@ export class TrialClassService implements ITrialClassService {
         );
         if (!hasSlot) continue;
         
-        // Check conflicts
-        const conflicts = await this.getConflicts(mentor._id.toString(), date);
-        if (conflicts.includes(timeSlot)) continue;
+        const times = timeSlot.split('-');
+        if (times.length !== 2) continue;
+        const slotStart = this._combineDateAndTime(new Date(dateObj), times[0] as string);
+        const slotEnd = this._combineDateAndTime(new Date(dateObj), times[1] as string);
+
+        // Check conflicts and leaves
+        const conflictCheck = await this.getConflicts(mentor._id.toString(), slotStart, slotEnd);
+        if (conflictCheck.hasConflict) continue;
         
         available.push(mentor);
       }

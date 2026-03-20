@@ -22,7 +22,7 @@ async function dropIndex() {
         } catch (e) {
             console.log('ℹ️ Index timeSlotId_1 not found or already dropped. Trying by keys...');
             try {
-                await collection.dropIndex({ timeSlotId: 1 });
+                await collection.dropIndex({ timeSlotId: 1 } as any);
                 console.log('✅ Successfully dropped index by keys { timeSlotId: 1 }');
             } catch (err) {
                 console.error('❌ Failed to drop index by keys:', err);
