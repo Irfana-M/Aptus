@@ -3,10 +3,10 @@ import type { ISession } from "../models/session.interface.js";
 import type { IBaseRepository } from './IBaseRepository.js';
 
 export interface ISessionRepository extends IBaseRepository<ISession> {
-  findUpcomingByStudent(studentId: string, pagination?: { skip: number; limit: number }): Promise<ISession[]>;
-  countUpcomingByStudent(studentId: string): Promise<number>;
-  findUpcomingByMentor(mentorId: string, pagination?: { skip: number; limit: number }): Promise<ISession[]>;
-  countUpcomingByMentor(mentorId: string): Promise<number>;
+  findUpcomingByStudent(studentId: string, pagination?: { skip: number; limit: number }, filter?: { startDate?: Date | undefined; endDate?: Date | undefined }): Promise<ISession[]>;
+  countUpcomingByStudent(studentId: string, filter?: { startDate?: Date | undefined; endDate?: Date | undefined }): Promise<number>;
+  findUpcomingByMentor(mentorId: string, pagination?: { skip: number; limit: number }, filter?: { startDate?: Date | undefined; endDate?: Date | undefined }): Promise<ISession[]>;
+  countUpcomingByMentor(mentorId: string, filter?: { startDate?: Date | undefined; endDate?: Date | undefined }): Promise<number>;
   findByMentorAndDateRange(mentorId: string, startDate: Date, endDate: Date): Promise<ISession[]>;
   findByStudentAndSubject(studentId: string, subjectId: string): Promise<ISession[]>;
   findByTimeSlot(timeSlotId: string): Promise<ISession | null>;

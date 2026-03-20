@@ -13,9 +13,16 @@ export class SessionController {
       try {
         if (!req.user) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
         const { page, limit } = getPaginationParams(req.query as Record<string, unknown>);
-        logger.info(`📡 [API] Fetching upcoming sessions for student ${req.user.id}`);
-        const { items, total } = await this._sessionService.getStudentUpcomingSessionsPaginated(req.user.id, page, limit);
-        logger.info(`✅ [API] Returning ${items.length} sessions for student ${req.user.id}`);
+        const { from, to } = req.query as { from?: string; to?: string };
+        
+        const filter = {
+          startDate: from ? new Date(from) : undefined,
+          endDate: to ? new Date(to) : undefined
+        };
+
+        logger.info(`📡 [API] Fetching upcoming sessions for student ${req.user.id} (Range: ${from || 'N/A'} - ${to || 'N/A'})`);
+        const { items, total } = await this._sessionService.getStudentUpcomingSessionsPaginated(req.user.id, page, limit, filter);
+        
         res.status(HttpStatusCode.OK).json(
           formatStandardizedPaginatedResult(items, total, { page, limit }, MESSAGES.COMMON.DATA_FETCHED)
         );
@@ -28,9 +35,16 @@ export class SessionController {
       try {
           if (!req.user) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
           const { page, limit } = getPaginationParams(req.query as Record<string, unknown>);
-          logger.info(`📡 [API] Fetching upcoming sessions for mentor ${req.user.id}`);
-          const { items, total } = await this._sessionService.getMentorUpcomingSessionsPaginated(req.user.id, page, limit);
-          logger.info(`✅ [API] Returning ${items.length} sessions for mentor ${req.user.id}`);
+          const { from, to } = req.query as { from?: string; to?: string };
+
+          const filter = {
+            startDate: from ? new Date(from) : undefined,
+            endDate: to ? new Date(to) : undefined
+          };
+
+          logger.info(`📡 [API] Fetching upcoming sessions for mentor ${req.user.id} (Range: ${from || 'N/A'} - ${to || 'N/A'})`);
+          const { items, total } = await this._sessionService.getMentorUpcomingSessionsPaginated(req.user.id, page, limit, filter);
+          
           res.status(HttpStatusCode.OK).json(
             formatStandardizedPaginatedResult(items, total, { page, limit }, MESSAGES.COMMON.DATA_FETCHED)
           );
@@ -122,6 +136,33 @@ export class SessionController {
               message: MESSAGES.SESSION.COMPLETED,
               data: session 
           });
+      } catch (error) {
+          next(error);
+      }
+  }
+
+  async getAvailableSlotsForReschedule(req: Request, res: Response, next: NextFunction) {
+      try {
+          if (!req.user) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
+          const { mentorId, subjectId, date } = req.query as { mentorId?: string, subjectId?: string, date?: string };
+          
+          if (!mentorId || !subjectId || !date) {
+              throw new AppError("mentorId, subjectId, and date are required.", HttpStatusCode.BAD_REQUEST);
+          }
+
+          const slots = await this._sessionService.getAvailableSlotsForReschedule(mentorId, subjectId, date);
+          res.status(HttpStatusCode.OK).json({ success: true, data: { slots } });
+      } catch (error) {
+          next(error);
+      }
+  }
+
+  async getSessionById(req: Request, res: Response, next: NextFunction) {
+      try {
+          if (!req.user) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
+          const sessionId = req.params.sessionId as string;
+          const session = await this._sessionService.getSessionById(sessionId);
+          res.status(HttpStatusCode.OK).json({ success: true, data: session });
       } catch (error) {
           next(error);
       }

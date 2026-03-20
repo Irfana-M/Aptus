@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Video, Calendar as CalendarIcon } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchStudentTrialClasses } from '../../../features/trial/student/studentTrialThunk';
-import { fetchMyEnrollments } from '../../../features/student/studentThunk';
+import { fetchStudentUpcomingSessions, reportAbsence } from '../../../features/session/sessionThunk';
 import { EmptyState } from '../../ui/EmptyState';
 import type { RootState, AppDispatch } from '../../../app/store'; 
-import { format, addDays, startOfWeek, isSameDay } from 'date-fns';
-import type { Course } from '../../../types/course.types';
+import { format, addDays, startOfWeek, isSameDay, endOfWeek, addHours, isAfter } from 'date-fns';
+import type { Session } from '../../../types/scheduling.types';
+
 
 const ScheduleList: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -15,7 +16,7 @@ const ScheduleList: React.FC = () => {
     
     // Selectors
     const { trialClasses } = useSelector((state: RootState) => state.studentTrial);
-    const { enrollments } = useSelector((state: RootState) => state.student);
+    const { sessions, loading } = useSelector((state: RootState) => state.session);
     const { user } = useSelector((state: RootState) => state.auth);
 
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -24,12 +25,27 @@ const ScheduleList: React.FC = () => {
     useEffect(() => {
         if (user?._id) {
             dispatch(fetchStudentTrialClasses());
-            dispatch(fetchMyEnrollments());
+            
+            // Fetch sessions for the current week view
+            const from = weekStart.toISOString();
+            const to = endOfWeek(weekStart, { weekStartsOn: 1 }).toISOString();
+            dispatch(fetchStudentUpcomingSessions({ from, to }));
         }
-    }, [dispatch, user]);
+    }, [dispatch, user, weekStart]);
 
     // Generate week days
     const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i));
+
+    const handleLeaveRequest = (sessionId: string) => {
+        const reason = window.prompt("Please provide a reason for the leave:");
+        if (reason) {
+            dispatch(reportAbsence({ sessionId, reason }));
+        }
+    };
+
+    const handleReschedule = (sessionId: string) => {
+        navigate(`/student/reschedule/${sessionId}`);
+    };
 
     // Combine and filter schedule
     const getDailySchedule = (date: Date) => {
@@ -42,6 +58,7 @@ const ScheduleList: React.FC = () => {
             link: string | null | undefined;
             isTrial: boolean;
             courseId?: string;
+            session?: Session;
         }[] = [];
 
         // 1. Trial Classes
@@ -62,54 +79,25 @@ const ScheduleList: React.FC = () => {
             }
         });
 
-        const getTimeForDay = (course: Course, day: string) => {
-            const schedule = course?.schedule;
-            if (schedule?.slots && schedule.slots.length > 0) {
-                const matched = schedule.slots.find((s) => s.day === day);
-                if (matched) return `${matched.startTime} - ${matched.endTime}`;
-            }
-
-            const timeSlot = schedule?.timeSlot || (course as unknown as Record<string, unknown>).timeSlot as string;
-            if (!timeSlot) return 'TBD';
-            if (!timeSlot.includes('|')) return timeSlot;
-            const parts = timeSlot.split('|');
-            if (day === 'Saturday') return parts[0];
-            if (day === 'Sunday') return parts[1];
-            return timeSlot;
-        };
-
-        // 2. Enrollments (Regular Classes)
-        enrollments.forEach(enrollment => {
-            const course = enrollment.course;
-            if (course && course.startDate && course.endDate) {
-                const start = new Date(course.startDate);
-                const end = new Date(course.endDate);
-                
-                // Check if date is within course range
-                if (date >= start && date <= end) {
-                    const dayName = format(date, 'EEEE'); // 'Monday'
-                    const dayNum = date.getDay(); // 0-6
-                    
-                    // Match by string day names or old numeric dayOfWeek
-                    const isMatch = course.schedule?.days?.includes(dayName) || (course as unknown as Record<string, unknown>).dayOfWeek === dayNum;
-
-                    if (isMatch) {
-                        scheduleItems.push({
-                            id: enrollment._id,
-                            type: 'Class',
-                            subject: course.subject?.subjectName || 'Course Session',
-                            time: getTimeForDay(course, dayName),
-                            status: enrollment.status,
-                            link: `/student/classroom`, 
-                            isTrial: false,
-                            courseId: course._id
-                        });
-                    }
-                }
+        // 2. Sessions (from Redux)
+        sessions.forEach(session => {
+            const sessionDate = new Date(session.startTime);
+            if (isSameDay(sessionDate, date)) {
+                scheduleItems.push({
+                    id: session.id,
+                    type: 'Class',
+                    subject: session.subjectId?.subjectName || 'Course Session',
+                    time: `${format(new Date(session.startTime), 'p')} - ${format(new Date(session.endTime), 'p')}`,
+                    status: session.status,
+                    link: `/student/classroom`, 
+                    isTrial: false,
+                    courseId: session.courseId,
+                    session: session
+                });
             }
         });
 
-        // Sort by time (simple string sort for now, ideally parse time)
+        // Sort by time
         return scheduleItems.sort((a, b) => a.time.localeCompare(b.time));
     };
 
@@ -158,41 +146,79 @@ const ScheduleList: React.FC = () => {
             <h2 className="text-lg font-bold">Schedule for {format(selectedDate, 'MMM do')}</h2>
             </div>
             <div className="space-y-4">
-            {schedule.length > 0 ? (
-                schedule.map((item, idx) => (
-                <div key={`${item.id}-${idx}`} className="flex gap-3 items-start group p-3 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all">
-                <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-bold text-lg flex-shrink-0 transition-colors ${
-                    item.isTrial ? 'bg-orange-50 text-orange-600' : 'bg-teal-50 text-teal-600'
-                }`}>
-                    {item.subject.charAt(0)}
+            {loading ? (
+                <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
                 </div>
-                <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="font-semibold text-gray-900 truncate">{item.subject}</p>
-                            <p className="text-xs text-gray-500 truncate">{item.type} • {item.status}</p>
+            ) : schedule.length > 0 ? (
+                schedule.map((item, idx) => {
+                    const isCancelled = item.status === 'cancelled';
+                    const isRescheduling = item.status === 'rescheduling';
+                    const canApplyLeave = !item.isTrial && item.session && isAfter(new Date(item.session.startTime), addHours(new Date(), 24)) && item.status === 'scheduled';
+                    const canReschedule = !item.isTrial && (isRescheduling || (item.session?.cancelledBy === 'mentor' && item.status === 'cancelled'));
+
+                    return (
+                        <div key={`${item.id}-${idx}`} className={`flex gap-3 items-start group p-3 rounded-lg border transition-all ${
+                            isCancelled ? 'bg-red-50 border-red-100' : 
+                            isRescheduling ? 'bg-orange-50 border-orange-100' :
+                            'hover:bg-gray-50 border-transparent hover:border-gray-100'
+                        }`}>
+                            <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-bold text-lg flex-shrink-0 transition-colors ${
+                                item.isTrial ? 'bg-orange-50 text-orange-600' : 
+                                isCancelled ? 'bg-red-100 text-red-600' :
+                                'bg-teal-50 text-teal-600'
+                            }`}>
+                                {item.subject.charAt(0)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className={`font-semibold truncate ${isCancelled ? 'text-red-900' : 'text-gray-900'}`}>{item.subject}</p>
+                                        <p className="text-xs text-gray-500 truncate">
+                                            {item.type} • <span className={`capitalize ${isCancelled ? 'text-red-500 font-medium' : ''}`}>{item.status.replace('_', ' ')}</span>
+                                            {item.session?.cancellationReason && ` (${item.session.cancellationReason})`}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {canApplyLeave && (
+                                            <button 
+                                                onClick={() => handleLeaveRequest(item.id)}
+                                                className="text-[10px] font-bold text-red-600 hover:bg-red-50 px-2 py-1 rounded border border-red-200 transition-colors"
+                                            >
+                                                APPLY LEAVE
+                                            </button>
+                                        )}
+                                        {canReschedule && (
+                                            <button 
+                                                onClick={() => handleReschedule(item.id)}
+                                                className="text-[10px] font-bold text-orange-600 hover:bg-orange-50 px-2 py-1 rounded border border-orange-200 transition-colors"
+                                            >
+                                                RESCHEDULE
+                                            </button>
+                                        )}
+                                        {item.link && !isCancelled && !isRescheduling && (
+                                            <button 
+                                                onClick={() => {
+                                                    if (item.isTrial) navigate(`/trial-class/${item.id}/call`);
+                                                    else navigate(item.link!);
+                                                }}
+                                                className="text-blue-600 hover:text-blue-800 p-1 flex items-center gap-1 group/btn"
+                                                title={item.isTrial ? "Join Trial Call" : "Open Classroom"}
+                                            >
+                                                <span className="text-[10px] font-bold opacity-0 group-hover/btn:opacity-100 transition-opacity">JOIN</span>
+                                                <Video size={18} />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            <p className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded whitespace-nowrap flex items-center gap-1">
+                                <CalendarIcon size={12} />
+                                {item.time}
+                            </p>
                         </div>
-                        {item.link && (
-                            <button 
-                                onClick={() => {
-                                    if (item.isTrial) navigate(`/trial-class/${item.id}/call`);
-                                    else navigate(item.link!);
-                                }}
-                                className="text-blue-600 hover:text-blue-800 p-1 flex items-center gap-1 group/btn"
-                                title={item.isTrial ? "Join Trial Call" : "Open Classroom"}
-                            >
-                                <span className="text-[10px] font-bold opacity-0 group-hover/btn:opacity-100 transition-opacity">JOIN</span>
-                                <Video size={18} />
-                            </button>
-                        )}
-                    </div>
-                </div>
-                <p className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded whitespace-nowrap flex items-center gap-1">
-                    <CalendarIcon size={12} />
-                    {item.time}
-                </p>
-                </div>
-                ))
+                    );
+                })
             ) : (
                 <EmptyState 
                   icon={CalendarIcon} 

@@ -60,4 +60,18 @@ router.post(
     (req, res, next) => sessionController.completeSession(req, res, next)
 );
 
+router.get(
+    "/available-slots",
+    requireAuth,
+    requireRole(['student']),
+    (req, res, next) => sessionController.getAvailableSlotsForReschedule(req, res, next)
+);
+
+router.get(
+    "/:sessionId",
+    requireAuth,
+    requireRole(['student', 'mentor']),
+    (req, res, next) => sessionController.getSessionById(req, res, next)
+);
+
 export default router;

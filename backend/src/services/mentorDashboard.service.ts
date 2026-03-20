@@ -12,6 +12,8 @@ import type { ICourseRepository } from "@/interfaces/repositories/ICourseReposit
 import type { IStudyMaterialRepository } from "@/interfaces/repositories/IStudyMaterialRepository.js";
 import type { ICourse } from "@/models/course.model.js";
 import type { IStudyMaterial } from "../interfaces/models/studyMaterial.interface.js";
+import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository.js";
+import type { ISession } from "../interfaces/models/session.interface.js";
 import type {
   DashboardDataDto,
   TodaySessionDto,
@@ -38,25 +40,27 @@ export class MentorDashboardService implements IMentorDashboardService {
     @inject(TYPES.IMentorRepository) private mentorRepo: IMentorRepository,
     @inject(TYPES.IVideoCallRepository) private videoCallRepo: IVideoCallRepository,
     @inject(TYPES.ICourseRepository) private courseRepo: ICourseRepository,
-    @inject(TYPES.IStudyMaterialRepository) private studyMaterialRepo: IStudyMaterialRepository
+    @inject(TYPES.IStudyMaterialRepository) private studyMaterialRepo: IStudyMaterialRepository,
+    @inject(TYPES.ISessionRepository) private sessionRepo: ISessionRepository
   ) {}
 
   async getDashboardData(mentorId: string): Promise<DashboardDataDto> {
     try {
       logger.info(`Getting dashboard data for mentor: ${mentorId}`);
 
-      const [allClasses, todayClasses, allCourses, allMaterials] = await Promise.all([
+      const [allTrials, todayTrials, allCourses, allMaterials, upcomingSessions] = await Promise.all([
         this.trialClassRepo.findByMentorId(mentorId),
         this.trialClassRepo.findTodayTrialClasses(mentorId),
         this.courseRepo.findByMentor(mentorId) as Promise<ICourse[]>,
-        this.studyMaterialRepo.findByMentor(mentorId)
+        this.studyMaterialRepo.findByMentor(mentorId),
+        this.sessionRepo.findUpcomingByMentor(mentorId)
       ]);
 
-      const stats = this.calculateStats(allClasses, todayClasses, allCourses, allMaterials);
-      const todaySessions = this.formatTodaySessions(todayClasses);
-      const upcomingClasses = this.formatUpcomingClasses(allClasses).slice(0, 4);
-      const recentActivities = this.formatCombinedActivities(allClasses, allMaterials).slice(0, 10);
-      const calendarEvents = this.formatCalendarEvents(allClasses);
+      const stats = this.calculateStats(allTrials, todayTrials, allCourses, allMaterials, upcomingSessions);
+      const todaySessions = this.formatTodaySessions(todayTrials); // We can merge regular sessions here too if needed
+      const upcomingClasses = this.formatUpcomingClasses(allTrials).slice(0, 4);
+      const recentActivities = this.formatCombinedActivities(allTrials, allMaterials, upcomingSessions).slice(0, 10);
+      const calendarEvents = this.formatCalendarEvents(allTrials);
 
       return {
         stats,
@@ -132,11 +136,12 @@ export class MentorDashboardService implements IMentorDashboardService {
 
   async getRecentActivities(mentorId: string, limit?: number): Promise<RecentActivityDto[]> {
     const effectiveLimit = limit ?? 10;
-    const [classes, materials] = await Promise.all([
+    const [classes, materials, sessions] = await Promise.all([
       this.trialClassRepo.findByMentorId(mentorId),
-      this.studyMaterialRepo.findByMentor(mentorId)
+      this.studyMaterialRepo.findByMentor(mentorId),
+      this.sessionRepo.findUpcomingByMentor(mentorId)
     ]);
-    return this.formatCombinedActivities(classes, materials).slice(0, effectiveLimit);
+    return this.formatCombinedActivities(classes, materials, sessions).slice(0, effectiveLimit);
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -144,20 +149,32 @@ export class MentorDashboardService implements IMentorDashboardService {
   // ──────────────────────────────────────────────────────────────────
 
   private calculateStats(
-    all: ITrialClassDocument[], 
-    today: ITrialClassDocument[],
+    allTrials: ITrialClassDocument[], 
+    todayTrials: ITrialClassDocument[],
     courses: ICourse[],
-    materials: IStudyMaterial[]
+    materials: IStudyMaterial[],
+    sessions: ISession[]
   ): DashboardStats {
-    const completed = all.filter(c => c.status === "completed").length;
-    const upcomingToday = today.filter(c => c.status === "assigned").length;
-    const joinNow = today.filter(c => c.status === "assigned" && this.isClassJoinable(c)).length;
+    const completed = allTrials.filter(c => c.status === "completed").length;
+    
+    // Check sessions/trials for today
+    const now = new Date();
+    const startOfToday = new Date(now.setHours(0, 0, 0, 0));
+    const endOfToday = new Date(now.setHours(23, 59, 59, 999));
+
+    const todaySessionsCount = sessions.filter(s => {
+        const start = new Date(s.startTime);
+        return start >= startOfToday && start <= endOfToday && s.status === 'scheduled';
+    }).length;
+
+    const upcomingToday = todayTrials.filter(c => c.status === "assigned").length + todaySessionsCount;
+    const joinNow = todayTrials.filter(c => c.status === "assigned" && this.isClassJoinable(c)).length;
     const pendingAssignments = materials.filter(m => m.materialType === "assignment").length;
 
     return {
-      totalClasses: all.length,
+      totalClasses: allTrials.length + sessions.length,
       upcomingToday,
-      completed,
+      completed, // Ideally add completed sessions too
       joinNow,
       assignedStudents: courses.length,
       pendingAssignments,
@@ -212,7 +229,7 @@ export class MentorDashboardService implements IMentorDashboardService {
       });
   }
 
-  private formatCombinedActivities(classes: ITrialClassDocument[], materials: IStudyMaterial[]): RecentActivityDto[] {
+  private formatCombinedActivities(classes: ITrialClassDocument[], materials: IStudyMaterial[], sessions: ISession[]): RecentActivityDto[] {
     const activities: (RecentActivityDto & { rawDate: Date })[] = [];
 
     // Process trial classes
@@ -242,6 +259,34 @@ export class MentorDashboardService implements IMentorDashboardService {
           rawDate: c.updatedAt || c.createdAt
         });
       }
+    });
+
+    // Process regular sessions
+    sessions.forEach(s => {
+        const student = typeof s.studentId === 'object' ? (s.studentId as any)?.fullName : 'Student';
+        const subject = typeof s.subjectId === 'object' ? (s.subjectId as any)?.subjectName : 'Subject';
+
+        if (s.status === 'cancelled') {
+            activities.push({
+                id: `cancel-${s.id}`,
+                type: 'session',
+                title: `Session cancelled with ${student}`,
+                subtitle: `${subject}${s.cancellationReason ? ` - ${s.cancellationReason}` : ''}`,
+                time: this.formatTimeAgo(s.updatedAt || new Date()),
+                rawDate: s.updatedAt || new Date()
+            });
+        }
+        
+        if (s.status === 'rescheduling') {
+            activities.push({
+                id: `resched-${s.id}`,
+                type: 'schedule',
+                title: `Session needs rescheduling with ${student}`,
+                subtitle: subject,
+                time: this.formatTimeAgo(s.updatedAt || new Date()),
+                rawDate: s.updatedAt || new Date()
+            });
+        }
     });
 
     // Process materials

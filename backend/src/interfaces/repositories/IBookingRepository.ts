@@ -8,4 +8,5 @@ export interface IBookingRepository extends IBaseRepository<IBooking> {
   countDocuments(filter: FilterQuery<IBooking>, session?: ClientSession): Promise<number>;
   findScheduledByTimeSlot(timeSlotId: string): Promise<IBooking[]>;
   updateMany(filter: FilterQuery<IBooking>, update: UpdateQuery<IBooking>, session?: ClientSession): Promise<unknown>;
+  findOneWithPopulate(filter: FilterQuery<IBooking>, populate: string | string[], session?: ClientSession): Promise<IBooking | null>;
 }

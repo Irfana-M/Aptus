@@ -2,25 +2,28 @@ import React, { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchStudentTrialClasses } from '../../../features/trial/student/studentTrialThunk';
-import { fetchMyEnrollments } from '../../../features/student/studentThunk';
+import { fetchStudentUpcomingSessions } from '../../../features/session/sessionThunk';
 import { EmptyState } from '../../ui/EmptyState';
 import { Calendar } from 'lucide-react';
 import type { RootState, AppDispatch } from '../../../app/store';
-import { format, isAfter, startOfDay, addDays } from 'date-fns';
-import type { Course } from '../../../types/course.types';
+import { format, isAfter, addDays, startOfToday } from 'date-fns';
 
 const UpcomingClasses: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
     
     const { trialClasses } = useSelector((state: RootState) => state.studentTrial);
-    const { enrollments } = useSelector((state: RootState) => state.student);
+    const { sessions } = useSelector((state: RootState) => state.session);
     const { user } = useSelector((state: RootState) => state.auth);
 
     useEffect(() => {
         if (user?._id) {
              dispatch(fetchStudentTrialClasses());
-             dispatch(fetchMyEnrollments());
+             
+             // Fetch sessions for next 14 days
+             const from = new Date().toISOString();
+             const to = addDays(new Date(), 14).toISOString();
+             dispatch(fetchStudentUpcomingSessions({ from, to }));
         }
     }, [dispatch, user]);
 
@@ -38,7 +41,8 @@ const UpcomingClasses: React.FC = () => {
         trialClasses.forEach(trial => {
             if (trial.preferredDate && trial.status !== 'completed' && trial.status !== 'cancelled') {
                 const trialDate = new Date(trial.preferredDate);
-                if (isAfter(trialDate, startOfDay(now))) {
+                // Simple check if it's today or in future
+                if (isAfter(trialDate, startOfToday())) {
                      const subjectName = typeof trial.subject === 'object' && trial.subject ? trial.subject.subjectName : String(trial.subject);
                      allEvents.push({
                         id: trial.id,
@@ -51,50 +55,27 @@ const UpcomingClasses: React.FC = () => {
             }
         });
 
-        const getTimeForDay = (course: Course, day: string) => {
-            const schedule = course?.schedule;
-            if (schedule?.slots && schedule.slots.length > 0) {
-                const matched = schedule.slots.find((s) => s.day === day);
-                if (matched) return `${matched.startTime} - ${matched.endTime}`;
+        // 2. Regular Sessions
+        sessions.forEach(session => {
+            if (session.status === 'scheduled' || session.status === 'live' || session.status === 'in_progress') {
+                const sessionDate = new Date(session.startTime);
+                if (isAfter(sessionDate, now)) {
+                     allEvents.push({
+                        id: session.id,
+                        title: session.subjectId?.subjectName || 'Course Class',
+                        date: sessionDate,
+                        time: format(sessionDate, 'p'),
+                        icon: '📚'
+                    });
+                }
             }
-
-            const timeSlot = schedule?.timeSlot || (course as unknown as Record<string, unknown>).timeSlot as string;
-            if (!timeSlot) return 'TBD';
-            if (!timeSlot.includes('|')) return timeSlot;
-            const parts = timeSlot.split('|');
-            if (day === 'Saturday') return parts[0];
-            if (day === 'Sunday') return parts[1];
-            return timeSlot;
-        };
-
-        // 2. Enrollments (Simplified look ahead for next 7 days)
-        enrollments.forEach(enrollment => {
-             const course = enrollment.course;
-             if (course?.status === 'ongoing' || course?.status === 'booked') {
-                 for (let i = 0; i < 7; i++) {
-                     const checkDate = addDays(now, i);
-                     const dayName = format(checkDate, 'EEEE');
-                     
-                     const isCourseDay = course.schedule?.days?.includes(dayName) || (course as unknown as Record<string, unknown>).dayOfWeek === checkDate.getDay();
-
-                     if (isCourseDay) {
-                         allEvents.push({
-                             id: `${enrollment._id}-${i}`,
-                             title: course.subject?.subjectName || 'Course Class',
-                             date: checkDate,
-                              time: getTimeForDay(course, dayName),
-                             icon: '📚'
-                         });
-                     }
-                 }
-             }
         });
 
         allEvents.sort((a, b) => a.date.getTime() - b.date.getTime());
 
         return allEvents.length > 0 ? allEvents[0] : null;
 
-    }, [trialClasses, enrollments]);
+    }, [trialClasses, sessions]);
 
 
   return (

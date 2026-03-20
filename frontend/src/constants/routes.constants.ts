@@ -56,6 +56,7 @@ export const ROUTES = {
     ASSIGNMENTS: '/student/assignments',
     INTEGRATIONS: '/student/integrations',
     FEEDBACK: '/student/feedback',
+    RESCHEDULE_SESSION: '/student/reschedule/:sessionId',
   },
   MENTOR: {
     DASHBOARD: '/mentor/dashboard',

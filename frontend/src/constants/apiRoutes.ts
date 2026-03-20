@@ -118,9 +118,13 @@ export const API_ROUTES = {
   SESSIONS: {
     COMPLETE: "/sessions/:sessionId/complete",
     DETAILS: "/sessions/:sessionId",
+    REPORT_ABSENCE: "/sessions/:sessionId/report-absence",
+    CANCEL: "/sessions/:sessionId/cancel",
+    RESOLVE_RESCHEDULING: "/sessions/:sessionId/resolve-rescheduling",
     STUDENT_UPCOMING: "/sessions/student/upcoming",
     MENTOR_UPCOMING: "/sessions/mentor/upcoming",
     MENTOR_TODAY: "/sessions/mentor/today",
+    AVAILABLE_SLOTS: "/sessions/available-slots",
   },
   CLASSROOM: {
     // Mentor routes

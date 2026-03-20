@@ -42,8 +42,13 @@ export interface ISession extends Document {
   recordingUrl?: string;
 
   mentorNotes?: string;
-  cancellationReason?: string;
-  cancelledBy?: 'student' | 'mentor' | 'admin';
+  cancellationReason?: string | null;
+  cancelledBy?: 'student' | 'mentor' | 'admin' | null;
+
+  // New fields for Rescheduling and Leave
+  isRescheduled?: boolean;
+  rescheduledTo?: Schema.Types.ObjectId;
+  leaveRequestedAt?: Date;
 
   createdAt: Date;
   updatedAt: Date;

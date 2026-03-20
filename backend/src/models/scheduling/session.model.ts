@@ -83,12 +83,15 @@ const sessionSchema = new Schema<ISession>(
       type: String,
       enum: ["student", "mentor", "admin"],
     },
+    leaveRequestedAt: Date,
+    isRescheduled: { type: Boolean, default: false },
+    rescheduledTo: { type: Schema.Types.ObjectId, ref: "Session" },
   },
   { timestamps: true, collection: "class_sessions" }
 );
 
 // Indexes
-sessionSchema.index({ timeSlotId: 1 }, { unique: true }); // Prevent slot reuse
+sessionSchema.index({ timeSlotId: 1, startTime: 1 }, { unique: true }); // Prevent duplicate occurrences
 sessionSchema.index({ mentorId: 1, startTime: 1 });
 sessionSchema.index({ status: 1 });
 sessionSchema.index({ "participants.userId": 1 });

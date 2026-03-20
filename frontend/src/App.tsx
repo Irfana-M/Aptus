@@ -63,6 +63,7 @@ import StudentExamAnalysis from "./pages/student/exams/StudentExamAnalysis";
 import SessionJoin from "./pages/scheduling/SessionJoin";
 import MentorLeaves from "./pages/mentor/Leaves";
 import LeaveManagement from "./pages/admin/LeaveManagement";
+import RescheduleSession from "./pages/student/RescheduleSession";
 
 import { VideoCallProvider } from "./context/VideoCallContext";
 import FloatingCallOverlay from "./components/video/FloatingCallOverlay";
@@ -365,6 +366,15 @@ const AppContent: React.FC = () => {
         element={
           <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
             <MyCourses />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path={ROUTES.STUDENT.RESCHEDULE_SESSION}
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+            <RescheduleSession />
           </ProtectedRoute>
         }
       />

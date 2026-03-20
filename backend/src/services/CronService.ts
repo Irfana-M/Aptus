@@ -33,8 +33,10 @@ export class CronService {
 
     
     nodeCron.schedule('0 0 * * *', () => {
-      logger.info('⏰ [Cron] Executing Daily Slot Generation (7 days)');
-      this._schedulingService.generateSlots(7).catch(err => logger.error('❌ Cron Error (Slot Gen):', err));
+      logger.info('⏰ [Cron] Executing Daily Slot Generation (14 days) & Session Sync');
+      this._schedulingService.generateSlots(14)
+        .then(() => this._syncUpcomingSessions(14))
+        .catch(err => logger.error('❌ Cron Error (Slot Gen/Sync):', err));
     });
 
     
@@ -69,10 +71,21 @@ export class CronService {
   }
 
   
+  private async _syncUpcomingSessions(days: number): Promise<void> {
+    const now = new Date();
+    const future = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+    logger.info(`[Cron] Syncing sessions from ${now.toISOString()} to ${future.toISOString()}`);
+    await this._sessionService.syncSessionsForRange(now, future);
+  }
+
   private _runStartupTasks(): void {
-    this._schedulingService.generateSlots(7)
+    this._schedulingService.generateSlots(14)
       .then(() => {
         logger.info('✅ [Cron] Initial Slot Generation completed on startup');
+        return this._syncUpcomingSessions(14);
+      })
+      .then(() => {
+        logger.info('✅ [Cron] Startup Session Sync completed');
         return this._activateJoinLinks();
       })
       .then(() => {

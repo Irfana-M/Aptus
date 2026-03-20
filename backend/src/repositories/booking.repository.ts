@@ -50,4 +50,8 @@ export class BookingRepository extends BaseRepository<IBooking> implements IBook
   async updateMany(filter: FilterQuery<IBooking>, update: UpdateQuery<IBooking>, session?: ClientSession): Promise<unknown> {
     return await this.model.updateMany(filter, update).session(session || null).exec();
   }
+
+  async findOneWithPopulate(filter: FilterQuery<IBooking>, populate: string | string[], session?: ClientSession): Promise<IBooking | null> {
+    return await this.model.findOne(filter).populate(populate).session(session || null).exec();
+  }
 }

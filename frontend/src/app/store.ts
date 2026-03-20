@@ -11,6 +11,7 @@ import financeReducer from "../features/admin/financeSlice";
 import paymentReducer from "../features/payment/paymentSlice";
 import chatReducer from "../features/classroom/chatSlice";
 import attendanceReducer from "../features/attendance/attendanceSlice";
+import sessionReducer from "../features/session/sessionSlice";
 import examReducer from "../features/exam/examSlice";
 
 export const store = configureStore({
@@ -28,6 +29,7 @@ export const store = configureStore({
     chat: chatReducer,
     attendance: attendanceReducer,
     exam: examReducer,
+    session: sessionReducer,
   },
 
   middleware: (getDefaultMiddleware) =>

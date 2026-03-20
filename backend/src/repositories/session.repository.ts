@@ -12,19 +12,30 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
     super(SessionModel);
   }
 
-  async findUpcomingByStudent(studentId: string, pagination?: { skip: number; limit: number }): Promise<ISession[]> {
-    const query = this.model.find({
+  async findUpcomingByStudent(studentId: string, pagination?: { skip: number; limit: number }, filter?: { startDate?: Date | undefined; endDate?: Date | undefined }): Promise<ISession[]> {
+    const queryFilter: any = {
       $or: [
         { studentId: studentId },
         { 'participants.studentId': studentId },
         { 'participants.userId': studentId }
       ],
-      status: { $in: ['scheduled', 'in_progress', 'rescheduling'] },
-      endTime: { $gte: new Date() }
-    })
-    .sort({ startTime: 1 })
-    .populate('subjectId')
-    .populate('mentorId', 'fullName profilePicture');
+      status: { $in: ['scheduled', 'in_progress', 'rescheduling'] }
+    };
+
+    if (filter?.startDate) {
+      queryFilter.startTime = { $gte: filter.startDate };
+    } else {
+      queryFilter.endTime = { $gte: new Date() };
+    }
+
+    if (filter?.endDate) {
+      queryFilter.startTime = { ...queryFilter.startTime, $lte: filter.endDate };
+    }
+
+    const query = this.model.find(queryFilter)
+      .sort({ startTime: 1 })
+      .populate('subjectId')
+      .populate('mentorId', 'fullName profilePicture');
 
     if (pagination) {
       query.skip(pagination.skip).limit(pagination.limit);
@@ -32,28 +43,50 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
     return query.exec();
   }
 
-  async countUpcomingByStudent(studentId: string): Promise<number> {
-    return this.model.countDocuments({
+  async countUpcomingByStudent(studentId: string, filter?: { startDate?: Date | undefined; endDate?: Date | undefined }): Promise<number> {
+    const queryFilter: any = {
       $or: [
         { studentId: studentId },
         { 'participants.studentId': studentId },
         { 'participants.userId': studentId }
       ],
-      status: { $in: ['scheduled', 'in_progress', 'rescheduling'] },
-      endTime: { $gte: new Date() }
-    }).exec();
+      status: { $in: ['scheduled', 'in_progress', 'rescheduling'] }
+    };
+
+    if (filter?.startDate) {
+      queryFilter.startTime = { $gte: filter.startDate };
+    } else {
+      queryFilter.endTime = { $gte: new Date() };
+    }
+
+    if (filter?.endDate) {
+      queryFilter.startTime = { ...queryFilter.startTime, $lte: filter.endDate };
+    }
+
+    return this.model.countDocuments(queryFilter).exec();
   }
 
-  async findUpcomingByMentor(mentorId: string, pagination?: { skip: number; limit: number }): Promise<ISession[]> {
-    const query = this.model.find({
+  async findUpcomingByMentor(mentorId: string, pagination?: { skip: number; limit: number }, filter?: { startDate?: Date | undefined; endDate?: Date | undefined }): Promise<ISession[]> {
+    const queryFilter: any = {
       mentorId: mentorId,
-      status: { $in: ['scheduled', 'in_progress'] },
-      endTime: { $gte: new Date() }
-    })
-    .sort({ startTime: 1 })
-    .populate('subjectId')
-    .populate('studentId', 'fullName profileImage')
-    .populate('participants.userId', 'fullName profileImage');
+      status: { $in: ['scheduled', 'in_progress'] }
+    };
+
+    if (filter?.startDate) {
+      queryFilter.startTime = { $gte: filter.startDate };
+    } else {
+      queryFilter.endTime = { $gte: new Date() };
+    }
+
+    if (filter?.endDate) {
+      queryFilter.startTime = { ...queryFilter.startTime, $lte: filter.endDate };
+    }
+
+    const query = this.model.find(queryFilter)
+      .sort({ startTime: 1 })
+      .populate('subjectId')
+      .populate('studentId', 'fullName profileImage')
+      .populate('participants.userId', 'fullName profileImage');
 
     if (pagination) {
       query.skip(pagination.skip).limit(pagination.limit);
@@ -61,12 +94,23 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
     return query.exec();
   }
 
-  async countUpcomingByMentor(mentorId: string): Promise<number> {
-    return this.model.countDocuments({
+  async countUpcomingByMentor(mentorId: string, filter?: { startDate?: Date | undefined; endDate?: Date | undefined }): Promise<number> {
+    const queryFilter: any = {
       mentorId: mentorId,
-      status: { $in: ['scheduled', 'in_progress'] },
-      endTime: { $gte: new Date() }
-    }).exec();
+      status: { $in: ['scheduled', 'in_progress'] }
+    };
+
+    if (filter?.startDate) {
+      queryFilter.startTime = { $gte: filter.startDate };
+    } else {
+      queryFilter.endTime = { $gte: new Date() };
+    }
+
+    if (filter?.endDate) {
+      queryFilter.startTime = { ...queryFilter.startTime, $lte: filter.endDate };
+    }
+
+    return this.model.countDocuments(queryFilter).exec();
   }
 
   async findByMentorAndDateRange(mentorId: string, startDate: Date, endDate: Date): Promise<ISession[]> {

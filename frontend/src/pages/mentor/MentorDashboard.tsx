@@ -8,9 +8,11 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { MentorLayout } from '../../components/mentor/MentorLayout';
 import { Table, type TableColumn } from '../../components/mentor/Table';
 import { fetchMentorTrialClasses, fetchMentorProfile, updateTrialClassStatus, fetchMentorCourses, fetchMentorAssignments, fetchMentorDashboardData } from "../../features/mentor/mentorThunk";
+import { fetchMentorUpcomingSessions, cancelSession } from "../../features/session/sessionThunk";
 import type { AppDispatch, RootState } from "../../app/store";
 import { isClassOverdue } from '../../utils/timeUtils';
 import { toast } from 'react-hot-toast';
+import { format, addHours, isAfter } from 'date-fns';
 
 interface Assignment {
   _id: string;
@@ -40,12 +42,14 @@ const MentorDashboard = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const { trialClasses, courses, assignments, loading, profile } = useSelector((state: RootState) => state.mentor);
+  const { sessions, loading: sessionLoading } = useSelector((state: RootState) => state.session);
 
   useEffect(() => {
     dispatch(fetchMentorDashboardData());
     dispatch(fetchMentorTrialClasses());
     dispatch(fetchMentorCourses());
     dispatch(fetchMentorAssignments());
+    dispatch(fetchMentorUpcomingSessions());
     if (!profile) {
       dispatch(fetchMentorProfile());
     }
@@ -78,18 +82,17 @@ const MentorDashboard = () => {
          toast.error('No meeting link available');
      }
   };
+  const handleCancelSession = (sessionId: string) => {
+    const reason = window.prompt("Please provide a reason for cancellation:");
+    if (reason) {
+        dispatch(cancelSession({ sessionId, reason }));
+    }
+  };
 
   const upcomingTrials = trialClasses
     .filter(tc => tc.status === 'assigned')
     .sort((a, b) => new Date(a.preferredDate).getTime() - new Date(b.preferredDate).getTime());
 
-  const regularStudentsData = courses.map(course => ({
-      ...course,
-      displayName: course.student?.fullName || (course.courseType === 'group' ? 'Group Batch' : 'Regular Student'),
-      gradeName: course.grade?.name || 'N/A',
-      subjectName: course.subject?.subjectName || 'N/A',
-      timeLabel: course.schedule?.timeSlot || course.timeSlot || 'N/A'
-  }));
 
   const assignmentColumns: TableColumn<Assignment>[] = [
     { header: 'Title', accessor: 'title' },
@@ -250,34 +253,61 @@ const MentorDashboard = () => {
           {/* Sidebar Area */}
           <div className="space-y-8">
             
-            {/* Regular Classes Overview */}
+            {/* Upcoming Regular Sessions */}
             <section className="bg-slate-900 text-white rounded-[2.5rem] shadow-xl overflow-hidden p-8">
                 <div className="flex items-center gap-4 mb-8">
                     <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
-                        <Users className="text-indigo-400" />
+                        <Calendar className="text-indigo-400" />
                     </div>
                     <div>
-                        <h3 className="font-black text-xl">Regular Students</h3>
-                        <p className="text-slate-400 text-sm font-medium">Ongoing session plans</p>
+                        <h3 className="font-black text-xl">Regular Sessions</h3>
+                        <p className="text-slate-400 text-sm font-medium">Your upcoming classes</p>
                     </div>
                 </div>
 
                 <div className="space-y-4">
-                    {regularStudentsData.length > 0 ? regularStudentsData.slice(0, 4).map((course) => (
-                        <div key={course._id} className="flex items-center justify-between p-4 rounded-3xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-black">
-                                    {course.displayName.charAt(0)}
+                    {sessionLoading ? (
+                        <div className="py-4 flex justify-center"><Loader size="sm" /></div>
+                    ) : sessions.length > 0 ? sessions.slice(0, 5).map((session) => {
+                        const canCancel = isAfter(new Date(session.startTime), addHours(new Date(), 48)) && session.status === 'scheduled';
+                        const isCancelled = session.status === 'cancelled';
+                        const studentName = typeof session.studentId === 'object' ? (session.studentId as any).fullName : 'Student';
+
+                        return (
+                            <div key={session.id} className={`flex items-center justify-between p-4 rounded-3xl border transition-colors ${
+                                isCancelled ? 'bg-red-500/10 border-red-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'
+                            }`}>
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black ${
+                                        isCancelled ? 'bg-red-500/20 text-red-400' : 'bg-indigo-500/20 text-indigo-400'
+                                    }`}>
+                                        {studentName.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <p className="font-black text-sm">{studentName}</p>
+                                        <p className="text-[10px] text-slate-400 uppercase tracking-wider">
+                                            {format(new Date(session.startTime), 'MMM do, p')}
+                                        </p>
+                                        <p className={`text-[10px] font-bold ${isCancelled ? 'text-red-400' : 'text-slate-500'}`}>
+                                            {session.status.toUpperCase()}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="font-black text-sm">{course.displayName}</p>
-                                    <p className="text-xs text-slate-400">{course.timeLabel}</p>
+                                <div className="flex items-center gap-2">
+                                    {canCancel && (
+                                        <button 
+                                            onClick={() => handleCancelSession(session.id)}
+                                            className="text-[10px] font-bold text-red-400 hover:text-red-300 px-2 py-1 rounded bg-red-500/10"
+                                        >
+                                            CANCEL
+                                        </button>
+                                    )}
+                                    <span className="text-indigo-400"><ChevronRight size={18} /></span>
                                 </div>
                             </div>
-                            <span className="text-indigo-400"><ChevronRight size={18} /></span>
-                        </div>
-                    )) : (
-                        <p className="text-slate-500 text-sm font-medium py-4">No regular courses assigned yet.</p>
+                        );
+                    }) : (
+                        <p className="text-slate-500 text-sm font-medium py-4 text-center">No regular sessions scheduled.</p>
                     )}
                 </div>
 

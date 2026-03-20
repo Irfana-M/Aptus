@@ -33,15 +33,22 @@ export interface AttendanceSummaryDto {
 
 export interface Session {
     id: string;
-    studentId: string | unknown; // Populated or ID
-    mentorId: string | unknown;   // Populated or ID
-    subjectId: string | unknown;  // Populated or ID
+    studentId: string | any; // Populated or ID
+    mentorId: string | any;   // Populated or ID
+    subjectId: string | any;  // Populated or ID
+    courseId?: string | any;
+    enrollmentId?: string | any;
     startTime: string; // ISO Date string
     endTime: string;   // ISO Date string
-    status: 'scheduled' | 'completed' | 'cancelled' | 'live';
-    cancelledBy?: 'student' | 'mentor' | 'admin';
+    status: 'scheduled' | 'completed' | 'cancelled' | 'live' | 'rescheduling' | 'in_progress';
+    cancelledBy?: 'student' | 'mentor' | 'admin' | null;
+    cancellationReason?: string | null;
     sessionType?: 'group' | 'one-to-one';
     meetingLink?: string;
     topic?: string;
     timeSlotId?: string;
+    // New fields for Rescheduling and Leave
+    isRescheduled?: boolean;
+    rescheduledTo?: string;
+    leaveRequestedAt?: string;
 }
