@@ -49,8 +49,15 @@ export class SessionService implements ISessionService {
   }
 
   async getStudentUpcomingSessionsWithEligibility(studentId: string): Promise<LeaveEligibilityResponse> {
-    const sessions = await this.sessionRepo.findUpcomingByStudent(studentId);
-    return this.leaveEligibilityService.computeStudentEligibility(sessions, new Date());
+    const now = new Date();
+    const thirtyDaysLater = new Date(now);
+    thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
+
+    const sessions = await this.sessionRepo.findUpcomingByStudent(studentId, undefined, { 
+      startDate: now, 
+      endDate: thirtyDaysLater 
+    });
+    return this.leaveEligibilityService.computeStudentEligibility(sessions, now);
   }
 
   async getMentorUpcomingSessions(mentorId: string): Promise<ISession[]> {
