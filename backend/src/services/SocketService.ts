@@ -32,7 +32,7 @@ interface SocketWithUser extends Socket {
 export class SocketService implements ISocketService {
   private _io!: Server;
   private static httpServer: HttpServer | null = null;
-
+  private userSocketMap = new Map<string, string>();
   constructor(
     @inject(TYPES.IVideoCallService) private _videoCallService: IVideoCallService,
     @inject(TYPES.IUserRoleService) private _userRoleService: IUserRoleService
@@ -152,12 +152,47 @@ export class SocketService implements ISocketService {
 
           const videoRoom = `call:${data.sessionId}`;
           const chatRoom = `chat:${data.sessionId}`;
+
+          const existingSocketId = this.userSocketMap.get(data.userId);
+          if (existingSocketId && existingSocketId !== socket.id) {
+            console.warn(`⚠️ Removing old socket for user ${data.userId}: ${existingSocketId}`);
+
+            const oldSocket = this._io.sockets.sockets.get(existingSocketId);
+            if (oldSocket) {
+              oldSocket.leave(`call:${data.sessionId}`);
+              oldSocket.disconnect(true);
+            }
+          }
+
+          // ✅ Save new socket
+          this.userSocketMap.set(data.userId, socket.id);
+
           
-          // Get existing members BEFORE joining
-          const existingParticipants = Array.from(this._io.sockets.adapter.rooms.get(videoRoom) || []);
-          
+
+          const roomSockets = Array.from(
+            this._io.sockets.adapter.rooms.get(videoRoom) || []
+          );
+
           await socket.join(videoRoom);
           await socket.join(chatRoom);
+          // 🔥 convert socketIds → userIds (unique users only)
+          const uniqueUserSockets: string[] = [];
+          const seenUsers = new Set<string>();
+
+
+          for (const sockId of roomSockets) {
+            const sock = this._io.sockets.sockets.get(sockId) as SocketWithUser;
+            const uid = sock?.user?.id;
+
+            if (uid && !seenUsers.has(uid)) {
+              seenUsers.add(uid);
+              uniqueUserSockets.push(sockId);
+            }
+          }
+
+          const existingParticipants = uniqueUserSockets;
+
+          
 
           console.log(`[JOIN-CALL] User ${socketUser.email} joined rooms: ${videoRoom}, ${chatRoom}. Existing: ${existingParticipants.length}`);
 
@@ -257,11 +292,11 @@ export class SocketService implements ISocketService {
         });
       });
 
-      socket.on('media-state-change', (data: { 
-        type: 'audio' | 'video', 
-        enabled: boolean, 
-        sessionId: string, 
-        toSocketId: string 
+      socket.on('media-state-change', (data: {
+        type: 'audio' | 'video',
+        enabled: boolean,
+        sessionId: string,
+        toSocketId: string
       }) => {
         console.log(`🎥 [MEDIA-STATE] ${data.type} is now ${data.enabled ? 'enabled' : 'disabled'} for ${socket.id}`);
         socket.to(data.toSocketId).emit('media-state-change', {
@@ -278,8 +313,16 @@ export class SocketService implements ISocketService {
       });
 
       socket.on('disconnect', () => {
-        console.log(`🔌 [DISCONNECT] Socket ${socket.id} disconnected`);
-        logger.info(`Client disconnected: ${socket.id}`);
+        logger.info(`🔌 [DISCONNECT] Socket ${socket.id} disconnected`);
+
+        // 🔥 Remove from userSocketMap
+        for (const [userId, sockId] of this.userSocketMap.entries()) {
+          if (sockId === socket.id) {
+            this.userSocketMap.delete(userId);
+            logger.info(`🧹 Removed user ${userId} from socket map`);
+            break;
+          }
+        }
       });
       socket.on('leave-room', (data: { sessionId: string }) => {
         const videoRoom = `call:${data.sessionId}`;
