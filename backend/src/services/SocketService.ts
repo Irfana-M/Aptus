@@ -182,11 +182,12 @@ export class SocketService implements ISocketService {
             userEmail: socketUser.email
           });
 
-          console.log(`[SERVER] [JOIN-SUCCESS] Emitting to ${socket.id} Session: ${data.sessionId}`);
+          console.log(`[SERVER] [JOIN-SUCCESS] Emitting to ${socket.id} Session: ${data.sessionId}, Mode: ${result.callMode}`);
           socket.emit('join-success', {
             room: videoRoom,
             socketId: socket.id,
-            existingParticipants
+            existingParticipants,
+            callMode: result.callMode // ADDED
           });
 
           logger.info("User joined call room", {
