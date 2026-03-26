@@ -264,9 +264,15 @@ const MentorStudentsPage: React.FC = () => {
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button 
-                                                        onClick={() => navigate(ROUTES.COMMON.VIDEO_CALL.replace(':trialClassId', cls.id))}
+                                                        onClick={() => {
+                                                            if (cls.type === 'Trial') {
+                                                                navigate(ROUTES.COMMON.VIDEO_CALL.replace(':trialClassId', cls.id));
+                                                            } else {
+                                                                navigate(ROUTES.MENTOR.CLASSROOM);
+                                                            }
+                                                        }}
                                                         className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"
-                                                        title="Launch Classroom"
+                                                        title={cls.type === 'Trial' ? "Launch Trial Classroom" : "Open Classroom Sessions"}
                                                     >
                                                         <Video size={18} />
                                                     </button>

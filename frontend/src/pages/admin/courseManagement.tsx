@@ -273,10 +273,19 @@ export const CreateOneToOneCourse: React.FC = () => {
       accessor: (row: Course) => {
         const dayNames = row.schedule?.days?.join(", ");
         const legacyDay = row.dayOfWeek !== undefined ? DAYS[row.dayOfWeek] : null;
+
+        // If summary is "Multiple Times", but we have slot details, show the first slot's time
+        const timeDisplay = (row.schedule?.timeSlot === "Multiple Times" && row.schedule?.slots?.[0])
+          ? `${row.schedule.slots[0].startTime}-${row.schedule.slots[0].endTime}`
+          : (row.schedule?.timeSlot || row.timeSlot);
+
+        // Create a hover title for different times
+        const fullScheduleTooltip = row.schedule?.slots?.map(s => `${s.day}: ${s.startTime}-${s.endTime}`).join('\n');
+
         return (
-          <div className="text-sm">
+          <div className="text-sm" title={fullScheduleTooltip}>
             <p className="font-medium">{dayNames || legacyDay || "No Day Set"}</p>
-            <p className="text-gray-500">{row.schedule?.timeSlot || row.timeSlot}</p>
+            <p className="text-gray-500">{timeDisplay}</p>
           </div>
         );
       },

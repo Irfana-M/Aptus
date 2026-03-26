@@ -125,7 +125,12 @@ export class MentorRequestService implements IMentorRequestService {
 
               // Construct Helper Schedule Object for Legacy Code compatibility
               const firstSlot = slots[0];
-              const timeSlotSummary = slots.length > 1 ? "Multiple Times" : (firstSlot ? `${firstSlot.startTime}-${firstSlot.endTime}` : "Multiple Times");
+              const isUnformTime = firstSlot 
+                ? slots.every(s => s.startTime === firstSlot.startTime && s.endTime === firstSlot.endTime)
+                : true;
+              const timeSlotSummary = (slots.length > 1 && !isUnformTime) 
+                ? "Multiple Times" 
+                : (firstSlot ? `${firstSlot.startTime}-${firstSlot.endTime}` : "Multiple Times");
 
               schedule = {
                 days: slots.map(slot => slot.day),

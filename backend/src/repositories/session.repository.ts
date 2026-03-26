@@ -12,6 +12,16 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
     super(SessionModel);
   }
 
+  async findById(id: string): Promise<ISession | null> {
+    return this.model.findById(id)
+      .populate('studentId', 'fullName profileImage')
+      .populate('mentorId', 'fullName profilePicture')
+      .populate('subjectId', 'subjectName')
+      .populate('participants.userId', 'fullName profileImage')
+      .lean()
+      .exec() as unknown as ISession | null;
+  }
+
   async findUpcomingByStudent(studentId: string, pagination?: { skip: number; limit: number }, filter?: { startDate?: Date | undefined; endDate?: Date | undefined }): Promise<ISession[]> {
     const queryFilter: any = {
       $or: [
