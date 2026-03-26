@@ -83,9 +83,17 @@ export class SessionService implements ISessionService {
     return this.sessionRepo.create(data);
   }
 
-  async getSessionById(sessionId: string): Promise<ISession | null> {
+  async getSessionById(sessionId: string): Promise<any | null> {
     const session = await this.sessionRepo.findById(sessionId);
-    return session;
+    if (!session) return null;
+
+    // Alias fields to match frontend expectations
+    return {
+      ...session,
+      student: session.studentId,
+      mentor: session.mentorId,
+      subject: session.subjectId
+    };
   }
  
   async updateSessionStatus(sessionId: string, status: string): Promise<ISession | null> {

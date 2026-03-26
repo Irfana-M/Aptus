@@ -2,7 +2,6 @@ import { useEffect, useRef, useMemo, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { useVideoCall } from "../context/videoCallContextStore";
-import type { RootState } from "../app/store";
 import { selectCurrentUser } from "../features/auth/authSelector";
 import { prepareForVideoCall } from "../utils/videoCallPrep";
 import { setError } from "../features/videoCall/videoCallSlice";
@@ -15,6 +14,7 @@ import { sessionApi } from "../features/session/sessionApi";
 import { ROUTES } from "../constants/routes.constants";
 import { Loader } from "../components/ui/Loader";
 import { TokenManager } from "../utils/tokenManager";
+
 // Classroom Components
 import { ClassroomLayout } from "../features/classroom/components/ClassroomLayout";
 import { ClassroomSidebar } from "../features/classroom/components/ClassroomSidebar";
@@ -26,29 +26,24 @@ import type { TrialClassResponse } from "../types/trial.types";
 
 export default function VideoCallRoom() {
   const { trialClassId, sessionId } = useParams<{
-    trialClassId: string;
-    sessionId: string;
+    trialClassId?: string;
+    sessionId?: string;
   }>();
 
-  const effectiveId = trialClassId || sessionId;
   const isTrialRoute = !!trialClassId;
+  const effectiveId = trialClassId || sessionId;
 
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
 
   const [isPreparing, setIsPreparing] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
-  const [joinAttempted, setJoinAttempted] = useState(false);
-  const [hasUserJoined, setHasUserJoined] = useState(false);
   const [trialDetails, setTrialDetails] = useState<TrialClassResponse | null>(null);
-  const [sessionDetails, setSessionDetails] = useState<any>(null); // For regular sessions
+  const [sessionDetails, setSessionDetails] = useState<any>(null);
   const [callDuration, setCallDuration] = useState(0);
 
-  // redux / auth
+  // Redux
   const authUser = useSelector(selectCurrentUser);
-  const roleFromStore = useSelector((state: RootState) => state.role.role);
-  const userIdFromStore = useSelector((state: RootState) => state.role.userId);
-  const roleLoading = useSelector((state: RootState) => state.role.loading);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const hasJoinedRef = useRef(false);
@@ -73,6 +68,7 @@ export default function VideoCallRoom() {
   const userId = currentUser?.userId ?? "";
   const userType = currentUser?.userType ?? "student";
 
+  // Participant list
   const participantDetails = useMemo(() => {
     const list = [
       {
@@ -101,72 +97,45 @@ export default function VideoCallRoom() {
     }
 
     if (sessionDetails) {
-        if (sessionDetails.participants && Array.isArray(sessionDetails.participants)) {
-            sessionDetails.participants.forEach((p: any) => {
-                const pUserId = p.userId?._id || p.userId?.id || p.userId;
-                if (pUserId && pUserId !== userId) {
-                    list.push({
-                        id: pUserId,
-                        name: p.userId?.fullName || (p.role === 'mentor' ? 'Mentor' : 'Student'),
-                        role: p.role as "mentor" | "student"
-                    });
-                }
-            });
-        } else {
-            if (userType === 'mentor' && sessionDetails.studentId) {
-                list.push({
-                    id: sessionDetails.studentId?._id || sessionDetails.studentId?.id || sessionDetails.studentId,
-                    name: sessionDetails.studentId?.fullName || 'Student',
-                    role: 'student' as const
-                });
-            } else if (userType === 'student' && sessionDetails.mentorId) {
-                list.push({
-                    id: sessionDetails.mentorId?._id || sessionDetails.mentorId?.id || sessionDetails.mentorId,
-                    name: sessionDetails.mentorId?.fullName || 'Mentor',
-                    role: 'mentor' as const
-                });
-            }
-        }
+      if (sessionDetails.student) {
+        list.push({
+          id: sessionDetails.student._id || sessionDetails.student,
+          name: sessionDetails.student.fullName || "Student",
+          role: "student" as const,
+        });
+      }
+      if (sessionDetails.mentor) {
+        list.push({
+          id: sessionDetails.mentor._id || sessionDetails.mentor,
+          name: sessionDetails.mentor.fullName || "Mentor",
+          role: "mentor" as const,
+        });
+      }
     }
 
     return list;
-  }, [currentUser, trialDetails, sessionDetails, userType, userId]);
+  }, [currentUser, trialDetails, sessionDetails, userType]);
 
+  // Redirect if no user
   useEffect(() => {
     if (!currentUser) {
-      const t = setTimeout(() => {
-        if (!currentUser) navigate(ROUTES.LOGIN);
-      }, 600);
+      const t = setTimeout(() => navigate(ROUTES.LOGIN), 600);
       return () => clearTimeout(t);
     }
   }, [currentUser, navigate]);
 
-  const stableUserId = currentUser?.userId;
-  const stableUserType = currentUser?.userType;
-
+  // Prepare + Fetch details
   useEffect(() => {
-    if (!stableUserId || !effectiveId) return;
-    if (hasInitializedRef.current) {
-      if (isPreparing && !roleLoading && roleFromStore) {
-        setIsPreparing(false);
-      }
-      return;
-    }
+    if (!userId || !effectiveId || hasInitializedRef.current) return;
 
     let mounted = true;
 
     const prepareCall = async () => {
-      console.log("🔄 [VideoCall] Starting initialization sequence...", {
-        stableUserId,
-        stableUserType,
-        effectiveId,
-        isTrialRoute
-      });
       hasInitializedRef.current = true;
       setIsPreparing(true);
       setInitError(null);
 
-      if (!prepareForVideoCall(stableUserType)) {
+      if (!prepareForVideoCall(userType)) {
         const msg = "Failed to prepare video call environment.";
         dispatch(setError(msg));
         setInitError(msg);
@@ -175,78 +144,34 @@ export default function VideoCallRoom() {
       }
 
       try {
-        console.log("🔄 [VideoCall] Fetching details...");
         if (isTrialRoute && trialClassId) {
-          try {
-            const details = await studentTrialApi.getTrialClassById(trialClassId);
-            if (mounted) {
-              setTrialDetails(details);
-              if (details.status === "completed" || details.status === "cancelled") {
-                navigate(userType === "student" 
-                  ? ROUTES.COMMON.TRIAL_FEEDBACK.replace(":trialClassId", trialClassId)
-                  : ROUTES.MENTOR.DASHBOARD);
-                return;
-              }
-            }
-          } catch (fetchError) {
-            console.warn("⚠️ Could not fetch trial details:", fetchError);
-          }
+          const details = await studentTrialApi.getTrialClassById(trialClassId);
+          if (mounted) setTrialDetails(details);
         } else if (sessionId) {
-          console.log("🔄 [VideoCall] Fetching regular session details...");
-          try {
-            const response = await sessionApi.getSessionById(sessionId);
-            if (mounted) {
-              setSessionDetails(response.data || response);
-            }
-          } catch (fetchError) {
-            console.warn("⚠️ Could not fetch regular session details:", fetchError);
-          }
+          const response = await sessionApi.getSessionById(sessionId);
+          if (mounted) setSessionDetails(response.data || response);
         }
 
-        console.log("🔄 [VideoCall] Verifying role...");
-        await dispatch(verifyUserRole(stableUserType)).unwrap();
-        console.log("✅ [VideoCall] Initialization successful");
-      } catch (err: unknown) {
-        const error = err as Error;
-        console.warn("❌ [VideoCall] Initialization failed:", error);
-        if (mounted) {
-          setInitError(error.message || "Failed to verify user permissions.");
-          hasInitializedRef.current = false;
-        }
+        await dispatch(verifyUserRole(userType)).unwrap();
+      } catch (err: any) {
+        console.warn("Initialization failed:", err);
+        if (mounted) setInitError(err.message || "Failed to load session");
       } finally {
-        if (mounted) {
-          console.log("🔄 [VideoCall] Initialization sequence complete");
-          setIsPreparing(false);
-        }
+        if (mounted) setIsPreparing(false);
       }
     };
 
     prepareCall();
 
-    return () => {
-      mounted = false;
-    };
-  }, [
-    stableUserId,
-    effectiveId,
-    trialClassId,
-    sessionId,
-    isTrialRoute,
-    userType,
-    stableUserType,
-    dispatch,
-    roleLoading,
-    roleFromStore,
-    isPreparing,
-    navigate,
-  ]);
+    return () => { mounted = false; };
+  }, [userId, effectiveId, trialClassId, sessionId, isTrialRoute, userType, dispatch, navigate]);
 
   const {
     localStream,
     remoteStreams,
     participants,
     isConnected,
-    error,
+    error: contextError,
     isMuted,
     isVideoOff,
     joinCall,
@@ -259,51 +184,21 @@ export default function VideoCallRoom() {
     socket,
   } = useVideoCall();
 
+  // Join the call
   useEffect(() => {
-    const activeUserId = userIdFromStore || stableUserId || userId;
-    const activeRole = roleFromStore || stableUserType || userType;
+    if (isPreparing || !effectiveId || !userId || !userType || hasJoinedRef.current) return;
 
-    if (
-      isPreparing ||
-      roleLoading ||
-      !effectiveId ||
-      !activeUserId ||
-      !activeRole||
-      !hasUserJoined
-    )
-      return;
-    
-    if (!hasJoinedRef.current) {
-      console.log("🚀 [VideoCall] Attempting to join call...", {
-        effectiveId,
-        userId: activeUserId,
-        userType: activeRole,
-      });
-      hasJoinedRef.current = true;
-      setJoinAttempted(true);
+    console.log("🚀 [VideoCall] Attempting to join call...", { effectiveId, userId, userType });
+    hasJoinedRef.current = true;
 
-      joinCall({
-        sessionId: effectiveId,
-        userId: activeUserId as string,
-        userType: activeRole as "mentor" | "student",
-      });
-    }
-  }, [
-    joinAttempted,
-    isPreparing,
-    roleLoading,
-    effectiveId,
-    userId,
-    stableUserId,
-    stableUserType,
-    userType,
-    roleFromStore,
-    userIdFromStore,
-    joinCall,
-    navigate,
-    hasUserJoined
-  ]);
+    joinCall({
+      sessionId: effectiveId,
+      userId,
+      userType: userType as "mentor" | "student",
+    });
+  }, [isPreparing, effectiveId, userId, userType, joinCall]);
 
+  // Attach local video
   useEffect(() => {
     if (localVideoRef.current && localStream) {
       localVideoRef.current.srcObject = localStream;
@@ -311,21 +206,18 @@ export default function VideoCallRoom() {
     }
   }, [localStream]);
 
+  // Call duration timer
   useEffect(() => {
-    let timer: ReturnType<typeof setInterval>;
+    let timer: NodeJS.Timeout;
     if (isConnected) {
-      timer = setInterval(() => {
-        setCallDuration((prev) => prev + 1);
-      }, 1000);
+      timer = setInterval(() => setCallDuration((prev) => prev + 1), 1000);
     }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, [isConnected]);
 
   const isTrialSession = useMemo(() => {
     return isTrialRoute || !!(trialDetails?.trialClassId || trialDetails?.sessionType === "trial");
-  }, [trialDetails, isTrialRoute]);
+  }, [isTrialRoute, trialDetails]);
 
   const handleEndCall = useCallback(async () => {
     if (hasEndedRef.current) return;
@@ -339,42 +231,33 @@ export default function VideoCallRoom() {
         } else {
           await dispatch(updateTrialClassStatus({ id: trialClassId, status: "completed" }));
         }
-      } else if (!isTrialSession && sessionId && userType === "mentor") {
+      } else if (sessionId && userType === "mentor") {
         await sessionApi.completeSession(sessionId);
       }
-
       endCall();
     } catch (e) {
-        console.error("❌ End call error:", e);
+      console.error("End call error:", e);
     } finally {
       if (userType === "student") {
-        if (isTrialSession && trialClassId) {
-          navigate(ROUTES.COMMON.TRIAL_FEEDBACK.replace(":trialClassId", trialClassId));
-        } else {
-          navigate(ROUTES.STUDENT.DASHBOARD);
-        }
+        navigate(isTrialSession && trialClassId
+          ? ROUTES.COMMON.TRIAL_FEEDBACK.replace(":trialClassId", trialClassId)
+          : ROUTES.STUDENT.DASHBOARD);
       } else {
-        if (!isTrialSession && sessionId) {
-          navigate(`${ROUTES.MENTOR.STUDY_MATERIALS}?sessionId=${sessionId}`);
-        } else {
-          navigate(ROUTES.MENTOR.DASHBOARD);
-        }
+        navigate(sessionId
+          ? `${ROUTES.MENTOR.STUDY_MATERIALS}?sessionId=${sessionId}`
+          : ROUTES.MENTOR.DASHBOARD);
       }
     }
-  }, [
-    endCall,
-    navigate,
-    userType,
-    trialClassId,
-    sessionId,
-    isTrialSession,
-    dispatch,
-  ]);
+  }, [endCall, navigate, userType, trialClassId, sessionId, isTrialSession, dispatch]);
 
+  // Socket "call-ended" listener - FIXED CLEANUP
   useEffect(() => {
     if (!socket) return;
+
     const onCallEnded = () => handleEndCall();
     socket.on("call-ended", onCallEnded);
+
+    // Proper cleanup
     return () => {
       socket.off("call-ended", onCallEnded);
     };
@@ -389,7 +272,10 @@ export default function VideoCallRoom() {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Initialization Failed</h2>
           <p className="text-gray-600 mb-8">{initError}</p>
-          <button onClick={() => window.location.reload()} className="w-full bg-[#1A1A80] text-white font-bold py-3.5 rounded-xl transition-all shadow-lg active:scale-[0.98]">
+          <button 
+            onClick={() => window.location.reload()} 
+            className="w-full bg-[#1A1A80] text-white font-bold py-3.5 rounded-xl hover:bg-[#2A2A90]"
+          >
             Retry Connection
           </button>
         </div>
@@ -404,27 +290,16 @@ export default function VideoCallRoom() {
       </div>
     );
   }
-  
-  if (!hasUserJoined) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-[#F4FBFB]">
-        <div className="bg-white p-10 rounded-3xl shadow-lg text-center">
-          <h2 className="text-2xl font-bold mb-6">Ready to Join?</h2>
-          <button onClick={() => setHasUserJoined(true)} className="px-8 py-4 bg-[#3CB4B4] text-white font-bold rounded-xl hover:bg-[#329898]">
-            Join Class
-          </button>
-        </div>
-      </div>
-    );
-  }
 
-  if (error) {
+  if (contextError) {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-900 text-white">
         <div className="text-center p-8 bg-white/10 backdrop-blur rounded-2xl">
           <h2 className="text-2xl font-bold mb-2">Call Failed</h2>
-          <p className="text-gray-300 mb-6">{error}</p>
-          <button onClick={handleEndCall} className="px-6 py-3 bg-[#3CB4B4] text-white rounded-lg font-bold transition">Back to Dashboard</button>
+          <p className="text-gray-300 mb-6">{contextError}</p>
+          <button onClick={handleEndCall} className="px-6 py-3 bg-[#3CB4B4] text-white rounded-lg font-bold">
+            Back to Dashboard
+          </button>
         </div>
       </div>
     );
@@ -451,18 +326,14 @@ export default function VideoCallRoom() {
             duration={callDuration}
             status={status}
           />
+
           <div className="bg-white rounded-3xl p-8 shadow-sm">
             <h2 className="text-xl font-bold text-gray-800 mb-2">
-              {trialDetails?.subject?.subjectName || sessionDetails?.subjectId?.subjectName || 
+              {trialDetails?.subject?.subjectName || 
+               sessionDetails?.subject?.subjectName || 
                (isTrialSession ? "Aptus Trial Session" : "Aptus Live Session")}
             </h2>
             <h3 className="text-sm font-bold text-gray-800 mb-4">Personalized Mentoring Session</h3>
-            <div className="space-y-1 mt-6">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                {isTrialSession ? "Aptus Trial Session" : "Aptus Live Session"}
-              </span>
-              <h1 className="text-2xl font-black text-gray-900 leading-tight">Experience the <span className="text-[#3CB4B4]">Future</span> of Online Learning</h1>
-            </div>
           </div>
         </div>
       }
@@ -472,7 +343,7 @@ export default function VideoCallRoom() {
           currentUser={{
             id: currentUser?.userId || "",
             name: currentUser?.name || "User",
-            role: currentUser?.userType === "mentor" ? "Mentor" : "Student",
+            role: userType === "mentor" ? "Mentor" : "Student",
           }}
           participants={participantDetails}
           onFeedback={
