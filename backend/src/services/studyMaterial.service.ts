@@ -352,11 +352,14 @@ export class StudyMaterialService implements IStudyMaterialService {
       const assignedStudentIds = assignment.assignmentDetails?.assignedTo || [];
       const submissions = await this._submissionRepo.findByMaterialId(assignmentId);
       
-      // Use studentId._id or studentId depending on whether it's populated
-      const submissionMap = new Map(submissions.map(s => {
-        const sId = (s.studentId as any)?._id ? (s.studentId as any)._id.toString() : s.studentId.toString();
-        return [sId, s];
-      }));
+    const submissionMap = new Map(
+       submissions
+          .filter(s => s.studentId)
+         .map(s => {
+           const sId = (s.studentId as any)._id ? (s.studentId as any)._id.toString() : s.studentId.toString();
+           return [sId, s];
+          })
+      );
 
       for (const studentId of assignedStudentIds) {
         const studentIdStr = studentId.toString();

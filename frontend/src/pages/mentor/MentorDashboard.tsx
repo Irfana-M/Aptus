@@ -271,7 +271,7 @@ const MentorDashboard = () => {
                     ) : sessions.length > 0 ? sessions.slice(0, 5).map((session) => {
                         const canCancel = isAfter(new Date(session.startTime), addHours(new Date(), 48)) && session.status === 'scheduled';
                         const isCancelled = session.status === 'cancelled';
-                        const studentName = typeof session.studentId === 'object' ? (session.studentId as any).fullName : 'Student';
+                        const studentName = (session.studentId as any)?.fullName || 'Student';
 
                         return (
                             <div key={session.id} className={`flex items-center justify-between p-4 rounded-3xl border transition-colors ${
