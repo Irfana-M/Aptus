@@ -68,53 +68,62 @@ export default function VideoCallRoom() {
   const userId = currentUser?.userId ?? "";
   const userType = currentUser?.userType ?? "student";
 
-  // Participant list
-  const participantDetails = useMemo(() => {
-    const list = [
-      {
-        id: currentUser?.userId || "me",
-        name: currentUser?.name || "You",
-        role: currentUser?.userType || ("student" as const),
-      },
-    ];
+// Participant list for both trial and regular sessions
+const participantDetails = useMemo(() => {
+  const list = [
+    {
+      id: currentUser?.userId || "me",
+      name: currentUser?.name || "You",
+      role: currentUser?.userType || ("student" as const),
+    },
+  ];
 
-    if (trialDetails) {
-      if (userType === "student" && trialDetails.mentor) {
-        const mentor = trialDetails.mentor;
-        list.push({
-          id: typeof mentor === "string" ? mentor : mentor.id,
-          name: typeof mentor === "string" ? "Mentor" : mentor.name,
-          role: "mentor" as const,
-        });
-      } else if (userType === "mentor" && trialDetails.student) {
-        const student = trialDetails.student;
-        list.push({
-          id: typeof student === "string" ? student : student.id,
-          name: typeof student === "string" ? "Student" : student.fullName,
-          role: "student" as const,
-        });
-      }
+  // Helper to avoid adding the current user again
+  const addParticipantIfNotMe = (id: string, name: string, role: "student" | "mentor") => {
+    if (id && id !== userId) {
+      list.push({ id, name, role });
     }
+  };
 
-    if (sessionDetails) {
-      if (sessionDetails.student) {
-        list.push({
-          id: sessionDetails.student._id || sessionDetails.student,
-          name: sessionDetails.student.fullName || "Student",
-          role: "student" as const,
-        });
-      }
-      if (sessionDetails.mentor) {
-        list.push({
-          id: sessionDetails.mentor._id || sessionDetails.mentor,
-          name: sessionDetails.mentor.fullName || "Mentor",
-          role: "mentor" as const,
-        });
-      }
+  if (trialDetails) {
+    if (userType === "student" && trialDetails.mentor) {
+      const m = trialDetails.mentor;
+      addParticipantIfNotMe(
+        typeof m === "string" ? m : m.id,
+        typeof m === "string" ? "Mentor" : m.name,
+        "mentor"
+      );
+    } else if (userType === "mentor" && trialDetails.student) {
+      const s = trialDetails.student;
+      addParticipantIfNotMe(
+        typeof s === "string" ? s : s.id,
+        typeof s === "string" ? "Student" : s.fullName,
+        "student"
+      );
     }
+  }
 
-    return list;
-  }, [currentUser, trialDetails, sessionDetails, userType]);
+  if (sessionDetails) {
+    if (sessionDetails.student) {
+      const s = sessionDetails.student;
+      addParticipantIfNotMe(
+        s._id || s.id || s,
+        s.fullName || "Student",
+        "student"
+      );
+    }
+    if (sessionDetails.mentor) {
+      const m = sessionDetails.mentor;
+      addParticipantIfNotMe(
+        m._id || m.id || m,
+        m.fullName || "Mentor",
+        "mentor"
+      );
+    }
+  }
+
+  return list;
+}, [currentUser, userId, trialDetails, sessionDetails, userType]);
 
   // Redirect if no user
   useEffect(() => {
@@ -250,14 +259,13 @@ export default function VideoCallRoom() {
     }
   }, [endCall, navigate, userType, trialClassId, sessionId, isTrialSession, dispatch]);
 
-  // Socket "call-ended" listener - FIXED CLEANUP
+  // Socket "call-ended" listener
   useEffect(() => {
     if (!socket) return;
 
     const onCallEnded = () => handleEndCall();
     socket.on("call-ended", onCallEnded);
 
-    // Proper cleanup
     return () => {
       socket.off("call-ended", onCallEnded);
     };
