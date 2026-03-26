@@ -99,136 +99,94 @@ export class VideoCallService implements IVideoCallService {
     }
   }
 
+async joinCall(
+  data: JoinCallRequestDto
+): Promise<{ success: boolean; callMode?: "one-to-one" | "group"; error?: string }> {
+  try {
+    fileLogger(`🎥 JOIN CALL REQUEST - User: ${data.userId}, Type: ${data.userType}, Session: ${data.sessionId}`);
+    logger.info(`🎥 JOIN CALL REQUEST - User: ${data.userId}, Type: ${data.userType}, Session: ${data.sessionId}`);
 
-  async joinCall(
-    data: JoinCallRequestDto
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
-      fileLogger(`🎥 JOIN CALL REQUEST - User: ${data.userId}, Type: ${data.userType}, Session: ${data.sessionId}`);
-      logger.info(`🎥 JOIN CALL REQUEST - User: ${data.userId}, Type: ${data.userType}, Session: ${data.sessionId}`);
+    const userVerification = await this._userRoleService.verifyUserRole(
+      data.userId,
+      data.userType
+    );
 
+    if (!userVerification.success) {
+      fileLogger(`❌ User verification failed: ${userVerification.error}`);
+      logger.warn(`❌ User verification failed: ${userVerification.error}`);
+      return { success: false, error: userVerification.error || "User verification failed" };
+    }
 
-      const userVerification = await this._userRoleService.verifyUserRole(
-        data.userId,
-        data.userType
-      );
+    const authCheck = await this._userRoleService.verifyTrialClassAuthorization(
+      data.sessionId,
+      data.userId,
+      data.userType
+    );
 
-      if (!userVerification.success) {
-        fileLogger(`❌ User verification failed: ${userVerification.error}`);
-        logger.warn(`❌ User verification failed: ${userVerification.error}`);
-        return {
-          success: false,
-          error: userVerification.error || "User verification failed"
-        };
-      }
+    if (!authCheck.authorized) {
+      logger.warn(`❌ Unauthorized: ${authCheck.error}`);
+      return { success: false, error: `Auth failure: ${authCheck.error || "Unauthorized to join this call"}` };
+    }
 
-      logger.info(`✅ User verified: ${userVerification.user?.email} as ${data.userType}`);
+    let videoCall = await this._videoCallRepo.findBySessionId(data.sessionId);
 
-
-      const authCheck = await this._userRoleService.verifyTrialClassAuthorization(
-        data.sessionId,
-        data.userId,
-        data.userType
-      );
-
-      if (!authCheck.authorized) {
-        console.warn(`[VideoCallService] ❌ Unauthorized join attempt by ${data.userId} for session ${data.sessionId}: ${authCheck.error}`);
-        logger.warn(`❌ Unauthorized: ${authCheck.error}`);
-        return {
-          success: false,
-          error: `Auth failure: ${authCheck.error || "Unauthorized to join this call"}`
-        };
-      }
-
-      console.log(`[VideoCallService] ✅ User ${data.userId} authorized for session ${data.sessionId}`);
-      logger.info(`✅ User authorized for session ${data.sessionId}`);
-
-
-      let videoCall = await this._videoCallRepo.findBySessionId(
-        data.sessionId
-      );
-
-      if (!videoCall) {
-        logger.info(`📹 No existing call found - creating new VideoCall for session ${data.sessionId}`);
-
+    if (!videoCall) {
+      logger.info(`📹 No existing call found - creating new VideoCall for session ${data.sessionId}`);
 
       let meetLink = (authCheck.trialClass as { meetLink?: string })?.meetLink;
-
-if (!meetLink || typeof meetLink !== "string" || meetLink.trim() === "") {
-  meetLink = this._generateMeetLink(data.sessionId);
-
-  if (!(authCheck as unknown as { isSession?: boolean }).isSession) {
-    await this._trialClassRepo.updateById(data.sessionId, { meetLink });
-  } else {
-    logger.info(`ℹ️ Session detected, skipping TrialClass update for ${data.sessionId}`);
-  }
-
-  logger.info(`🔗 Generated meet link: ${meetLink}`);
-}
-
-logger.info("🚀 Creating VideoCall (JOIN) with:", {
-  sessionId: data.sessionId,
-  meetLink,
-  userId: data.userId,
-  userType: data.userType,
-});
-
-        videoCall = await this._videoCallRepo.create({
-          sessionId: new Types.ObjectId(data.sessionId),
-          callStatus: "active",
-          meetLink,
-        });
-
-        logger.info(`✅ Video call created by ${data.userType} for session ${data.sessionId}, CallID: ${videoCall._id}`);
-      } else {
-        logger.info(`📹 Found existing VideoCall: ${videoCall._id}, Status: ${videoCall.callStatus}`);
+      if (!meetLink || typeof meetLink !== "string" || meetLink.trim() === "") {
+        meetLink = this._generateMeetLink(data.sessionId);
+        if (!(authCheck as unknown as { isSession?: boolean }).isSession) {
+          await this._trialClassRepo.updateById(data.sessionId, { meetLink });
+        } else {
+          logger.info(`ℹ️ Session detected, skipping TrialClass update for ${data.sessionId}`);
+        }
       }
 
-
-      if (videoCall.callStatus !== "active") {
-        logger.warn(`❌ Call status is ${videoCall.callStatus}, not active`);
-        return { success: false, error: `Call is ${videoCall.callStatus}` };
-      }
-
-
-      const participantData = {
-        userId: data.userId,
-        userType: data.userType,
-        socketId: data.socketId,
-      };
-
-      logger.info(`👤 Adding participant ${data.userId} (${data.userType}) to call ${videoCall._id}`);
-      await this._videoCallRepo.addParticipant(
-        data.sessionId,
-        participantData
-      );
-
-      logger.info(`✅ Participant added successfully`);
-
-
-      try {
-        const sessionModel = (authCheck as unknown as { isSession?: boolean }).isSession ? 'Session' : 'TrialClass';
-
-        await this._attendanceService.markPresent(data.sessionId, data.userId, sessionModel);
-        logger.info(`📝 Attendance marked for ${data.userId} in ${sessionModel} ${data.sessionId}`);
-      } catch (attError) {
-        logger.error(`⚠️ Failed to auto-mark attendance for ${data.sessionId}: ${attError}`);
-      }
-
-      return { success: true };
-
-    } catch (error) {
-      logger.error("❌ Error joining call", error);
-
-
-      if (error instanceof AppError) {
-        return { success: false, error: error.message };
-      }
-
-      return { success: false, error: (error as Error).message };
+      videoCall = await this._videoCallRepo.create({
+        sessionId: new Types.ObjectId(data.sessionId),
+        callStatus: "active",
+        meetLink,
+      });
     }
-  }
 
+    if (videoCall.callStatus !== "active") {
+      return { success: false, error: `Call is ${videoCall.callStatus}` };
+    }
+
+    const participantData = {
+      userId: data.userId,
+      userType: data.userType,
+      socketId: data.socketId,
+    };
+
+    await this._videoCallRepo.addParticipant(data.sessionId, participantData);
+
+    try {
+      const sessionModel = (authCheck as unknown as { isSession?: boolean }).isSession ? 'Session' : 'TrialClass';
+      await this._attendanceService.markPresent(data.sessionId, data.userId, sessionModel);
+    } catch (attError) {
+      logger.error(`⚠️ Failed to auto-mark attendance: ${attError}`);
+    }
+
+    // ADDED: Determine callMode for frontend (using real Session field)
+    let callMode: "one-to-one" | "group" = "one-to-one";
+    if ((authCheck as any).isSession && (authCheck as any).trialClass?.sessionType === "group") {
+      callMode = "group";
+    }
+
+    logger.info(`✅ Join successful. CallMode: ${callMode} for session ${data.sessionId}`);
+
+    return { success: true, callMode };
+
+  } catch (error) {
+    logger.error("❌ Error joining call", error);
+    if (error instanceof AppError) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: (error as Error).message };
+  }
+}
 
   async endCall(data: CallEndedDto): Promise<{ success: boolean }> {
     try {
