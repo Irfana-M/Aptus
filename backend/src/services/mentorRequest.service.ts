@@ -4,6 +4,7 @@ import { type IMentorAssignmentRequest } from "../models/mentorAssignmentRequest
 import { NotificationService } from "./NotificationService.js";
 import { InternalEventEmitter } from "../utils/InternalEventEmitter.js";
 import { EVENTS } from "../utils/InternalEventEmitter.js";
+import { combineISTToUTC } from "../utils/time.util.js";
 import { AppError } from "../utils/AppError.js";
 import { HttpStatusCode } from "../constants/httpStatus.js";
 import { logger } from "../utils/logger.js";
@@ -540,14 +541,8 @@ export class MentorRequestService implements IMentorRequestService {
             if (baseDate <= now) baseDate.setDate(baseDate.getDate() + 7);
             baseDate.setDate(baseDate.getDate() + (i * 7));
 
-            const [sHour, sMin] = (slot.startTime || "10:00").split(':').map(n => parseInt(n, 10));
-            const [eHour, eMin] = (slot.endTime || "11:00").split(':').map(n => parseInt(n, 10));
-
-            const startDateTime = new Date(baseDate);
-            startDateTime.setHours(sHour || 10, sMin || 0, 0, 0);
-
-            const endDateTime = new Date(baseDate);
-            endDateTime.setHours(eHour || 11, eMin || 0, 0, 0);
+            const startDateTime = combineISTToUTC(baseDate, slot.startTime || "10:00");
+            const endDateTime = combineISTToUTC(baseDate, slot.endTime || "11:00");
 
             // --- ENFORCE LIMITS START ---
             // --- ENFORCE LIMITS START ---

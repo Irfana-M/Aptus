@@ -19,6 +19,7 @@ import { AppError } from "../utils/AppError.js";
 import { HttpStatusCode } from "../constants/httpStatus.js";
 import { STUDENT_CANCEL_CUTOFF_HOURS } from "../config/leavePolicy.config.js";
 import { BOOKING_STATUS, SESSION_STATUS } from "../constants/status.constants.js";
+import { combineISTToUTC } from "../utils/time.util.js";
 
 @injectable()
 export class SessionService implements ISessionService {
@@ -358,26 +359,10 @@ export class SessionService implements ISessionService {
 
       // If no direct ID but we have details (template slot), ensure concrete slot exists
       if (!effectiveSlotId && slotDetails) {
-        const startParts = slotDetails.startTime.split(':');
-        const endParts = slotDetails.endTime.split(':');
-        
         const targetDate = new Date(slotDetails.date);
         
-        const startParams = new Date(targetDate);
-        startParams.setUTCHours(
-          parseInt(startParts[0] || '0') - 5,  // Subtract 5 hours for IST offset
-          parseInt(startParts[1] || '0') - 30,  // Subtract 30 minutes for IST offset
-          0,
-          0
-        );
-
-        const endParams = new Date(targetDate);
-        endParams.setUTCHours(
-          parseInt(endParts[0] || '0') - 5,
-          parseInt(endParts[1] || '0') - 30,
-          0,
-          0
-        );
+        const startParams = combineISTToUTC(targetDate, slotDetails.startTime);
+        const endParams = combineISTToUTC(targetDate, slotDetails.endTime);
 
         logger.info(`Converting IST to UTC: ${slotDetails.startTime} IST -> ${startParams.toISOString()}`);
 

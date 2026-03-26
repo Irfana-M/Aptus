@@ -12,6 +12,7 @@ import type { IMentorAvailabilityRepository } from "../../interfaces/repositorie
 import type { IStudentEnrollmentRepository } from "../../interfaces/repositories/IStudentEnrollmentRepository.js";
 import type { ICourseRepository } from "../../interfaces/repositories/ICourseRepository.js";
 import type { ITimeSlotRepository } from "../../interfaces/repositories/ITimeSlotRepository.js";
+import { combineISTToUTC } from "../../utils/time.util.js";
 
 @injectable()
 export class SlotGenerationService implements ISlotGenerationService {
@@ -87,19 +88,8 @@ export class SlotGenerationService implements ISlotGenerationService {
         if (dailyAvail) {
           logger.info(`[GenSlots] Found availability for ${dayName}: ${dailyAvail.slots.length} slots`);
           for (const slot of dailyAvail.slots) {
-            const startTimes = slot.startTime.split(':').map(Number);
-            const endTimes = slot.endTime.split(':').map(Number);
-            
-            const startH = startTimes[0] ?? 0;
-            const startM = startTimes[1] ?? 0;
-            const endH = endTimes[0] ?? 0;
-            const endM = endTimes[1] ?? 0;
-
-            const slotStart = new Date(currentPathDate);
-            slotStart.setHours(startH, startM, 0, 0);
-
-            const slotEnd = new Date(currentPathDate);
-            slotEnd.setHours(endH, endM, 0, 0);
+            const slotStart = combineISTToUTC(currentPathDate, slot.startTime);
+            const slotEnd = combineISTToUTC(currentPathDate, slot.endTime);
 
             // Check if any course matches this day and time
             const matchingCourse = mentorCourses.find(c => {

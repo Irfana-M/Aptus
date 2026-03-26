@@ -65,3 +65,18 @@ export const isShiftMatching = (
 
   return normStart >= shiftWindow.start && normStart < shiftWindow.end;
 };
+
+/**
+ * Combines a base date + IST time string into a correct UTC Date object.
+ * Handles "10:00", "10:00 AM", "06:00 PM", etc.
+ */
+export const combineISTToUTC = (baseDate: Date, timeStr: string): Date => {
+  const d = new Date(baseDate); 
+  const normalizedTime = normalizeTimeTo24h(timeStr);
+  const [hours = 0, minutes = 0] = normalizedTime.split(':').map(Number);
+  
+  // Convert IST (UTC+5:30) to UTC by subtracting the offset
+  d.setUTCHours(hours - 5, minutes - 30, 0, 0);
+  
+  return d;
+};

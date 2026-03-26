@@ -20,6 +20,7 @@ import type { IMentorRepository } from "@/interfaces/repositories/IMentorReposit
 import type { ICourseRepository } from "@/interfaces/repositories/ICourseRepository.js";
 import type { ISessionRepository } from "@/interfaces/repositories/ISessionRepository.js";
 import { InternalEventEmitter, EVENTS } from "@/utils/InternalEventEmitter.js";
+import { combineISTToUTC } from "../utils/time.util.js";
 
 @injectable()
 export class TrialClassService implements ITrialClassService {
@@ -452,15 +453,11 @@ export class TrialClassService implements ITrialClassService {
   }
 
   private _combineDateAndTime(date: Date, timeStr: string, durationMinutes: number = 0): Date {
-    const d = new Date(date);
-    const timeParts = timeStr.split(':').map(Number);
-    const hours = timeParts[0] ?? 0;
-    const minutes = timeParts[1] ?? 0;
-    d.setHours(hours, minutes, 0, 0);
+    const start = combineISTToUTC(date, timeStr);
     if (durationMinutes > 0) {
-        d.setMinutes(d.getMinutes() + durationMinutes);
+        start.setMinutes(start.getMinutes() + durationMinutes);
     }
-    return d;
+    return start;
   }
 
   // Helper to get day name from date
