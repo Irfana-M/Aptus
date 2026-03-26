@@ -113,7 +113,7 @@ export class SlotGenerationService implements ISlotGenerationService {
             if (matchingCourse) {
               slotStatus = 'booked';
               subjectId = matchingCourse.subject;
-              maxStudents = matchingCourse.maxStudents || (matchingCourse.courseType === 'group' ? 10 : 1);
+              maxStudents = matchingCourse.maxStudents || (matchingCourse.courseType === 'group' ? 5 : 1);
               currentCount = matchingCourse.enrolledStudents || 0;
             }
 

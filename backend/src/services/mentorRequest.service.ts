@@ -163,8 +163,10 @@ export class MentorRequestService implements IMentorRequestService {
       const searchCode = isPremium ? 'PREMIUM' : 'BASIC';
       const planDoc = await this.subscriptionRepo.findPlanByCode(searchCode);
       
-      // sessionsPerSubjectPerWeek: 1:1 = 2 (usually), Group = 2 (usually)
+      // Sessions per subject per week from the DB plan
       const maxSessions = planDoc ? planDoc.sessionsPerSubjectPerWeek : (isPremium ? 2 : 2);
+      // Max students per group session from the DB plan
+      const maxGroupStudents = (planDoc && !isPremium) ? planDoc.maxStudentsAllowed : 10;
       
       logger.info(`[ApproveRequest] Student ${requestStudentIdStr} has ${planStr} plan. Max sessions allowed: ${maxSessions}`);
 
@@ -296,14 +298,14 @@ export class MentorRequestService implements IMentorRequestService {
       // STEP 4: Create/Update Course
 
       if (courseType === 'group') {
-          // FIND EXISTING GROUP COURSE WITH CAPACITY
+          // FIND EXISTING GROUP COURSE WITH CAPACITY (limit from DB plan)
           const existingGroupCourses = await this.courseRepo.findOne({
             subject: new Types.ObjectId(requestSubjectIdStr),
             grade: new Types.ObjectId(finalGradeIdStr || ""),
             courseType: 'group',
             status: 'booked',
             isActive: true,
-            enrolledStudents: { $lt: 10 } as unknown as number
+            enrolledStudents: { $lt: maxGroupStudents } as unknown as number
           } as Record<string, unknown>);
            
            if (existingGroupCourses) {
@@ -332,7 +334,7 @@ export class MentorRequestService implements IMentorRequestService {
             status: 'booked',
             schedule: schedule as { days: string[], timeSlot: string },
             courseType,
-            maxStudents: courseType === 'group' ? 10 : 1,
+            maxStudents: courseType === 'group' ? maxGroupStudents : 1,
             enrolledStudents: courseType === 'group' ? 1 : 0
           } as unknown as import("../interfaces/repositories/ICourseRepository.js").CreateOneToOneCourseDto)) as import("../models/course.model.js").ICourse;
           recoveredRecords.push(courseType === 'group' ? 'group_course_created' : 'course_created');

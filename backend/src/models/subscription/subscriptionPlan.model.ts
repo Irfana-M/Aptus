@@ -8,7 +8,7 @@ const subscriptionPlanSchema = new Schema<ISubscriptionPlan>(
     maxSubjects: { type: Number, required: true },
     sessionsPerSubjectPerWeek: { type: Number, required: true },
     totalSessionsPerWeek: { type: Number, required: true },
-    maxStudentsAllowed: { type: Number, default: 10 },
+    maxStudentsAllowed: { type: Number, default: 5 },
     sessionType: { type: String, enum: ['GROUP', 'ONE_TO_ONE'], required: true },
     attendanceRequired: { type: Boolean, required: true },
     rescheduleAllowed: { type: Boolean, required: true },

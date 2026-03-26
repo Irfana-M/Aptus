@@ -26,6 +26,7 @@ import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRe
 import type { IMentorRequestService } from "../interfaces/services/IMentorRequestService.js";
 import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository.js";
 import type { IPaymentRepository } from "../interfaces/repositories/IPaymentRepository.js";
+import type { ISubscriptionRepository } from "../interfaces/repositories/ISubscriptionRepository.js";
 import { Types } from "mongoose";
 
 @injectable()
@@ -45,8 +46,15 @@ export class CourseAdminService implements ICourseAdminService {
     @inject(TYPES.IMentorRequestService) private mentorRequestService: IMentorRequestService,
     @inject(TYPES.ISessionRepository) private sessionRepo: ISessionRepository,
     @inject(TYPES.ISubjectRepository) private _subjectRepo: ISubjectRepository,
-    @inject(TYPES.IPaymentRepository) private paymentRepo: IPaymentRepository
+    @inject(TYPES.IPaymentRepository) private paymentRepo: IPaymentRepository,
+    @inject(TYPES.ISubscriptionRepository) private subscriptionRepo: ISubscriptionRepository
   ) {}
+
+  /** Fetches the max students allowed in a group session from the DB plan. */
+  private async _getMaxGroupStudents(): Promise<number> {
+    const planDoc = await this.subscriptionRepo.findPlanByCode('BASIC');
+    return planDoc?.maxStudentsAllowed ?? 5; // Fallback to 5 if plan not found
+  }
 
 
   async getAvailableMentorsForCourse(params: {
@@ -158,9 +166,9 @@ export class CourseAdminService implements ICourseAdminService {
         if (existingGroupCourse) {
             logger.info(`Found existing group course ${existingGroupCourse._id} for enrollment`);
             
-            // Check capacity
+            // Check capacity against DB-driven limit
             const currentCount = existingGroupCourse.enrolledStudents || 0;
-            const max = existingGroupCourse.maxStudents || 10;
+            const max = existingGroupCourse.maxStudents || (await this._getMaxGroupStudents());
             
             if (currentCount < max) {
                  logger.info(`Joining student ${data.studentId} to existing group course ${existingGroupCourse._id} (${currentCount}/${max})`);
@@ -175,12 +183,12 @@ export class CourseAdminService implements ICourseAdminService {
         }
     }
 
-    // Determine maxStudents
-    let maxStudents = 10;
+    // Determine maxStudents from DB plan
+    let maxStudents: number;
     if (data.courseType === 'one-to-one') {
         maxStudents = 1;
     } else {
-        maxStudents = data.maxStudents || 10;
+        maxStudents = data.maxStudents || (await this._getMaxGroupStudents());
     }
 
     if (days.length > 0 && timeSlot) {
@@ -386,7 +394,7 @@ export class CourseAdminService implements ICourseAdminService {
     if ((mentorChanged || scheduleChanged) && newMentorId && newSchedule.days?.length > 0 && newSchedule.timeSlot) {
         // A. Book Legacy Availability
         try {
-            const maxStudents = data.courseType === 'one-to-one' ? 1 : (data.maxStudents || existingCourse.maxStudents || 10);
+            const maxStudents = data.courseType === 'one-to-one' ? 1 : (data.maxStudents || existingCourse.maxStudents || (await this._getMaxGroupStudents()));
             await this.availabilityService.bookSlots(newMentorId, newSchedule.days, newSchedule.timeSlot, maxStudents);
         } catch (error) {
             logger.error(`Failed to book new legacy slots:`, error);
