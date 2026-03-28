@@ -233,7 +233,7 @@ export class AuthService implements IAuthService {
       } else {
         const studentUser = user as StudentAuthUser;
         isPaid = Boolean(studentUser.isPaid);
-        isProfileComplete = Boolean(studentUser.isProfileCompleted);
+        isProfileComplete = Boolean(studentUser.isProfileComplete || studentUser.isProfileCompleted);
         isTrialCompleted = Boolean(studentUser.isTrialCompleted);
 
         // Self-healing: If flag is false but user might have completed a trial
@@ -433,7 +433,7 @@ export class AuthService implements IAuthService {
       } else {
         const studentUser = user as StudentAuthUser;
         isPaid = Boolean(studentUser.isPaid);
-        isProfileComplete = Boolean(studentUser.isProfileCompleted);
+        isProfileComplete = Boolean(studentUser.isProfileComplete || studentUser.isProfileCompleted);
         isTrialCompleted = Boolean(studentUser.isTrialCompleted);
       }
 

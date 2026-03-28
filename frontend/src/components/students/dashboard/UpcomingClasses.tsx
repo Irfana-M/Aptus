@@ -58,8 +58,9 @@ const UpcomingClasses: React.FC = () => {
         // 2. Regular Sessions
         sessions.forEach(session => {
             if (session.status === 'scheduled' || session.status === 'live' || session.status === 'in_progress') {
+                const sessionEndDate = new Date(session.endTime);
                 const sessionDate = new Date(session.startTime);
-                if (isAfter(sessionDate, now)) {
+                if (isAfter(sessionEndDate, now)) {
                      allEvents.push({
                         id: session.id,
                         title: session.subjectId?.subjectName || 'Course Class',

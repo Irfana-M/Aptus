@@ -660,6 +660,7 @@ export class CourseAdminService implements ICourseAdminService {
   }
 
   private async _createAdminPaymentRecord(studentId: string, amount: number, purpose: string) {
+    if (amount <= 0) return;
     try {
         const invoiceId = `ADMIN-INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         await this.paymentRepo.create({

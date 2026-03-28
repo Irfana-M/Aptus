@@ -441,6 +441,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
     userTypeRef.current = null;
     hasJoinedRef.current = false;
     hasJoinedRoomRef.current = false;
+    setSessionId(null);
 
     iceBuffersRef.current.clear();
     politePeersRef.current.clear();

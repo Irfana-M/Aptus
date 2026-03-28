@@ -55,7 +55,6 @@ export class SessionService implements ISessionService {
     thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
 
     const sessions = await this.sessionRepo.findUpcomingByStudent(studentId, undefined, { 
-      startDate: now, 
       endDate: thirtyDaysLater 
     });
     return this.leaveEligibilityService.computeStudentEligibility(sessions, now);
