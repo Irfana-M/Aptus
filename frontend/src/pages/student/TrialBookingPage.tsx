@@ -162,13 +162,8 @@ const getAvailableDates = (): number[] => {
   for (let i = 0; i <= 14; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
-    const dayOfWeek = date.getDay();
-    
-    // Optional: You might want to allow weekends if user requested "today" specifically?
-    // For now, keeping weekend exclusion but including today if it's a weekday
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      dates.push(date.getTime());
-    }
+    // Allow all days including weekends
+    dates.push(date.getTime());
   }
   
   return dates;
