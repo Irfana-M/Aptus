@@ -28,3 +28,16 @@ export const validateBody = (schema: any) => {
     }
   };
 };
+
+import mongoose from 'mongoose';
+
+export const validateObjectId = (paramName: string) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const id = req.params[paramName];
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      next(new AppError(`Invalid ${paramName}: Must be a valid MongoDB ObjectId`, HttpStatusCode.BAD_REQUEST));
+      return;
+    }
+    next();
+  };
+};
