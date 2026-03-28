@@ -378,6 +378,13 @@ export default function MentorProfileSetup() {
     if (profileData.availability.length === 0)
       errors["availability"] = "Please select your availability";
 
+    if (Object.keys(errors).length > 0) {
+      toast.error(Object.values(errors).join(" • "), {
+        position: "bottom-right",
+        duration: 5000,
+      });
+    }
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -1159,6 +1166,7 @@ export default function MentorProfileSetup() {
                   onChange={(v: string) => setCurrentExperience(prev => ({ ...prev, institution: v }))}
                   placeholder="e.g., ABC High School or XYZ Tutoring Center"
                   disabled={!isEditing}
+                  required
                 />
                  <FormField
                   label="Job Title"
@@ -1167,6 +1175,7 @@ export default function MentorProfileSetup() {
                   onChange={(v: string) => setCurrentExperience(prev => ({ ...prev, jobTitle: v }))}
                   placeholder="e.g., Math Teacher, Private Tutor"
                   disabled={!isEditing}
+                  required
                 />
                  <FormField
                   label="Duration"
@@ -1175,6 +1184,7 @@ export default function MentorProfileSetup() {
                   onChange={(v: string) => setCurrentExperience(prev => ({ ...prev, duration: v }))}
                   placeholder="e.g., 2 years, 2018-2020"
                   disabled={!isEditing}
+                  required
                 />
                 
                 {isEditing && (

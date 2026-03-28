@@ -1,47 +1,36 @@
 import { z } from 'zod';
 
-// Mentor Profile Update Schema
 export const updateMentorProfileSchema = z.object({
-  fullName: z.string().min(2).max(100).optional(),
-  phoneNumber: z.string().regex(/^\+?[1-9]\d{1,14}$/).optional(),
+  fullName: z.string()
+    .min(3, "Full name must be at least 3 characters")
+    .max(100),
+
+  phoneNumber: z.string()
+    .regex(/^[6-9]\d{9}$/, "Phone number must be 10 digits starting with 6-9"),
+
   bio: z.string().max(1000).optional(),
+
   education: z.array(z.object({
-    degree: z.string().max(200),
-    institution: z.string().max(200),
+    degree: z.string().min(2).max(200),
+    institution: z.string().min(2).max(200),
     year: z.number().int().min(1950).max(new Date().getFullYear())
-  })).optional(),
+  })).min(1, "At least one education entry is required"),
+
   experience: z.array(z.object({
-    title: z.string().max(200),
-    company: z.string().max(200),
+    title: z.string().min(2).max(200),
+    company: z.string().min(2).max(200),
     years: z.number().int().min(0).max(50)
   })).optional(),
+
   subjectProficiency: z.array(z.object({
-    subject: z.string(),
+    subject: z.string().min(2),
     level: z.enum(['beginner', 'intermediate', 'advanced', 'expert'])
-  })).optional(),
+  })).min(1, "At least one subject proficiency is required"),
+
   availability: z.array(z.object({
     day: z.enum(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']),
-    slots: z.array(z.string())
-  })).optional()
+    slots: z.array(z.string()).min(1, "At least one slot is required per day")
+  })).min(1, "Availability is required")
 });
 
 export type UpdateMentorProfileDto = z.infer<typeof updateMentorProfileSchema>;
-
-// Mentor Registration Schema
-export const mentorRegistrationSchema = z.object({
-  fullName: z.string().min(2).max(100),
-  email: z.string().email(),
-  password: z.string().min(6),
-  phoneNumber: z.string().regex(/^\+?[1-9]\d{1,14}$/).optional(),
-  bio: z.string().max(1000).optional()
-});
-
-export type MentorRegistrationDto = z.infer<typeof mentorRegistrationSchema>;
-
-// Approve/Reject Mentor Schema
-export const mentorApprovalSchema = z.object({
-  status: z.enum(['approved', 'rejected']),
-  reason: z.string().max(500).optional()
-});
-
-export type MentorApprovalDto = z.infer<typeof mentorApprovalSchema>;

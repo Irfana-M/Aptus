@@ -202,6 +202,24 @@ const StudentProfile: React.FC = () => {
     }
   }, [profile, user]);
 
+ // Improved handleDOBChange
+const handleDOBChange = (value: string) => {
+  setProfileData(prev => {
+    const newData = { ...prev, dateOfBirth: value };
+    if (value) {
+      const birthDate = new Date(value);
+      const today = new Date();
+      let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        calculatedAge--;
+      }
+      newData.age = calculatedAge.toString();
+    }
+    return newData;
+  });
+};
+
   const handleChange = (field: string) => (value: string) => {
     setProfileData((prev) => ({ ...prev, [field]: value }));
   };
@@ -235,34 +253,35 @@ const StudentProfile: React.FC = () => {
     };
 
   const validateForm = () => {
-    const requiredFields = [
-      "fullName",
-      "emailId",
-      "phoneNumber",
-      "dateOfBirth",
-      "gender",
-      "address",
-      "country",
-      "postalCode",
-      "parentName",
-      "parentEmail",
-      "parentPhone",
-      "relationship",
-      "grade",
-      "syllabus",
-      "institution",
-      "learningGoal",
-      "age",
-    ];
+    const errors: string[] = [];
 
-    for (const field of requiredFields) {
-      if (!profileData[field as keyof typeof profileData]) {
-        toast.error(
-          `Please fill in ${field.replace(/([A-Z])/g, " $1").toLowerCase()}`,
-        );
-        return false;
-      }
+    if (!profileData.fullName?.trim()) errors.push("Full Name is required");
+    if (!profileData.emailId?.trim()) errors.push("Email ID is required");
+    if (!profileData.phoneNumber?.trim()) errors.push("Phone Number is required");
+    if (!profileData.dateOfBirth) errors.push("Date of Birth is required");
+    if (!profileData.gender) errors.push("Gender is required");
+    if (!profileData.age) errors.push("Age is required");
+    if (!profileData.address?.trim()) errors.push("Address is required");
+    if (!profileData.country?.trim()) errors.push("Country is required");
+    if (!profileData.postalCode?.trim()) errors.push("Postal Code is required");
+    if (!profileData.parentName?.trim()) errors.push("Parent Name is required");
+    if (!profileData.parentPhone?.trim()) errors.push("Parent Phone is required");
+    if (!profileData.relationship?.trim()) errors.push("Relationship is required");
+    if (!profileData.institution?.trim()) errors.push("Institution is required");
+    if (!profileData.grade) errors.push("Grade is required");
+    if (!profileData.syllabus) errors.push("Syllabus is required");
+    if (!profileData.learningGoal?.trim()) errors.push("Learning Goal is required");
+
+    const ageNum = parseInt(profileData.age);
+    if (isNaN(ageNum) || ageNum < 10 || ageNum > 20) {
+      errors.push("Age must be between 10 and 20 years");
     }
+
+    if (errors.length > 0) {
+      toast.error(errors.join(" • "));
+      return false;
+    }
+
     return true;
   };
 
@@ -412,17 +431,19 @@ const StudentProfile: React.FC = () => {
                     type="tel"
                     value={profileData.phoneNumber}
                     onChange={handleChange("phoneNumber")}
+                    required
                   />
                   <div className="grid md:grid-cols-2 gap-4">
                     <FormField
                       label="Date of Birth"
                       type="date"
                       value={profileData.dateOfBirth}
-                      onChange={handleChange("dateOfBirth")}
+                      onChange={handleDOBChange}
+                      required
                     />
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Gender
+                        Gender <span className="text-red-500 ml-1">*</span>
                       </label>
                       <select
                         value={profileData.gender}
@@ -441,6 +462,7 @@ const StudentProfile: React.FC = () => {
                     type="number"
                     value={profileData.age}
                     onChange={handleChange("age")}
+                    required
                   />
                 </div>
 
@@ -455,6 +477,7 @@ const StudentProfile: React.FC = () => {
                     value={profileData.address}
                     onChange={handleChange("address")}
                     rows={3}
+                    required
                   />
                   <div className="grid md:grid-cols-2 gap-4">
                     <FormField
@@ -462,12 +485,14 @@ const StudentProfile: React.FC = () => {
                       type="text"
                       value={profileData.country}
                       onChange={handleChange("country")}
+                      required
                     />
                     <FormField
                       label="Postal Code"
                       type="text"
                       value={profileData.postalCode}
                       onChange={handleChange("postalCode")}
+                      required
                     />
                   </div>
                 </div>
@@ -482,6 +507,7 @@ const StudentProfile: React.FC = () => {
                     type="text"
                     value={profileData.parentName}
                     onChange={handleChange("parentName")}
+                    required
                   />
                   <FormField
                     label="Email"
@@ -494,12 +520,14 @@ const StudentProfile: React.FC = () => {
                     type="tel"
                     value={profileData.parentPhone}
                     onChange={handleChange("parentPhone")}
+                    required
                   />
                   <FormField
                     label="Relationship"
                     type="text"
                     value={profileData.relationship}
                     onChange={handleChange("relationship")}
+                    required
                   />
                 </div>
 
@@ -513,6 +541,7 @@ const StudentProfile: React.FC = () => {
                     type="text"
                     value={profileData.institution}
                     onChange={handleChange("institution")}
+                    required
                   />
 
                   <div className="grid md:grid-cols-2 gap-4">
@@ -565,6 +594,7 @@ const StudentProfile: React.FC = () => {
                     value={profileData.learningGoal}
                     onChange={handleChange("learningGoal")}
                     rows={3}
+                    required
                   />
                 </div>
 
