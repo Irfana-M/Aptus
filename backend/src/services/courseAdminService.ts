@@ -283,13 +283,37 @@ export class CourseAdminService implements ICourseAdminService {
         await this._createAdminPaymentRecord(data.studentId, data.fee || 0, `Registration: ${subjectName}`);
     }
 
-    // Trigger Slot Synchronization
-    if (data.mentorId) {
-      this.schedulingService.generateMentorSlots(data.mentorId, 30).then(() => {
-          this._triggerSessionSync(data.mentorId);
-      }).catch(err => 
-        logger.error(`Failed to generate mentor slots on course creation:`, err)
-      );
+    // Generate Sessions directly (modern path) if student and schedule are provided
+    if (data.studentId && data.mentorId && subjectId && schedule.days?.length > 0 && schedule.timeSlot) {
+      try {
+        const enrollmentLink = await this.enrollmentLinkRepo.findOne({
+          student: data.studentId as any,
+          course: (course._id as any).toString() as any
+        });
+        const enrollmentId = (enrollmentLink as any)?._id?.toString() || (course._id as any).toString();
+
+        const parsedSlots = this._parseScheduleToSlots(schedule.days, schedule.timeSlot);
+        const startDate = new Date(data.startDate);
+        const endDate = new Date(data.endDate);
+        const durationMs = endDate.getTime() - startDate.getTime();
+        const weeks = Math.max(1, Math.ceil(durationMs / (1000 * 60 * 60 * 24 * 7)));
+
+        logger.info(`[CourseAdmin] Generating sessions for ${weeks} weeks for course ${course._id}`);
+        await this.mentorRequestService.generateSessionsForWeeks(
+          data.studentId,
+          data.mentorId,
+          subjectId,
+          (course._id as any).toString(),
+          enrollmentId,
+          parsedSlots,
+          weeks,
+          (data.courseType || 'one-to-one') as 'one-to-one' | 'group'
+        );
+        logger.info(`[CourseAdmin] Session generation complete for course ${course._id}`);
+      } catch (sessionGenError) {
+        logger.error(`[CourseAdmin] Failed to generate sessions for course ${course._id}:`, sessionGenError);
+        // Non-fatal: course and enrollment exist; admin can retry via update
+      }
     }
 
     return course;
@@ -630,6 +654,44 @@ export class CourseAdminService implements ICourseAdminService {
       return await this.courseRepo.updateCourse(courseId, { $inc: { enrolledStudents: -1 } } as unknown as Partial<import("../interfaces/repositories/ICourseRepository.js").CreateOneToOneCourseDto>);
     }
   }
+  /**
+   * Parses a schedule timeSlot string (e.g. "19:00-20:00" or "19:00-20:00|19:00-20:00")
+   * and a days array into the slot format required by generateSessionsForWeeks.
+   */
+  private _parseScheduleToSlots(
+    days: string[],
+    timeSlot: string
+  ): { day: string; startTime: string; endTime: string }[] {
+    // Handle multi-day different times format ("19:00-20:00|10:00-11:00")
+    const timeParts = timeSlot.split('|').map(t => t.trim());
+
+    const parseTime = (raw: string) => {
+      if (!raw) return '00:00';
+      const [cleanTime, mod] = raw.trim().split(' ');
+      const parts = (cleanTime || '00:00').split(':').map(Number);
+      let h = parts[0] || 0;
+      const m = parts[1] || 0;
+      if (mod) {
+        if (mod.toLowerCase() === 'pm' && h < 12) h += 12;
+        if (mod.toLowerCase() === 'am' && h === 12) h = 0;
+      }
+      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    };
+
+    return days.map((day, index) => {
+      // Use per-day time if available, otherwise fall back to first part
+      const part = timeParts[index] || timeParts[0] || '10:00-11:00';
+      const splitParts = part.split('-').map(s => s.trim());
+      const rawStart: string = splitParts[0] ?? '00:00';
+      const rawEnd: string = splitParts[1] ?? '00:00';
+      return {
+        day: day.charAt(0).toUpperCase() + day.slice(1).toLowerCase(),
+        startTime: parseTime(rawStart),
+        endTime: parseTime(rawEnd)
+      };
+    });
+  }
+
   private async _triggerSessionSync(mentorId: string) {
     try {
         const today = new Date();

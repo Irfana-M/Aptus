@@ -161,6 +161,9 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
       { new: true }
     ).exec();
   }
+  async updateMany(filter: FilterQuery<ISession>, update: import("mongoose").UpdateQuery<ISession>): Promise<void> {
+    await this.model.updateMany(filter, update).exec();
+  }
 
   async deleteMany(filter: FilterQuery<ISession>): Promise<void> {
     await this.model.deleteMany(filter).exec();

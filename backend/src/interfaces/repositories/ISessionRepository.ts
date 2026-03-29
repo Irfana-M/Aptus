@@ -11,6 +11,7 @@ export interface ISessionRepository extends IBaseRepository<ISession> {
   findByStudentAndSubject(studentId: string, subjectId: string): Promise<ISession[]>;
   findByTimeSlot(timeSlotId: string): Promise<ISession | null>;
   updateStatus(id: string, status: string): Promise<ISession | null>;
+  updateMany(filter: Record<string, unknown>, update: Record<string, unknown>): Promise<void>;
   deleteMany(filter: Record<string, unknown>): Promise<void>;
   findTodayByMentor(mentorId: string, date: Date): Promise<ISession[]>;
   existsByTimeSlot(timeSlotId: string): Promise<ISession | null>;
