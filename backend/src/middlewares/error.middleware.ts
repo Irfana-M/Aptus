@@ -21,7 +21,7 @@ export const errorHandler: ErrorRequestHandler = (
 
   if (err instanceof ZodError) {
     statusCode = HttpStatusCode.BAD_REQUEST;
-    message = "Validation failed";
+    message = err.issues[0]?.message || "Validation failed";
 
     const validationErrors = err.issues.map((error) => ({
       field: error.path.join("."),

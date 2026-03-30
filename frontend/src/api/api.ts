@@ -8,7 +8,9 @@ const api = axios.create({
 
 const skip401For: string[] = [
   "/auth/login",
-  "/auth/refresh"
+  "/auth/refresh",
+  "/admin/login",
+  "/admin/refresh"
 ];
 
 api.interceptors.request.use(

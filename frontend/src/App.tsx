@@ -71,6 +71,7 @@ import NotificationsPage from "./pages/common/NotificationsPage";
 
 import { ROUTES } from "./constants/routes.constants";
 import { refreshAccessToken } from "./features/auth/authThunks";
+import { refreshAdminToken } from "./features/admin/adminThunk";
 import { TokenManager } from "./utils/tokenManager";
 import * as Sentry from "@sentry/react";
 
@@ -139,8 +140,13 @@ const AppContent: React.FC = () => {
       willDispatchRefresh: !!token && !justLoggedIn,
     });
 
-    if (token  && !justLoggedIn) {
-      dispatch(refreshAccessToken());
+    if (token && !justLoggedIn) {
+      const userRole = localStorage.getItem("userRole");
+      if (userRole === ROLES.ADMIN) {
+        dispatch(refreshAdminToken());
+      } else {
+        dispatch(refreshAccessToken());
+      }
     }
      sessionStorage.removeItem("justLoggedIn");
   }, [dispatch]);

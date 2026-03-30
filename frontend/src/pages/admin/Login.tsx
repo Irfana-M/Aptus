@@ -75,7 +75,7 @@ export default function AdminLoginPage() {
       toast.success("Admin logged in successfully!");
       navigate(ROUTES.ADMIN.DASHBOARD);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Login failed!";
+      const errorMessage = typeof err === "string" ? err : err instanceof Error ? err.message : "Login failed!";
       toast.error(errorMessage);
     }
   };

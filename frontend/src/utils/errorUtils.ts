@@ -8,6 +8,7 @@ import axios, { AxiosError } from 'axios';
 interface ApiErrorResponse {
   message?: string;
   error?: string;
+  errors?: Array<{ message: string }>;
 }
 
 /**
@@ -50,7 +51,14 @@ export function getErrorMessage(error: unknown): string {
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError<ApiErrorResponse>;
-    return axiosError.response?.data?.message || fallback;
+    const data = axiosError.response?.data;
+    
+    return (
+      data?.message || 
+      data?.error || 
+      (data?.errors && data.errors.length > 0 ? data.errors[0].message : null) ||
+      fallback
+    );
   }
   if (error instanceof Error) {
     return error.message || fallback;
