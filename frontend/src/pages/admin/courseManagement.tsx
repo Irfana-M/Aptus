@@ -362,6 +362,7 @@ export const CreateOneToOneCourse: React.FC = () => {
 
     const prefilledValues = {
        gradeId: request.gradeId || foundGradeId,
+       gradeName: request.grade || "",
        subjectId: request.subjectId || foundSubjectId,
        subjectName: request.subject || "",
        syllabus: request.syllabus || "",

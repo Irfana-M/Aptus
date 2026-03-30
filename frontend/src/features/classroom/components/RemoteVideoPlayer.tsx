@@ -17,7 +17,7 @@ const RemoteVideoPlayer: React.FC<RemoteVideoPlayerProps> = ({ stream, isMuted, 
   }, [stream]);
 
   return (
-    <div className="relative bg-gray-900 rounded-2xl overflow-hidden shadow-xl border-2 lg:border-4 border-white aspect-video lg:aspect-auto h-full">
+    <div className="relative bg-gray-900 rounded-2xl overflow-hidden shadow-xl border-2 lg:border-4 border-white w-full h-full">
       <video
         ref={videoRef}
         autoPlay

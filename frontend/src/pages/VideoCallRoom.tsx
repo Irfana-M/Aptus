@@ -318,30 +318,33 @@ const participantDetails = useMemo(() => {
       sidebar={userType === "mentor" ? <ClassroomSidebar onLogout={() => navigate(ROUTES.LOGIN)} /> : null}
       header={<ClassroomHeader />}
       mainContent={
-        <div className="space-y-8 animate-in fade-in duration-700">
-          <ClassroomVideoGrid
-            localVideoRef={localVideoRef}
-            remoteStreams={remoteStreams}
-            participants={participants}
-            isMuted={isMuted}
-            isVideoOff={isVideoOff}
-            remoteMediaStates={remoteMediaStates}
-            onToggleMute={toggleMute}
-            onToggleVideo={toggleVideo}
-            onEndCall={handleEndCall}
-            onMinimize={() => navigate(-1)}
-            userType={userType}
-            duration={callDuration}
-            status={status}
-          />
+        <div className="h-full flex flex-col animate-in fade-in duration-700">
+          <div className="flex-1 min-h-0">
+            <ClassroomVideoGrid
+              localVideoRef={localVideoRef}
+              remoteStreams={remoteStreams}
+              participants={participants}
+              isMuted={isMuted}
+              isVideoOff={isVideoOff}
+              remoteMediaStates={remoteMediaStates}
+              onToggleMute={toggleMute}
+              onToggleVideo={toggleVideo}
+              onEndCall={handleEndCall}
+              onMinimize={() => navigate(-1)}
+              userType={userType}
+              duration={callDuration}
+              status={status}
+              participantDetails={participantDetails}
+            />
+          </div>
 
-          <div className="bg-white rounded-3xl p-8 shadow-sm">
-            <h2 className="text-xl font-bold text-gray-800 mb-2">
+          <div className="flex-shrink-0 bg-white rounded-3xl p-4 shadow-sm mx-4 mb-2">
+            <h2 className="text-base font-bold text-gray-800">
               {trialDetails?.subject?.subjectName || 
                sessionDetails?.subject?.subjectName || 
                (isTrialSession ? "Aptus Trial Session" : "Aptus Live Session")}
             </h2>
-            <h3 className="text-sm font-bold text-gray-800 mb-4">Personalized Mentoring Session</h3>
+            <h3 className="text-xs font-semibold text-gray-500">Personalized Mentoring Session</h3>
           </div>
         </div>
       }

@@ -28,7 +28,7 @@ export const ClassroomLayout: React.FC<ClassroomLayoutProps> = ({
           {header}
         </header>
 
-        <main className="flex-1 overflow-y-auto px-4 lg:px-8 pb-8 custom-scrollbar">
+        <main className="flex-1 overflow-hidden flex flex-col">
           {mainContent}
         </main>
       </div>

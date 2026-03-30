@@ -45,6 +45,7 @@ interface CourseModalProps {
   course?: Course | null; 
   initialValues?: {
     gradeId?: string;
+    gradeName?: string;
     subjectId?: string;
     subjectName?: string;
     syllabus?: string;
@@ -296,12 +297,31 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, initialValues,
   }, [form.gradeId, dispatch]);
 
   useEffect(() => {
+    if (isOpen && initialValues?.gradeName && grades.length > 0) {
+      const isCurrentIdValid = grades.some(g => g._id === form.gradeId);
+      
+      if (!form.gradeId || !isCurrentIdValid) {
+        const match = grades.find(g => 
+          g.name?.trim().toLowerCase() === initialValues.gradeName?.trim().toLowerCase()
+        );
+        if (match) {
+          setForm(prev => ({ ...prev, gradeId: match._id }));
+          if (match.syllabus) {
+            setSelectedSyllabus(match.syllabus);
+          }
+        }
+      }
+    }
+  }, [grades, initialValues?.gradeName, form.gradeId, isOpen]);
+
+  useEffect(() => {
     if (isOpen && initialValues?.subjectName && subjects.length > 0) {
       const isCurrentIdValid = subjects.some(s => s._id === form.subjectId);
       
       if (!form.subjectId || !isCurrentIdValid) {
         const match = subjects.find(s => 
-          s.name?.trim().toLowerCase() === initialValues.subjectName?.trim().toLowerCase()
+          s.name?.trim().toLowerCase() === initialValues.subjectName?.trim().toLowerCase() ||
+          s.subjectName?.trim().toLowerCase() === initialValues.subjectName?.trim().toLowerCase()
         );
         if (match) {
           setForm(prev => ({ ...prev, subjectId: match._id }));
