@@ -186,10 +186,15 @@ export class SessionService implements ISessionService {
 
   async reportAbsence(sessionId: string, studentId: string, reason: string): Promise<void> {
     const session = await this.sessionRepo.findById(sessionId);
-    if (!session) throw new Error(MESSAGES.SESSION.NOT_FOUND);
+    if (!session) throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
+    
+    // Helper to get raw ID from potentially populated field
+    const getRawId = (val: any) => val?._id?.toString() || val?.toString();
+
     // Authorization check
-    const isParticipant = session.participants.some(participant => participant.userId.toString() === studentId);
-    if (!isParticipant) throw new Error(MESSAGES.SESSION.ACCESS_DENIED);
+    const isParticipant = session.participants.some(p => getRawId(p.userId) === studentId) || 
+                          (getRawId(session.studentId) === studentId);
+    if (!isParticipant) throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
 
     // Cutoff Validation: 24-hour rule for students
     const STUDENT_LEAVE_CUTOFF_HOURS = 24;
@@ -290,9 +295,10 @@ export class SessionService implements ISessionService {
 
   async cancelSession(sessionId: string, mentorId: string, reason: string): Promise<void> {
     const session = await this.sessionRepo.findById(sessionId);
-    if (!session) throw new Error(MESSAGES.SESSION.NOT_FOUND);
+    if (!session) throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
-    if (session.mentorId.toString() !== mentorId) throw new Error(MESSAGES.SESSION.ACCESS_DENIED);
+    const getRawId = (val: any) => val?._id?.toString() || val?.toString();
+    if (getRawId(session.mentorId) !== mentorId) throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
 
     // Cutoff Validation: 48-hour rule for mentors
     const MENTOR_CANCEL_CUTOFF_HOURS = 48;
@@ -336,7 +342,7 @@ export class SessionService implements ISessionService {
 
   async resolveRescheduling(sessionId: string, studentId: string, newTimeSlotId?: string, slotDetails?: { date: string, startTime: string, endTime: string }): Promise<void> {
     const session = await this.sessionRepo.findById(sessionId);
-    if (!session) throw new Error(MESSAGES.SESSION.NOT_FOUND);
+    if (!session) throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
     // Allow rescheduling if explicitly in 'rescheduling' state OR if it was 'cancelled' by the mentor
     const canReschedule = session.status === SESSION_STATUS.RESCHEDULING || 
@@ -346,9 +352,12 @@ export class SessionService implements ISessionService {
       throw new AppError(MESSAGES.SESSION.INVALID_STATE, HttpStatusCode.BAD_REQUEST);
     }
 
+    const getRawId = (val: any) => val?._id?.toString() || val?.toString();
+
     // Security check: ensure the student is part of this session
-    const isParticipant = session.participants.some(participant => participant.userId.toString() === studentId);
-    if (!isParticipant) throw new Error(MESSAGES.SESSION.ACCESS_DENIED);
+    const isParticipant = session.participants.some(p => getRawId(p.userId) === studentId) ||
+                          (getRawId(session.studentId) === studentId);
+    if (!isParticipant) throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
 
     if (newTimeSlotId || slotDetails) {
       // RESCHEDULE CASE
@@ -373,10 +382,10 @@ export class SessionService implements ISessionService {
         logger.info(`Ensured/Created slot ${effectiveSlotId} for rescheduling`);
       }
       
-      if (!effectiveSlotId) throw new Error(MESSAGES.SESSION.INVALID_STATE);
+      if (!effectiveSlotId) throw new AppError(MESSAGES.SESSION.INVALID_STATE, HttpStatusCode.BAD_REQUEST);
 
       const newSlot = await this.timeSlotRepo.findById(effectiveSlotId);
-      if (!newSlot) throw new Error(MESSAGES.AVAILABILITY.SLOT_NOT_FOUND);
+      if (!newSlot) throw new AppError(MESSAGES.AVAILABILITY.SLOT_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       
       // Conflict Validation: Is mentor already busy at this exact time?
       const existingConflict = await this.sessionRepo.find({
@@ -390,12 +399,12 @@ export class SessionService implements ISessionService {
       }
 
       if (newSlot.status !== 'available' && newSlot.status !== 'reserved') {
-        throw new Error(MESSAGES.AVAILABILITY.SLOT_NOT_AVAILABLE);
+        throw new AppError(MESSAGES.AVAILABILITY.SLOT_NOT_AVAILABLE, HttpStatusCode.BAD_REQUEST);
       }
 
       // 1. Reserve and Confirm new slot
       const updatedSlot = await this.timeSlotRepo.reserveCapacity(effectiveSlotId);
-      if (!updatedSlot) throw new Error("Failed to reserve slot capacity.");
+      if (!updatedSlot) throw new AppError("Failed to reserve slot capacity.", HttpStatusCode.INTERNAL_SERVER_ERROR);
 
       // 2. Create NEW session document for the rescheduled time
       const newSessionData: Partial<ISession> = {
@@ -493,11 +502,12 @@ export class SessionService implements ISessionService {
 
   async completeSession(sessionId: string, mentorId: string): Promise<ISession | null> {
     const session = await this.sessionRepo.findById(sessionId);
-    if (!session) throw new Error(MESSAGES.SESSION.NOT_FOUND);
+    if (!session) throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
+    const getRawId = (val: any) => val?._id?.toString() || val?.toString();
     // Authorization: Only the assigned mentor can complete the session
-    if (session.mentorId.toString() !== mentorId) {
-      throw new Error(MESSAGES.SESSION.ACCESS_DENIED);
+    if (getRawId(session.mentorId) !== mentorId) {
+      throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
     }
 
     // Idempotency: If already completed, return safely
