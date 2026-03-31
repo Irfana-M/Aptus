@@ -85,9 +85,8 @@ export class SessionController {
           if (!req.user) throw new AppError(MESSAGES.COMMON.UNAUTHORIZED, HttpStatusCode.UNAUTHORIZED);
           const sessionId = req.params.sessionId as string;
           const { reason } = req.body as { reason: string };
-          
           const userId = req.user.id;
-          
+          logger.info(`[DEBUG SessionController.cancelSession] Params: ${JSON.stringify(req.params)}, Body: ${JSON.stringify(req.body)}, User: ${req.user?.id}`);
           await this._sessionService.cancelSession(sessionId, userId, reason);
           res.status(HttpStatusCode.OK).json({ success: true, message: MESSAGES.SESSION.CANCELLED });
       } catch (error) {

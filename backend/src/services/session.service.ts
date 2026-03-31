@@ -219,6 +219,10 @@ export class SessionService implements ISessionService {
     const session = await this.sessionRepo.findById(sessionId);
     if (!session) throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
     
+    logger.info(`[DEBUG reportAbsence] START for sessionId="${sessionId}", studentId="${studentId}"`);
+    logger.info(`[DEBUG] session.timeSlotId =`, session.timeSlotId);
+    logger.info(`[DEBUG] getRawId(timeSlotId) =`, this.getRawId(session.timeSlotId));
+
     // Authorization check
     const isParticipant = session.participants.some(p => this.getRawId(p.userId) === studentId) || 
                           (this.getRawId(session.studentId) === studentId);
@@ -322,15 +326,22 @@ export class SessionService implements ISessionService {
   }
 
   async cancelSession(sessionId: string, mentorId: string, reason: string): Promise<void> {
-  const session = await this.sessionRepo.findById(sessionId);
-  if (!session) throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
+    const session = await this.sessionRepo.findById(sessionId);
+    if (!session) throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
-  const mentorIdRaw = this.getRawId(session.mentorId);
-  const timeSlotIdRaw = this.getRawId(session.timeSlotId);
+    logger.info(`[DEBUG cancelSession] START for sessionId="${sessionId}", mentorId="${mentorId}"`);
+    logger.info(`[DEBUG] Raw session.timeSlotId =`, session.timeSlotId);
+    logger.info(`[DEBUG] Raw session.mentorId =`, session.mentorId);
+    logger.info(`[DEBUG] getRawId(timeSlotId) =`, this.getRawId(session.timeSlotId));
+    logger.info(`[DEBUG] getRawId(mentorId) =`, this.getRawId(session.mentorId));
 
-  if (mentorIdRaw !== mentorId) {
-    throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
-  }
+    const mentorIdRaw = this.getRawId(session.mentorId);
+    const timeSlotIdRaw = this.getRawId(session.timeSlotId);
+
+    if (mentorIdRaw !== mentorId) {
+      logger.error(`[DEBUG] Authorization failed: mentorIdRaw(${mentorIdRaw}) !== mentorId(${mentorId})`);
+      throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
+    }
 
   // 48-hour cutoff validation
   const now = new Date();

@@ -8,10 +8,12 @@ export interface IBooking extends Document {
   status: BOOKING_STATUS;
   subjectId?: Schema.Types.ObjectId;
   courseId?: Schema.Types.ObjectId;
+  sessionId?: Schema.Types.ObjectId;
   enrollmentId?: Schema.Types.ObjectId;
   isGroup?: boolean;
   cost?: number; 
   currency?: string; 
+  rebookMentorId?: Schema.Types.ObjectId;
   rebookingRequired?: boolean;
   createdAt: Date;
   updatedAt: Date;

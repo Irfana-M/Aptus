@@ -4,6 +4,7 @@ import { BaseRepository } from './baseRepository.js';
 import type { IBookingRepository } from '../interfaces/repositories/IBookingRepository.js';
 import type { IBooking } from '../interfaces/models/booking.interface.js';
 import { BookingModel } from '../models/scheduling/booking.model.js';
+import { logger } from '../utils/logger.js';
 
 @injectable()
 export class BookingRepository extends BaseRepository<IBooking> implements IBookingRepository {
@@ -48,6 +49,7 @@ export class BookingRepository extends BaseRepository<IBooking> implements IBook
   }
 
   async updateMany(filter: FilterQuery<IBooking>, update: UpdateQuery<IBooking>, session?: ClientSession): Promise<unknown> {
+    logger.info(`[DEBUG BookingRepository.updateMany] Filter: ${JSON.stringify(filter)}, Update: ${JSON.stringify(update)}`);
     return await this.model.updateMany(filter, update).session(session || null).exec();
   }
 

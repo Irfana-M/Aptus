@@ -28,6 +28,8 @@ const bookingSchema = new Schema<IBooking>(
     cost: { type: Number },
     currency: { type: String },
     rebookingRequired: { type: Boolean, default: false },
+    sessionId: { type: Schema.Types.ObjectId, ref: 'Session' },
+    rebookMentorId: { type: Schema.Types.ObjectId, ref: 'Mentor' },
   },
   { timestamps: true }
 );
@@ -36,6 +38,7 @@ const bookingSchema = new Schema<IBooking>(
 bookingSchema.index({ studentId: 1, status: 1 });
 bookingSchema.index({ studentSubjectId: 1, status: 1 });
 bookingSchema.index({ timeSlotId: 1 }); 
+bookingSchema.index({ sessionId: 1 }); 
 bookingSchema.index({ studentId: 1, timeSlotId: 1 }, { unique: true }); // A student can only book a slot once
 
 export const BookingModel = mongoose.model<IBooking>(
