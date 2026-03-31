@@ -151,16 +151,22 @@ export class UserRoleService implements IUserRoleService {
           let isAuthorized = false;
           
           // Check participants array first (handles Group & 1:1)
-          const participant = session.participants?.find((p) => 
-              p.userId && p.userId.toString() === userId && p.role === role
-          );
+          const participant = session.participants?.find((p: any) => {
+              if (!p.userId) return false;
+              // Handle both populated and unpopulated userId
+              const pId = p.userId._id ? p.userId._id.toString() : p.userId.toString();
+              return pId === userId && p.role === role;
+          });
 
           if (participant) {
               isAuthorized = true;
           } else {
               // Legacy/Fallback check for direct fields (if schema allows, though schema says participants)
-              const studentId = (session as unknown as { studentId?: { toString(): string } }).studentId?.toString();
-              const mentorId = (session as unknown as { mentorId?: { toString(): string } }).mentorId?.toString();
+              const sIdField = (session as any).studentId;
+              const mIdField = (session as any).mentorId;
+              
+              const studentId = sIdField?._id ? sIdField._id.toString() : sIdField?.toString();
+              const mentorId = mIdField?._id ? mIdField._id.toString() : mIdField?.toString();
               
               if (role === 'student' && studentId === userId) isAuthorized = true;
               if (role === 'mentor' && mentorId === userId) isAuthorized = true;
