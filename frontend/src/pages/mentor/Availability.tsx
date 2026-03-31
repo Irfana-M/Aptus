@@ -75,6 +75,16 @@ const MentorAvailabilityPage: React.FC = () => {
         });
     };
 
+    const toggleDayAllSlots = (day: string, action: 'select' | 'clear') => {
+        setAvailability(prev => {
+            if (action === 'clear') {
+                return { ...prev, [day]: [] };
+            } else {
+                return { ...prev, [day]: [...TIME_SLOTS] };
+            }
+        });
+    };
+
     const handleSave = async () => {
         try {
             setLoading(true);
@@ -137,8 +147,24 @@ const MentorAvailabilityPage: React.FC = () => {
                         <tbody className="divide-y divide-gray-100">
                             {DAYS.map(day => (
                                 <tr key={day} className="hover:bg-gray-50/50">
-                                    <td className="px-6 py-4 text-sm font-medium text-gray-700 sticky left-0 bg-white">
-                                        {day}
+                                    <td className="px-6 py-4 text-sm font-medium text-gray-700 sticky left-0 bg-white z-10 border-r border-gray-100">
+                                        <div className="flex flex-col gap-1">
+                                            <span>{day}</span>
+                                            <div className="flex gap-2 mt-1">
+                                                <button 
+                                                    onClick={() => toggleDayAllSlots(day, 'select')}
+                                                    className="text-[10px] text-teal-600 font-bold hover:underline uppercase"
+                                                >
+                                                    All
+                                                </button>
+                                                <button 
+                                                    onClick={() => toggleDayAllSlots(day, 'clear')}
+                                                    className="text-[10px] text-red-500 font-bold hover:underline uppercase"
+                                                >
+                                                    None
+                                                </button>
+                                            </div>
+                                        </div>
                                     </td>
                                     {TIME_SLOTS.map(slot => {
                                         const isSelected = availability[day]?.includes(slot);

@@ -283,6 +283,15 @@ export default function MentorProfileSetup() {
   };
 
   const addExperience = () => {
+    // Validate duration is a positive number
+    const durationNum = parseInt(currentExperience.duration);
+    if (isNaN(durationNum) || durationNum <= 0) {
+      toast.error("Please enter a valid positive number for duration (years)", {
+        position: "bottom-right",
+      });
+      return;
+    }
+
     if (
       currentExperience.institution &&
       currentExperience.jobTitle &&
@@ -339,6 +348,30 @@ export default function MentorProfileSetup() {
         // Add new day with slot
         newAvailability.push({ day: day, slots: [{ startTime, endTime }] });
       }
+      return { ...prev, availability: newAvailability };
+    });
+  };
+
+  const setDayAvailability = (day: string, action: 'select' | 'clear') => {
+    setProfileData((prev) => {
+      let newAvailability = [...prev.availability];
+      
+      if (action === 'clear') {
+        newAvailability = newAvailability.filter(a => a.day !== day);
+      } else {
+        const allSlotsForDay = TIME_SLOTS.map(slot => {
+          const [startTime, endTime] = slot.split('-');
+          return { startTime, endTime };
+        });
+        
+        const existingIndex = newAvailability.findIndex(a => a.day === day);
+        if (existingIndex >= 0) {
+          newAvailability[existingIndex] = { day, slots: allSlotsForDay };
+        } else {
+          newAvailability.push({ day, slots: allSlotsForDay });
+        }
+      }
+      
       return { ...prev, availability: newAvailability };
     });
   };
@@ -1273,9 +1306,29 @@ export default function MentorProfileSetup() {
                      (a) => a.day === day
                    );
                    
-                   return (
+                    return (
                     <div key={day} className="border rounded-lg p-4">
-                      <h4 className="font-medium text-gray-900 mb-3">{day}</h4>
+                      <div className="flex justify-between items-center mb-3">
+                        <h4 className="font-medium text-gray-900">{day}</h4>
+                        {isEditing && (
+                          <div className="flex gap-2">
+                             <button
+                              type="button"
+                              onClick={() => setDayAvailability(day, 'select')}
+                              className="text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 transition-colors font-bold uppercase tracking-wider"
+                            >
+                              Select All
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDayAvailability(day, 'clear')}
+                              className="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100 transition-colors font-bold uppercase tracking-wider"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        )}
+                      </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                         {TIME_SLOTS.map((slot) => {
                           const [startTime, endTime] = slot.split('-');
