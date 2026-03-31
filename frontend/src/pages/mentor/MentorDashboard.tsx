@@ -12,7 +12,7 @@ import { fetchMentorUpcomingSessions, cancelSession } from "../../features/sessi
 import type { AppDispatch, RootState } from "../../app/store";
 import { isClassOverdue, isSessionJoinable, normalizeTo24h } from '../../utils/timeUtils';
 import { toast } from 'react-hot-toast';
-import { format, addHours, isAfter } from 'date-fns';
+import { format } from 'date-fns';
 import { ReportAbsenceModal } from '../../components/shared/ReportAbsenceModal';
 import { useState } from 'react';
 
@@ -104,6 +104,16 @@ const MentorDashboard = () => {
         } catch (error: any) {
             toast.error(error?.message || 'Failed to cancel session');
         }
+    }
+  };
+
+  const handleJoinSession = (session: any) => {
+    const meetLink = session.meetingLink;
+    if (meetLink) {
+        window.open(meetLink, '_blank');
+    } else {
+        const id = session.id || session._id;
+        window.open(`/session/${id}/call`, '_blank');
     }
   };
 
@@ -287,9 +297,9 @@ const MentorDashboard = () => {
                     {sessionLoading ? (
                         <div className="py-4 flex justify-center"><Loader size="sm" /></div>
                     ) : sessions.length > 0 ? sessions.slice(0, 5).map((session) => {
-                        const canCancel = isAfter(new Date(session.startTime), addHours(new Date(), 48)) && session.status === 'scheduled';
                         const isCancelled = session.status === 'cancelled';
                         const studentName = (session.studentId as any)?.fullName || 'Student';
+                        const isJoinable = isSessionJoinable(session.startTime);
 
                         return (
                             <div key={session.id} className={`flex items-center justify-between p-4 rounded-3xl border transition-colors ${
@@ -312,7 +322,15 @@ const MentorDashboard = () => {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    {canCancel && (
+                                    {isJoinable && !isCancelled && (
+                                        <button 
+                                            onClick={() => handleJoinSession(session)}
+                                            className="text-[10px] font-bold text-teal-400 hover:text-teal-300 px-3 py-1.5 rounded-lg bg-teal-500/10 border border-teal-500/10 transition-colors"
+                                        >
+                                            JOIN
+                                        </button>
+                                    )}
+                                    {session.canApplyLeave && !isCancelled && (
                                         <button 
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -380,8 +398,7 @@ const MentorDashboard = () => {
         isOpen={isCancelModalOpen}
         onClose={() => setIsCancelModalOpen(false)}
         onSubmit={onCancelSubmit}
-        title="Cancel Regular Session"
-        description="Are you sure you want to cancel this session? This will notify the student and release the slot."
+        actionType="mentor-cancel"
         isLoading={sessionLoading}
       />
     </MentorLayout>

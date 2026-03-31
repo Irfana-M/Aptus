@@ -344,7 +344,7 @@ const MentorClassroom: React.FC = () => {
                                 </Button>
                                 {!session.canApplyLeave && (
                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2.5 bg-slate-900 text-white text-[10px] font-bold rounded-xl opacity-0 group-hover/leave:opacity-100 transition-opacity pointer-events-none text-center shadow-xl z-50">
-                                        Leave requires at least 24h notice before session start.
+                                        Leave requires at least 48h notice before session start.
                                         <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-slate-900" />
                                     </div>
                                 )}
@@ -397,8 +397,7 @@ const MentorClassroom: React.FC = () => {
         isOpen={isCancelModalOpen}
         onClose={() => setIsCancelModalOpen(false)}
         onSubmit={onCancelSubmit}
-        title="Cancel Session"
-        description="Provide a reason for cancellation. This will notify your student and release your slot capacity."
+        actionType="mentor-cancel"
         isLoading={isCancelling}
       />
     </MentorLayout>

@@ -51,4 +51,5 @@ export interface Session {
     isRescheduled?: boolean;
     rescheduledTo?: string;
     leaveRequestedAt?: string;
+    canApplyLeave?: boolean;
 }

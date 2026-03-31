@@ -35,6 +35,13 @@ export class SessionService implements ISessionService {
     @inject(TYPES.IAttendanceService) private attendanceService: IAttendanceService
   ) {}
 
+  private readonly MENTOR_CANCEL_CUTOFF_HOURS = 48;
+
+  private getRawId(val: any): string {
+    if (!val) return '';
+    return val._id ? val._id.toString() : val.toString();
+  }
+
   async getStudentUpcomingSessions(studentId: string): Promise<ISession[]> {
     const sessions = await this.sessionRepo.findUpcomingByStudent(studentId);
     return sessions;
@@ -64,19 +71,43 @@ export class SessionService implements ISessionService {
     return this.sessionRepo.findUpcomingByMentor(mentorId);
   }
 
-  async getMentorUpcomingSessionsPaginated(mentorId: string, page: number, limit: number, filter?: { startDate?: Date | undefined; endDate?: Date | undefined }): Promise<{ items: ISession[]; total: number }> {
+  async getMentorUpcomingSessionsPaginated(mentorId: string, page: number, limit: number, filter?: { startDate?: Date | undefined; endDate?: Date | undefined }): Promise<{ items: any[]; total: number }> {
     const skip = (page - 1) * limit;
     const [items, total] = await Promise.all([
       this.sessionRepo.findUpcomingByMentor(mentorId, { skip, limit }, filter),
       this.sessionRepo.countUpcomingByMentor(mentorId, filter)
     ]);
-    return { items, total };
+
+    // Enrich sessions with canApplyLeave for mentors (48h rule)
+    const enrichedItems = items.map((session: any) => {
+      const sessionObj = session.toObject ? session.toObject() : session;
+      const diffInHours = (new Date(sessionObj.startTime).getTime() - Date.now()) / (1000 * 60 * 60);
+
+      return {
+        ...sessionObj,
+        id: this.getRawId(sessionObj),
+        canApplyLeave: sessionObj.status === SESSION_STATUS.SCHEDULED && diffInHours >= this.MENTOR_CANCEL_CUTOFF_HOURS
+      };
+    });
+
+    return { items: enrichedItems, total };
   }
 
-  async getMentorTodaySessions(mentorId: string): Promise<ISession[]> {
+  async getMentorTodaySessions(mentorId: string): Promise<any[]> {
     const today = new Date();
     today.setHours(0,0,0,0);
-    return this.sessionRepo.findTodayByMentor(mentorId, today);
+    const sessions = await this.sessionRepo.findTodayByMentor(mentorId, today);
+
+    return sessions.map((session: any) => {
+      const sessionObj = session.toObject ? session.toObject() : session;
+      const diffInHours = (new Date(sessionObj.startTime).getTime() - Date.now()) / (1000 * 60 * 60);
+
+      return {
+        ...sessionObj,
+        id: this.getRawId(sessionObj),
+        canApplyLeave: sessionObj.status === SESSION_STATUS.SCHEDULED && diffInHours >= this.MENTOR_CANCEL_CUTOFF_HOURS
+      };
+    });
   }
 
   async createSession(data: Partial<ISession>): Promise<ISession> {
@@ -188,12 +219,9 @@ export class SessionService implements ISessionService {
     const session = await this.sessionRepo.findById(sessionId);
     if (!session) throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
     
-    // Helper to get raw ID from potentially populated field
-    const getRawId = (val: any) => val?._id?.toString() || val?.toString();
-
     // Authorization check
-    const isParticipant = session.participants.some(p => getRawId(p.userId) === studentId) || 
-                          (getRawId(session.studentId) === studentId);
+    const isParticipant = session.participants.some(p => this.getRawId(p.userId) === studentId) || 
+                          (this.getRawId(session.studentId) === studentId);
     if (!isParticipant) throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
 
     // Cutoff Validation: 24-hour rule for students
@@ -231,7 +259,7 @@ export class SessionService implements ISessionService {
       
       await this.bookingRepo.updateMany(
         { 
-          $or: [{ sessionId: session._id }, { timeSlotId: session.timeSlotId }], 
+          $or: [{ sessionId: new Types.ObjectId(sessionId) }, { timeSlotId: new Types.ObjectId(this.getRawId(session.timeSlotId)) }], 
           studentId: new Types.ObjectId(studentId) as unknown as import('mongoose').Schema.Types.ObjectId 
         },
         { status: BOOKING_STATUS.ABSENT }
@@ -264,7 +292,7 @@ export class SessionService implements ISessionService {
       
       await this.bookingRepo.updateMany(
         { 
-          $or: [{ sessionId: session._id }, { timeSlotId: session.timeSlotId }], 
+          $or: [{ sessionId: new Types.ObjectId(sessionId) }, { timeSlotId: new Types.ObjectId(this.getRawId(session.timeSlotId)) }], 
           studentId: new Types.ObjectId(studentId) as unknown as import('mongoose').Schema.Types.ObjectId 
         },
         { status: BOOKING_STATUS.CANCELLED }
@@ -297,16 +325,14 @@ export class SessionService implements ISessionService {
     const session = await this.sessionRepo.findById(sessionId);
     if (!session) throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
-    const getRawId = (val: any) => val?._id?.toString() || val?.toString();
-    if (getRawId(session.mentorId) !== mentorId) throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
+    if (this.getRawId(session.mentorId) !== mentorId) throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
 
     // Cutoff Validation: 48-hour rule for mentors
-    const MENTOR_CANCEL_CUTOFF_HOURS = 48;
     const now = new Date();
     const diffInHours = (new Date(session.startTime).getTime() - now.getTime()) / (1000 * 60 * 60);
 
-    if (diffInHours < MENTOR_CANCEL_CUTOFF_HOURS) {
-      logger.warn(`Mentor ${mentorId} cancellation rejected: Session ${sessionId} starts in ${diffInHours.toFixed(2)}h (Cutoff: ${MENTOR_CANCEL_CUTOFF_HOURS}h)`);
+    if (diffInHours < this.MENTOR_CANCEL_CUTOFF_HOURS) {
+      logger.warn(`Mentor ${mentorId} cancellation rejected: Session ${sessionId} starts in ${diffInHours.toFixed(2)}h (Cutoff: ${this.MENTOR_CANCEL_CUTOFF_HOURS}h)`);
       throw new AppError(MESSAGES.SESSION.CANCEL_CUTOFF_ERROR, HttpStatusCode.BAD_REQUEST);
     }
 
@@ -317,11 +343,11 @@ export class SessionService implements ISessionService {
     });
 
     await this.bookingRepo.updateMany(
-      { $or: [{ sessionId: session._id }, { timeSlotId: session.timeSlotId }] },
+      { $or: [{ sessionId: new Types.ObjectId(sessionId) }, { timeSlotId: new Types.ObjectId(this.getRawId(session.timeSlotId)) }] },
       { 
         status: BOOKING_STATUS.CANCELLED,
         rebookingRequired: true,
-        rebookMentorId: session.mentorId 
+        rebookMentorId: new Types.ObjectId(this.getRawId(session.mentorId)) 
       } as any
     );
 
@@ -344,20 +370,11 @@ export class SessionService implements ISessionService {
     const session = await this.sessionRepo.findById(sessionId);
     if (!session) throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
-    // Allow rescheduling if explicitly in 'rescheduling' state OR if it was 'cancelled' by the mentor
-    const canReschedule = session.status === SESSION_STATUS.RESCHEDULING || 
-                         (session.status === SESSION_STATUS.CANCELLED && session.cancelledBy === 'mentor');
+    // Authorization: for students, allow if they are primary studentId OR in participants
+    const isAuthorized = this.getRawId(session.studentId) === studentId ||
+                         session.participants.some(p => this.getRawId(p.userId) === studentId);
 
-    if (!canReschedule) {
-      throw new AppError(MESSAGES.SESSION.INVALID_STATE, HttpStatusCode.BAD_REQUEST);
-    }
-
-    const getRawId = (val: any) => val?._id?.toString() || val?.toString();
-
-    // Security check: ensure the student is part of this session
-    const isParticipant = session.participants.some(p => getRawId(p.userId) === studentId) ||
-                          (getRawId(session.studentId) === studentId);
-    if (!isParticipant) throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
+    if (!isAuthorized) throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
 
     if (newTimeSlotId || slotDetails) {
       // RESCHEDULE CASE
@@ -504,9 +521,8 @@ export class SessionService implements ISessionService {
     const session = await this.sessionRepo.findById(sessionId);
     if (!session) throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
-    const getRawId = (val: any) => val?._id?.toString() || val?.toString();
     // Authorization: Only the assigned mentor can complete the session
-    if (getRawId(session.mentorId) !== mentorId) {
+    if (this.getRawId(session.mentorId) !== mentorId) {
       throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
     }
 

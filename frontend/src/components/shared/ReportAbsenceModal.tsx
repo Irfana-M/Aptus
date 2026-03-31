@@ -9,20 +9,33 @@ interface ReportAbsenceModalProps {
   title?: string;
   description?: string;
   isLoading?: boolean;
+  actionType?: 'mentor-cancel' | 'student-absence';
 }
 
 export const ReportAbsenceModal: React.FC<ReportAbsenceModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
-  title = "Report Absence",
-  description = "Please provide a reason for your absence. This will be shared with the relevant parties.",
-  isLoading = false
+  title,
+  description,
+  isLoading = false,
+  actionType = 'student-absence'
 }) => {
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
 
   if (!isOpen) return null;
+
+  // Role-specific defaults
+  const isMentorCancel = actionType === 'mentor-cancel';
+  const displayTitle = title || (isMentorCancel ? "Cancel Session" : "Report Absence");
+  const displayDescription = description || (isMentorCancel 
+    ? "Provide a reason for cancellation. This will notify your student and release your slot capacity. (48 hours notice required)" 
+    : "Please provide a reason for your absence. This will be shared with the relevant parties.");
+
+  const themeColors = isMentorCancel 
+    ? { icon: 'text-rose-600', iconBg: 'bg-rose-100', headerBg: 'bg-rose-50/50', button: 'bg-rose-600 hover:bg-rose-700 shadow-rose-100' }
+    : { icon: 'text-amber-600', iconBg: 'bg-amber-100', headerBg: 'bg-gray-50/50', button: 'bg-slate-900 hover:bg-slate-800 shadow-slate-200' };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,12 +53,12 @@ export const ReportAbsenceModal: React.FC<ReportAbsenceModalProps> = ({
       <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-          <div className="flex items-center gap-2 text-amber-600">
-             <div className="p-2 bg-amber-100 rounded-lg">
+        <div className={`px-6 py-4 border-b border-gray-100 flex items-center justify-between ${themeColors.headerBg}`}>
+          <div className="flex items-center gap-2">
+             <div className={`p-2 ${themeColors.iconBg} ${themeColors.icon} rounded-lg`}>
                 <AlertTriangle size={20} />
              </div>
-             <h3 className="font-bold text-lg text-gray-900">{title}</h3>
+             <h3 className="font-bold text-lg text-gray-900">{displayTitle}</h3>
           </div>
           <button 
             onClick={onClose}
@@ -59,7 +72,7 @@ export const ReportAbsenceModal: React.FC<ReportAbsenceModalProps> = ({
         {/* Body */}
         <form onSubmit={handleSubmit} className="p-6">
           <p className="text-sm text-gray-500 mb-4">
-            {description}
+            {displayDescription}
           </p>
 
           <div className="space-y-2">
@@ -93,10 +106,10 @@ export const ReportAbsenceModal: React.FC<ReportAbsenceModalProps> = ({
             <button
               type="submit"
               disabled={isLoading}
-              className="bg-slate-900 text-white hover:bg-slate-800 px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-slate-200 disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
+              className={`${themeColors.button} text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2 transition-all`}
             >
               {isLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-              {isLoading ? 'Submitting...' : 'Submit Report'}
+              {isLoading ? 'Submitting...' : isMentorCancel ? 'Confirm Cancellation' : 'Submit Report'}
             </button>
           </div>
         </form>
