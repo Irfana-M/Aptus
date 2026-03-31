@@ -228,8 +228,12 @@ export class SessionService implements ISessionService {
     if (!session) throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
     
     logger.info(`[DEBUG reportAbsence] START for sessionId="${sessionId}", studentId="${studentId}"`);
-    logger.info(`[DEBUG] session.timeSlotId =`, session.timeSlotId);
+    logger.info(`[DEBUG] Raw session.timeSlotId =`, session.timeSlotId);
+    logger.info(`[DEBUG] Raw session.subjectId =`, session.subjectId);
+    logger.info(`[DEBUG] Raw session.mentorId =`, session.mentorId);
     logger.info(`[DEBUG] getRawId(timeSlotId) =`, this.getRawId(session.timeSlotId));
+    logger.info(`[DEBUG] getRawId(subjectId) =`, this.getRawId(session.subjectId));
+    logger.info(`[DEBUG] getRawId(mentorId) =`, this.getRawId(session.mentorId));
 
     // Authorization check
     const isParticipant = session.participants.some(p => this.getRawId(p.userId) === studentId) || 
@@ -248,7 +252,8 @@ export class SessionService implements ISessionService {
 
     // Fetch student details for notification
     const student = await this.studentRepo.findById(studentId);
-    const subject = await this.subjectRepo.findById(session.subjectId?.toString() || "");
+    const subjectIdRaw = this.getRawId(session.subjectId);
+    const subject = subjectIdRaw ? await this.subjectRepo.findById(subjectIdRaw) : null;
     
     // Format session time
     const sessionDate = new Date(session.startTime).toLocaleDateString('en-US', {
@@ -280,7 +285,7 @@ export class SessionService implements ISessionService {
       await this.studentRepo.incrementCancellationCount(studentId);
 
       await this.notificationService.notifyUser(
-        session.mentorId.toString(), 
+        this.getRawId(session.mentorId), 
         'mentor', 
         'session_cancelled', 
         { 
@@ -313,7 +318,7 @@ export class SessionService implements ISessionService {
       await this.studentRepo.incrementCancellationCount(studentId);
 
       await this.notificationService.notifyUser(
-        session.mentorId.toString(), 
+        this.getRawId(session.mentorId), 
         'mentor', 
         'session_cancelled', 
         { 
@@ -329,7 +334,7 @@ export class SessionService implements ISessionService {
         ['web', 'email']
       );
 
-      await this.timeSlotRepo.releaseCapacity(session.timeSlotId.toString());
+      await this.timeSlotRepo.releaseCapacity(this.getRawId(session.timeSlotId));
     }
   }
 
