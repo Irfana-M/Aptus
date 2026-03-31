@@ -10,11 +10,10 @@ import { Table, type TableColumn } from '../../components/mentor/Table';
 import { fetchMentorTrialClasses, fetchMentorProfile, updateTrialClassStatus, fetchMentorCourses, fetchMentorAssignments, fetchMentorDashboardData } from "../../features/mentor/mentorThunk";
 import { fetchMentorUpcomingSessions, cancelSession } from "../../features/session/sessionThunk";
 import type { AppDispatch, RootState } from "../../app/store";
-import { isClassOverdue } from '../../utils/timeUtils';
+import { isClassOverdue, isSessionJoinable, normalizeTo24h } from '../../utils/timeUtils';
 import { toast } from 'react-hot-toast';
 import { format, addHours, isAfter } from 'date-fns';
 import { ReportAbsenceModal } from '../../components/shared/ReportAbsenceModal';
-import { isSessionJoinable } from '../../utils/timeUtils';
 import { useState } from 'react';
 
 interface Assignment {

@@ -9,7 +9,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ReportAbsenceModal } from '../../components/shared/ReportAbsenceModal';
 import { isSessionJoinable } from '../../utils/timeUtils';
 import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../../app/store';
+import type { AppDispatch } from '../../app/store';
 import { cancelSession } from '../../features/session/sessionThunk';
 
 interface Course {
