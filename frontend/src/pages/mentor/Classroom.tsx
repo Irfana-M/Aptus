@@ -6,6 +6,11 @@ import { toast } from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Loader } from '../../components/ui/Loader';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { ReportAbsenceModal } from '../../components/shared/ReportAbsenceModal';
+import { isSessionJoinable } from '../../utils/timeUtils';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '../../app/store';
+import { cancelSession } from '../../features/session/sessionThunk';
 
 interface Course {
     _id: string;
@@ -182,6 +187,11 @@ const MentorClassroom: React.FC = () => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  
+  const dispatch = useDispatch<AppDispatch>();
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [selectedCancelSessionId, setSelectedCancelSessionId] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
   const loadData = async () => {
     try {
       setLoading(true);
@@ -203,9 +213,26 @@ const MentorClassroom: React.FC = () => {
     loadData();
   }, []);
 
-  const handleApplyLeaveForSession = (_sessionId: string) => {
-    // Navigate to availability leave page — the mentor submits leave from there
-    window.location.href = '/mentor/availability';
+  const handleApplyLeaveForSession = (sessionId: string) => {
+    setSelectedCancelSessionId(sessionId);
+    setIsCancelModalOpen(true);
+  };
+
+  const onCancelSubmit = async (reason: string) => {
+    if (selectedCancelSessionId) {
+        try {
+            setIsCancelling(true);
+            await dispatch(cancelSession({ sessionId: selectedCancelSessionId, reason })).unwrap();
+            setIsCancelModalOpen(false);
+            setSelectedCancelSessionId(null);
+            toast.success('Session cancelled successfully');
+            loadData(); // Refresh list after cancellation
+        } catch (error: any) {
+            toast.error(error?.message || 'Failed to cancel session');
+        } finally {
+            setIsCancelling(false);
+        }
+    }
   };
 
   const handleJoinSession = (session: Session) => {
@@ -323,14 +350,29 @@ const MentorClassroom: React.FC = () => {
                                 )}
                             </div>
 
-                            <Button 
-                                onClick={() => handleJoinSession(session)}
-                                disabled={session.status === 'cancelled'}
-                                className={`px-10 py-2 rounded-xl text-xs font-black uppercase tracking-widest ${session.status !== 'cancelled' ? 'bg-white hover:bg-slate-50 text-indigo-600 border border-slate-200 shadow-sm' : 'bg-slate-200 text-slate-400'}`}
-                            >
-                                {session.status === 'cancelled' ? 'Cancelled' : 'View Details'}
-                                {session.status !== 'cancelled' && <ExternalLink size={14} className="ml-1" />}
-                            </Button>
+                            <div className="relative group/join">
+                                <Button 
+                                    onClick={() => handleJoinSession(session)}
+                                    disabled={session.status === 'cancelled' || !isSessionJoinable(session.startTime)}
+                                    className={`px-10 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                                        session.status === 'cancelled' 
+                                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                            : !isSessionJoinable(session.startTime)
+                                            ? 'bg-slate-50 text-slate-400 border border-slate-100 cursor-not-allowed opacity-70'
+                                            : 'bg-white hover:bg-slate-50 text-indigo-600 border border-slate-200 shadow-sm active:scale-95'
+                                    }`}
+                                >
+                                    {session.status === 'cancelled' ? 'Cancelled' : 'Join Session'}
+                                    {session.status !== 'cancelled' && isSessionJoinable(session.startTime) && <ExternalLink size={14} className="ml-1" />}
+                                </Button>
+                                
+                                {session.status !== 'cancelled' && !isSessionJoinable(session.startTime) && (
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2.5 bg-slate-900 text-white text-[10px] font-bold rounded-xl opacity-0 group-hover/join:opacity-100 transition-opacity pointer-events-none text-center shadow-xl z-50">
+                                        Join link opens 60 mins before class starts.
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-slate-900" />
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 ))}
@@ -350,6 +392,15 @@ const MentorClassroom: React.FC = () => {
             onClose={() => setSelectedCourse(null)} 
           />
       )}
+
+      <ReportAbsenceModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        onSubmit={onCancelSubmit}
+        title="Cancel Session"
+        description="Provide a reason for cancellation. This will notify your student and release your slot capacity."
+        isLoading={isCancelling}
+      />
     </MentorLayout>
   );
 };

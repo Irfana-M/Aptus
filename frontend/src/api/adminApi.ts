@@ -51,7 +51,9 @@ adminApi.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config as OriginalRequestConfig;
 
-    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.includes("/auth/refresh")) {
+    const isAuthRoute = originalRequest.url?.includes("/login") || originalRequest.url?.includes("/refresh");
+    
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRoute) {
       if (isRefreshing) {
          return new Promise<string>((resolve, reject) => {
             failedQueue.push({ resolve, reject });

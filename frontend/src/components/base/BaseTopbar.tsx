@@ -22,7 +22,7 @@ export const BaseTopbar: React.FC<BaseTopbarProps> = ({
   sticky = true,
 }) => {
   return (
-    <header className={`${sticky ? "sticky top-0 z-40" : ""} px-6 py-4 flex items-center justify-between transition-all duration-200 ${className}`}>
+    <header className={`${sticky ? "sticky top-0 z-50" : ""} px-6 py-4 flex items-center justify-between transition-all duration-200 ${className}`}>
       <div className="flex items-center space-x-4">
         <button
           onClick={onMenuToggle}

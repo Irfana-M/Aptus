@@ -50,3 +50,18 @@ export const isClassOverdue = (date: string, time: string): boolean => {
         return false;
     }
 };
+
+/**
+ * Determines if a session is joinable (standard: 60 minutes before start)
+ */
+export const isSessionJoinable = (startTime: string | Date | undefined): boolean => {
+    if (!startTime) return false;
+    try {
+        const start = new Date(startTime);
+        const now = new Date();
+        const oneHourBefore = new Date(start.getTime() - (60 * 60 * 1000));
+        return now >= oneHourBefore;
+    } catch (e) {
+        return false;
+    }
+};

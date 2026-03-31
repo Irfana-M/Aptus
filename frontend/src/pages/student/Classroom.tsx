@@ -194,10 +194,13 @@ const StudentClassroom: React.FC = () => {
     loadSessions();
   }, [loadSessions]);
 
-  const handleApplyLeave = () => {
-    const eligibleSession = eligibilityData?.sessions.find((s) => s.canRequestLeave);
-    if (eligibleSession) {
-      setSelectedSessionId(eligibleSession.id);
+  const handleApplyLeave = (sessionId?: string) => {
+    const targetId = typeof sessionId === 'string' 
+      ? sessionId 
+      : eligibilityData?.sessions.find((s) => s.canRequestLeave)?.id;
+
+    if (targetId) {
+      setSelectedSessionId(targetId);
       setIsAbsenceModalOpen(true);
     } else {
       toast.error('No eligible sessions for leave request.');
@@ -408,7 +411,7 @@ const StudentClassroom: React.FC = () => {
               <div className="relative group/tooltip">
                 <Button
                   disabled={!eligibilityData?.leaveWindowOpen}
-                  onClick={handleApplyLeave}
+                  onClick={() => handleApplyLeave()}
                   className={`px-6 h-12 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
                     eligibilityData?.leaveWindowOpen
                       ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-100'
@@ -467,13 +470,16 @@ const StudentClassroom: React.FC = () => {
                       <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
                         Mentor
                       </th>
-                      <th className="px-8 py-5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      <th className="px-8 py-5 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
                         Status
+                      </th>
+                      <th className="px-8 py-5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Action
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {weeklySessions.map(({ session, id }) => (
+                    {weeklySessions.map(({ session, id, canRequestLeave }) => (
                       <tr key={id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-8 py-6">
                           <div className="flex items-center gap-4">
@@ -512,7 +518,7 @@ const StudentClassroom: React.FC = () => {
                             </span>
                           </div>
                         </td>
-                        <td className="px-8 py-6 text-right">
+                        <td className="px-8 py-6 text-center">
                           {session.sessionType === 'group' && session.participants?.find(p => p.userId === currentUser?._id)?.status === 'absent' ? (
                             <span className="px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-700">
                               ABSENT
@@ -530,6 +536,31 @@ const StudentClassroom: React.FC = () => {
                               {session.status}
                             </span>
                           )}
+                        </td>
+                        <td className="px-8 py-6 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {canRequestLeave && (
+                              <button
+                                onClick={() => handleApplyLeave(id)}
+                                className="text-[10px] font-black uppercase tracking-wider text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-4 py-2 rounded-xl transition-all border border-rose-100 hover:border-rose-200 active:scale-95 shadow-sm"
+                              >
+                                Apply Leave
+                              </button>
+                            )}
+                            {session.status === 'cancelled' && session.cancelledBy === 'mentor' && (
+                              <button
+                                onClick={() => setSelectedRescheduleSession(session)}
+                                className="text-[10px] font-black uppercase tracking-wider text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-xl transition-all border border-indigo-100 hover:border-indigo-200 active:scale-95 shadow-sm"
+                              >
+                                Request Slot
+                              </button>
+                            )}
+                            {!canRequestLeave && session.status !== 'cancelled' && (
+                              <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest pr-4">
+                                Fixed
+                              </span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}

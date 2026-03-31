@@ -13,6 +13,9 @@ import type { AppDispatch, RootState } from "../../app/store";
 import { isClassOverdue } from '../../utils/timeUtils';
 import { toast } from 'react-hot-toast';
 import { format, addHours, isAfter } from 'date-fns';
+import { ReportAbsenceModal } from '../../components/shared/ReportAbsenceModal';
+import { isSessionJoinable } from '../../utils/timeUtils';
+import { useState } from 'react';
 
 interface Assignment {
   _id: string;
@@ -43,6 +46,9 @@ const MentorDashboard = () => {
   const navigate = useNavigate();
   const { trialClasses, courses, assignments, loading, profile } = useSelector((state: RootState) => state.mentor);
   const { sessions, loading: sessionLoading } = useSelector((state: RootState) => state.session);
+
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [selectedCancelSessionId, setSelectedCancelSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     dispatch(fetchMentorDashboardData());
@@ -83,9 +89,22 @@ const MentorDashboard = () => {
      }
   };
   const handleCancelSession = (sessionId: string) => {
-    const reason = window.prompt("Please provide a reason for cancellation:");
-    if (reason) {
-        dispatch(cancelSession({ sessionId, reason }));
+    if (sessionId) {
+        setSelectedCancelSessionId(sessionId);
+        setIsCancelModalOpen(true);
+    }
+  };
+
+  const onCancelSubmit = async (reason: string) => {
+    if (selectedCancelSessionId) {
+        try {
+            await dispatch(cancelSession({ sessionId: selectedCancelSessionId, reason })).unwrap();
+            setIsCancelModalOpen(false);
+            setSelectedCancelSessionId(null);
+            toast.success('Session cancelled successfully');
+        } catch (error: any) {
+            toast.error(error?.message || 'Failed to cancel session');
+        }
     }
   };
 
@@ -189,10 +208,10 @@ const MentorDashboard = () => {
                           <div className="flex gap-2">
                             <button 
                                 onClick={() => handleJoinTrial(trial.meetLink || '')}
-                                disabled={!trial.meetLink}
+                                disabled={!trial.meetLink || !isSessionJoinable(new Date(new Date(trial.preferredDate).setHours(parseInt(normalizeTo24h(trial.preferredTime).split(':')[0]), parseInt(normalizeTo24h(trial.preferredTime).split(':')[1]))))}
                                 className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors disabled:opacity-50"
                             >
-                                <Video size={18} /> Join
+                                <Video size={18} /> {isSessionJoinable(new Date(new Date(trial.preferredDate).setHours(parseInt(normalizeTo24h(trial.preferredTime).split(':')[0]), parseInt(normalizeTo24h(trial.preferredTime).split(':')[1])))) ? 'Join' : 'Waiting'}
                             </button>
                             <button 
                                 onClick={() => handleUpdateTrialStatus(trial.id || '', 'completed')}
@@ -296,8 +315,11 @@ const MentorDashboard = () => {
                                 <div className="flex items-center gap-2">
                                     {canCancel && (
                                         <button 
-                                            onClick={() => handleCancelSession(session.id)}
-                                            className="text-[10px] font-bold text-red-400 hover:text-red-300 px-2 py-1 rounded bg-red-500/10"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleCancelSession(session.id || (session as any)._id);
+                                            }}
+                                            className="text-[10px] font-bold text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/10 transition-colors"
                                         >
                                             CANCEL
                                         </button>
@@ -355,6 +377,14 @@ const MentorDashboard = () => {
           </div>
         </div>
       </div>
+      <ReportAbsenceModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        onSubmit={onCancelSubmit}
+        title="Cancel Regular Session"
+        description="Are you sure you want to cancel this session? This will notify the student and release the slot."
+        isLoading={sessionLoading}
+      />
     </MentorLayout>
   );
 };
