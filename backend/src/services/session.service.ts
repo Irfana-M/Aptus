@@ -32,7 +32,8 @@ export class SessionService implements ISessionService {
     @inject(TYPES.ILeaveEligibilityService) private leaveEligibilityService: ILeaveEligibilityService,
     @inject(TYPES.INotificationService) private notificationService: INotificationService,
     @inject(TYPES.ISchedulingService) private schedulingService: ISchedulingService,
-    @inject(TYPES.IAttendanceService) private attendanceService: IAttendanceService
+    @inject(TYPES.IAttendanceService) private attendanceService: IAttendanceService,
+    @inject(TYPES.ITrialClassRepository) private trialClassRepo: any // Using any to avoid complex type import if not easy
   ) {}
 
   private readonly MENTOR_CANCEL_CUTOFF_HOURS = 48;
@@ -58,14 +59,10 @@ export class SessionService implements ISessionService {
 
   async getStudentUpcomingSessionsWithEligibility(studentId: string): Promise<LeaveEligibilityResponse> {
     const now = new Date();
-    const thirtyDaysLater = new Date(now);
-    thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
-
-    const sessions = await this.sessionRepo.findUpcomingByStudent(studentId, undefined, { 
-      endDate: thirtyDaysLater 
-    });
+    const sessions = await this.sessionRepo.findUpcomingByStudent(studentId);
     return this.leaveEligibilityService.computeStudentEligibility(sessions, now);
   }
+
 
   async getMentorUpcomingSessions(mentorId: string): Promise<ISession[]> {
     return this.sessionRepo.findUpcomingByMentor(mentorId);
@@ -451,15 +448,38 @@ export class SessionService implements ISessionService {
       const newSlot = await this.timeSlotRepo.findById(effectiveSlotId);
       if (!newSlot) throw new AppError(MESSAGES.AVAILABILITY.SLOT_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       
-      // Conflict Validation: Is mentor already busy at this exact time?
+      // COMPEHENSIVE Conflict Validation
+      // 1. Regular Sessions (Scheduled, In Progress, Rescheduling)
       const existingConflict = await this.sessionRepo.find({
         mentorId: session.mentorId,
         startTime: newSlot.startTime,
-        status: SESSION_STATUS.SCHEDULED
+        status: { $in: [SESSION_STATUS.SCHEDULED, SESSION_STATUS.IN_PROGRESS, SESSION_STATUS.RESCHEDULING] }
       });
 
       if (existingConflict.length > 0) {
         throw new AppError("Mentor has a conflicting session at this time.", HttpStatusCode.BAD_REQUEST);
+      }
+
+      // 2. Trial Classes (Assigned, Scheduled)
+      const trialConflict = await this.trialClassRepo.find({
+        mentor: session.mentorId.toString(),
+        preferredDate: {
+          $gte: new Date(new Date(newSlot.startTime).setHours(0,0,0,0)),
+          $lte: new Date(new Date(newSlot.startTime).setHours(23,59,59,999))
+        },
+        status: { $in: ['assigned', 'scheduled'] }
+      });
+
+      const hasOverlappingTrial = trialConflict.some((trial: any) => {
+        // Trial classes use HH:MM preferredTime string
+        const [h, m] = trial.preferredTime.split(':').map(Number);
+        const trialStart = new Date(trial.preferredDate);
+        trialStart.setHours(h, m, 0, 0);
+        return trialStart.getTime() === new Date(newSlot.startTime).getTime();
+      });
+
+      if (hasOverlappingTrial) {
+        throw new AppError("Mentor has a conflicting trial class at this time.", HttpStatusCode.BAD_REQUEST);
       }
 
       if (newSlot.status !== 'available' && newSlot.status !== 'reserved') {

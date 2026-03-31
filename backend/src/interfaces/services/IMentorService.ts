@@ -27,7 +27,8 @@ export interface IMentorService {
   normalizeMentorAvailability(mentorId: string): Promise<void>;
   getMentorAvailableSlots(mentorId: string): Promise<{
     day: string;
-    slots: { startTime: string; endTime: string; remainingCapacity: number }[];
+    date: string;
+    slots: { _id?: string; startTime: string; endTime: string; remainingCapacity: number }[];
   }[]>;
   requestLeave(mentorId: string, startDate: Date, endDate: Date, reason?: string): Promise<void>;
   approveLeave(mentorId: string | undefined, leaveId: string, adminId: string): Promise<void>;

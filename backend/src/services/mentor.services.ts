@@ -562,10 +562,11 @@ export class MentorService implements IMentorService {
    */
   async getMentorAvailableSlots(mentorId: string): Promise<{
     day: string;
-    slots: { startTime: string; endTime: string; remainingCapacity: number }[];
+    date: string;
+    slots: { _id?: string; startTime: string; endTime: string; remainingCapacity: number }[];
   }[]> {
     try {
-      logger.info(`Fetching available slots for mentor: ${mentorId}`);
+      logger.info(`Fetching available slots for mentor: ${mentorId} (21-day window)`);
       
       const mentor = await this._mentorRepo.findById(mentorId);
       if (!mentor) throw new Error(MESSAGES.AUTH.USER_NOT_FOUND);
@@ -573,9 +574,8 @@ export class MentorService implements IMentorService {
       const maxSessionsPerDay = mentor.maxSessionsPerDay || 5;
       const maxSessionsPerWeek = mentor.maxSessionsPerWeek || 25;
 
-      // Get mentor's availability from MentorAvailabilityModel
       const availabilityRecords = await this._mentorAvailabilityRepo.find({
-        mentorId: new mongoose.Types.ObjectId(mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
+        mentorId: new mongoose.Types.ObjectId(mentorId.toString()) as any,
         isActive: true
       });
 
@@ -583,128 +583,123 @@ export class MentorService implements IMentorService {
         ? availabilityRecords.map(r => ({ day: r.dayOfWeek, slots: r.slots }))
         : (mentor.availability || []);
 
-      const result: { day: string; slots: { startTime: string; endTime: string; remainingCapacity: number }[] }[] = [];
+      const result: { day: string, date: string, slots: any[] }[] = [];
+      const now = new Date();
+      const threeWeeksLater = new Date(now);
+      threeWeeksLater.setDate(now.getDate() + 21);
 
-      for (const dayAvail of availabilityData) {
-        const dayName = dayAvail.day;
-        const daySlots: { _id?: string; startTime: string; endTime: string; remainingCapacity: number }[] = [];
-
-        // 1. Determine the specific date for this upcoming day
-        const nextDate = this.getNextDayOccurrence(dayName);
-        
-        // 2. Daily Usage Check (TimeSlots + TrialClasses)
-        const startOfDay = new Date(nextDate);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(nextDate);
-        endOfDay.setHours(23, 59, 59, 999);
-
-        // Fetch ALL TimeSlots for the day (Booked OR Available) to map IDs
-        const allTimeSlotsDaily = await this._timeSlotRepo.find({
+      // Pre-fetch all relevant data for the 21-day window to avoid N+1 queries
+      const [allTimeSlots, allTrialClasses] = await Promise.all([
+        this._timeSlotRepo.find({
           mentorId: mentorId,
-          startTime: { $gte: startOfDay, $lte: endOfDay }
-        } as any);
-
-        // a) Booked Regular Slots count
-        const bookedTimeSlotsDaily = allTimeSlotsDaily.filter(ts => ['booked', 'reserved'].includes(ts.status as string));
-
-        // b) Assigned Trial Classes count
-        const assignedTrialsDaily = await this._trialClassRepo.find({
+          startTime: { $gte: new Date(now.setHours(0,0,0,0)), $lte: threeWeeksLater }
+        } as any),
+        this._trialClassRepo.find({
            mentor: mentorId,
-           preferredDate: { $gte: startOfDay, $lte: endOfDay },
+           preferredDate: { $gte: new Date(now.setHours(0,0,0,0)), $lte: threeWeeksLater },
            status: 'assigned'
-        } as any);
+        } as any)
+      ]);
 
-        const dailyUsage = bookedTimeSlotsDaily.length + assignedTrialsDaily.length;
-        const remainingDailyCapacity = Math.max(0, maxSessionsPerDay - dailyUsage);
+      const nowTime = new Date().getTime();
+      const MIN_RESCHEDULE_NOTICE_MS = 2 * 60 * 60 * 1000; // 2 hours
 
-        // 3. Weekly Usage Check (TimeSlots + TrialClasses)
-        const { startOfWeek, endOfWeek } = this.getWeekRange(nextDate);
-
-        const bookedTimeSlotsWeekly = await this._timeSlotRepo.count({
-          mentorId: mentorId,
-          startTime: { $gte: startOfWeek, $lte: endOfWeek },
-          status: { $in: ['booked', 'reserved'] }
-        } as any);
-
-        const assignedTrialsWeekly = await this._trialClassRepo.countDocuments({
-           mentor: mentorId,
-           preferredDate: { $gte: startOfWeek, $lte: endOfWeek },
-           status: 'assigned'
-        } as any);
-
-        const weeklyUsage = bookedTimeSlotsWeekly + assignedTrialsWeekly;
-        const remainingWeeklyCapacity = Math.max(0, maxSessionsPerWeek - weeklyUsage);
-
-        // 4. Effective Capacity Limit
-        const effectiveCapacity = Math.min(remainingDailyCapacity, remainingWeeklyCapacity);
-
-        // If no capacity left, skip
-        if (effectiveCapacity <= 0) {
-          logger.info(`Mentor ${mentorId} has no capacity for ${dayName}`);
-          continue;
-        }
-
-        // 5. Filter Specific Slots
-        const occupiedRanges = new Set<string>();
-
-        // Add regular booked slots to occupied set
-        for (const slot of bookedTimeSlotsDaily) {
-             const s = slot as unknown as { startTime: Date, endTime: Date };
-             if (s && s.startTime && s.endTime) {
-                  const startTimeStr = new Date(s.startTime).toTimeString().substring(0, 5); 
-                  const endTimeStr = new Date(s.endTime).toTimeString().substring(0, 5);
-                  const range = `${startTimeStr}-${endTimeStr}`;
-                  occupiedRanges.add(range);
-             }
-        }
-
-        // Add trial class slots to occupied set
-        assignedTrialsDaily.forEach(trial => {
-             if(trial && trial.preferredTime) {
-                 occupiedRanges.add(trial.preferredTime);
-             }
-        });
-
-        for (const slot of dayAvail.slots || []) {
-          const slotRange = `${slot.startTime}-${slot.endTime}`;
+      // Loop through 3 weeks
+      for (let week = 0; week < 3; week++) {
+        for (const dayAvail of availabilityData) {
+          const nextDate = this.getNextDayOccurrence(dayAvail.day, week);
+          const dateStr = nextDate.toISOString().split('T')[0];
           
-          if (occupiedRanges.has(slotRange)) {
-              continue; // Skip occupied
+          const startOfDay = new Date(nextDate);
+          startOfDay.setHours(0, 0, 0, 0);
+          const endOfDay = new Date(nextDate);
+          endOfDay.setHours(23, 59, 59, 999);
+
+          // 1. Daily Usage Check
+          const bookedTimeSlotsDaily = allTimeSlots.filter(ts => 
+            new Date(ts.startTime) >= startOfDay && 
+            new Date(ts.startTime) <= endOfDay &&
+            ['booked', 'reserved'].includes(ts.status as string)
+          );
+
+          const assignedTrialsDaily = allTrialClasses.filter(trial =>
+            new Date(trial.preferredDate) >= startOfDay && 
+            new Date(trial.preferredDate) <= endOfDay
+          );
+
+          const dailyUsage = bookedTimeSlotsDaily.length + assignedTrialsDaily.length;
+          const remainingDailyCapacity = Math.max(0, maxSessionsPerDay - dailyUsage);
+
+          // 2. Weekly Usage Check
+          const { startOfWeek, endOfWeek } = this.getWeekRange(nextDate);
+          const bookedTimeSlotsWeekly = allTimeSlots.filter(ts =>
+            new Date(ts.startTime) >= startOfWeek && 
+            new Date(ts.startTime) <= endOfWeek &&
+            ['booked', 'reserved'].includes(ts.status as string)
+          ).length;
+
+          const assignedTrialsWeekly = allTrialClasses.filter(trial =>
+            new Date(trial.preferredDate) >= startOfWeek && 
+            new Date(trial.preferredDate) <= endOfWeek
+          ).length;
+
+          const weeklyUsage = bookedTimeSlotsWeekly + assignedTrialsWeekly;
+          const remainingWeeklyCapacity = Math.max(0, maxSessionsPerWeek - weeklyUsage);
+
+          const effectiveCapacity = Math.min(remainingDailyCapacity, remainingWeeklyCapacity);
+          if (effectiveCapacity <= 0) continue;
+
+          // 3. Occupied Ranges
+          const occupiedRanges = new Set<string>();
+          for (const ts of bookedTimeSlotsDaily) {
+            const range = `${new Date(ts.startTime).toTimeString().substring(0, 5)}-${new Date(ts.endTime).toTimeString().substring(0, 5)}`;
+            occupiedRanges.add(range);
+          }
+          assignedTrialsDaily.forEach(trial => {
+            if (trial.preferredTime) occupiedRanges.add(trial.preferredTime);
+          });
+
+          // 4. Collect Slots
+          const daySlots: any[] = [];
+          for (const slot of dayAvail.slots || []) {
+            const slotRange = `${slot.startTime}-${slot.endTime}`;
+            if (occupiedRanges.has(slotRange)) continue;
+
+            // Same-day future check
+            const slotStartDateTime = new Date(dateStr + 'T' + slot.startTime + ':00');
+            if (slotStartDateTime.getTime() < nowTime + MIN_RESCHEDULE_NOTICE_MS) continue;
+
+            // Find matching TimeSlot document ID
+            const matchingDoc = allTimeSlots.find(ts => {
+               const tsStart = new Date(ts.startTime).toISOString().split('T')[0] === dateStr &&
+                               new Date(ts.startTime).toTimeString().substring(0, 5) === slot.startTime && 
+                               ts.status === 'available';
+               return tsStart;
+            });
+            
+            daySlots.push({
+              _id: (matchingDoc as any)?._id?.toString(),
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+              remainingCapacity: effectiveCapacity
+            });
           }
 
-          // Find matching TimeSlot document ID
-          // matchedDoc type is inferred from Mongoose query result
-          const matchingDoc = allTimeSlotsDaily.find(ts => {
-             const tsStart = new Date(ts.startTime).toTimeString().substring(0, 5); // HH:MM
-             return tsStart === slot.startTime && ts.status === 'available';
-          });
-          
-          const matchingDocTyped = matchingDoc as unknown as { _id: { toString(): string } } | undefined;
-          const matchingId = matchingDocTyped?._id?.toString();
-          
-          const slotItem: { _id?: string; startTime: string; endTime: string; remainingCapacity: number } = {
-            startTime: slot.startTime,
-            endTime: slot.endTime,
-            remainingCapacity: effectiveCapacity
-          };
-          
-          if (matchingId) {
-            slotItem._id = matchingId;
+          if (daySlots.length > 0) {
+            result.push({
+              day: `${dayAvail.day} (${new Date(nextDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`,
+              date: dateStr as string,
+              slots: daySlots
+            });
           }
-
-          daySlots.push(slotItem);
-        }
-
-        if (daySlots.length > 0) {
-          result.push({ 
-              day: dayName, 
-              slots: daySlots 
-          });
         }
       }
 
-      logger.info(`Found ${result.length} days with available slots for mentor ${mentorId}`);
-      return result;
+      // Sort by date
+      result.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      logger.info(`Found available slots across ${result.length} days for mentor ${mentorId}`);
+      return result as any;
     } catch (error: unknown) {
       logger.error(`Error in getMentorAvailableSlots for ${mentorId}: ${getErrorMessage(error)}`);
       throw error;
@@ -826,19 +821,22 @@ export class MentorService implements IMentorService {
     }
   }
 
-  private getNextDayOccurrence(dayName: string): Date {
+  private getNextDayOccurrence(dayName: string, weekOffset: number = 0): Date {
     const dayMap: Record<string, number> = {
       'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
       'Thursday': 4, 'Friday': 5, 'Saturday': 6
     };
-    const targetDay = dayMap[dayName] ?? 1; // Default to Monday if not found
+    const targetDay = dayMap[dayName] ?? 1;
     const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start at midnight for calculation
     const currentDay = today.getDay();
+    
     let daysUntil = targetDay - currentDay;
-    if (daysUntil <= 0) daysUntil += 7;
-    const nextDate = new Date(today);
-    nextDate.setDate(today.getDate() + daysUntil);
-    return nextDate;
+    if (daysUntil < 0) daysUntil += 7; // Target is next week
+    
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + daysUntil + (weekOffset * 7));
+    return targetDate;
   }
 
   // Get only one-to-one students for a mentor
