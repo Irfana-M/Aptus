@@ -322,50 +322,75 @@ export class SessionService implements ISessionService {
   }
 
   async cancelSession(sessionId: string, mentorId: string, reason: string): Promise<void> {
-    const session = await this.sessionRepo.findById(sessionId);
-    if (!session) throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
+  const session = await this.sessionRepo.findById(sessionId);
+  if (!session) throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
 
-    if (this.getRawId(session.mentorId) !== mentorId) throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
+  const mentorIdRaw = this.getRawId(session.mentorId);
+  const timeSlotIdRaw = this.getRawId(session.timeSlotId);
 
-    // Cutoff Validation: 48-hour rule for mentors
-    const now = new Date();
-    const diffInHours = (new Date(session.startTime).getTime() - now.getTime()) / (1000 * 60 * 60);
-
-    if (diffInHours < this.MENTOR_CANCEL_CUTOFF_HOURS) {
-      logger.warn(`Mentor ${mentorId} cancellation rejected: Session ${sessionId} starts in ${diffInHours.toFixed(2)}h (Cutoff: ${this.MENTOR_CANCEL_CUTOFF_HOURS}h)`);
-      throw new AppError(MESSAGES.SESSION.CANCEL_CUTOFF_ERROR, HttpStatusCode.BAD_REQUEST);
-    }
-
-    await this.sessionRepo.updateById(sessionId, {
-      status: SESSION_STATUS.CANCELLED,
-      cancelledBy: 'mentor',
-      cancellationReason: reason
-    });
-
-    await this.bookingRepo.updateMany(
-      { $or: [{ sessionId: new Types.ObjectId(sessionId) }, { timeSlotId: new Types.ObjectId(this.getRawId(session.timeSlotId)) }] },
-      { 
-        status: BOOKING_STATUS.CANCELLED,
-        rebookingRequired: true,
-        rebookMentorId: new Types.ObjectId(this.getRawId(session.mentorId)) 
-      } as any
-    );
-
-    for (const participant of session.participants) {
-      if (participant.role === 'student') {
-        await this.notificationService.notifyUser(
-          participant.userId.toString(),
-          'student',
-          'mentor_absence_reschedule',
-          { sessionId, reason, message: `Your mentor has cancelled the session. Please choose another time slot with the same mentor.` },
-          ['web', 'email']
-        );
-      }
-    }
-   
-    await this.timeSlotRepo.releaseCapacity(session.timeSlotId.toString());
+  if (mentorIdRaw !== mentorId) {
+    throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
   }
 
+  // 48-hour cutoff validation
+  const now = new Date();
+  const diffInHours = (new Date(session.startTime).getTime() - now.getTime()) / (1000 * 60 * 60);
+
+  if (diffInHours < this.MENTOR_CANCEL_CUTOFF_HOURS) {
+    logger.warn(`Mentor ${mentorId} cancellation rejected: Session ${sessionId} starts in ${diffInHours.toFixed(2)}h`);
+    throw new AppError(MESSAGES.SESSION.CANCEL_CUTOFF_ERROR, HttpStatusCode.BAD_REQUEST);
+  }
+
+  // Update session status
+  await this.sessionRepo.updateById(sessionId, {
+    status: SESSION_STATUS.CANCELLED,
+    cancelledBy: 'mentor',
+    cancellationReason: reason
+  });
+
+  // Safely update bookings
+  const bookingFilter: any = { sessionId: new Types.ObjectId(sessionId) };
+
+  if (timeSlotIdRaw) {
+    bookingFilter.$or = [
+      { sessionId: new Types.ObjectId(sessionId) },
+      { timeSlotId: new Types.ObjectId(timeSlotIdRaw) }
+    ];
+  }
+
+  await this.bookingRepo.updateMany(
+    bookingFilter,
+    {
+      status: BOOKING_STATUS.CANCELLED,
+      rebookingRequired: true,
+      rebookMentorId: new Types.ObjectId(mentorIdRaw)
+    }
+  );
+
+  // Notify students
+  for (const participant of session.participants || []) {
+    if (participant.role === 'student') {
+      await this.notificationService.notifyUser(
+        this.getRawId(participant.userId),
+        'student',
+        'mentor_absence_reschedule',
+        { 
+          sessionId, 
+          reason, 
+          message: `Your mentor has cancelled the session. Please choose another time slot with the same mentor.` 
+        },
+        ['web', 'email']
+      );
+    }
+  }
+
+  // Release time slot capacity
+  if (timeSlotIdRaw) {
+    await this.timeSlotRepo.releaseCapacity(timeSlotIdRaw);
+  }
+
+  logger.info(`✅ Session ${sessionId} successfully cancelled by mentor ${mentorId}`);
+}
   async resolveRescheduling(sessionId: string, studentId: string, newTimeSlotId?: string, slotDetails?: { date: string, startTime: string, endTime: string }): Promise<void> {
     const session = await this.sessionRepo.findById(sessionId);
     if (!session) throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
