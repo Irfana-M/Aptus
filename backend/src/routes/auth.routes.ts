@@ -85,7 +85,8 @@ router.get(
       try {
         if (err || !user) {
           console.error('Google auth failed:', err || info);
-          return res.redirect(`${env.frontend.loginUrl}?error=auth_failed`);
+          const errorMsg = err?.message || 'auth_failed';
+          return res.redirect(`${env.frontend.loginUrl}?error=${encodeURIComponent(errorMsg)}`);
         }
 
         const googleUser = user as GoogleUser;

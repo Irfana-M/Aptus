@@ -199,6 +199,13 @@ export class AuthService implements IAuthService {
           HttpStatusCode.FORBIDDEN
         );
       }
+      
+      if (role === UserRole.MENTOR && user.approvalStatus === 'rejected') {
+        throw new AppError(
+          MESSAGES.AUTH.ACCOUNT_REJECTED,
+          HttpStatusCode.FORBIDDEN
+        );
+      }
 
       if (!user.password) {
         throw new AppError(

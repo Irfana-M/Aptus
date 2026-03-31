@@ -36,6 +36,15 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const googleError = params.get("error");
+    if (googleError) {
+      toast.error(decodeURIComponent(googleError));
+      // Clean up URL to prevent toast from reappearing on refresh
+      navigate(ROUTES.LOGIN, { replace: true });
+      return;
+    }
+
     const userRole = TokenManager.getRole();
     const token = TokenManager.getToken();
 
@@ -114,8 +123,6 @@ export default function Login() {
       switch (approvalStatus) {
         case "pending":
           return ROUTES.MENTOR.PROFILE_SETUP;
-        case "rejected":
-          return ROUTES.MENTOR.REJECTED;
         case "approved":
           return profileComplete
             ? ROUTES.MENTOR.DASHBOARD

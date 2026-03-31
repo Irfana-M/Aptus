@@ -58,6 +58,10 @@ passport.use(
           }
         }
 
+        if (user && user.role === 'mentor' && user.approvalStatus === 'rejected') {
+          return done(new Error("Your application was not approved."), undefined);
+        }
+
         done(null, user);
       } catch (error) {
         console.error("Google auth error:", error);

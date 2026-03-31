@@ -16,6 +16,7 @@ export const MESSAGES = {
         INVALID_OTP: "Invalid or expired OTP",
         ACCOUNT_NOT_VERIFIED: "Account not verified. Please check your email for the OTP and verify your account.",
         ACCOUNT_BLOCKED: "Your account has been blocked. Please contact support.",
+        ACCOUNT_REJECTED: "Your application was not approved. Please contact support for more information.",
         ROLE_REQUIRED: "Role is required",
         EMAIL_REQUIRED: "Email is required",
         REFRESH_TOKEN_REQUIRED: "No refresh token provided",
