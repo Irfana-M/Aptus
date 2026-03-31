@@ -1,4 +1,3 @@
-
 import { injectable } from "inversify";
 import { BaseRepository } from "./baseRepository.js";
 import type { ISession } from "../interfaces/models/session.interface.js";
@@ -29,7 +28,17 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
         { 'participants.studentId': studentId },
         { 'participants.userId': studentId }
       ],
-      status: { $in: ['scheduled', 'in_progress', 'rescheduling'] }
+      status: { 
+        $in: ['scheduled', 'in_progress', 'rescheduling', 'cancelled'] 
+      },
+      $and: [
+        {
+          $or: [
+            { status: { $in: ['scheduled', 'in_progress', 'rescheduling'] } },
+            { status: 'cancelled', cancelledBy: 'mentor' }
+          ]
+        }
+      ]
     };
 
     if (filter?.startDate) {
@@ -60,7 +69,17 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
         { 'participants.studentId': studentId },
         { 'participants.userId': studentId }
       ],
-      status: { $in: ['scheduled', 'in_progress', 'rescheduling'] }
+      status: { 
+        $in: ['scheduled', 'in_progress', 'rescheduling', 'cancelled'] 
+      },
+      $and: [
+        {
+          $or: [
+            { status: { $in: ['scheduled', 'in_progress', 'rescheduling'] } },
+            { status: 'cancelled', cancelledBy: 'mentor' }
+          ]
+        }
+      ]
     };
 
     if (filter?.startDate) {
@@ -79,7 +98,7 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
   async findUpcomingByMentor(mentorId: string, pagination?: { skip: number; limit: number }, filter?: { startDate?: Date | undefined; endDate?: Date | undefined }): Promise<ISession[]> {
     const queryFilter: any = {
       mentorId: mentorId,
-      status: { $in: ['scheduled', 'in_progress'] }
+      status: { $in: ['scheduled', 'in_progress', 'cancelled'] }
     };
 
     if (filter?.startDate) {
@@ -107,7 +126,7 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
   async countUpcomingByMentor(mentorId: string, filter?: { startDate?: Date | undefined; endDate?: Date | undefined }): Promise<number> {
     const queryFilter: any = {
       mentorId: mentorId,
-      status: { $in: ['scheduled', 'in_progress'] }
+      status: { $in: ['scheduled', 'in_progress', 'cancelled'] }
     };
 
     if (filter?.startDate) {
@@ -177,8 +196,7 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
 
     return this.model.find({
       mentorId,
-      startTime: { $gte: start, $lte: end },
-      status: { $ne: 'cancelled' }
+      startTime: { $gte: start, $lte: end }
     }).exec();
   }
 

@@ -78,17 +78,28 @@ export class SessionService implements ISessionService {
       this.sessionRepo.countUpcomingByMentor(mentorId, filter)
     ]);
 
-    // Enrich sessions with canApplyLeave for mentors (48h rule)
-    const enrichedItems = items.map((session: any) => {
-      const sessionObj = session.toObject ? session.toObject() : session;
-      const diffInHours = (new Date(sessionObj.startTime).getTime() - Date.now()) / (1000 * 60 * 60);
+    // Filter: Include all scheduled/in_progress. Include cancelled ONLY if they start today.
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
 
-      return {
-        ...sessionObj,
-        id: this.getRawId(sessionObj),
-        canApplyLeave: sessionObj.status === SESSION_STATUS.SCHEDULED && diffInHours >= this.MENTOR_CANCEL_CUTOFF_HOURS
-      };
-    });
+    const enrichedItems = items
+      .filter((session: any) => {
+        if (session.status !== SESSION_STATUS.CANCELLED) return true;
+        const sessionStart = new Date(session.startTime);
+        return sessionStart >= todayStart && sessionStart <= todayEnd;
+      })
+      .map((session: any) => {
+        const sessionObj = session.toObject ? session.toObject() : session;
+        const diffInHours = (new Date(sessionObj.startTime).getTime() - Date.now()) / (1000 * 60 * 60);
+
+        return {
+          ...sessionObj,
+          id: this.getRawId(sessionObj),
+          canApplyLeave: sessionObj.status === SESSION_STATUS.SCHEDULED && diffInHours >= this.MENTOR_CANCEL_CUTOFF_HOURS
+        };
+      });
 
     return { items: enrichedItems, total };
   }
@@ -263,8 +274,8 @@ export class SessionService implements ISessionService {
       
       await this.bookingRepo.updateMany(
         { 
-          $or: [{ sessionId: new Types.ObjectId(sessionId) }, { timeSlotId: new Types.ObjectId(this.getRawId(session.timeSlotId)) }], 
-          studentId: new Types.ObjectId(studentId) as unknown as import('mongoose').Schema.Types.ObjectId 
+          timeSlotId: new Types.ObjectId(this.getRawId(session.timeSlotId)) as any, 
+          studentId: new Types.ObjectId(studentId) as any
         },
         { status: BOOKING_STATUS.ABSENT }
       );
@@ -296,8 +307,8 @@ export class SessionService implements ISessionService {
       
       await this.bookingRepo.updateMany(
         { 
-          $or: [{ sessionId: new Types.ObjectId(sessionId) }, { timeSlotId: new Types.ObjectId(this.getRawId(session.timeSlotId)) }], 
-          studentId: new Types.ObjectId(studentId) as unknown as import('mongoose').Schema.Types.ObjectId 
+            timeSlotId: new Types.ObjectId(this.getRawId(session.timeSlotId)) as any, 
+            studentId: new Types.ObjectId(studentId) as any 
         },
         { status: BOOKING_STATUS.CANCELLED }
       );
