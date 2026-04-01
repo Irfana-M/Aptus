@@ -309,14 +309,14 @@ const MentorClassroom: React.FC = () => {
         ) : sessions.length > 0 ? (
             <div className="space-y-4">
                 {sessions.map(session => (
-                    <div key={session._id || (session as any).id} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col md:flex-row md:items-center justify-between hover:border-indigo-200 transition-colors">
+                    <div key={session._id || (session as any).id} className={`p-6 rounded-2xl border ${session.status === 'cancelled' ? 'bg-slate-50 border-dashed border-slate-300 opacity-60 grayscale' : 'bg-slate-50 border-slate-100 hover:border-indigo-200'} flex flex-col md:flex-row md:items-center justify-between transition-colors`}>
                         <div className="flex items-center gap-4 mb-4 md:mb-0">
                             <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-600 shadow-sm flex-shrink-0">
                                 <Video size={20} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-900">
-                                    {session.subject}
+                                <h3 className={`font-bold ${session.status === 'cancelled' ? 'text-slate-500 line-through' : 'text-slate-900'}`}>
+                                    {session.subject} {session.status === 'cancelled' && <span className="ml-2 px-2 py-0.5 no-underline bg-slate-200 text-slate-600 text-[10px] rounded-full uppercase tracking-widest">Cancelled</span>}
                                 </h3>
                                 <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
                                     <span className="flex items-center gap-1 font-bold"><Clock size={12} /> {new Date(session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -330,7 +330,8 @@ const MentorClassroom: React.FC = () => {
 
                         <div className="flex items-center gap-3">
                             {/* Per-session Apply Leave button */}
-                            <div className="relative group/leave">
+                            {session.status !== 'cancelled' && (
+                                <div className="relative group/leave">
                                 <Button
                                     onClick={() => session.canApplyLeave && handleApplyLeaveForSession(session.id || session._id!)}
                                     disabled={!session.canApplyLeave}
@@ -348,7 +349,8 @@ const MentorClassroom: React.FC = () => {
                                         <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-slate-900" />
                                     </div>
                                 )}
-                            </div>
+                                </div>
+                            )}
 
                             <div className="relative group/join">
                                 <Button 

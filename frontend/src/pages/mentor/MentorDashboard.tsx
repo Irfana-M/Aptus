@@ -303,20 +303,20 @@ const MentorDashboard = () => {
 
                         return (
                             <div key={session.id} className={`flex items-center justify-between p-4 rounded-3xl border transition-colors ${
-                                isCancelled ? 'bg-red-500/10 border-red-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'
+                                isCancelled ? 'bg-slate-800/30 border-dashed border-slate-700 opacity-50 grayscale' : 'bg-white/5 border-white/10 hover:bg-white/10'
                             }`}>
                                 <div className="flex items-center gap-4">
                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black ${
-                                        isCancelled ? 'bg-red-500/20 text-red-400' : 'bg-indigo-500/20 text-indigo-400'
+                                        isCancelled ? 'bg-slate-800 text-slate-500' : 'bg-indigo-500/20 text-indigo-400'
                                     }`}>
                                         {studentName.charAt(0)}
                                     </div>
                                     <div>
-                                        <p className="font-black text-sm">{studentName}</p>
+                                        <p className={`font-black text-sm ${isCancelled ? 'text-slate-500 line-through' : ''}`}>{studentName}</p>
                                         <p className="text-[10px] text-slate-400 uppercase tracking-wider">
                                             {format(new Date(session.startTime), 'MMM do, p')}
                                         </p>
-                                        <p className={`text-[10px] font-bold ${isCancelled ? 'text-red-400' : 'text-slate-500'}`}>
+                                        <p className={`text-[10px] font-bold ${isCancelled ? 'text-slate-500' : 'text-indigo-400'}`}>
                                             {session.status.toUpperCase()}
                                         </p>
                                     </div>

@@ -285,7 +285,11 @@ const StudentClassroom: React.FC = () => {
               {todaySessions.map(({ session, id }) => (
                 <div
                   key={id}
-                  className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-indigo-500/5 transition-all group"
+                  className={`rounded-[2rem] p-6 border transition-all group ${
+                    session.status === 'cancelled'
+                      ? 'bg-slate-50/50 border-dashed border-slate-200 opacity-70 grayscale'
+                      : 'bg-white shadow-sm border-slate-100 hover:shadow-xl hover:shadow-indigo-500/5'
+                  }`}
                 >
                   <div className="flex items-start justify-between mb-6">
                     <div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl group-hover:scale-110 transition-transform duration-500">
@@ -310,7 +314,9 @@ const StudentClassroom: React.FC = () => {
                     )}
                   </div>
 
-                  <h3 className="text-lg font-black text-slate-900 mb-1 leading-tight">
+                  <h3 className={`text-lg font-black mb-1 leading-tight ${
+                    session.status === 'cancelled' ? 'text-slate-500 line-through' : 'text-slate-900'
+                  }`}>
                     {session.subjectId?.subjectName}
                   </h3>
                   <p className="text-xs text-slate-400 font-bold mb-6 flex items-center gap-1.5 uppercase tracking-wide">
@@ -430,13 +436,13 @@ const StudentClassroom: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {weeklySessions.map(({ session, id, canRequestLeave }) => (
-                      <tr key={id} className="hover:bg-slate-50/50 transition-colors">
+                      <tr key={id} className={`transition-colors border-b ${session.status === 'cancelled' ? 'bg-slate-50/30 opacity-70 grayscale border-dashed border-slate-200' : 'hover:bg-slate-50/50 border-slate-50'}`}>
                         <td className="px-8 py-6">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
                               <BookOpen size={18} />
                             </div>
-                            <span className="font-bold text-slate-900">
+                            <span className={`font-bold ${session.status === 'cancelled' ? 'text-slate-500 line-through' : 'text-slate-900'}`}>
                               {session.subjectId?.subjectName}
                             </span>
                           </div>
