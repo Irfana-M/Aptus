@@ -498,17 +498,17 @@ export class SessionService implements ISessionService {
       // 2. Create NEW session document for the rescheduled time
       const newSessionData: Partial<ISession> = {
         timeSlotId: new Types.ObjectId(effectiveSlotId) as unknown as import('mongoose').Schema.Types.ObjectId,
-        mentorId: session.mentorId,
-        subjectId: session.subjectId,
+        mentorId: new Types.ObjectId(this.getRawId(session.mentorId)) as unknown as import('mongoose').Schema.Types.ObjectId,
+        subjectId: new Types.ObjectId(this.getRawId(session.subjectId)) as unknown as import('mongoose').Schema.Types.ObjectId,
         sessionType: session.sessionType,
-        participants: session.participants,
+        participants: session.participants.map((p: any) => ({ ...p, userId: new Types.ObjectId(this.getRawId(p.userId)) as unknown as import('mongoose').Schema.Types.ObjectId })),
         startTime: newSlot.startTime,
         endTime: newSlot.endTime,
         status: SESSION_STATUS.SCHEDULED,
         isRescheduled: true,
-        ...(session.studentId && { studentId: session.studentId }),
-        ...(session.courseId && { courseId: session.courseId }),
-        ...(session.enrollmentId && { enrollmentId: session.enrollmentId }),
+        ...(session.studentId && { studentId: new Types.ObjectId(this.getRawId(session.studentId)) as unknown as import('mongoose').Schema.Types.ObjectId }),
+        ...(session.courseId && { courseId: new Types.ObjectId(this.getRawId(session.courseId)) as unknown as import('mongoose').Schema.Types.ObjectId }),
+        ...(session.enrollmentId && { enrollmentId: new Types.ObjectId(this.getRawId(session.enrollmentId)) as unknown as import('mongoose').Schema.Types.ObjectId }),
       };
       const newSession = await this.sessionRepo.create(newSessionData);
       const newSessionId = (newSession as any)._id.toString();

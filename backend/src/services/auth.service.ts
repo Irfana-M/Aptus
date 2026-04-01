@@ -184,7 +184,7 @@ export class AuthService implements IAuthService {
     try {
       const repo = role === UserRole.STUDENT ? this._studentRepo : this._mentorRepo;
       const user = await repo.findByEmail(email);
-      if (!user) throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
+      if (!user) throw new AppError("Incorrect username or email", HttpStatusCode.NOT_FOUND);
 
       if (!user.isVerified) {
         throw new AppError(
@@ -216,7 +216,7 @@ export class AuthService implements IAuthService {
 
       const isMatch = await comparePasswords(password, user.password);
       if (!isMatch)
-        throw new AppError(MESSAGES.AUTH.INVALID_CREDENTIALS, HttpStatusCode.UNAUTHORIZED);
+        throw new AppError("Incorrect password", HttpStatusCode.UNAUTHORIZED);
 
       const accessToken = generateAccessToken({
         id: user._id,
