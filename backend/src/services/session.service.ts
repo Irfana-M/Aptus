@@ -416,176 +416,237 @@ export class SessionService implements ISessionService {
   logger.info(`✅ Session ${sessionId} successfully cancelled by mentor ${mentorId}`);
 }
   async resolveRescheduling(sessionId: string, studentId: string, newTimeSlotId?: string, slotDetails?: { date: string, startTime: string, endTime: string }): Promise<void> {
-    const session = await this.sessionRepo.findById(sessionId);
-    if (!session) throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
+    try {
+      logger.info(`[SessionService.resolveRescheduling] START for sessionId=${sessionId}, studentId=${studentId}, newTimeSlotId=${newTimeSlotId || 'N/A'}`);
+      
+      const session = await this.sessionRepo.findById(sessionId);
+      if (!session) {
+          logger.warn(`[SessionService.resolveRescheduling] Session ${sessionId} not found`);
+          throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
+      }
 
-    // Authorization: for students, allow if they are primary studentId OR in participants
-    const isAuthorized = this.getRawId(session.studentId) === studentId ||
-                         session.participants.some(p => this.getRawId(p.userId) === studentId);
+      const mentorIdRaw = this.getRawId(session.mentorId);
+      const subjectIdRaw = this.getRawId(session.subjectId);
+      const studentIdRaw = this.getRawId(session.studentId);
+      
+      logger.debug(`[SessionService.resolveRescheduling] Session details: mentorId=${mentorIdRaw}, subjectId=${subjectIdRaw}, studentId=${studentIdRaw}`);
 
-    if (!isAuthorized) throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
+      // Authorization: for students, allow if they are primary studentId OR in participants
+      const isAuthorized = studentIdRaw === studentId ||
+                           session.participants.some(p => this.getRawId(p.userId) === studentId);
 
-    if (newTimeSlotId || slotDetails) {
-      // RESCHEDULE CASE
-      logger.info(`Student ${studentId} resolving rescheduling for session ${sessionId}`);
+      if (!isAuthorized) {
+          logger.warn(`[SessionService.resolveRescheduling] Student ${studentId} NOT authorized for session ${sessionId}`);
+          throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
+      }
 
-      let effectiveSlotId = newTimeSlotId;
+      if (newTimeSlotId || slotDetails) {
+        // RESCHEDULE CASE
+        logger.info(`[SessionService.resolveRescheduling] Handling RESCHEDULE for session ${sessionId}`);
 
-      // If no direct ID but we have details (template slot), ensure concrete slot exists
-      if (!effectiveSlotId && slotDetails) {
-        const targetDate = new Date(slotDetails.date);
+        let effectiveSlotId = newTimeSlotId;
+
+        // If no direct ID but we have details (template slot), ensure concrete slot exists
+        if (!effectiveSlotId && slotDetails) {
+          const targetDate = new Date(slotDetails.date);
+          
+          logger.debug(`[SessionService.resolveRescheduling] Converting slotDetails.date="${slotDetails.date}" -> targetDate="${targetDate.toISOString()}"`);
+          
+          const startParams = combineISTToUTC(targetDate, slotDetails.startTime);
+          const endParams = combineISTToUTC(targetDate, slotDetails.endTime);
+
+          logger.info(`[SessionService.resolveRescheduling] Converting IST to UTC: ${slotDetails.startTime} IST -> ${startParams.toISOString()}`);
+
+          effectiveSlotId = await this.schedulingService.ensureTimeSlot(
+            mentorIdRaw,
+            startParams,
+            endParams
+          );
+          logger.info(`[SessionService.resolveRescheduling] Ensured/Created slot ${effectiveSlotId} for rescheduling`);
+        }
         
-        const startParams = combineISTToUTC(targetDate, slotDetails.startTime);
-        const endParams = combineISTToUTC(targetDate, slotDetails.endTime);
-
-        logger.info(`Converting IST to UTC: ${slotDetails.startTime} IST -> ${startParams.toISOString()}`);
-
-        effectiveSlotId = await this.schedulingService.ensureTimeSlot(
-          this.getRawId(session.mentorId),
-          startParams,
-          endParams
-        );
-        logger.info(`Ensured/Created slot ${effectiveSlotId} for rescheduling`);
-      }
-      
-      if (!effectiveSlotId) throw new AppError(MESSAGES.SESSION.INVALID_STATE, HttpStatusCode.BAD_REQUEST);
-
-      const newSlot = await this.timeSlotRepo.findById(effectiveSlotId);
-      if (!newSlot) throw new AppError(MESSAGES.AVAILABILITY.SLOT_NOT_FOUND, HttpStatusCode.NOT_FOUND);
-      
-      // COMPEHENSIVE Conflict Validation
-      // 1. Regular Sessions (Scheduled, In Progress, Rescheduling)
-      const existingConflict = await this.sessionRepo.find({
-        mentorId: session.mentorId,
-        startTime: newSlot.startTime,
-        status: { $in: [SESSION_STATUS.SCHEDULED, SESSION_STATUS.IN_PROGRESS, SESSION_STATUS.RESCHEDULING] }
-      });
-
-      if (existingConflict.length > 0) {
-        throw new AppError("Mentor has a conflicting session at this time.", HttpStatusCode.BAD_REQUEST);
-      }
-
-      // 2. Trial Classes (Assigned, Scheduled)
-      const trialConflict = await this.trialClassRepo.find({
-        mentor: session.mentorId.toString(),
-        preferredDate: {
-          $gte: new Date(new Date(newSlot.startTime).setHours(0,0,0,0)),
-          $lte: new Date(new Date(newSlot.startTime).setHours(23,59,59,999))
-        },
-        status: { $in: ['assigned', 'scheduled'] }
-      });
-
-      const hasOverlappingTrial = trialConflict.some((trial: any) => {
-        // Trial classes use HH:MM preferredTime string
-        const [h, m] = trial.preferredTime.split(':').map(Number);
-        const trialStart = new Date(trial.preferredDate);
-        trialStart.setHours(h, m, 0, 0);
-        return trialStart.getTime() === new Date(newSlot.startTime).getTime();
-      });
-
-      if (hasOverlappingTrial) {
-        throw new AppError("Mentor has a conflicting trial class at this time.", HttpStatusCode.BAD_REQUEST);
-      }
-
-      if (newSlot.status !== 'available' && newSlot.status !== 'reserved') {
-        throw new AppError(MESSAGES.AVAILABILITY.SLOT_NOT_AVAILABLE, HttpStatusCode.BAD_REQUEST);
-      }
-
-      // 1. Reserve and Confirm new slot
-      const updatedSlot = await this.timeSlotRepo.reserveCapacity(effectiveSlotId);
-      if (!updatedSlot) throw new AppError("Failed to reserve slot capacity.", HttpStatusCode.INTERNAL_SERVER_ERROR);
-
-      // 2. Create NEW session document for the rescheduled time
-      const newSessionData: Partial<ISession> = {
-        timeSlotId: new Types.ObjectId(effectiveSlotId) as unknown as import('mongoose').Schema.Types.ObjectId,
-        mentorId: new Types.ObjectId(this.getRawId(session.mentorId)) as unknown as import('mongoose').Schema.Types.ObjectId,
-        subjectId: new Types.ObjectId(this.getRawId(session.subjectId)) as unknown as import('mongoose').Schema.Types.ObjectId,
-        sessionType: session.sessionType,
-        participants: session.participants.map((p: any) => ({ ...p, userId: new Types.ObjectId(this.getRawId(p.userId)) as unknown as import('mongoose').Schema.Types.ObjectId })),
-        startTime: newSlot.startTime,
-        endTime: newSlot.endTime,
-        status: SESSION_STATUS.SCHEDULED,
-        isRescheduled: true,
-        ...(session.studentId && { studentId: new Types.ObjectId(this.getRawId(session.studentId)) as unknown as import('mongoose').Schema.Types.ObjectId }),
-        ...(session.courseId && { courseId: new Types.ObjectId(this.getRawId(session.courseId)) as unknown as import('mongoose').Schema.Types.ObjectId }),
-        ...(session.enrollmentId && { enrollmentId: new Types.ObjectId(this.getRawId(session.enrollmentId)) as unknown as import('mongoose').Schema.Types.ObjectId }),
-      };
-      const newSession = await this.sessionRepo.create(newSessionData);
-      const newSessionId = (newSession as any)._id.toString();
-
-      // 3. Mark OLD session as cancelled and link to the new one
-      await this.sessionRepo.updateById(sessionId, {
-        status: SESSION_STATUS.CANCELLED,
-        cancelledBy: 'mentor',          // was cancelled by mentor originally
-        isRescheduled: true,
-        rescheduledTo: new Types.ObjectId(newSessionId) as unknown as import('mongoose').Schema.Types.ObjectId,
-      });
-
-      // 4. Update Booking to point at the new session's slot
-      await this.bookingRepo.updateMany(
-        { $or: [{ sessionId: session._id }, { timeSlotId: session.timeSlotId }], studentId: new Types.ObjectId(studentId) as unknown as import('mongoose').Schema.Types.ObjectId },
-        { timeSlotId: new Types.ObjectId(effectiveSlotId) as unknown as import('mongoose').Schema.Types.ObjectId, sessionId: new Types.ObjectId(newSessionId) as unknown as import('mongoose').Schema.Types.ObjectId, status: BOOKING_STATUS.SCHEDULED }
-      );
-
-      // 4. Notify Mentor
-      const subject = await this.subjectRepo.findById(session.subjectId?.toString() || "");
-      const formattedTime = newSlot.startTime.toLocaleString('en-US', { 
-        weekday: 'short', 
-        month: 'short', 
-        day: 'numeric', 
-        hour: 'numeric', 
-        minute: '2-digit',
-        hour12: true 
-      });
-
-      await this.notificationService.notifyUser(
-        session.mentorId.toString(),
-        'mentor',
-        'session_rescheduled',
-        {
-          sessionId,
-          subjectName: subject?.subjectName || 'Session',
-          startTime: formattedTime,
-          message: `A student has rescheduled a session to a new time slot.`
-        },
-        ['web']
-      );
-
-    } else {
-      // REFUND CASE
-      logger.info(`Student ${studentId} requested refund for rescheduling session ${sessionId}`);
-
-      // 1. Update Session Status
-      await this.sessionRepo.updateStatus(sessionId, SESSION_STATUS.CANCELLED);
-
-      // 2. Find Booking to process refund
-      const booking = await this.bookingRepo.findOne({ 
-        $or: [{ sessionId: session._id }, { timeSlotId: session.timeSlotId }], 
-        studentId: new Types.ObjectId(studentId) as unknown as import('mongoose').Schema.Types.ObjectId 
-      });
-
-      if (booking) {
-        const bookingObj = booking as unknown as { amount?: number; cost?: number };
-        const refundAmount = bookingObj.amount || bookingObj.cost || 0;
-        if (refundAmount > 0) {
-          logger.info(`Refund of ${refundAmount} for session ${sessionId} should be processed manually (Wallet system removed)`);
+        if (!effectiveSlotId) {
+            logger.error(`[SessionService.resolveRescheduling] Failed to resolve effectiveSlotId for session ${sessionId}`);
+            throw new AppError(MESSAGES.SESSION.INVALID_STATE, HttpStatusCode.BAD_REQUEST);
         }
 
-        // 3. Update Booking Status
-        await this.bookingRepo.updateById((booking as any)._id.toString(), { status: BOOKING_STATUS.CANCELLED });
-      }
+        const newSlot = await this.timeSlotRepo.findById(effectiveSlotId);
+        if (!newSlot) {
+            logger.error(`[SessionService.resolveRescheduling] New slot ${effectiveSlotId} NOT found in repository`);
+            throw new AppError(MESSAGES.AVAILABILITY.SLOT_NOT_FOUND, HttpStatusCode.NOT_FOUND);
+        }
+        
+        logger.debug(`[SessionService.resolveRescheduling] Checking conflicts for newSlot starting at ${newSlot.startTime}`);
 
-      // 4. Notify Mentor
-      await this.notificationService.notifyUser(
-        session.mentorId.toString(),
-        'mentor',
-        'session_cancelled_refund',
-        {
-          sessionId,
-          message: `Student has chosen a refund instead of rescheduling.`
-        },
-        ['web']
-      );
+        // COMPEHENSIVE Conflict Validation
+        // 1. Regular Sessions (Scheduled, In Progress, Rescheduling)
+        const existingConflict = await this.sessionRepo.find({
+          mentorId: session.mentorId,
+          startTime: newSlot.startTime,
+          status: { $in: [SESSION_STATUS.SCHEDULED, SESSION_STATUS.IN_PROGRESS, SESSION_STATUS.RESCHEDULING] }
+        });
+
+        if (existingConflict.length > 0) {
+          logger.warn(`[SessionService.resolveRescheduling] Conflict: Mentor ${mentorIdRaw} already has ${existingConflict.length} regular sessions at ${newSlot.startTime}`);
+          throw new AppError("Mentor has a conflicting session at this time.", HttpStatusCode.BAD_REQUEST);
+        }
+
+        // 2. Trial Classes (Assigned, Scheduled)
+        logger.debug(`[SessionService.resolveRescheduling] Searching trial conflicts for mentor ${mentorIdRaw} on date range`);
+        const searchStart = new Date(new Date(newSlot.startTime).setHours(0,0,0,0));
+        const searchEnd = new Date(new Date(newSlot.startTime).setHours(23,59,59,999));
+        
+        const trialConflict = await this.trialClassRepo.find({
+          mentor: mentorIdRaw,
+          preferredDate: {
+            $gte: searchStart,
+            $lte: searchEnd
+          },
+          status: { $in: ['assigned', 'scheduled'] }
+        });
+
+        logger.debug(`[SessionService.resolveRescheduling] Found ${trialConflict.length} potential trial conflicts`);
+
+        const hasOverlappingTrial = trialConflict.some((trial: any) => {
+          if (!trial.preferredTime || typeof trial.preferredTime !== 'string') {
+              logger.warn(`[SessionService.resolveRescheduling] Trial class ${trial._id} missing preferredTime. Skipping check.`);
+              return false;
+          }
+          // Trial classes use HH:MM preferredTime string
+          const [hStr, mStr] = trial.preferredTime.split(':');
+          const h = parseInt(hStr || '0');
+          const m = parseInt(mStr || '0');
+          const trialStart = new Date(trial.preferredDate);
+          trialStart.setHours(h, m, 0, 0);
+          
+          const isMatch = trialStart.getTime() === new Date(newSlot.startTime).getTime();
+          if (isMatch) logger.info(`[SessionService.resolveRescheduling] Trial conflict confirmed with TrialClass ${trial._id}`);
+          return isMatch;
+        });
+
+        if (hasOverlappingTrial) {
+          throw new AppError("Mentor has a conflicting trial class at this time.", HttpStatusCode.BAD_REQUEST);
+        }
+
+        if (newSlot.status !== 'available' && newSlot.status !== 'reserved') {
+          logger.warn(`[SessionService.resolveRescheduling] Slot ${effectiveSlotId} is in status "${newSlot.status}" (NOT available/reserved)`);
+          throw new AppError(MESSAGES.AVAILABILITY.SLOT_NOT_AVAILABLE, HttpStatusCode.BAD_REQUEST);
+        }
+
+        // 1. Reserve and Confirm new slot
+        logger.info(`[SessionService.resolveRescheduling] Reserving capacity for slot ${effectiveSlotId}`);
+        const updatedSlot = await this.timeSlotRepo.reserveCapacity(effectiveSlotId);
+        if (!updatedSlot) {
+            logger.error(`[SessionService.resolveRescheduling] Failed to reserve capacity for slot ${effectiveSlotId}`);
+            throw new AppError("Failed to reserve slot capacity.", HttpStatusCode.INTERNAL_SERVER_ERROR);
+        }
+
+        // 2. Create NEW session document for the rescheduled time
+        logger.debug(`[SessionService.resolveRescheduling] Creating new session document...`);
+        const newSessionData: Partial<ISession> = {
+          timeSlotId: new Types.ObjectId(effectiveSlotId) as unknown as import('mongoose').Schema.Types.ObjectId,
+          mentorId: new Types.ObjectId(mentorIdRaw) as unknown as import('mongoose').Schema.Types.ObjectId,
+          subjectId: new Types.ObjectId(subjectIdRaw || "") as unknown as import('mongoose').Schema.Types.ObjectId,
+          sessionType: session.sessionType,
+          participants: session.participants.map((p: any) => ({ ...p, userId: new Types.ObjectId(this.getRawId(p.userId)) as unknown as import('mongoose').Schema.Types.ObjectId })),
+          startTime: newSlot.startTime,
+          endTime: newSlot.endTime,
+          status: SESSION_STATUS.SCHEDULED,
+          isRescheduled: true,
+          ...(studentIdRaw && { studentId: new Types.ObjectId(studentIdRaw) as unknown as import('mongoose').Schema.Types.ObjectId }),
+          ...(session.courseId && { courseId: new Types.ObjectId(this.getRawId(session.courseId)) as unknown as import('mongoose').Schema.Types.ObjectId }),
+          ...(session.enrollmentId && { enrollmentId: new Types.ObjectId(this.getRawId(session.enrollmentId)) as unknown as import('mongoose').Schema.Types.ObjectId }),
+        };
+        const newSession = await this.sessionRepo.create(newSessionData);
+        const newSessionId = (newSession as any)._id.toString();
+        logger.info(`[SessionService.resolveRescheduling] NEW session created: ${newSessionId}`);
+
+        // 3. Mark OLD session as cancelled and link to the new one
+        await this.sessionRepo.updateById(sessionId, {
+          status: SESSION_STATUS.CANCELLED,
+          cancelledBy: 'mentor',          // was cancelled by mentor originally
+          isRescheduled: true,
+          rescheduledTo: new Types.ObjectId(newSessionId) as unknown as import('mongoose').Schema.Types.ObjectId,
+        });
+
+        // 4. Update Booking to point at the new session's slot
+        logger.debug(`[SessionService.resolveRescheduling] Updating associated bookings to student ${studentId}`);
+        await this.bookingRepo.updateMany(
+          { $or: [{ sessionId: session._id }, { timeSlotId: session.timeSlotId }], studentId: new Types.ObjectId(studentId) as unknown as import('mongoose').Schema.Types.ObjectId },
+          { timeSlotId: new Types.ObjectId(effectiveSlotId) as unknown as import('mongoose').Schema.Types.ObjectId, sessionId: new Types.ObjectId(newSessionId) as unknown as import('mongoose').Schema.Types.ObjectId, status: BOOKING_STATUS.SCHEDULED }
+        );
+
+        // 4. Notify Mentor
+        const subjectIdStr = (session.subjectId as any)?.toString() || "";
+        const subject = subjectIdRaw ? await this.subjectRepo.findById(subjectIdStr) : null;
+        const formattedTime = newSlot.startTime.toLocaleString('en-US', { 
+          weekday: 'short', 
+          month: 'short', 
+          day: 'numeric', 
+          hour: 'numeric', 
+          minute: '2-digit',
+          hour12: true 
+        });
+
+        await this.notificationService.notifyUser(
+          mentorIdRaw,
+          'mentor',
+          'session_rescheduled',
+          {
+            sessionId,
+            subjectName: subject?.subjectName || 'Session',
+            startTime: formattedTime,
+            message: `A student has rescheduled a session to a new time slot.`
+          },
+          ['web']
+        );
+        logger.info(`[SessionService.resolveRescheduling] END (SUCCESS) for sessionId=${sessionId}`);
+
+      } else {
+        // REFUND CASE
+        logger.info(`[SessionService.resolveRescheduling] Handling REFUND for session ${sessionId}`);
+
+        // 1. Update Session Status
+        await this.sessionRepo.updateStatus(sessionId, SESSION_STATUS.CANCELLED);
+
+        // 2. Find Booking to process refund
+        const booking = await this.bookingRepo.findOne({ 
+          $or: [{ sessionId: session._id }, { timeSlotId: session.timeSlotId }], 
+          studentId: new Types.ObjectId(studentId) as unknown as import('mongoose').Schema.Types.ObjectId 
+        });
+
+        if (booking) {
+          const bookingObj = booking as unknown as { amount?: number; cost?: number };
+          const refundAmount = bookingObj.amount || bookingObj.cost || 0;
+          if (refundAmount > 0) {
+            logger.info(`[SessionService.resolveRescheduling] Refund of ${refundAmount} for session ${sessionId} should be processed manually`);
+          }
+
+          // 3. Update Booking Status
+          await this.bookingRepo.updateById((booking as any)._id.toString(), { status: BOOKING_STATUS.CANCELLED });
+        }
+
+        // 4. Notify Mentor
+        await this.notificationService.notifyUser(
+          mentorIdRaw,
+          'mentor',
+          'session_cancelled_refund',
+          {
+            sessionId,
+            message: `Student has chosen a refund instead of rescheduling.`
+          },
+          ['web']
+        );
+        logger.info(`[SessionService.resolveRescheduling] END (REFUND SUCCESS) for sessionId=${sessionId}`);
+      }
+    } catch (error: any) {
+        logger.error(`[SessionService.resolveRescheduling] CRITICAL ERROR for sessionId ${sessionId}: ${error.message}`, {
+            stack: error.stack,
+            sessionId,
+            studentId,
+            newTimeSlotId
+        });
+        throw error;
     }
   }
 

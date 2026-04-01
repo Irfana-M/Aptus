@@ -17,21 +17,22 @@ export abstract class BaseRepository<T extends Document> implements IBaseReposit
 
   async findById(id: string, session?: ClientSession): Promise<T | null> {
     try {
+      if (!id || id === '' || id === 'undefined' || id === 'null') {
+         logger.warn(`[BaseRepo.findById] Invalid ID provided for ${this.model.modelName}: "${id}"`);
+         return null; 
+      }
       logger.debug(`Finding ${this.model.modelName} by ID: ${id}`);
       const result = await this.model.findById(id).session(session || null).lean().exec();
       
       if (!result) {
         logger.warn(`${this.model.modelName} not found with ID: ${id}`);
-        throw new AppError(
-          `${this.model.modelName} not found with ID: ${id}`,
-          HttpStatusCode.NOT_FOUND
-        );
+        return null; // Return null instead of throwing to avoid 500 error in calling services
       }
       
       logger.info(`${this.model.modelName} found by ID: ${id}`);
       return result as unknown as T;
     } catch (error) {
-      logger.error(`Error finding ${this.model.modelName} by ID ${id}:`, error);
+      logger.error(`Error finding ${this.model.modelName} by ID "${id}":`, error);
       if (error instanceof AppError) throw error;
       throw new AppError(
         `Failed to find ${this.model.modelName}`,
