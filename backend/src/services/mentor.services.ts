@@ -608,7 +608,7 @@ export class MentorService implements IMentorService {
       for (let week = 0; week < 3; week++) {
         for (const dayAvail of availabilityData) {
           const nextDate = this.getNextDayOccurrence(dayAvail.day, week);
-          const dateStr = nextDate.toISOString().split('T')[0];
+          const dateStr = nextDate.toLocaleDateString('sv-SE');
           
           const startOfDay = new Date(nextDate);
           startOfDay.setHours(0, 0, 0, 0);
@@ -665,16 +665,21 @@ export class MentorService implements IMentorService {
             const slotRange = `${slot.startTime}-${slot.endTime}`;
             if (occupiedRanges.has(slotRange)) continue;
 
-            // Same-day future check
-            const slotStartDateTime = new Date(dateStr + 'T' + slot.startTime + ':00');
+            // Same-day future check (Robust local construction)
+            const [hStr, mStr] = slot.startTime.split(':');
+            const h = parseInt(hStr || '0');
+            const m = parseInt(mStr || '0');
+            const slotStartDateTime = new Date(nextDate);
+            slotStartDateTime.setHours(h, m, 0, 0);
+            
             if (slotStartDateTime.getTime() < nowTime + MIN_RESCHEDULE_NOTICE_MS) continue;
 
             // Find matching TimeSlot document ID
             const matchingDoc = allTimeSlots.find(ts => {
-               const tsStart = new Date(ts.startTime).toISOString().split('T')[0] === dateStr &&
-                               new Date(ts.startTime).toTimeString().substring(0, 5) === slot.startTime && 
-                               ts.status === 'available';
-               return tsStart;
+               const docDateStr = new Date(ts.startTime).toLocaleDateString('sv-SE');
+               return docDateStr === dateStr &&
+                      new Date(ts.startTime).toTimeString().substring(0, 5) === slot.startTime && 
+                      ts.status === 'available';
             });
             
             daySlots.push({
@@ -686,11 +691,24 @@ export class MentorService implements IMentorService {
           }
 
           if (daySlots.length > 0) {
-            result.push({
-              day: dayAvail.day,
-              date: dateStr as string,
-              slots: daySlots
-            });
+            const existingEntry = result.find(r => r.day === dayAvail.day);
+            if (existingEntry) {
+              // Merge slots to provide a complete picture of recurring availability
+              for (const newSlot of daySlots) {
+                const alreadyExists = existingEntry.slots.some((s: any) => s.startTime === newSlot.startTime);
+                if (!alreadyExists) {
+                  existingEntry.slots.push(newSlot);
+                }
+              }
+              // Keep slots sorted by time
+              existingEntry.slots.sort((a: any, b: any) => a.startTime.localeCompare(b.startTime));
+            } else {
+              result.push({
+                day: dayAvail.day,
+                date: dateStr as string,
+                slots: daySlots
+              });
+            }
           }
         }
       }

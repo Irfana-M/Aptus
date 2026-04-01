@@ -108,6 +108,8 @@ export class TimeSlotRepository extends BaseRepository<ITimeSlot> implements ITi
 
     return await this.model.countDocuments({
       mentorId,
+      startTime: { $gte: start, $lte: end },
+      status: { $in: ['booked', 'reserved'] }
     });
   }
 
