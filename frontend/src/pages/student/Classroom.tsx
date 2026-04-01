@@ -223,11 +223,16 @@ const StudentClassroom: React.FC = () => {
     }
   };
 
-  const isJoinable = (startTime: string) => {
+  const isJoinable = (session: any) => {
     const now = new Date();
-    const start = new Date(startTime);
-    const diffInMinutes = (start.getTime() - now.getTime()) / (1000 * 60);
-    return diffInMinutes <= 60 && diffInMinutes >= -120;
+    const start = new Date(session.startTime);
+    // Use explicit endTime if available, otherwise default to 60 minutes after start
+    const end = session.endTime ? new Date(session.endTime) : new Date(start.getTime() + 60 * 60 * 1000);
+    
+    const canJoinFrom = new Date(start.getTime() - 60 * 60 * 1000); // 60 mins before
+    const canJoinUntil = new Date(end.getTime() + 10 * 60 * 1000);  // 10 mins after end buffer
+    
+    return now >= canJoinFrom && now <= canJoinUntil;
   };
 
   const today = new Date();
@@ -367,15 +372,15 @@ const StudentClassroom: React.FC = () => {
                     </Button>
                   ) : (
                     <Button
-                      disabled={!isJoinable(session.startTime)}
+                      disabled={!isJoinable(session)}
                       onClick={() => window.open(`/session/${session._id}/call`, '_blank')}
                       className={`w-full h-12 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
-                        isJoinable(session.startTime)
+                        isJoinable(session)
                           ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200'
                           : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                       }`}
                     >
-                      {isJoinable(session.startTime) ? (
+                      {isJoinable(session) ? (
                         <span className="flex items-center justify-center gap-2">
                           Join Session <ExternalLink size={14} />
                         </span>

@@ -3,7 +3,7 @@ import { BaseRepository } from "./baseRepository.js";
 import type { ISession } from "../interfaces/models/session.interface.js";
 import { SessionModel } from "../models/scheduling/session.model.js";
 import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository.js";
-import type { FilterQuery } from "mongoose";
+import { FilterQuery, Types } from "mongoose";
 
 @injectable()
 export class SessionRepository extends BaseRepository<ISession> implements ISessionRepository {
@@ -22,11 +22,11 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
   }
 
   async findUpcomingByStudent(studentId: string, pagination?: { skip: number; limit: number }, filter?: { startDate?: Date | undefined; endDate?: Date | undefined }): Promise<ISession[]> {
+    const studentObjectId = new Types.ObjectId(studentId);
     const queryFilter: any = {
       $or: [
-        { studentId: studentId },
-        { 'participants.studentId': studentId },
-        { 'participants.userId': studentId }
+        { studentId: studentObjectId },
+        { 'participants.userId': studentObjectId }
       ],
       status: { 
         $in: ['scheduled', 'in_progress', 'rescheduling', 'cancelled'] 
@@ -44,7 +44,9 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
     if (filter?.startDate) {
       queryFilter.startTime = { $gte: filter.startDate };
     } else {
-      queryFilter.endTime = { $gte: new Date() };
+      // 10-minute buffer to account for minor clock differences between server and local browser
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+      queryFilter.endTime = { $gte: tenMinutesAgo };
     }
 
     if (filter?.endDate) {
@@ -63,11 +65,11 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
   }
 
   async countUpcomingByStudent(studentId: string, filter?: { startDate?: Date | undefined; endDate?: Date | undefined }): Promise<number> {
+    const studentObjectId = new Types.ObjectId(studentId);
     const queryFilter: any = {
       $or: [
-        { studentId: studentId },
-        { 'participants.studentId': studentId },
-        { 'participants.userId': studentId }
+        { studentId: studentObjectId },
+        { 'participants.userId': studentObjectId }
       ],
       status: { 
         $in: ['scheduled', 'in_progress', 'rescheduling', 'cancelled'] 
@@ -85,7 +87,8 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
     if (filter?.startDate) {
       queryFilter.startTime = { $gte: filter.startDate };
     } else {
-      queryFilter.endTime = { $gte: new Date() };
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+      queryFilter.endTime = { $gte: tenMinutesAgo };
     }
 
     if (filter?.endDate) {
@@ -156,11 +159,11 @@ export class SessionRepository extends BaseRepository<ISession> implements ISess
   }
   
   async findByStudentAndSubject(studentId: string, subjectId: string): Promise<ISession[]> {
+    const studentObjectId = new Types.ObjectId(studentId);
     return this.model.find({
       $or: [
-        { studentId: studentId },
-        { 'participants.studentId': studentId },
-        { 'participants.userId': studentId }
+        { studentId: studentObjectId },
+        { 'participants.userId': studentObjectId }
       ],
       subjectId: subjectId,
       status: { $ne: 'cancelled' }

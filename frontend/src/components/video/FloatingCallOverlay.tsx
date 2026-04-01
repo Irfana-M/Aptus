@@ -21,8 +21,8 @@ const FloatingCallOverlay: React.FC = () => {
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const remoteVideoRef = useRef<HTMLVideoElement>(null);
     const remoteStream = Object.values(remoteStreams)[0] || null;
-    // Hide if no call is active OR if we are already on the call page
-    const isOnCallRoute = location.pathname.includes(`/trial-class/${sessionId}/call`);
+    // Hide if no call is active OR if we are already on a call page (session or trial)
+    const isOnCallRoute = location.pathname.includes('/trial-class/') || location.pathname.includes('/session/');
     const shouldHide = !sessionId || isOnCallRoute;
 
     useEffect(() => {
