@@ -441,7 +441,7 @@ export class SessionService implements ISessionService {
         logger.info(`Converting IST to UTC: ${slotDetails.startTime} IST -> ${startParams.toISOString()}`);
 
         effectiveSlotId = await this.schedulingService.ensureTimeSlot(
-          session.mentorId.toString(),
+          this.getRawId(session.mentorId),
           startParams,
           endParams
         );

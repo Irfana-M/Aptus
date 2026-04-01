@@ -207,10 +207,6 @@ const StudentClassroom: React.FC = () => {
     }
   };
 
-  const handleRequestSlotChange = () => {
-    toast.error('Slot change request functionality is being updated. Please contact support.');
-  };
-
   const handleSubmitAbsence = async (reason: string) => {
     if (!selectedSessionId) return;
     try {
@@ -396,59 +392,13 @@ const StudentClassroom: React.FC = () => {
 
         {/* THIS WEEK UPCOMING SESSIONS */}
         <section>
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
-            <div>
-              <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
-                This Week Upcoming Sessions
-              </h2>
-              <p className="text-slate-500 text-sm font-medium">
-                Prepare for your upcoming learning journey
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {/* Request Leave */}
-              <div className="relative group/tooltip">
-                <Button
-                  disabled={!eligibilityData?.leaveWindowOpen}
-                  onClick={() => handleApplyLeave()}
-                  className={`px-6 h-12 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
-                    eligibilityData?.leaveWindowOpen
-                      ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-100'
-                      : 'bg-slate-50 text-slate-400 border border-slate-100 cursor-not-allowed'
-                  }`}
-                >
-                  Request Leave
-                </Button>
-                {!eligibilityData?.leaveWindowOpen && (
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-900 text-white text-[10px] font-bold rounded-xl opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none text-center shadow-xl z-50">
-                    Leave can only be requested at least 12 hours before session start.
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-900" />
-                  </div>
-                )}
-              </div>
-
-              {/* Request Slot Change */}
-              <div className="relative group/tooltip">
-                <Button
-                  disabled={!eligibilityData?.slotChangeWindowOpen}
-                  onClick={handleRequestSlotChange}
-                  className={`px-6 h-12 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
-                    eligibilityData?.slotChangeWindowOpen
-                      ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-100'
-                      : 'bg-slate-50 text-slate-400 border border-slate-100 cursor-not-allowed'
-                  }`}
-                >
-                  Request Slot Change
-                </Button>
-                {!eligibilityData?.slotChangeWindowOpen && (
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-900 text-white text-[10px] font-bold rounded-xl opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none text-center shadow-xl z-50">
-                    Slot changes can only be requested at least 12 hours before session start.
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-900" />
-                  </div>
-                )}
-              </div>
-            </div>
+          <div className="mb-8">
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
+              This Week Upcoming Sessions
+            </h2>
+            <p className="text-slate-500 text-sm font-medium">
+              Prepare for your upcoming learning journey
+            </p>
           </div>
 
           {loading ? (
@@ -539,7 +489,7 @@ const StudentClassroom: React.FC = () => {
                         </td>
                         <td className="px-8 py-6 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            {canRequestLeave && (
+                            {canRequestLeave && session.status !== 'cancelled' && (
                               <button
                                 onClick={() => handleApplyLeave(id)}
                                 className="text-[10px] font-black uppercase tracking-wider text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-4 py-2 rounded-xl transition-all border border-rose-100 hover:border-rose-200 active:scale-95 shadow-sm"

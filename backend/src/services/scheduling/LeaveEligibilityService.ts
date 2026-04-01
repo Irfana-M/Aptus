@@ -11,12 +11,17 @@ export class LeaveEligibilityService implements ILeaveEligibilityService {
     ) {}
 
     computeStudentEligibility(sessions: ISession[], currentTime: Date): LeaveEligibilityResponse {
-        const eligibleSessions: SessionEligibility[] = sessions.map(session => ({
-            id: (session as any)._id?.toString() || (session as any).id?.toString(),
-            session: session,
-            canRequestLeave: this._policyService.canRequestLeave(new Date(session.startTime), currentTime),
-            canRequestSlotChange: this._policyService.canRequestSlotChange(new Date(session.startTime), currentTime)
-        }));
+        const eligibleSessions: SessionEligibility[] = sessions.map(session => {
+            // Cancelled sessions (by anyone) are never eligible for leave or slot change.
+            const isCancelled = (session as any).status === 'cancelled';
+
+            return {
+                id: (session as any)._id?.toString() || (session as any).id?.toString(),
+                session: session,
+                canRequestLeave: !isCancelled && this._policyService.canRequestLeave(new Date(session.startTime), currentTime),
+                canRequestSlotChange: !isCancelled && this._policyService.canRequestSlotChange(new Date(session.startTime), currentTime)
+            };
+        });
 
         const leaveWindowOpen = eligibleSessions.some(s => s.canRequestLeave);
         const slotChangeWindowOpen = eligibleSessions.some(s => s.canRequestSlotChange);
