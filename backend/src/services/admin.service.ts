@@ -73,12 +73,12 @@ export class AdminService implements IAdminService {
       const admin = await this._adminRepo.findByEmail(email);
 
       if (!admin) {
-        throw new AppError(MESSAGES.AUTH.INVALID_CREDENTIALS, HttpStatusCode.UNAUTHORIZED);
+        throw new AppError("Invalid email or username", HttpStatusCode.UNAUTHORIZED);
       }
 
       const isPasswordValid = await comparePasswords(password, admin.password);
       if (!isPasswordValid) {
-        throw new AppError(MESSAGES.AUTH.INVALID_CREDENTIALS, HttpStatusCode.UNAUTHORIZED);
+        throw new AppError("Invalid password", HttpStatusCode.UNAUTHORIZED);
       }
 
       const accessToken = generateAccessToken({

@@ -687,7 +687,7 @@ export class MentorService implements IMentorService {
 
           if (daySlots.length > 0) {
             result.push({
-              day: `${dayAvail.day} (${new Date(nextDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`,
+              day: dayAvail.day,
               date: dateStr as string,
               slots: daySlots
             });
