@@ -4,7 +4,7 @@ import { HttpStatusCode } from "@/constants/httpStatus.js";
 import type { IBaseRepository } from "@/interfaces/repositories/IBaseRepository.js";
 import { injectable } from "inversify";
 
-import { Model, Document, SortOrder } from "mongoose";
+import { Model, Document, SortOrder, Types } from "mongoose";
 import type { ClientSession, FilterQuery } from "mongoose";
 
 @injectable()
@@ -17,8 +17,8 @@ export abstract class BaseRepository<T extends Document> implements IBaseReposit
 
   async findById(id: string, session?: ClientSession): Promise<T | null> {
     try {
-      if (!id || id === '' || id === 'undefined' || id === 'null') {
-         logger.warn(`[BaseRepo.findById] Invalid ID provided for ${this.model.modelName}: "${id}"`);
+      if (!id || id === '' || id === 'undefined' || id === 'null' || !Types.ObjectId.isValid(id)) {
+         logger.warn(`[BaseRepo.findById] Invalid or malformed ID provided for ${this.model.modelName}: "${id}"`);
          return null; 
       }
       logger.debug(`Finding ${this.model.modelName} by ID: ${id}`);

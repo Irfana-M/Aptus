@@ -543,38 +543,63 @@ export class SessionService implements ISessionService {
 
         // 2. Create NEW session document for the rescheduled time
         logger.debug(`[SessionService.resolveRescheduling] Creating new session document...`);
+        
+        const safeObjectId = (id: string | undefined) => {
+            if (id && Types.ObjectId.isValid(id)) return new Types.ObjectId(id) as unknown as import('mongoose').Schema.Types.ObjectId;
+            return undefined;
+        };
+
         const newSessionData: Partial<ISession> = {
-          timeSlotId: new Types.ObjectId(effectiveSlotId) as unknown as import('mongoose').Schema.Types.ObjectId,
-          mentorId: new Types.ObjectId(mentorIdRaw) as unknown as import('mongoose').Schema.Types.ObjectId,
-          subjectId: new Types.ObjectId(subjectIdRaw || "") as unknown as import('mongoose').Schema.Types.ObjectId,
+          timeSlotId: safeObjectId(effectiveSlotId)!,
+          mentorId: safeObjectId(mentorIdRaw)!,
+          subjectId: safeObjectId(subjectIdRaw) as any,
           sessionType: session.sessionType,
-          participants: session.participants.map((p: any) => ({ ...p, userId: new Types.ObjectId(this.getRawId(p.userId)) as unknown as import('mongoose').Schema.Types.ObjectId })),
+          participants: (session.participants || []).map((p: any) => {
+              const rawUid = this.getRawId(p.userId);
+              return { 
+                ...p, 
+                userId: safeObjectId(rawUid)
+              };
+          }),
           startTime: newSlot.startTime,
           endTime: newSlot.endTime,
           status: SESSION_STATUS.SCHEDULED,
           isRescheduled: true,
-          ...(studentIdRaw && { studentId: new Types.ObjectId(studentIdRaw) as unknown as import('mongoose').Schema.Types.ObjectId }),
-          ...(session.courseId && { courseId: new Types.ObjectId(this.getRawId(session.courseId)) as unknown as import('mongoose').Schema.Types.ObjectId }),
-          ...(session.enrollmentId && { enrollmentId: new Types.ObjectId(this.getRawId(session.enrollmentId)) as unknown as import('mongoose').Schema.Types.ObjectId }),
+          ...(studentIdRaw && Types.ObjectId.isValid(studentIdRaw) && { studentId: new Types.ObjectId(studentIdRaw) as any }),
+          ...(session.courseId && Types.ObjectId.isValid(this.getRawId(session.courseId)) && { courseId: new Types.ObjectId(this.getRawId(session.courseId)) as any }),
+          ...(session.enrollmentId && Types.ObjectId.isValid(this.getRawId(session.enrollmentId)) && { enrollmentId: new Types.ObjectId(this.getRawId(session.enrollmentId)) as any }),
         };
         const newSession = await this.sessionRepo.create(newSessionData);
         const newSessionId = (newSession as any)._id.toString();
         logger.info(`[SessionService.resolveRescheduling] NEW session created: ${newSessionId}`);
 
         // 3. Mark OLD session as cancelled and link to the new one
-        await this.sessionRepo.updateById(sessionId, {
+        const updateData: any = {
           status: SESSION_STATUS.CANCELLED,
           cancelledBy: 'mentor',          // was cancelled by mentor originally
           isRescheduled: true,
-          rescheduledTo: new Types.ObjectId(newSessionId) as unknown as import('mongoose').Schema.Types.ObjectId,
-        });
+        };
+        const rTo = safeObjectId(newSessionId);
+        if (rTo) updateData.rescheduledTo = rTo;
+        
+        await this.sessionRepo.updateById(sessionId, updateData);
 
         // 4. Update Booking to point at the new session's slot
         logger.debug(`[SessionService.resolveRescheduling] Updating associated bookings to student ${studentId}`);
-        await this.bookingRepo.updateMany(
-          { $or: [{ sessionId: session._id }, { timeSlotId: session.timeSlotId }], studentId: new Types.ObjectId(studentId) as unknown as import('mongoose').Schema.Types.ObjectId },
-          { timeSlotId: new Types.ObjectId(effectiveSlotId) as unknown as import('mongoose').Schema.Types.ObjectId, sessionId: new Types.ObjectId(newSessionId) as unknown as import('mongoose').Schema.Types.ObjectId, status: BOOKING_STATUS.SCHEDULED }
-        );
+        const studentObjId = safeObjectId(studentId);
+        const newSlotObjId = safeObjectId(effectiveSlotId);
+        const newSessObjId = safeObjectId(newSessionId);
+
+        if (studentObjId) {
+            const bookingUpdate: any = { status: BOOKING_STATUS.SCHEDULED };
+            if (newSlotObjId) bookingUpdate.timeSlotId = newSlotObjId;
+            if (newSessObjId) bookingUpdate.sessionId = newSessObjId;
+
+            await this.bookingRepo.updateMany(
+              { $or: [{ sessionId: session._id }, { timeSlotId: session.timeSlotId }], studentId: studentObjId as any },
+              bookingUpdate
+            );
+        }
 
         // 4. Notify Mentor
         const subjectIdStr = (session.subjectId as any)?.toString() || "";
