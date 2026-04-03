@@ -223,16 +223,23 @@ const StudentClassroom: React.FC = () => {
     }
   };
 
-  const isJoinable = (session: any) => {
+const isRegularSessionJoinable = (session: any): boolean => {
+    if (!session?.startTime) return false;
     const now = new Date();
     const start = new Date(session.startTime);
-    // Use explicit endTime if available, otherwise default to 60 minutes after start
     const end = session.endTime ? new Date(session.endTime) : new Date(start.getTime() + 60 * 60 * 1000);
     
-    const canJoinFrom = new Date(start.getTime() - 60 * 60 * 1000); // 60 mins before
-    const canJoinUntil = new Date(end.getTime() + 10 * 60 * 1000);  // 10 mins after end buffer
-    
-    return now >= canJoinFrom && now <= canJoinUntil;
+    const canJoinFrom = new Date(start.getTime() - 30 * 60 * 1000); // 30 minutes before start
+    return now >= canJoinFrom && now <= end;   // Active until exact end time
+  };
+
+  const handleJoinSession = (session: any) => {
+    const sessionId = session.id || session._id || session._id;   // safe fallback
+    if (sessionId) {
+      window.open(`/session/${sessionId}/call`, '_blank');
+    } else {
+      toast.error("Session ID not found");
+    }
   };
 
   const today = new Date();
@@ -371,16 +378,16 @@ const StudentClassroom: React.FC = () => {
                       Resolve Rescheduling
                     </Button>
                   ) : (
-                    <Button
-                      disabled={!isJoinable(session)}
-                      onClick={() => window.open(`/session/${session._id}/call`, '_blank')}
+                                      <Button
+                      disabled={!isRegularSessionJoinable(session)}
+                      onClick={() => handleJoinSession(session)}
                       className={`w-full h-12 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
-                        isJoinable(session)
+                        isRegularSessionJoinable(session)
                           ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200'
                           : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                       }`}
                     >
-                      {isJoinable(session) ? (
+                      {isRegularSessionJoinable(session) ? (
                         <span className="flex items-center justify-center gap-2">
                           Join Session <ExternalLink size={14} />
                         </span>

@@ -3,7 +3,7 @@ import { TYPES } from "../types.js";
 import type { ISessionService } from "../interfaces/services/ISessionService.js";
 import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository.js";
 import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository.js";
-import type { ISession } from "../interfaces/models/session.interface.js";
+import type { ISession, ISessionParticipant } from "../interfaces/models/session.interface.js";
 import type { INotificationService } from "../interfaces/services/INotificationService.js";
 import type { ISchedulingService } from "../interfaces/services/ISchedulingService.js";
 import type { IAttendanceService } from "../interfaces/services/IAttendanceService.js";
@@ -54,7 +54,17 @@ export class SessionService implements ISessionService {
       this.sessionRepo.findUpcomingByStudent(studentId, { skip, limit }, filter),
       this.sessionRepo.countUpcomingByStudent(studentId, filter)
     ]);
-    return { items, total };
+    
+    // Explicitly format id 
+    const enrichedItems = items.map((session: any) => {
+        const sessionObj = session.toObject ? session.toObject() : session;
+        return {
+            ...sessionObj,
+            id: this.getRawId(sessionObj)
+        };
+    });
+
+    return { items: enrichedItems as any[], total };
   }
 
   async getStudentUpcomingSessionsWithEligibility(studentId: string): Promise<LeaveEligibilityResponse> {
@@ -184,6 +194,10 @@ export class SessionService implements ISessionService {
         );
         if (!booking) continue;
 
+        const allBookings = await this.bookingRepo.find({
+          timeSlotId: slot._id, status: BOOKING_STATUS.SCHEDULED
+        });
+
         const existingSession = await this.sessionRepo.existsByTimeSlot(slot._id);
         if (!existingSession) {
           logger.info(`[SessionSync] Creating session for slot ${slot._id} at ${slot.startTime.toISOString()}`);
@@ -191,6 +205,19 @@ export class SessionService implements ISessionService {
           // Safely extract subjectId from populated studentSubjectId
           const studentSubject = booking.studentSubjectId as any;
           const subjectId = booking.subjectId || studentSubject?.subjectId;
+
+          // Cast the array explicitly to ISessionParticipant to restrict 'role' and 'status' types
+          const participants: ISessionParticipant[] = allBookings.map((b: any) => ({
+            userId: new Types.ObjectId(b.studentId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
+            role: 'student' as const,
+            status: 'scheduled' as const
+          }));
+          
+          participants.push({
+            userId: new Types.ObjectId(slot.mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
+            role: 'mentor' as const,
+            status: 'scheduled' as const
+          });
 
           await this.sessionRepo.create({
             mentorId: new Types.ObjectId(slot.mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
@@ -203,11 +230,9 @@ export class SessionService implements ISessionService {
             endTime: slot.endTime,
             status: SESSION_STATUS.SCHEDULED,
             sessionType: booking.isGroup ? 'group' : 'one-to-one',
-            participants: [
-              { userId: new Types.ObjectId(booking.studentId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId, role: 'student', status: 'scheduled' },
-              { userId: new Types.ObjectId(slot.mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId, role: 'mentor', status: 'scheduled' }
-            ]
+            participants: participants
           });
+
         }
       }
     } catch (error) {

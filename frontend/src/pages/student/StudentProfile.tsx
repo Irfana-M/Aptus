@@ -202,23 +202,23 @@ const StudentProfile: React.FC = () => {
     }
   }, [profile, user]);
 
- // Improved handleDOBChange
-const handleDOBChange = (value: string) => {
-  setProfileData(prev => {
-    const newData = { ...prev, dateOfBirth: value };
-    if (value) {
-      const birthDate = new Date(value);
-      const today = new Date();
-      let calculatedAge = today.getFullYear() - birthDate.getFullYear();
-      const m = today.getMonth() - birthDate.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        calculatedAge--;
+  // Improved handleDOBChange
+  const handleDOBChange = (value: string) => {
+    setProfileData((prev) => {
+      const newData = { ...prev, dateOfBirth: value };
+      if (value) {
+        const birthDate = new Date(value);
+        const today = new Date();
+        let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          calculatedAge--;
+        }
+        newData.age = calculatedAge.toString();
       }
-      newData.age = calculatedAge.toString();
-    }
-    return newData;
-  });
-};
+      return newData;
+    });
+  };
 
   const handleChange = (field: string) => (value: string) => {
     setProfileData((prev) => ({ ...prev, [field]: value }));
@@ -257,7 +257,8 @@ const handleDOBChange = (value: string) => {
 
     if (!profileData.fullName?.trim()) errors.push("Full Name is required");
     if (!profileData.emailId?.trim()) errors.push("Email ID is required");
-    if (!profileData.phoneNumber?.trim()) errors.push("Phone Number is required");
+    if (!profileData.phoneNumber?.trim())
+      errors.push("Phone Number is required");
     if (!profileData.dateOfBirth) errors.push("Date of Birth is required");
     if (!profileData.gender) errors.push("Gender is required");
     if (!profileData.age) errors.push("Age is required");
@@ -265,12 +266,16 @@ const handleDOBChange = (value: string) => {
     if (!profileData.country?.trim()) errors.push("Country is required");
     if (!profileData.postalCode?.trim()) errors.push("Postal Code is required");
     if (!profileData.parentName?.trim()) errors.push("Parent Name is required");
-    if (!profileData.parentPhone?.trim()) errors.push("Parent Phone is required");
-    if (!profileData.relationship?.trim()) errors.push("Relationship is required");
-    if (!profileData.institution?.trim()) errors.push("Institution is required");
+    if (!profileData.parentPhone?.trim())
+      errors.push("Parent Phone is required");
+    if (!profileData.relationship?.trim())
+      errors.push("Relationship is required");
+    if (!profileData.institution?.trim())
+      errors.push("Institution is required");
     if (!profileData.grade) errors.push("Grade is required");
     if (!profileData.syllabus) errors.push("Syllabus is required");
-    if (!profileData.learningGoal?.trim()) errors.push("Learning Goal is required");
+    if (!profileData.learningGoal?.trim())
+      errors.push("Learning Goal is required");
 
     const ageNum = parseInt(profileData.age);
     if (isNaN(ageNum) || ageNum < 10 || ageNum > 20) {
@@ -310,7 +315,7 @@ const handleDOBChange = (value: string) => {
         dispatch(updateProfileStatus(resultAction.payload));
 
         toast.success("Profile updated successfully!");
-        setIsEditing(false); 
+        setIsEditing(false);
         navigate(ROUTES.STUDENT.BOOK_FREE_TRIAL);
       } else {
         toast.error(
@@ -480,19 +485,31 @@ const handleDOBChange = (value: string) => {
                     required
                   />
                   <div className="grid md:grid-cols-2 gap-4">
-                    <FormField
-                      label="Country"
-                      type="text"
-                      value={profileData.country}
-                      onChange={handleChange("country")}
-                      required
-                    />
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Country <span className="text-red-500 ml-1">*</span>
+                      </label>
+                      <select
+                        value={profileData.country}
+                        onChange={(e) =>
+                          handleChange("country")(e.target.value)
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                      >
+                        <option value="">Select Country</option>
+                        <option value="India">India</option>
+                        <option value="USA">USA</option>
+                        <option value="UK">UK</option>
+                        <option value="Canada">Canada</option>
+                      </select>
+                    </div>
                     <FormField
                       label="Postal Code"
                       type="text"
                       value={profileData.postalCode}
                       onChange={handleChange("postalCode")}
                       required
+                      disabled={!profileData.country}
                     />
                   </div>
                 </div>
@@ -803,7 +820,6 @@ const handleDOBChange = (value: string) => {
           </div>
         </div>
 
-       
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow-sm p-6 sticky top-8">
             <div className="text-center mb-6">
