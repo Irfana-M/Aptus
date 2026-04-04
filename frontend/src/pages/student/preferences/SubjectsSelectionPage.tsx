@@ -26,14 +26,16 @@ const SubjectsSelectionPage: React.FC = () => {
   const isBasicPlan =
     profile?.subscription?.planType === "basic" ||
     profile?.subscription?.planCode === "BASIC";
-  //const gradeRaw = profile?.gradeId || profile?.academicDetails?.grade;
-
+  
+  // 1. Robust extraction of gradeId (Handling string ID, ObjectId object, or legacy Name)
+  const gradeRef = profile?.gradeId;
   const gradeId =
-  typeof profile?.gradeId === "object"
-    ? profile?.gradeId?._id
-    : profile?.gradeId || profile?.academicDetails?.grade;
+    typeof gradeRef === "object" && gradeRef !== null
+      ? gradeRef._id
+      : gradeRef || profile?.academicDetails?.grade;
 
-const syllabus = profile?.academicDetails?.syllabus;
+  // 2. Extract syllabus from academicDetails
+  const syllabus = profile?.academicDetails?.syllabus;
 
   useEffect(() => {
     if (!profile && !loading) {
@@ -43,9 +45,12 @@ const syllabus = profile?.academicDetails?.syllabus;
 
   useEffect(() => {
     const getSubjects = async () => {
-      if (!gradeId) return;
-      console.log("GRADE SENT:", gradeId);
+      // Ensure gradeId is a string and not undefined before fetching
+      if (!gradeId || typeof gradeId !== "string") return;
+
+      console.log("GRADE ID SENT:", gradeId);
       console.log("SYLLABUS SENT:", syllabus);
+
       try {
         setFetchingSubjects(true);
         const data = await fetchSubjectsByGrade(gradeId, syllabus);
