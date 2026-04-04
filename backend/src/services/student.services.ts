@@ -137,135 +137,41 @@ export class StudentService implements IStudentService {
       const studentObj = currentStudent as unknown as StudentProfile;
 
       // 3. Merging and mapping data using StudentMapper
-      const updateDataFlat = { ...data } as Partial<StudentProfile> & Record<string, unknown>;
-      const dataAny = data as Record<string, unknown>;
+      // 1. Resolve effective update data using StudentMapper (Nested > Flat precedence)
+      const updateDataMapped = StudentMapper.toNestedUpdate(data);
+      const dataAny = data as any;
 
-      if (dataAny.institution !== undefined || dataAny.institutionName !== undefined || 
-          dataAny.grade !== undefined || dataAny.gradeId !== undefined || dataAny.syllabus !== undefined ||
-          dataAny.academicDetails !== undefined) {
-          
-          const existingAcademic = updateDataFlat.academicDetails || {} as AcademicDetails;
-          const newAcademic: Partial<AcademicDetails> = { ...existingAcademic };
+      // 2. Resolve gradeId if grade and syllabus are provided (from any source)
+      const gradeName = (data.academicDetails?.grade || dataAny.grade) as string;
+      const syllabus = (data.academicDetails?.syllabus || dataAny.syllabus) as string;
 
-          if (dataAny.institution !== undefined) newAcademic.institutionName = dataAny.institution as string;
-          if (dataAny.institutionName !== undefined) newAcademic.institutionName = dataAny.institutionName as string;
-          if (dataAny.grade !== undefined) newAcademic.grade = dataAny.grade as string;
-          if (dataAny.syllabus !== undefined) newAcademic.syllabus = dataAny.syllabus as string;
-          
-          if (dataAny.academicDetails) {
-              Object.assign(newAcademic, dataAny.academicDetails);
+      if (gradeName && syllabus) {
+        try {
+          const grade = await this._gradeRepo.findOne({
+            name: gradeName,
+            syllabus: syllabus.toUpperCase() as "CBSE" | "STATE" | "ICSE",
+            isActive: true
+          });
+          if (grade) {
+            updateDataMapped.gradeId = grade._id as unknown as import('mongoose').Types.ObjectId;
+            logger.info(`Resolved gradeId: ${grade._id} for Grade: ${gradeName}, Syllabus: ${syllabus}`);
           }
-          
-          updateDataFlat.academicDetails = newAcademic as AcademicDetails;
-
-          // RESOLVE gradeId if grade (name) and syllabus are available
-          const gradeName = (dataAny.grade || newAcademic.grade) as string;
-          const syllabus = (dataAny.syllabus || newAcademic.syllabus) as string;
-
-          if (gradeName && syllabus) {
-            try {
-              const grade = await this._gradeRepo.findOne({
-                name: gradeName,
-                syllabus: syllabus.toUpperCase() as "CBSE" | "STATE" | "ICSE",
-                isActive: true
-              });
-              if (grade) {
-                updateDataFlat.gradeId = grade._id as unknown as import('mongoose').Types.ObjectId;
-                logger.info(`Resolved gradeId: ${grade._id} for Grade: ${gradeName}, Syllabus: ${syllabus}`);
-              } else {
-                logger.warn(`Could not resolve gradeId for Grade: ${gradeName}, Syllabus: ${syllabus}`);
-              }
-            } catch (error) {
-              logger.error(`Error resolving gradeId: ${error}`);
-            }
-          }
-      }
-
-      // 1. Contact Info & Parent Info
-      if (dataAny.address !== undefined || dataAny.country !== undefined || dataAny.postalCode !== undefined ||
-          dataAny.parentName !== undefined || dataAny.parentEmail !== undefined || dataAny.parentPhone !== undefined ||
-          dataAny.relationship !== undefined || dataAny.contactInfo !== undefined) {
-        
-        const existingContact = (updateDataFlat.contactInfo as contactInfo | undefined) || {} as contactInfo;
-        const existingParent = existingContact.parentInfo || {} as ParentInfo;
-
-        const newParentInfo: Partial<ParentInfo> = { ...existingParent };
-        if (dataAny.parentName !== undefined) newParentInfo.name = dataAny.parentName as string;
-        if (dataAny.parentEmail !== undefined) newParentInfo.email = dataAny.parentEmail as string;
-        if (dataAny.parentPhone !== undefined) newParentInfo.phoneNumber = dataAny.parentPhone as string;
-        if (dataAny.relationship !== undefined) newParentInfo.relationship = dataAny.relationship as string;
-
-        const newContactInfo: Partial<contactInfo> = { ...existingContact };
-        if (dataAny.address !== undefined) newContactInfo.address = dataAny.address as string;
-        if (dataAny.country !== undefined) newContactInfo.country = dataAny.country as string;
-        if (dataAny.postalCode !== undefined) newContactInfo.postalCode = dataAny.postalCode as string;
-        
-        newContactInfo.parentInfo = newParentInfo as ParentInfo;
-        updateDataFlat.contactInfo = newContactInfo as contactInfo;
-      }
-      const updateDataMapped = StudentMapper.toProfileUpdate(updateDataFlat);
-
-      // Merge manually for completeness check if needed, but StudentMapper handles the nesting
-      const mergedForCheck = {
-        ...studentObj,
-        ...updateDataMapped,
-        contactInfo: {
-            ...studentObj.contactInfo,
-            ...updateDataMapped.contactInfo,
-            parentInfo: {
-                ...(studentObj.contactInfo?.parentInfo || {}),
-                ...(updateDataMapped.contactInfo?.parentInfo || {})
-            }
-        },
-        academicDetails: {
-            ...studentObj.academicDetails,
-            ...updateDataMapped.academicDetails
+        } catch (error) {
+          logger.error(`Error resolving gradeId: ${error}`);
         }
-      };
-
-      // Check if profile is complete based on essential fields only
-      const isProfileCompleted = Boolean(
-        mergedForCheck.fullName && 
-        mergedForCheck.email && 
-        mergedForCheck.phoneNumber &&
-        mergedForCheck.gender &&
-        mergedForCheck.dateOfBirth &&
-        mergedForCheck.age &&
-        mergedForCheck.contactInfo?.address &&
-        mergedForCheck.contactInfo?.country &&
-        mergedForCheck.contactInfo?.parentInfo?.name &&
-        mergedForCheck.contactInfo?.parentInfo?.phoneNumber &&
-        mergedForCheck.contactInfo?.parentInfo?.relationship &&
-        (mergedForCheck.gradeId || mergedForCheck.academicDetails?.grade) &&
-        mergedForCheck.academicDetails?.institutionName &&
-        mergedForCheck.academicDetails?.syllabus
-      );
-
-      // Log exact reason for failure
-      if (!isProfileCompleted) {
-          const missing = [];
-          if (!mergedForCheck.fullName) missing.push('fullName');
-          if (!mergedForCheck.email) missing.push('email');
-          if (!mergedForCheck.phoneNumber) missing.push('phoneNumber');
-          if (!mergedForCheck.gender) missing.push('gender');
-          if (!mergedForCheck.dateOfBirth) missing.push('dateOfBirth');
-          if (!mergedForCheck.age) missing.push('age');
-          if (!mergedForCheck.contactInfo?.address) missing.push('address');
-          if (!mergedForCheck.contactInfo?.country) missing.push('country');
-          if (!mergedForCheck.contactInfo?.parentInfo?.name) missing.push('parentInfo.name');
-          if (!mergedForCheck.contactInfo?.parentInfo?.phoneNumber) missing.push('parentInfo.phoneNumber');
-          if (!mergedForCheck.contactInfo?.parentInfo?.relationship) missing.push('parentInfo.relationship');
-          if (!mergedForCheck.gradeId && !mergedForCheck.academicDetails?.grade) missing.push('grade');
-          if (!mergedForCheck.academicDetails?.institutionName) missing.push('institutionName');
-          if (!mergedForCheck.academicDetails?.syllabus) missing.push('syllabus');
-          
-          logger.warn(`Profile completion check failed for ${id}. Missing fields: ${missing.join(', ')}`);
-      } else {
-          logger.info(`Profile completion check passed for ${id}`);
       }
 
-      // Always set the flag in the update
-      (updateDataMapped as Partial<StudentProfile> & { isProfileCompleted?: boolean }).isProfileCompleted = isProfileCompleted;
+      // 3. For completeness check, merge update with current data using helper
+      const mergedForCheck = StudentMapper.applyDottedUpdate(studentObj, updateDataMapped);
+
+      // Check if profile is complete
+      const isProfileCompleted = StudentMapper.calculateCompleteness(mergedForCheck);
+
+      // Set the flag in the update object
+      updateDataMapped.isProfileCompleted = isProfileCompleted;
+      
+      // TEMPORARY: Log the final update object for verification
+      logger.info(`FINAL STUDENT UPDATE DATA: ${JSON.stringify(updateDataMapped, null, 2)}`);
       
       logger.info(`Profile completion check for ${id}: ${isProfileCompleted}`, {
         hasGender: !!mergedForCheck.gender,

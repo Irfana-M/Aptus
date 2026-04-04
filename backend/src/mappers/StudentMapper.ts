@@ -179,6 +179,158 @@ export class StudentMapper {
     return updateData;
   }
 
+  /**
+   * List of fields (dot-paths) required for a complete student profile.
+   */
+  static readonly REQUIRED_PROFILE_FIELDS = [
+    "fullName",
+    "email",
+    "phoneNumber",
+    "gender",
+    "dateOfBirth",
+    "age",
+    "contactInfo.address",
+    "contactInfo.country",
+    "contactInfo.parentInfo.name",
+    "contactInfo.parentInfo.phoneNumber",
+    "contactInfo.parentInfo.relationship",
+    "academicDetails.institutionName",
+    "academicDetails.syllabus"
+  ];
+
+  /**
+   * Transforms flat/nested profile data into a dot-notation object for safe Mongoose updates.
+   * Priority: Nested > Flat. Omits undefined/null values. 
+   * Protects required fields from being cleared (empty strings).
+   */
+  static toNestedUpdate(data: Partial<StudentProfile> & Record<string, unknown>): Record<string, unknown> {
+    const update: Record<string, unknown> = {};
+
+    // Helper to resolve value with Nested > Flat precedence
+    const resolve = (nested: unknown, flat: unknown, path: string) => {
+      const val = nested !== undefined ? nested : flat;
+      if (val === undefined || val === null) return undefined;
+      
+      // Protect required fields from being accidentally cleared (data loss prevention)
+      if (this.REQUIRED_PROFILE_FIELDS.includes(path) && val === "") return undefined;
+      
+      return val;
+    };
+
+    // 1. Top-level fields
+    const fullName = resolve(undefined, data.fullName, "fullName");
+    if (fullName) update.fullName = fullName;
+
+    const email = resolve(undefined, data.email || data.emailId, "email");
+    if (email) update.email = email;
+
+    const phone = resolve(undefined, data.phoneNumber, "phoneNumber");
+    if (phone) update.phoneNumber = phone;
+
+    const age = resolve(undefined, data.age, "age");
+    if (age !== undefined) update.age = age;
+
+    const dob = resolve(undefined, data.dateOfBirth, "dateOfBirth");
+    if (dob) update.dateOfBirth = dob;
+
+    const gender = resolve(undefined, data.gender, "gender");
+    if (gender) update.gender = gender;
+
+    const goal = resolve(undefined, data.goal || data.learningGoal, "goal");
+    if (goal) update.goal = goal;
+
+    // 2. contactInfo (Nested > Flat)
+    const address = resolve(data.contactInfo?.address, data.address, "contactInfo.address");
+    if (address !== undefined) update["contactInfo.address"] = address;
+
+    const country = resolve(data.contactInfo?.country, data.country, "contactInfo.country");
+    if (country !== undefined) update["contactInfo.country"] = country;
+
+    const postalCode = resolve(data.contactInfo?.postalCode, data.postalCode, "contactInfo.postalCode");
+    if (postalCode !== undefined) update["contactInfo.postalCode"] = postalCode;
+
+    // 3. parentInfo (Nested > Flat)
+    const pName = resolve(data.contactInfo?.parentInfo?.name, data.parentName, "contactInfo.parentInfo.name");
+    if (pName !== undefined) update["contactInfo.parentInfo.name"] = pName;
+
+    const pEmail = resolve(data.contactInfo?.parentInfo?.email, data.parentEmail, "contactInfo.parentInfo.email");
+    if (pEmail !== undefined) update["contactInfo.parentInfo.email"] = pEmail;
+
+    const pPhone = resolve(data.contactInfo?.parentInfo?.phoneNumber, data.parentPhone, "contactInfo.parentInfo.phoneNumber");
+    if (pPhone !== undefined) update["contactInfo.parentInfo.phoneNumber"] = pPhone;
+
+    const pRel = resolve(data.contactInfo?.parentInfo?.relationship, data.relationship, "contactInfo.parentInfo.relationship");
+    if (pRel !== undefined) update["contactInfo.parentInfo.relationship"] = pRel;
+
+    // 4. academicDetails (Nested > Flat)
+    const institution = resolve(data.academicDetails?.institutionName, data.institution || data.institutionName, "academicDetails.institutionName");
+    if (institution !== undefined) update["academicDetails.institutionName"] = institution;
+
+    const grade = resolve(data.academicDetails?.grade, data.grade, "academicDetails.grade");
+    if (grade !== undefined) update["academicDetails.grade"] = grade;
+
+    const syllabus = resolve(data.academicDetails?.syllabus, data.syllabus, "academicDetails.syllabus");
+    if (syllabus !== undefined) update["academicDetails.syllabus"] = syllabus;
+
+    // 5. Metadata & Flags
+    if (data.profileImage) update.profileImage = data.profileImage;
+    if (data.profileImageKey) update.profileImageKey = data.profileImageKey;
+    if (data.onboardingStatus) update.onboardingStatus = data.onboardingStatus;
+    if (data.isProfileCompleted !== undefined) update.isProfileCompleted = data.isProfileCompleted;
+
+    return update;
+  }
+
+  /**
+   * Evaluates if a profile object is complete based on REQUIRED_PROFILE_FIELDS.
+   */
+  static calculateCompleteness(profile: any): boolean {
+    if (!profile) return false;
+
+    // Basic check for required fields using dot-path resolution
+    const isBasicFieldsComplete = this.REQUIRED_PROFILE_FIELDS.every(path => {
+      const parts = path.split('.');
+      let val = profile;
+      for (const part of parts) {
+        if (val === null || val === undefined) return false;
+        val = val[part];
+      }
+      return val !== null && val !== undefined && val !== "";
+    });
+
+    // Special check for grade (either gradeId or academicDetails.grade)
+    const hasGrade = !!(profile.gradeId || profile.academicDetails?.grade);
+
+    return isBasicFieldsComplete && hasGrade;
+  }
+
+  /**
+   * Merges a dot-notation update object into a base object.
+   */
+  static applyDottedUpdate(base: any, update: Record<string, any>): any {
+    const result = JSON.parse(JSON.stringify(base || {})); // Deep clone for safety
+    
+    for (const [path, value] of Object.entries(update)) {
+      const parts = path.split('.');
+      let current: any = result;
+      for (let i = 0; i < parts.length - 1; i++) {
+        const part = parts[i];
+        if (part) {
+          if (!current[part]) current[part] = {};
+          current = current[part];
+        }
+      }
+      
+      const lastPart = parts[parts.length - 1];
+      if (lastPart) {
+        current[lastPart] = value;
+      }
+    }
+    
+    return result;
+  }
+
+
   
   static toStudentAuthUser(student: StudentAuthUser | (StudentAuthUser & { toObject: () => StudentAuthUser })): StudentAuthUser {
     const s = (student && 'toObject' in student && typeof student.toObject === 'function') 

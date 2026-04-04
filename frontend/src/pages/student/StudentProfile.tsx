@@ -264,7 +264,25 @@ const StudentProfile: React.FC = () => {
     if (!profileData.age) errors.push("Age is required");
     if (!profileData.address?.trim()) errors.push("Address is required");
     if (!profileData.country?.trim()) errors.push("Country is required");
-    if (!profileData.postalCode?.trim()) errors.push("Postal Code is required");
+    
+    if (!profileData.postalCode?.trim()) {
+      errors.push("Postal Code is required");
+    } else {
+      const postal = profileData.postalCode.trim();
+      const country = profileData.country;
+      if (country === "India" && !/^[1-9][0-9]{5}$/.test(postal)) {
+        errors.push("Invalid Indian Postal Code (must be 6 digits)");
+      } else if (country === "USA" && !/^\d{5}(-\d{4})?$/.test(postal)) {
+        errors.push("Invalid US ZIP Code");
+      } else if (country === "UK" && !/^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i.test(postal)) {
+        errors.push("Invalid UK Postcode");
+      } else if (country === "Canada" && !/^[A-Za-z]\d[A-Za-z] ?\d[A-Za-z]\d$/.test(postal)) {
+        errors.push("Invalid Canadian Postal Code");
+      } else if (!/^[A-Za-z0-9\s-]{3,10}$/.test(postal)) {
+        errors.push("Invalid Postal Code format");
+      }
+    }
+
     if (!profileData.parentName?.trim()) errors.push("Parent Name is required");
     if (!profileData.parentPhone?.trim())
       errors.push("Parent Phone is required");
@@ -491,9 +509,10 @@ const StudentProfile: React.FC = () => {
                       </label>
                       <select
                         value={profileData.country}
-                        onChange={(e) =>
-                          handleChange("country")(e.target.value)
-                        }
+                        onChange={(e) => {
+                          handleChange("country")(e.target.value);
+                          handleChange("postalCode")("");
+                        }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
                       >
                         <option value="">Select Country</option>

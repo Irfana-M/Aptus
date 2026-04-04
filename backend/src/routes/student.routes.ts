@@ -9,6 +9,8 @@ import { requireAuth } from "../middlewares/authMiddleware.js";
 import { requireRole } from "../middlewares/role.middleware.js";
 import { requireAccess } from "../middlewares/studentAccessMiddleware.js";
 import { AccessState } from "../constants/accessControl.js";
+import { validateBody } from "../middlewares/validate.middleware.js";
+import { updateStudentProfileSchema } from "../validators/student.validator.js";
 import type { ISessionService } from "../interfaces/services/ISessionService.js";
 import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository.js";
 import type { ITimeSlot } from "../interfaces/models/timeSlot.interface.js";
@@ -158,6 +160,7 @@ studentRouter.put(
     { name: "profilePicture", maxCount: 1 },
     { name: "idProof", maxCount: 1 }
   ]),
+  validateBody(updateStudentProfileSchema),
   studentController.updateProfile.bind(studentController)
 );
 
