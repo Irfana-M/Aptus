@@ -50,23 +50,23 @@ export class StudyMaterialService implements IStudyMaterialService {
       let subjectId: string | undefined = data.subjectId;
       const slotId: string | undefined = data.slotId;
 
-      if (data.sessionId) {
+       if (data.sessionId) {
         const session = await this._sessionRepo.findById(data.sessionId);
         if (session) {
           const sessionAny = session as any;
-          // Extract mentorId safely in case it is populated
+          // SAFE EXTRACTION: Safely extract ID from either string or populated object
           const sessionMentorId = sessionAny.mentorId?._id 
             ? sessionAny.mentorId._id.toString() 
             : sessionAny.mentorId?.toString();
-
+          // Authorization check using normalized string IDs
           if (sessionMentorId !== data.mentorId) {
             throw new AppError(MESSAGES.STUDY_MATERIAL.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
           }
-
           sessionId = sessionAny._id.toString();
           courseId = sessionAny.courseId?.toString();
           mentorId = sessionMentorId;
-          // Safeguard studentId for group sessions where it might be empty or in participants
+          
+          // HARDENED MAPPING: Handle student/subject IDs that may be populated or null (e.g. group sessions)
           studentId = sessionAny.studentId?._id 
             ? sessionAny.studentId._id.toString() 
             : (sessionAny.studentId?.toString() || data.studentId);

@@ -181,22 +181,20 @@ export class SessionService implements ISessionService {
     }
   }
 
-  // Helper to sync sessions from slots (Idempotent via unique index)
-async syncSessionsFromSlots(slots: Array<{ _id: string; mentorId: string; startTime: Date; endTime: Date }>): Promise<void> {
+  async syncSessionsFromSlots(slots: Array<{ _id: string; mentorId: string; startTime: Date; endTime: Date }>): Promise<void> {
     try {
         logger.info(`[SessionService] Processing ${slots.length} slots into Sessions...`);
-        
+
         for (const slot of slots) {
-            // 1. Fetch the primary booking (populated) to extract shared session metadata
+            // Fetch first booking for metadata
             const firstBooking = await this.bookingRepo.findOneWithPopulate(
                 { timeSlotId: slot._id, status: BOOKING_STATUS.SCHEDULED },
                 'studentSubjectId'
             );
-            
-            // Skip if no bookings exist for this slot
+
             if (!firstBooking) continue;
 
-            // 2. Fetch all bookings for this slot to generate the full participants list
+            // Fetch ALL bookings for participants list
             const allBookings = await this.bookingRepo.find({
                 timeSlotId: slot._id,
                 status: BOOKING_STATUS.SCHEDULED
@@ -204,7 +202,7 @@ async syncSessionsFromSlots(slots: Array<{ _id: string; mentorId: string; startT
 
             if (allBookings.length === 0) continue;
 
-            // Generate participants list from ALL bookings + the Mentor
+            // Build participants
             const participants: ISessionParticipant[] = allBookings.map((b: any) => ({
                 userId: new Types.ObjectId(b.studentId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
                 role: 'student' as const,
@@ -217,10 +215,10 @@ async syncSessionsFromSlots(slots: Array<{ _id: string; mentorId: string; startT
                 status: 'scheduled' as const
             });
 
-            // 3. Check if a session already exists for this slot
             const existingSession = await this.sessionRepo.existsByTimeSlot(slot._id);
 
             if (!existingSession) {
+                // Create new session
                 logger.info(`[SessionSync] Creating session for slot ${slot._id}`);
                 const studentSubject = (firstBooking as any).studentSubjectId;
                 const subjectId = firstBooking.subjectId || (studentSubject as any)?.subjectId;
@@ -239,7 +237,7 @@ async syncSessionsFromSlots(slots: Array<{ _id: string; mentorId: string; startT
                     participants: participants
                 });
             } else {
-                // 4. Update existing session for group classes (allowing newly booked students to join)
+                // Update existing group session if new students joined
                 if (firstBooking.isGroup) {
                     const sessionId = this.getRawId(existingSession);
                     const sessionDoc = await this.sessionRepo.findById(sessionId);

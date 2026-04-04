@@ -34,14 +34,15 @@ const sessionSlice = createSlice({
       })
       .addCase(fetchStudentUpcomingSessions.fulfilled, (state, action) => {
         state.loading = false;
-        state.sessions = action.payload.data.items;
-        state.totalSessions = action.payload.data.pagination.totalItems;
+        const payload = action.payload?.data || action.payload;
+        state.sessions = payload.items || payload;
+        state.totalSessions = payload.total || payload.pagination?.totalItems || 0;
       })
       .addCase(fetchStudentUpcomingSessions.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
-      
+
       // Fetch Mentor Upcoming
       .addCase(fetchMentorUpcomingSessions.pending, (state) => {
         state.loading = true;
@@ -49,8 +50,9 @@ const sessionSlice = createSlice({
       })
       .addCase(fetchMentorUpcomingSessions.fulfilled, (state, action) => {
         state.loading = false;
-        state.sessions = action.payload.data.items;
-        state.totalSessions = action.payload.data.pagination.totalItems;
+        const payload = action.payload?.data || action.payload;
+        state.sessions = payload.items || payload;
+        state.totalSessions = payload.total || payload.pagination?.totalItems || 0;
       })
       .addCase(fetchMentorUpcomingSessions.rejected, (state, action) => {
         state.loading = false;
