@@ -211,6 +211,11 @@ export class StudentMapper {
       const val = nested !== undefined ? nested : flat;
       if (val === undefined || val === null) return undefined;
       
+      // Protect against corrupted [object Object] strings from frontend serialization
+      if (typeof val === 'string' && val.includes('[object Object]')) {
+        return undefined;
+      }
+      
       // Protect required fields from being accidentally cleared (data loss prevention)
       if (this.REQUIRED_PROFILE_FIELDS.includes(path) && val === "") return undefined;
       

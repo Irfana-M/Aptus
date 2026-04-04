@@ -165,6 +165,16 @@ const StudentProfile: React.FC = () => {
       const parentInfo = contactInfo.parentInfo || {};
       const academicDetails = profile.academicDetails || {};
 
+      // Helper to safely extract string values and bypass [object Object] corruption
+      const safeString = (val: any) => 
+        (typeof val === 'string' && !val.includes('[object Object]')) ? val : undefined;
+
+      const gradeValue = 
+        (typeof profile.gradeId === 'object' ? profile.gradeId?.name : safeString(profile.gradeId)) || 
+        safeString(academicDetails.grade);
+
+      const syllabusValue = safeString(academicDetails.syllabus);
+
       setProfileData((prev) => ({
         ...prev,
         fullName: profile.fullName || prev.fullName,
@@ -184,8 +194,8 @@ const StudentProfile: React.FC = () => {
         parentPhone: parentInfo.phoneNumber || prev.parentPhone,
         relationship: parentInfo.relationship || prev.relationship,
         institution: academicDetails.institutionName || prev.institution,
-        grade: academicDetails.grade || prev.grade,
-        syllabus: academicDetails.syllabus || prev.syllabus,
+        grade: gradeValue || prev.grade,
+        syllabus: syllabusValue || prev.syllabus,
         learningGoal: profile.goal || prev.learningGoal,
       }));
     } else if (user) {

@@ -32,7 +32,11 @@ const SubjectsSelectionPage: React.FC = () => {
   const gradeId =
     typeof gradeRef === "object" && gradeRef !== null
       ? gradeRef._id
-      : gradeRef || profile?.academicDetails?.grade;
+      : (typeof gradeRef === "string" && !gradeRef.includes("[object Object]")
+        ? gradeRef
+        : (typeof profile?.academicDetails?.grade === "string" && !profile?.academicDetails?.grade.includes("[object Object]")
+          ? profile?.academicDetails?.grade
+          : undefined));
 
   // 2. Extract syllabus from academicDetails
   const syllabus = profile?.academicDetails?.syllabus;
