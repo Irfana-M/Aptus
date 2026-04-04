@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { ROUTES } from '../../constants/routes.constants';
 import { getUserNotifications, markNotificationAsRead, type UserNotification } from "../../api/userApi";
 import socketService from "../../services/socketService";
+import { getNotificationMessage } from "../../utils/notificationUtils";
 
 
 export const NotificationBell: React.FC = () => {
@@ -120,7 +121,7 @@ export const NotificationBell: React.FC = () => {
                                   {isCancelled && <span className="text-red-500 mr-1">●</span>}
                                   {n.title}
                               </p>
-                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.message}</p>
+                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{getNotificationMessage(n as any)}</p>
                             <div className="flex items-center gap-1.5 mt-1.5">
                                 <Clock size={10} className="text-slate-400" />
                                 <span className="text-[10px] text-slate-400">

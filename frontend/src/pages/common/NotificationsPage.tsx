@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead, type PaginationMeta } from "../../api/userApi";
 import toast from "react-hot-toast";
-import { Bell, CheckCircle, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Bell, CheckCircle, Clock, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Loader } from "../../components/ui/Loader";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { type NotificationDTO, type NotificationUI, mapNotificationDTOToUI } from "../../types/notification.types";
 import { useSelector } from "react-redux";
 import type { RootState } from "../../app/store";
+import { getNotificationMessage } from "../../utils/notificationUtils";
 import { MentorLayout } from "../../components/mentor/MentorLayout";
 import StudentLayout from "../../components/students/StudentLayout";
 import { AdminLayout } from "../../components/admin/AdminLayout";
@@ -122,7 +123,7 @@ const fetchNotifications = async (currentPage: number) => {
                                         )}
                                     </div>
                                     <p className="text-gray-600 text-sm leading-relaxed mb-3">
-                                        {n.message}
+                                        {getNotificationMessage(n)}
                                     </p>
                                     <div className="flex items-center gap-4 text-xs text-gray-400">
                                         <span className="flex items-center gap-1">

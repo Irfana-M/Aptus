@@ -629,14 +629,6 @@ export class SessionService implements ISessionService {
         // 4. Notify Mentor
         const subjectIdStr = (session.subjectId as any)?.toString() || "";
         const subject = subjectIdRaw ? await this.subjectRepo.findById(subjectIdStr) : null;
-        const formattedTime = newSlot.startTime.toLocaleString('en-US', { 
-          weekday: 'short', 
-          month: 'short', 
-          day: 'numeric', 
-          hour: 'numeric', 
-          minute: '2-digit',
-          hour12: true 
-        });
 
         await this.notificationService.notifyUser(
           mentorIdRaw,
@@ -645,7 +637,7 @@ export class SessionService implements ISessionService {
           {
             sessionId,
             subjectName: subject?.subjectName || 'Session',
-            startTime: formattedTime,
+            startTime: newSlot.startTime.toISOString(),
             message: `A student has rescheduled a session to a new time slot.`
           },
           ['web']

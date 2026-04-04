@@ -5,7 +5,7 @@ export interface NotificationDTO {
   createdAt: string;
   type: string;
   status?: 'pending' | 'sent' | 'read' | 'failed'; 
-  
+  payload?: any;
 }
 
 
@@ -18,6 +18,8 @@ export interface NotificationUI {
   status: 'pending' | 'sent' | 'read' | 'failed';
    payload?: {
     joinLink?: string;
+    startTime?: string;
+    subjectName?: string;
     [key: string]: any;
   };
 }
@@ -30,5 +32,6 @@ export const mapNotificationDTOToUI = (
   message: dto.message,
   createdAt: dto.createdAt,
   type: dto.type,
-  status: dto.status ?? 'sent' // fallback
+  status: dto.status ?? 'sent', // fallback
+  payload: dto.payload
 });
