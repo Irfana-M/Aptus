@@ -298,7 +298,8 @@ export const MESSAGES = {
         },
         session_cancelled: {
             title: "Session Cancelled",
-            message: (subject: string) => `Your session for ${subject} has been cancelled.`
+            message: (subject: string, date?: string, time?: string) => 
+                `Your session for ${subject}${date ? ` on ${date}` : ""}${time ? ` at ${time}` : ""} has been cancelled.`
         },
         session_rescheduled: {
             title: "Session Rescheduled",

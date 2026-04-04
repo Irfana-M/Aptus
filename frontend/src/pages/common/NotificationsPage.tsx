@@ -96,48 +96,60 @@ const fetchNotifications = async (currentPage: number) => {
             </div>
         ) : (
             <div className="space-y-3">
-                {notifications.map((n) => (
-                    <div 
-                        key={n._id}
-                        className={`bg-white rounded-xl p-5 border transition-all duration-200 ${
-                            n.status !== 'read' 
-                                ? 'border-cyan-100 shadow-sm ring-1 ring-cyan-50' 
-                                : 'border-gray-100 hover:border-gray-200'
-                        }`}
-                    >
-                        <div className="flex justify-between items-start gap-4">
-                            <div className="flex-1">
-                                <h3 className={`text-base mb-1 ${n.status !== 'read' ? 'font-bold text-gray-800' : 'font-medium text-gray-700'}`}>
-                                    {n.title}
-                                </h3>
-                                <p className="text-gray-600 text-sm leading-relaxed mb-3">
-                                    {n.message}
-                                </p>
-                                <div className="flex items-center gap-4 text-xs text-gray-400">
-                                    <span className="flex items-center gap-1">
-                                        <Clock size={12} />
-                                        {new Date(n.createdAt).toLocaleString()}
-                                    </span>
-                                    {n.type && (
-                                        <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-500 capitalize">
-                                            {n.type.replace(/_/g, ' ')}
+                {notifications.map((n) => {
+                    const isCancelled = n.type && ['session_cancelled', 'session_cancelled_refund', 'student_absence', 'mentor_absence_reschedule', 'mentor_request_rejected'].includes(n.type);
+                    
+                    return (
+                        <div 
+                            key={n._id}
+                            className={`bg-white rounded-xl p-5 border transition-all duration-200 ${
+                                n.status !== 'read' 
+                                    ? isCancelled ? 'border-red-100 shadow-sm ring-1 ring-red-50' : 'border-cyan-100 shadow-sm ring-1 ring-cyan-50'
+                                    : 'border-gray-100 hover:border-gray-200'
+                            }`}
+                        >
+                            <div className="flex justify-between items-start gap-4">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        {isCancelled && <AlertCircle size={16} className="text-red-500" />}
+                                        <h3 className={`text-base ${n.status !== 'read' ? 'font-bold text-gray-800' : 'font-medium text-gray-700'}`}>
+                                            {n.title}
+                                        </h3>
+                                        {isCancelled && (
+                                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-50 text-red-600 border border-red-100">
+                                                Cancelled
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-gray-600 text-sm leading-relaxed mb-3">
+                                        {n.message}
+                                    </p>
+                                    <div className="flex items-center gap-4 text-xs text-gray-400">
+                                        <span className="flex items-center gap-1">
+                                            <Clock size={12} />
+                                            {new Date(n.createdAt).toLocaleString()}
                                         </span>
-                                    )}
+                                        {n.type && (
+                                            <span className={`px-2 py-0.5 rounded-md capitalize ${isCancelled ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-500'}`}>
+                                                {n.type.replace(/_/g, ' ')}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
+                                
+                                {n.status !== 'read' && (
+                                    <button
+                                        onClick={() => handleMarkAsRead(n._id)}
+                                        className={`${isCancelled ? 'text-red-600 hover:bg-red-50' : 'text-cyan-600 hover:bg-cyan-50'} p-2 rounded-lg transition-colors group`}
+                                        title="Mark as read"
+                                    >
+                                        <CheckCircle size={20} className="group-hover:scale-110 transition-transform" />
+                                    </button>
+                                )}
                             </div>
-                            
-                            {n.status !== 'read' && (
-                                <button
-                                    onClick={() => handleMarkAsRead(n._id)}
-                                    className="text-cyan-600 hover:bg-cyan-50 p-2 rounded-lg transition-colors group"
-                                    title="Mark as read"
-                                >
-                                    <CheckCircle size={20} className="group-hover:scale-110 transition-transform" />
-                                </button>
-                            )}
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         )}
 

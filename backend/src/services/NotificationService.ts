@@ -90,7 +90,7 @@ export class NotificationService implements INotificationService {
       },
       session_cancelled: {
         title: MESSAGES.NOTIFICATION_TEMPLATES.session_cancelled.title,
-        message: MESSAGES.NOTIFICATION_TEMPLATES.session_cancelled.message(p.subjectName || 'Subject')
+        message: p.message?.trim() ? p.message : MESSAGES.NOTIFICATION_TEMPLATES.session_cancelled.message(p.subjectName || 'Subject', p.sessionDate, p.sessionTime)
       },
       session_rescheduled: {
         title: MESSAGES.NOTIFICATION_TEMPLATES.session_rescheduled.title,
@@ -98,67 +98,67 @@ export class NotificationService implements INotificationService {
       },
       preferences_saved: {
         title: MESSAGES.NOTIFICATION_TEMPLATES.preferences_saved.title,
-        message: MESSAGES.NOTIFICATION_TEMPLATES.preferences_saved.message
+        message: p.message?.trim() ? p.message : MESSAGES.NOTIFICATION_TEMPLATES.preferences_saved.message
       },
       preferences_admin_notify: {
         title: "New Student Preferences",
-        message: `Student ${p.studentName} has submitted preferences for ${p.subjectCount} subjects. Assignment pending.`
+        message: p.message?.trim() ? p.message : `Student ${p.studentName} has submitted preferences for ${p.subjectCount} subjects. Assignment pending.`
       },
       preferences_mentor_notify: {
         title: "New Availability Received",
-        message: `A student has expressed interest in ${p.subjectName}. Check if your availability matches.`
+        message: p.message?.trim() ? p.message : `A student has expressed interest in ${p.subjectName}. Check if your availability matches.`
       },
       preferences_submitted: {
         title: MESSAGES.NOTIFICATION_TEMPLATES.preferences_submitted.title,
-        message: MESSAGES.NOTIFICATION_TEMPLATES.preferences_submitted.message
+        message: p.message?.trim() ? p.message : MESSAGES.NOTIFICATION_TEMPLATES.preferences_submitted.message
       },
       mentor_request_submitted: {
         title: "Mentor Request Submitted",
-        message: "Your mentor request has been submitted."
+        message: p.message?.trim() ? p.message : "Your mentor request has been submitted."
       },
       mentor_request_pending: {
         title: "Mentor Request Pending",
-        message: "Your mentor request is pending approval."
+        message: p.message?.trim() ? p.message : "Your mentor request is pending approval."
       },
       mentor_assigned: {
         title: "Mentor Assigned",
-        message: "A mentor has been assigned to you."
+        message: p.message?.trim() ? p.message : "A mentor has been assigned to you."
       },
       mentor_request_rejected: {
         title: "Mentor Request Rejected",
-        message: "Your mentor request was rejected."
+        message: p.message?.trim() ? p.message : "Your mentor request was rejected."
       },
       mentor_reassigned: {
         title: "Mentor Reassigned",
-        message: "A new mentor has been reassigned to you."
+        message: p.message?.trim() ? p.message : "A new mentor has been reassigned to you."
       },
       subscription_activated: {
         title: "Subscription Activated!",
-        message: `Your ${p.plan} subscription is now active. You can start booking sessions.`
+        message: p.message?.trim() ? p.message : `Your ${p.plan} subscription is now active. You can start booking sessions.`
       },
       trial_completed: {
         title: "Trial Class Completed",
-        message: `Congratulations on completing your ${p.subjectName} trial class! Please share your feedback.`
+        message: p.message?.trim() ? p.message : `Congratulations on completing your ${p.subjectName} trial class! Please share your feedback.`
       },
       trial_booked: {
         title: "Trial Class Booked!",
-        message: `Your free trial class for ${p.subjectName || 'your selected subject'} has been booked for ${p.preferredDate || 'the selected date'} at ${p.preferredTime || 'the selected time'}. A mentor will be assigned shortly.`
+        message: p.message?.trim() ? p.message : `Your free trial class for ${p.subjectName || 'your selected subject'} has been booked for ${p.preferredDate || 'the selected date'} at ${p.preferredTime || 'the selected time'}. A mentor will be assigned shortly.`
       },
       student_absence: {
         title: "Student Absence Reported",
-        message: p.message || "A student has reported absence."
+        message: p.message?.trim() ? p.message : "A student has reported absence."
       },
       mentor_absence_reschedule: {
         title: "Mentor Absence - Reschedule Needed",
-        message: p.message || "Your mentor is absent. Please reschedule."
+        message: p.message?.trim() ? p.message : "Your mentor is absent. Please reschedule."
       },
       session_cancelled_refund: {
         title: "Session Cancelled & Refunded",
-        message: p.message || "Session cancelled and refund processed."
+        message: p.message?.trim() ? p.message : "Session cancelled and refund processed."
       },
       withdrawal_request_update: {
         title: "Withdrawal Request Updated",
-        message: p.message || "Your withdrawal request status has been updated."
+        message: p.message?.trim() ? p.message : "Your withdrawal request status has been updated."
       },
       assignment_created: {
         title: "New Assignment",

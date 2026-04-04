@@ -101,19 +101,25 @@ export const NotificationBell: React.FC = () => {
                     No notifications yet
                 </div>
               ) : (
-                notifications.slice(0, 5).map((n) => (
-                  <div 
-                    key={n._id}
-                    onClick={() => handleNotificationClick(n)}
-                    className={`px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors ${
-                      !n.isRead ? 'bg-cyan-50/20' : ''
-                    }`}
-                  >
-                    <div className="flex justify-between items-start gap-2">
-                        <div className="flex-1 min-w-0">
-                            <p className={`text-sm truncate ${!n.isRead ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>
-                                {n.title}
-                            </p>
+                notifications.slice(0, 5).map((n) => {
+                  const isCancelled = n.type && ['session_cancelled', 'session_cancelled_refund', 'student_absence', 'mentor_absence_reschedule', 'mentor_request_rejected'].includes(n.type);
+                  
+                  return (
+                    <div 
+                      key={n._id}
+                      onClick={() => handleNotificationClick(n)}
+                      className={`px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors ${
+                        !n.isRead 
+                          ? isCancelled ? 'bg-red-50/40' : 'bg-cyan-50/20' 
+                          : ''
+                      }`}
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                              <p className={`text-sm truncate ${!n.isRead ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>
+                                  {isCancelled && <span className="text-red-500 mr-1">●</span>}
+                                  {n.title}
+                              </p>
                             <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.message}</p>
                             <div className="flex items-center gap-1.5 mt-1.5">
                                 <Clock size={10} className="text-slate-400" />
@@ -133,7 +139,8 @@ export const NotificationBell: React.FC = () => {
                         )}
                     </div>
                   </div>
-                ))
+                    );
+                })
               )}
             </div>
 
