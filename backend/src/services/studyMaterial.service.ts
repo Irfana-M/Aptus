@@ -53,16 +53,26 @@ export class StudyMaterialService implements IStudyMaterialService {
       if (data.sessionId) {
         const session = await this._sessionRepo.findById(data.sessionId);
         if (session) {
-          // Check if the mentor is authorized for this session
           const sessionAny = session as any;
-          if (sessionAny.mentorId.toString() !== data.mentorId) {
+          // Extract mentorId safely in case it is populated
+          const sessionMentorId = sessionAny.mentorId?._id 
+            ? sessionAny.mentorId._id.toString() 
+            : sessionAny.mentorId?.toString();
+
+          if (sessionMentorId !== data.mentorId) {
             throw new AppError(MESSAGES.STUDY_MATERIAL.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
           }
+
           sessionId = sessionAny._id.toString();
           courseId = sessionAny.courseId?.toString();
-          mentorId = sessionAny.mentorId.toString();
-          studentId = sessionAny.studentId?.toString();
-          subjectId = sessionAny.subjectId?.toString();
+          mentorId = sessionMentorId;
+          // Safeguard studentId for group sessions where it might be empty or in participants
+          studentId = sessionAny.studentId?._id 
+            ? sessionAny.studentId._id.toString() 
+            : (sessionAny.studentId?.toString() || data.studentId);
+          subjectId = sessionAny.subjectId?._id 
+            ? sessionAny.subjectId._id.toString() 
+            : sessionAny.subjectId?.toString();
         }
       }
 

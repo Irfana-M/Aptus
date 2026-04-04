@@ -71,8 +71,10 @@ const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({ assignmen
     });
   };
 
-  const isOverdue = assignment.assignmentDetails?.dueDate 
-    ? new Date() > new Date(assignment.assignmentDetails.dueDate)
+  const dueDate = assignment.assignmentDetails?.dueDate || (assignment as any).dueDate;
+
+  const isOverdue = dueDate 
+    ? new Date() > new Date(dueDate)
     : false;
 
   return (
@@ -93,7 +95,7 @@ const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({ assignmen
         <div className="p-4 bg-slate-50 border-b border-slate-100 text-sm">
           <div className="flex items-center justify-between">
             <span className="text-slate-600">
-              Due: <span className="font-bold">{assignment.assignmentDetails?.dueDate ? formatDate(assignment.assignmentDetails.dueDate) : 'N/A'}</span>
+              Due: <span className="font-bold">{dueDate ? formatDate(dueDate) : 'N/A'}</span>
             </span>
             {isOverdue && (
               <span className="px-2 py-1 bg-rose-100 text-rose-600 rounded-full text-xs font-bold">

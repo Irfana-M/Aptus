@@ -25,7 +25,7 @@ export class ChatService implements IChatService {
   private async _findSessionOrTrial(id: string): Promise<{ 
       _id: string; 
       mentorId: string; 
-      participants: { studentId: string }[]; 
+      participants: { userId: string }[]; 
       status: string;
       title?: string;
       sessionType: 'trial' | 'regular';
@@ -35,18 +35,18 @@ export class ChatService implements IChatService {
     try {
         const session = await this._sessionRepo.findById(id);
         if (session) {
-             const s = session as unknown as { 
-               _id: { toString(): string }, 
-               mentorId?: { toString(): string },
-               mentor?: { toString(): string },
-               participants?: Array<{ studentId: { toString(): string } }>,
-               status: string,
-               title?: string
-             };
+              const s = session as unknown as { 
+                _id: { toString(): string }, 
+                mentorId?: { toString(): string },
+                mentor?: { toString(): string },
+                participants?: Array<{ userId: { toString(): string } }>,
+                status: string,
+                title?: string
+              };
               return {
                   _id: s._id.toString(),
                   mentorId: s.mentorId ? s.mentorId.toString() : (s.mentor ? s.mentor.toString() : ''),
-                  participants: s.participants ? s.participants.map((participant) => ({ studentId: participant.studentId.toString() })) : [],
+                  participants: s.participants ? s.participants.map((participant) => ({ userId: participant.userId.toString() })) : [],
                   status: s.status,
                   title: s.title || 'Session',
                   sessionType: 'regular',
@@ -80,7 +80,7 @@ export class ChatService implements IChatService {
             return {
                 _id: trialWithIds._id.toString(),
                 mentorId,
-                participants: [{ studentId }],
+                participants: [{ userId: studentId }],
                 status: trialWithIds.status === 'assigned' ? 'in_progress' : trialWithIds.status, 
                 title: 'Trial Class',
                 sessionType: 'trial',
@@ -105,7 +105,7 @@ export class ChatService implements IChatService {
       room = await this._chatRoomRepo.create({
         sessionId: session._id as unknown as import('mongoose').Schema.Types.ObjectId,
         mentorId: session.mentorId as unknown as import('mongoose').Schema.Types.ObjectId,
-        participantIds: session.participants.map(participant => participant.studentId) as unknown as import('mongoose').Schema.Types.ObjectId[],
+        participantIds: session.participants.map(participant => participant.userId) as unknown as import('mongoose').Schema.Types.ObjectId[],
         isActive: true
       });
       logger.info(`Chat room created for session: ${sessionId}`);
@@ -139,7 +139,7 @@ export class ChatService implements IChatService {
 
     // Permission Check: Must be mentor, enrolled student, or admin
     const isMentor = session.mentorId.toString() === senderId;
-    const isEnrolled = session.participants.some(participant => participant.studentId.toString() === senderId);
+    const isEnrolled = session.participants.some(participant => participant.userId.toString() === senderId);
     
     if (!isMentor && !isEnrolled && senderRole !== 'admin') {
       throw new AppError("Access denied to this chat room", HttpStatusCode.FORBIDDEN);
@@ -175,7 +175,7 @@ export class ChatService implements IChatService {
 
     // Membership check for history access
     const isMentor = session.mentorId.toString() === userId;
-    const isEnrolled = session.participants.some(participant => participant.studentId.toString() === userId);
+    const isEnrolled = session.participants.some(participant => participant.userId.toString() === userId);
     const isAdmin = userRole === 'admin';
     
     if (!isMentor && !isEnrolled && !isAdmin) {

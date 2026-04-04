@@ -182,63 +182,78 @@ export class SessionService implements ISessionService {
   }
 
   // Helper to sync sessions from slots (Idempotent via unique index)
-  async syncSessionsFromSlots(slots: Array<{ _id: string; mentorId: string; startTime: Date; endTime: Date }>): Promise<void> {
+async syncSessionsFromSlots(slots: Array<{ _id: string; mentorId: string; startTime: Date; endTime: Date }>): Promise<void> {
     try {
-      logger.info(`[SessionService] Processing ${slots.length} slots into Sessions...`);
-      
-      for (const slot of slots) {
-        // Define "Active Booking" as status SCHEDULED, populate studentSubjectId to get subjectId
-        const booking = await this.bookingRepo.findOneWithPopulate(
-          { timeSlotId: slot._id, status: BOOKING_STATUS.SCHEDULED },
-          'studentSubjectId'
-        );
-        if (!booking) continue;
+        logger.info(`[SessionService] Processing ${slots.length} slots into Sessions...`);
+        
+        for (const slot of slots) {
+            // 1. Fetch the primary booking (populated) to extract shared session metadata
+            const firstBooking = await this.bookingRepo.findOneWithPopulate(
+                { timeSlotId: slot._id, status: BOOKING_STATUS.SCHEDULED },
+                'studentSubjectId'
+            );
+            
+            // Skip if no bookings exist for this slot
+            if (!firstBooking) continue;
 
-        const allBookings = await this.bookingRepo.find({
-          timeSlotId: slot._id, status: BOOKING_STATUS.SCHEDULED
-        });
+            // 2. Fetch all bookings for this slot to generate the full participants list
+            const allBookings = await this.bookingRepo.find({
+                timeSlotId: slot._id,
+                status: BOOKING_STATUS.SCHEDULED
+            });
 
-        const existingSession = await this.sessionRepo.existsByTimeSlot(slot._id);
-        if (!existingSession) {
-          logger.info(`[SessionSync] Creating session for slot ${slot._id} at ${slot.startTime.toISOString()}`);
-          
-          // Safely extract subjectId from populated studentSubjectId
-          const studentSubject = booking.studentSubjectId as any;
-          const subjectId = booking.subjectId || studentSubject?.subjectId;
+            if (allBookings.length === 0) continue;
 
-          // Cast the array explicitly to ISessionParticipant to restrict 'role' and 'status' types
-          const participants: ISessionParticipant[] = allBookings.map((b: any) => ({
-            userId: new Types.ObjectId(b.studentId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
-            role: 'student' as const,
-            status: 'scheduled' as const
-          }));
-          
-          participants.push({
-            userId: new Types.ObjectId(slot.mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
-            role: 'mentor' as const,
-            status: 'scheduled' as const
-          });
+            // Generate participants list from ALL bookings + the Mentor
+            const participants: ISessionParticipant[] = allBookings.map((b: any) => ({
+                userId: new Types.ObjectId(b.studentId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
+                role: 'student' as const,
+                status: 'scheduled' as const
+            }));
 
-          await this.sessionRepo.create({
-            mentorId: new Types.ObjectId(slot.mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
-            timeSlotId: new Types.ObjectId(slot._id.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
-            subjectId: subjectId, 
-            courseId: booking.courseId || (booking as any).courseId,
-            enrollmentId: booking.enrollmentId || (booking as any).enrollmentId,
-            studentId: new Types.ObjectId(booking.studentId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
-            startTime: slot.startTime,
-            endTime: slot.endTime,
-            status: SESSION_STATUS.SCHEDULED,
-            sessionType: booking.isGroup ? 'group' : 'one-to-one',
-            participants: participants
-          });
+            participants.push({
+                userId: new Types.ObjectId(slot.mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
+                role: 'mentor' as const,
+                status: 'scheduled' as const
+            });
 
+            // 3. Check if a session already exists for this slot
+            const existingSession = await this.sessionRepo.existsByTimeSlot(slot._id);
+
+            if (!existingSession) {
+                logger.info(`[SessionSync] Creating session for slot ${slot._id}`);
+                const studentSubject = (firstBooking as any).studentSubjectId;
+                const subjectId = firstBooking.subjectId || (studentSubject as any)?.subjectId;
+
+                await this.sessionRepo.create({
+                    mentorId: new Types.ObjectId(slot.mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
+                    timeSlotId: new Types.ObjectId(slot._id.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
+                    subjectId: subjectId,
+                    courseId: firstBooking.courseId || (firstBooking as any).courseId,
+                    enrollmentId: firstBooking.enrollmentId || (firstBooking as any).enrollmentId,
+                    studentId: new Types.ObjectId(firstBooking.studentId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
+                    startTime: slot.startTime,
+                    endTime: slot.endTime,
+                    status: SESSION_STATUS.SCHEDULED,
+                    sessionType: firstBooking.isGroup ? 'group' : 'one-to-one',
+                    participants: participants
+                });
+            } else {
+                // 4. Update existing session for group classes (allowing newly booked students to join)
+                if (firstBooking.isGroup) {
+                    const sessionId = this.getRawId(existingSession);
+                    const sessionDoc = await this.sessionRepo.findById(sessionId);
+                    if (sessionDoc && sessionDoc.participants.length !== participants.length) {
+                        logger.info(`[SessionSync] Updating participants for existing group session ${sessionId}`);
+                        await this.sessionRepo.updateById(sessionId, { participants } as any);
+                    }
+                }
+            }
         }
-      }
     } catch (error) {
-      logger.error(`Error syncing sessions from slots: ${error}`);
+        logger.error(`Error syncing sessions from slots: ${error}`);
     }
-  }
+}
 
   async findByStudentAndSubject(studentId: string, subjectId: string): Promise<ISession[]> {
     return this.sessionRepo.findByStudentAndSubject(studentId, subjectId);
