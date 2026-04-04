@@ -17,7 +17,7 @@ export class SubjectService implements ISubjectService {
     private _subjectRepo: ISubjectRepository,
     @inject(TYPES.IGradeRepository)
     private _gradeRepo: IGradeRepository
-  ) {}
+  ) { }
 
   async getAllSubjects(): Promise<SubjectResponseDto[]> {
     try {
@@ -51,22 +51,39 @@ export class SubjectService implements ISubjectService {
 
       if (!isObjectId) {
         console.log(`🔍 [SubjectService] Grade name "${gradeId}" provided. Resolving to ID...`);
-        const query: Record<string, unknown> = { 
-            name: { $regex: new RegExp(`^${gradeId}$`, 'i') }, 
-            isActive: true 
+        const query: Record<string, unknown> = {
+          name: { $regex: new RegExp(`^${gradeId}$`, 'i') },
+          isActive: true
         };
-        if (syllabus) query.syllabus = syllabus.toUpperCase();
-        
-        const gradeDoc = await this._gradeRepo.findOne(query);
+        if (
+          syllabus &&
+          syllabus !== "undefined" &&
+          syllabus !== "null" &&
+          syllabus.trim() !== ""
+        ) {
+          query.syllabus = syllabus.toUpperCase().trim();
+        }
+
+        let gradeDoc = await this._gradeRepo.findOne(query);
+
+        if (!gradeDoc && syllabus) {
+          console.warn("Retrying without syllabus...");
+
+          const fallbackQuery = {
+            name: { $regex: new RegExp(`^${gradeId}$`, "i") },
+            isActive: true,
+          };
+
+          gradeDoc = await this._gradeRepo.findOne(fallbackQuery);
+        }
+
         if (!gradeDoc) {
-             console.warn(`⚠️ [SubjectService] Grade document NOT found for Name: "${gradeId}", Syllabus: "${syllabus}"`);
-             logger.warn(`Grade document not found for name: ${gradeId} and syllabus: ${syllabus}`);
-             return [];
+          return [];
         }
         finalGradeId = (gradeDoc._id as unknown as string).toString();
         console.log(`✅ [SubjectService] Grade "${gradeId}" resolved to ID: ${finalGradeId}`);
       } else {
-          console.log(`🔍 [SubjectService] Grade ID "${gradeId}" provided directly.`);
+        console.log(`🔍 [SubjectService] Grade ID "${gradeId}" provided directly.`);
       }
 
       console.log(`🔍 [SubjectService] Fetching subjects for finalGradeId: ${finalGradeId}`);
@@ -118,11 +135,11 @@ export class SubjectService implements ISubjectService {
 
   async findByName(name: string): Promise<string | null> {
     try {
-        const subject = await this._subjectRepo.findOne({ subjectName: name });
-        return subject ? (subject._id as unknown as string).toString() : null;
+      const subject = await this._subjectRepo.findOne({ subjectName: name });
+      return subject ? (subject._id as unknown as string).toString() : null;
     } catch (error) {
-        logger.error(`Error finding subject by name: ${name}`, error);
-        return null;
+      logger.error(`Error finding subject by name: ${name}`, error);
+      return null;
     }
   }
 
