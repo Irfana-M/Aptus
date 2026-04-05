@@ -10,6 +10,7 @@ import type { IChatRoom, IChatMessage } from "../../interfaces/models/chat.inter
 import { AppError } from "../../utils/AppError.js";
 import { HttpStatusCode } from "../../constants/httpStatus.js";
 import { logger } from "../../utils/logger.js";
+import { Types } from "mongoose";
 
 @injectable()
 export class ChatService implements IChatService {
@@ -114,13 +115,13 @@ export class ChatService implements IChatService {
     let room = await this._chatRoomRepo.findBySessionId(sessionId);
     if (!room) {
       const payload = {
-        sessionId: session._id as unknown as import('mongoose').Schema.Types.ObjectId,
-        mentorId: session.mentorId as unknown as import('mongoose').Schema.Types.ObjectId,
-        participantIds: session.participants.map(participant => participant.userId) as unknown as import('mongoose').Schema.Types.ObjectId[],
+        sessionId: new Types.ObjectId(session._id) as unknown as import('mongoose').Schema.Types.ObjectId,
+        mentorId: session.mentorId && session.mentorId !== '' ? new Types.ObjectId(session.mentorId) as unknown as import('mongoose').Schema.Types.ObjectId : undefined,
+        participantIds: session.participants.map(participant => ((participant.userId as any)?._id || participant.userId)) as unknown as import('mongoose').Schema.Types.ObjectId[],
         isActive: true
       };
       logger.info(`[CHAT TRACE][Service] initiateChatRoom - Creating room with payload:`, payload);
-      room = await this._chatRoomRepo.create(payload);
+      room = await this._chatRoomRepo.create(payload as any);
       logger.info(`[CHAT TRACE][Service] Chat room created for session: ${sessionId}`);
     }
     return room;
@@ -151,8 +152,8 @@ export class ChatService implements IChatService {
     }
 
     // Permission Check: Must be mentor, enrolled student, or admin
-    const isMentor = session.mentorId.toString() === senderId;
-    const isEnrolled = session.participants.some(participant => participant.userId.toString() === senderId);
+    const isMentor = ((session.mentorId as any)?._id || session.mentorId)?.toString() === senderId;
+    const isEnrolled = session.participants.some(participant => ((participant.userId as any)?._id || participant.userId)?.toString() === senderId);
     
     logger.info(`[CHAT TRACE][Service] sendMessage Permission Check:`, {
         sessionId,
@@ -198,8 +199,8 @@ export class ChatService implements IChatService {
     if (!session) throw new AppError("Session not found", HttpStatusCode.NOT_FOUND);
 
     // Membership check for history access
-    const isMentor = session.mentorId.toString() === userId;
-    const isEnrolled = session.participants.some(participant => participant.userId.toString() === userId);
+    const isMentor = ((session.mentorId as any)?._id || session.mentorId)?.toString() === userId;
+    const isEnrolled = session.participants.some(participant => ((participant.userId as any)?._id || participant.userId)?.toString() === userId);
     const isAdmin = userRole === 'admin';
     
     logger.info(`[CHAT TRACE][Service] getChatHistory Permission Check:`, {
