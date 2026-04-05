@@ -34,7 +34,7 @@ export class SessionService implements ISessionService {
     @inject(TYPES.ISchedulingService) private schedulingService: ISchedulingService,
     @inject(TYPES.IAttendanceService) private attendanceService: IAttendanceService,
     @inject(TYPES.ITrialClassRepository) private trialClassRepo: any // Using any to avoid complex type import if not easy
-  ) {}
+  ) { }
 
   private readonly MENTOR_CANCEL_CUTOFF_HOURS = 48;
 
@@ -54,14 +54,14 @@ export class SessionService implements ISessionService {
       this.sessionRepo.findUpcomingByStudent(studentId, { skip, limit }, filter),
       this.sessionRepo.countUpcomingByStudent(studentId, filter)
     ]);
-    
+
     // Explicitly format id 
     const enrichedItems = items.map((session: any) => {
-        const sessionObj = session.toObject ? session.toObject() : session;
-        return {
-            ...sessionObj,
-            id: this.getRawId(sessionObj)
-        };
+      const sessionObj = session.toObject ? session.toObject() : session;
+      return {
+        ...sessionObj,
+        id: this.getRawId(sessionObj)
+      };
     });
 
     return { items: enrichedItems as any[], total };
@@ -113,7 +113,7 @@ export class SessionService implements ISessionService {
 
   async getMentorTodaySessions(mentorId: string): Promise<any[]> {
     const today = new Date();
-    today.setHours(0,0,0,0);
+    today.setHours(0, 0, 0, 0);
     const sessions = await this.sessionRepo.findTodayByMentor(mentorId, today);
 
     return sessions.map((session: any) => {
@@ -144,7 +144,7 @@ export class SessionService implements ISessionService {
       subject: session.subjectId
     };
   }
- 
+
   async updateSessionStatus(sessionId: string, status: string): Promise<ISession | null> {
     // Basic status update
     return this.sessionRepo.updateStatus(sessionId, status);
@@ -154,7 +154,7 @@ export class SessionService implements ISessionService {
   async syncSessionsForRange(from: Date, to: Date): Promise<void> {
     try {
       logger.info(`[SessionService] Syncing sessions for range: ${from.toISOString()} to ${to.toISOString()}`);
-      
+
       // 1. Find all booked slots in the window
       const slots = await this.timeSlotRepo.find({
         startTime: { $gte: from, $lte: to },
@@ -183,75 +183,99 @@ export class SessionService implements ISessionService {
 
   async syncSessionsFromSlots(slots: Array<{ _id: string; mentorId: string; startTime: Date; endTime: Date }>): Promise<void> {
     try {
-        logger.info(`[SessionService] Processing ${slots.length} slots into Sessions...`);
+      logger.info(`[SessionService] Processing ${slots.length} slots into Sessions...`);
 
-        for (const slot of slots) {
-            // Fetch first booking for metadata
-            const firstBooking = await this.bookingRepo.findOneWithPopulate(
-                { timeSlotId: slot._id, status: BOOKING_STATUS.SCHEDULED },
-                'studentSubjectId'
-            );
+      for (const slot of slots) {
+        // Fetch first booking for metadata
+        const firstBooking = await this.bookingRepo.findOneWithPopulate(
+          { timeSlotId: slot._id, status: BOOKING_STATUS.SCHEDULED },
+          'studentSubjectId'
+        );
 
-            if (!firstBooking) continue;
+        if (!firstBooking) continue;
 
-            // Fetch ALL bookings for participants list
-            const allBookings = await this.bookingRepo.find({
-                timeSlotId: slot._id,
-                status: BOOKING_STATUS.SCHEDULED
-            });
+        // Fetch ALL bookings for participants list
+        const allBookings = await this.bookingRepo.find({
+          timeSlotId: slot._id,
+          status: BOOKING_STATUS.SCHEDULED
+        });
 
-            if (allBookings.length === 0) continue;
+        if (allBookings.length === 0) continue;
 
-            // Build participants
-            const participants: ISessionParticipant[] = allBookings.map((b: any) => ({
-                userId: new Types.ObjectId(b.studentId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
-                role: 'student' as const,
-                status: 'scheduled' as const
-            }));
+        // Build participants
+        const participants: ISessionParticipant[] = allBookings.map((b: any) => ({
+          userId: new Types.ObjectId(b.studentId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
+          role: 'student' as const,
+          status: 'scheduled' as const
+        }));
 
-            participants.push({
-                userId: new Types.ObjectId(slot.mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
-                role: 'mentor' as const,
-                status: 'scheduled' as const
-            });
+        participants.push({
+          userId: new Types.ObjectId(slot.mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
+          role: 'mentor' as const,
+          status: 'scheduled' as const
+        });
 
-            const existingSession = await this.sessionRepo.existsByTimeSlot(slot._id);
+        const existingSession = await this.sessionRepo.existsByTimeSlot(slot._id);
 
-            if (!existingSession) {
-                // Create new session
-                logger.info(`[SessionSync] Creating session for slot ${slot._id}`);
-                const studentSubject = (firstBooking as any).studentSubjectId;
-                const subjectId = firstBooking.subjectId || (studentSubject as any)?.subjectId;
+        if (!existingSession) {
+          // Create new session
+          logger.info(`[SessionSync] Creating session for slot ${slot._id}`);
+          const studentSubject = (firstBooking as any).studentSubjectId;
+          const subjectId = firstBooking.subjectId || (studentSubject as any)?.subjectId;
 
-                await this.sessionRepo.create({
-                    mentorId: new Types.ObjectId(slot.mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
-                    timeSlotId: new Types.ObjectId(slot._id.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
-                    subjectId: subjectId,
-                    courseId: firstBooking.courseId || (firstBooking as any).courseId,
-                    enrollmentId: firstBooking.enrollmentId || (firstBooking as any).enrollmentId,
-                    studentId: new Types.ObjectId(firstBooking.studentId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
-                    startTime: slot.startTime,
-                    endTime: slot.endTime,
-                    status: SESSION_STATUS.SCHEDULED,
-                    sessionType: firstBooking.isGroup ? 'group' : 'one-to-one',
-                    participants: participants
-                });
-            } else {
-                // Update existing group session if new students joined
-                if (firstBooking.isGroup) {
-                    const sessionId = this.getRawId(existingSession);
-                    const sessionDoc = await this.sessionRepo.findById(sessionId);
-                    if (sessionDoc && sessionDoc.participants.length !== participants.length) {
-                        logger.info(`[SessionSync] Updating participants for existing group session ${sessionId}`);
-                        await this.sessionRepo.updateById(sessionId, { participants } as any);
-                    }
+          await this.sessionRepo.create({
+            mentorId: new Types.ObjectId(slot.mentorId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
+            timeSlotId: new Types.ObjectId(slot._id.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
+            subjectId: subjectId,
+            courseId: firstBooking.courseId || (firstBooking as any).courseId,
+            enrollmentId: firstBooking.enrollmentId || (firstBooking as any).enrollmentId,
+            studentId: new Types.ObjectId(firstBooking.studentId.toString()) as unknown as import('mongoose').Schema.Types.ObjectId,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            status: SESSION_STATUS.SCHEDULED,
+            sessionType: firstBooking.isGroup ? 'group' : 'one-to-one',
+            participants: participants
+          });
+        } else {
+          // Update existing group session if new students joined
+          if (firstBooking.isGroup) {
+            const sessionId = this.getRawId(existingSession);
+            const sessionDoc = await this.sessionRepo.findById(sessionId);
+            if (sessionDoc && firstBooking.isGroup) {
+              const sessionId = this.getRawId(existingSession);
+              const existingParticipants = sessionDoc.participants || [];
+
+              // Convert to string IDs
+              const existingIds = new Set(
+                existingParticipants.map(p => this.getRawId(p.userId))
+              );
+
+              // Add ONLY missing participants from bookings
+              const newParticipants = [...existingParticipants];
+
+              for (const p of participants) {
+                const id = this.getRawId(p.userId);
+                if (!existingIds.has(id)) {
+                  newParticipants.push(p);
                 }
+              }
+
+              logger.info(`[SessionSync] Merging participants for session ${sessionId}`, {
+                existingCount: existingParticipants.length,
+                newCount: newParticipants.length
+              });
+
+              await this.sessionRepo.updateById(sessionId, {
+                participants: newParticipants
+              } as any);
             }
+          }
         }
+      }
     } catch (error) {
-        logger.error(`Error syncing sessions from slots: ${error}`);
+      logger.error(`Error syncing sessions from slots: ${error}`);
     }
-}
+  }
 
   async findByStudentAndSubject(studentId: string, subjectId: string): Promise<ISession[]> {
     return this.sessionRepo.findByStudentAndSubject(studentId, subjectId);
@@ -264,7 +288,7 @@ export class SessionService implements ISessionService {
   async reportAbsence(sessionId: string, studentId: string, reason: string): Promise<void> {
     const session = await this.sessionRepo.findById(sessionId);
     if (!session) throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
-    
+
     logger.info(`[DEBUG reportAbsence] START for sessionId="${sessionId}", studentId="${studentId}"`);
     logger.info(`[DEBUG] Raw session.timeSlotId =`, session.timeSlotId);
     logger.info(`[DEBUG] Raw session.subjectId =`, session.subjectId);
@@ -274,15 +298,15 @@ export class SessionService implements ISessionService {
     logger.info(`[DEBUG] getRawId(mentorId) =`, this.getRawId(session.mentorId));
 
     // Authorization check
-    const isParticipant = session.participants.some(p => this.getRawId(p.userId) === studentId) || 
-                          (this.getRawId(session.studentId) === studentId);
+    const isParticipant = session.participants.some(p => this.getRawId(p.userId) === studentId) ||
+      (this.getRawId(session.studentId) === studentId);
     if (!isParticipant) throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
 
     // Cutoff Validation: 24-hour rule for students
     const STUDENT_LEAVE_CUTOFF_HOURS = 24;
     const now = new Date();
     const diffInHours = (new Date(session.startTime).getTime() - now.getTime()) / (1000 * 60 * 60);
-    
+
     if (diffInHours < STUDENT_LEAVE_CUTOFF_HOURS) {
       logger.warn(`Student ${studentId} absence report rejected: Session ${sessionId} starts in ${diffInHours.toFixed(2)}h (Cutoff: ${STUDENT_LEAVE_CUTOFF_HOURS}h)`);
       throw new AppError(MESSAGES.SESSION.CANCEL_CUTOFF_ERROR, HttpStatusCode.BAD_REQUEST);
@@ -292,7 +316,7 @@ export class SessionService implements ISessionService {
     const student = await this.studentRepo.findById(studentId);
     const subjectIdRaw = this.getRawId(session.subjectId);
     const subject = subjectIdRaw ? await this.subjectRepo.findById(subjectIdRaw) : null;
-    
+
     // Format session time
     const sessionDate = new Date(session.startTime).toLocaleDateString('en-US', {
       weekday: 'short',
@@ -306,15 +330,15 @@ export class SessionService implements ISessionService {
     });
 
     if (session.sessionType === 'group') {
-      const updatedParticipants = session.participants.map(p => 
+      const updatedParticipants = session.participants.map(p =>
         p.userId.toString() === studentId ? { ...p, status: 'absent' as const } : p
       );
-      
+
       await this.sessionRepo.updateById(sessionId, { participants: updatedParticipants });
-      
+
       await this.bookingRepo.updateMany(
-        { 
-          timeSlotId: new Types.ObjectId(this.getRawId(session.timeSlotId)) as any, 
+        {
+          timeSlotId: new Types.ObjectId(this.getRawId(session.timeSlotId)) as any,
           studentId: new Types.ObjectId(studentId) as any
         },
         { status: BOOKING_STATUS.ABSENT }
@@ -323,11 +347,11 @@ export class SessionService implements ISessionService {
       await this.studentRepo.incrementCancellationCount(studentId);
 
       await this.notificationService.notifyUser(
-        this.getRawId(session.mentorId), 
-        'mentor', 
-        'session_cancelled', 
-        { 
-          sessionId, 
+        this.getRawId(session.mentorId),
+        'mentor',
+        'session_cancelled',
+        {
+          sessionId,
           studentId,
           studentName: student?.fullName || 'Student',
           subjectName: subject?.subjectName || 'Session',
@@ -339,16 +363,16 @@ export class SessionService implements ISessionService {
         ['web', 'email']
       );
     } else {
-      await this.sessionRepo.updateById(sessionId, { 
+      await this.sessionRepo.updateById(sessionId, {
         status: SESSION_STATUS.CANCELLED,
         cancellationReason: reason,
         cancelledBy: 'student'
       });
-      
+
       await this.bookingRepo.updateMany(
-        { 
-            timeSlotId: new Types.ObjectId(this.getRawId(session.timeSlotId)) as any, 
-            studentId: new Types.ObjectId(studentId) as any 
+        {
+          timeSlotId: new Types.ObjectId(this.getRawId(session.timeSlotId)) as any,
+          studentId: new Types.ObjectId(studentId) as any
         },
         { status: BOOKING_STATUS.CANCELLED }
       );
@@ -356,11 +380,11 @@ export class SessionService implements ISessionService {
       await this.studentRepo.incrementCancellationCount(studentId);
 
       await this.notificationService.notifyUser(
-        this.getRawId(session.mentorId), 
-        'mentor', 
-        'session_cancelled', 
-        { 
-          sessionId, 
+        this.getRawId(session.mentorId),
+        'mentor',
+        'session_cancelled',
+        {
+          sessionId,
           studentId,
           studentName: student?.fullName || 'Student',
           subjectName: subject?.subjectName || 'Session',
@@ -394,88 +418,88 @@ export class SessionService implements ISessionService {
       throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
     }
 
-  // 48-hour cutoff validation
-  const now = new Date();
-  const diffInHours = (new Date(session.startTime).getTime() - now.getTime()) / (1000 * 60 * 60);
+    // 48-hour cutoff validation
+    const now = new Date();
+    const diffInHours = (new Date(session.startTime).getTime() - now.getTime()) / (1000 * 60 * 60);
 
-  if (diffInHours < this.MENTOR_CANCEL_CUTOFF_HOURS) {
-    logger.warn(`Mentor ${mentorId} cancellation rejected: Session ${sessionId} starts in ${diffInHours.toFixed(2)}h`);
-    throw new AppError(MESSAGES.SESSION.CANCEL_CUTOFF_ERROR, HttpStatusCode.BAD_REQUEST);
-  }
-
-  // Update session status
-  await this.sessionRepo.updateById(sessionId, {
-    status: SESSION_STATUS.CANCELLED,
-    cancelledBy: 'mentor',
-    cancellationReason: reason
-  });
-
-  // Safely update bookings
-  const bookingFilter: any = { sessionId: new Types.ObjectId(sessionId) };
-
-  if (timeSlotIdRaw) {
-    bookingFilter.$or = [
-      { sessionId: new Types.ObjectId(sessionId) },
-      { timeSlotId: new Types.ObjectId(timeSlotIdRaw) }
-    ];
-  }
-
-  await this.bookingRepo.updateMany(
-    bookingFilter,
-    {
-      status: BOOKING_STATUS.CANCELLED,
-      rebookingRequired: true,
-      rebookMentorId: new Types.ObjectId(mentorIdRaw)
+    if (diffInHours < this.MENTOR_CANCEL_CUTOFF_HOURS) {
+      logger.warn(`Mentor ${mentorId} cancellation rejected: Session ${sessionId} starts in ${diffInHours.toFixed(2)}h`);
+      throw new AppError(MESSAGES.SESSION.CANCEL_CUTOFF_ERROR, HttpStatusCode.BAD_REQUEST);
     }
-  );
 
-  // Notify students
-  for (const participant of session.participants || []) {
-    if (participant.role === 'student') {
-      await this.notificationService.notifyUser(
-        this.getRawId(participant.userId),
-        'student',
-        'mentor_absence_reschedule',
-        { 
-          sessionId, 
-          reason, 
-          message: `Your mentor has cancelled the session. Please choose another time slot with the same mentor.` 
-        },
-        ['web', 'email']
-      );
+    // Update session status
+    await this.sessionRepo.updateById(sessionId, {
+      status: SESSION_STATUS.CANCELLED,
+      cancelledBy: 'mentor',
+      cancellationReason: reason
+    });
+
+    // Safely update bookings
+    const bookingFilter: any = { sessionId: new Types.ObjectId(sessionId) };
+
+    if (timeSlotIdRaw) {
+      bookingFilter.$or = [
+        { sessionId: new Types.ObjectId(sessionId) },
+        { timeSlotId: new Types.ObjectId(timeSlotIdRaw) }
+      ];
     }
-  }
 
-  // Release time slot capacity
-  if (timeSlotIdRaw) {
-    await this.timeSlotRepo.releaseCapacity(timeSlotIdRaw);
-  }
+    await this.bookingRepo.updateMany(
+      bookingFilter,
+      {
+        status: BOOKING_STATUS.CANCELLED,
+        rebookingRequired: true,
+        rebookMentorId: new Types.ObjectId(mentorIdRaw)
+      }
+    );
 
-  logger.info(`✅ Session ${sessionId} successfully cancelled by mentor ${mentorId}`);
-}
+    // Notify students
+    for (const participant of session.participants || []) {
+      if (participant.role === 'student') {
+        await this.notificationService.notifyUser(
+          this.getRawId(participant.userId),
+          'student',
+          'mentor_absence_reschedule',
+          {
+            sessionId,
+            reason,
+            message: `Your mentor has cancelled the session. Please choose another time slot with the same mentor.`
+          },
+          ['web', 'email']
+        );
+      }
+    }
+
+    // Release time slot capacity
+    if (timeSlotIdRaw) {
+      await this.timeSlotRepo.releaseCapacity(timeSlotIdRaw);
+    }
+
+    logger.info(`✅ Session ${sessionId} successfully cancelled by mentor ${mentorId}`);
+  }
   async resolveRescheduling(sessionId: string, studentId: string, newTimeSlotId?: string, slotDetails?: { date: string, startTime: string, endTime: string }): Promise<void> {
     try {
       logger.info(`[SessionService.resolveRescheduling] START for sessionId=${sessionId}, studentId=${studentId}, newTimeSlotId=${newTimeSlotId || 'N/A'}`);
-      
+
       const session = await this.sessionRepo.findById(sessionId);
       if (!session) {
-          logger.warn(`[SessionService.resolveRescheduling] Session ${sessionId} not found`);
-          throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
+        logger.warn(`[SessionService.resolveRescheduling] Session ${sessionId} not found`);
+        throw new AppError(MESSAGES.SESSION.NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
 
       const mentorIdRaw = this.getRawId(session.mentorId);
       const subjectIdRaw = this.getRawId(session.subjectId);
       const studentIdRaw = this.getRawId(session.studentId);
-      
+
       logger.debug(`[SessionService.resolveRescheduling] Session details: mentorId=${mentorIdRaw}, subjectId=${subjectIdRaw}, studentId=${studentIdRaw}`);
 
       // Authorization: for students, allow if they are primary studentId OR in participants
       const isAuthorized = studentIdRaw === studentId ||
-                           session.participants.some(p => this.getRawId(p.userId) === studentId);
+        session.participants.some(p => this.getRawId(p.userId) === studentId);
 
       if (!isAuthorized) {
-          logger.warn(`[SessionService.resolveRescheduling] Student ${studentId} NOT authorized for session ${sessionId}`);
-          throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
+        logger.warn(`[SessionService.resolveRescheduling] Student ${studentId} NOT authorized for session ${sessionId}`);
+        throw new AppError(MESSAGES.SESSION.ACCESS_DENIED, HttpStatusCode.FORBIDDEN);
       }
 
       if (newTimeSlotId || slotDetails) {
@@ -487,9 +511,9 @@ export class SessionService implements ISessionService {
         // If no direct ID but we have details (template slot), ensure concrete slot exists
         if (!effectiveSlotId && slotDetails) {
           const targetDate = new Date(slotDetails.date);
-          
+
           logger.debug(`[SessionService.resolveRescheduling] Converting slotDetails.date="${slotDetails.date}" -> targetDate="${targetDate.toISOString()}"`);
-          
+
           const startParams = combineISTToUTC(targetDate, slotDetails.startTime);
           const endParams = combineISTToUTC(targetDate, slotDetails.endTime);
 
@@ -502,18 +526,18 @@ export class SessionService implements ISessionService {
           );
           logger.info(`[SessionService.resolveRescheduling] Ensured/Created slot ${effectiveSlotId} for rescheduling`);
         }
-        
+
         if (!effectiveSlotId) {
-            logger.error(`[SessionService.resolveRescheduling] Failed to resolve effectiveSlotId for session ${sessionId}`);
-            throw new AppError(MESSAGES.SESSION.INVALID_STATE, HttpStatusCode.BAD_REQUEST);
+          logger.error(`[SessionService.resolveRescheduling] Failed to resolve effectiveSlotId for session ${sessionId}`);
+          throw new AppError(MESSAGES.SESSION.INVALID_STATE, HttpStatusCode.BAD_REQUEST);
         }
 
         const newSlot = await this.timeSlotRepo.findById(effectiveSlotId);
         if (!newSlot) {
-            logger.error(`[SessionService.resolveRescheduling] New slot ${effectiveSlotId} NOT found in repository`);
-            throw new AppError(MESSAGES.AVAILABILITY.SLOT_NOT_FOUND, HttpStatusCode.NOT_FOUND);
+          logger.error(`[SessionService.resolveRescheduling] New slot ${effectiveSlotId} NOT found in repository`);
+          throw new AppError(MESSAGES.AVAILABILITY.SLOT_NOT_FOUND, HttpStatusCode.NOT_FOUND);
         }
-        
+
         logger.debug(`[SessionService.resolveRescheduling] Checking conflicts for newSlot starting at ${newSlot.startTime}`);
 
         // COMPEHENSIVE Conflict Validation
@@ -531,9 +555,9 @@ export class SessionService implements ISessionService {
 
         // 2. Trial Classes (Assigned, Scheduled)
         logger.debug(`[SessionService.resolveRescheduling] Searching trial conflicts for mentor ${mentorIdRaw} on date range`);
-        const searchStart = new Date(new Date(newSlot.startTime).setHours(0,0,0,0));
-        const searchEnd = new Date(new Date(newSlot.startTime).setHours(23,59,59,999));
-        
+        const searchStart = new Date(new Date(newSlot.startTime).setHours(0, 0, 0, 0));
+        const searchEnd = new Date(new Date(newSlot.startTime).setHours(23, 59, 59, 999));
+
         const trialConflict = await this.trialClassRepo.find({
           mentor: mentorIdRaw,
           preferredDate: {
@@ -547,8 +571,8 @@ export class SessionService implements ISessionService {
 
         const hasOverlappingTrial = trialConflict.some((trial: any) => {
           if (!trial.preferredTime || typeof trial.preferredTime !== 'string') {
-              logger.warn(`[SessionService.resolveRescheduling] Trial class ${trial._id} missing preferredTime. Skipping check.`);
-              return false;
+            logger.warn(`[SessionService.resolveRescheduling] Trial class ${trial._id} missing preferredTime. Skipping check.`);
+            return false;
           }
           // Trial classes use HH:MM preferredTime string
           const [hStr, mStr] = trial.preferredTime.split(':');
@@ -556,7 +580,7 @@ export class SessionService implements ISessionService {
           const m = parseInt(mStr || '0');
           const trialStart = new Date(trial.preferredDate);
           trialStart.setHours(h, m, 0, 0);
-          
+
           const isMatch = trialStart.getTime() === new Date(newSlot.startTime).getTime();
           if (isMatch) logger.info(`[SessionService.resolveRescheduling] Trial conflict confirmed with TrialClass ${trial._id}`);
           return isMatch;
@@ -575,16 +599,16 @@ export class SessionService implements ISessionService {
         logger.info(`[SessionService.resolveRescheduling] Reserving capacity for slot ${effectiveSlotId}`);
         const updatedSlot = await this.timeSlotRepo.reserveCapacity(effectiveSlotId);
         if (!updatedSlot) {
-            logger.error(`[SessionService.resolveRescheduling] Failed to reserve capacity for slot ${effectiveSlotId}`);
-            throw new AppError("Failed to reserve slot capacity.", HttpStatusCode.INTERNAL_SERVER_ERROR);
+          logger.error(`[SessionService.resolveRescheduling] Failed to reserve capacity for slot ${effectiveSlotId}`);
+          throw new AppError("Failed to reserve slot capacity.", HttpStatusCode.INTERNAL_SERVER_ERROR);
         }
 
         // 2. Create NEW session document for the rescheduled time
         logger.debug(`[SessionService.resolveRescheduling] Creating new session document...`);
-        
+
         const safeObjectId = (id: string | undefined) => {
-            if (id && Types.ObjectId.isValid(id)) return new Types.ObjectId(id) as unknown as import('mongoose').Schema.Types.ObjectId;
-            return undefined;
+          if (id && Types.ObjectId.isValid(id)) return new Types.ObjectId(id) as unknown as import('mongoose').Schema.Types.ObjectId;
+          return undefined;
         };
 
         const newSessionData: Partial<ISession> = {
@@ -593,11 +617,11 @@ export class SessionService implements ISessionService {
           subjectId: safeObjectId(subjectIdRaw) as any,
           sessionType: session.sessionType,
           participants: (session.participants || []).map((p: any) => {
-              const rawUid = this.getRawId(p.userId);
-              return { 
-                ...p, 
-                userId: safeObjectId(rawUid)
-              };
+            const rawUid = this.getRawId(p.userId);
+            return {
+              ...p,
+              userId: safeObjectId(rawUid)
+            };
           }),
           startTime: newSlot.startTime,
           endTime: newSlot.endTime,
@@ -619,7 +643,7 @@ export class SessionService implements ISessionService {
         };
         const rTo = safeObjectId(newSessionId);
         if (rTo) updateData.rescheduledTo = rTo;
-        
+
         await this.sessionRepo.updateById(sessionId, updateData);
 
         // 4. Update Booking to point at the new session's slot
@@ -629,14 +653,14 @@ export class SessionService implements ISessionService {
         const newSessObjId = safeObjectId(newSessionId);
 
         if (studentObjId) {
-            const bookingUpdate: any = { status: BOOKING_STATUS.SCHEDULED };
-            if (newSlotObjId) bookingUpdate.timeSlotId = newSlotObjId;
-            if (newSessObjId) bookingUpdate.sessionId = newSessObjId;
+          const bookingUpdate: any = { status: BOOKING_STATUS.SCHEDULED };
+          if (newSlotObjId) bookingUpdate.timeSlotId = newSlotObjId;
+          if (newSessObjId) bookingUpdate.sessionId = newSessObjId;
 
-            await this.bookingRepo.updateMany(
-              { $or: [{ sessionId: session._id }, { timeSlotId: session.timeSlotId }], studentId: studentObjId as any },
-              bookingUpdate
-            );
+          await this.bookingRepo.updateMany(
+            { $or: [{ sessionId: session._id }, { timeSlotId: session.timeSlotId }], studentId: studentObjId as any },
+            bookingUpdate
+          );
         }
 
         // 4. Notify Mentor
@@ -665,9 +689,9 @@ export class SessionService implements ISessionService {
         await this.sessionRepo.updateStatus(sessionId, SESSION_STATUS.CANCELLED);
 
         // 2. Find Booking to process refund
-        const booking = await this.bookingRepo.findOne({ 
-          $or: [{ sessionId: session._id }, { timeSlotId: session.timeSlotId }], 
-          studentId: new Types.ObjectId(studentId) as unknown as import('mongoose').Schema.Types.ObjectId 
+        const booking = await this.bookingRepo.findOne({
+          $or: [{ sessionId: session._id }, { timeSlotId: session.timeSlotId }],
+          studentId: new Types.ObjectId(studentId) as unknown as import('mongoose').Schema.Types.ObjectId
         });
 
         if (booking) {
@@ -695,13 +719,13 @@ export class SessionService implements ISessionService {
         logger.info(`[SessionService.resolveRescheduling] END (REFUND SUCCESS) for sessionId=${sessionId}`);
       }
     } catch (error: any) {
-        logger.error(`[SessionService.resolveRescheduling] CRITICAL ERROR for sessionId ${sessionId}: ${error.message}`, {
-            stack: error.stack,
-            sessionId,
-            studentId,
-            newTimeSlotId
-        });
-        throw error;
+      logger.error(`[SessionService.resolveRescheduling] CRITICAL ERROR for sessionId ${sessionId}: ${error.message}`, {
+        stack: error.stack,
+        sessionId,
+        studentId,
+        newTimeSlotId
+      });
+      throw error;
     }
   }
 
@@ -781,16 +805,16 @@ export class SessionService implements ISessionService {
           const sessionId = (sessionRecord as unknown as { _id: { toString(): string } })._id.toString();
 
           // Find bookings for this slot to notify students
-          const bookings = await this.bookingRepo.find({ 
-            timeSlotId: slot._id, 
-            status: 'scheduled' 
+          const bookings = await this.bookingRepo.find({
+            timeSlotId: slot._id,
+            status: 'scheduled'
           });
 
           // Notify Mentor
           const mentorLink = sessionAccessService.generateJoinLink(
-            sessionId, 
-            slot.mentorId.toString(), 
-            'mentor', 
+            sessionId,
+            slot.mentorId.toString(),
+            'mentor',
             slot.startTime
           );
           await this.notificationService.notifyUser(
@@ -805,9 +829,9 @@ export class SessionService implements ISessionService {
           for (const booking of bookings) {
             const studentId = (booking.studentId as unknown as { _id: { toString(): string } })._id.toString();
             const studentLink = sessionAccessService.generateJoinLink(
-              sessionId, 
-              studentId, 
-              'student', 
+              sessionId,
+              studentId,
+              'student',
               slot.startTime
             );
             await this.notificationService.notifyUser(
@@ -848,7 +872,7 @@ export class SessionService implements ISessionService {
       timeSlotId: (slot as any)._id,
       startTime: slot.startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
       endTime: slot.endTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      mentorCount: 1 
+      mentorCount: 1
     }));
   }
 }
