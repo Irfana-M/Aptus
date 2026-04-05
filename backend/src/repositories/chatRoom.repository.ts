@@ -3,6 +3,7 @@ import { BaseRepository } from "./baseRepository.js";
 import type { IChatRoom } from "../interfaces/models/chat.interface.js";
 import { ChatRoomModel } from "../models/scheduling/chatRoom.model.js";
 import type { IChatRoomRepository } from "../interfaces/repositories/IChatRoomRepository.js";
+import { logger } from "../utils/logger.js";
 
 @injectable()
 export class ChatRoomRepository extends BaseRepository<IChatRoom> implements IChatRoomRepository {
@@ -11,6 +12,23 @@ export class ChatRoomRepository extends BaseRepository<IChatRoom> implements ICh
   }
 
   async findBySessionId(sessionId: string): Promise<IChatRoom | null> {
-    return await this.model.findOne({ sessionId }).lean().exec() as IChatRoom | null;
+    const result = await this.model.findOne({ sessionId }).lean().exec() as IChatRoom | null;
+    logger.info(`[CHAT TRACE][Repository] findBySessionId:`, { sessionId, found: !!result });
+    return result;
+  }
+
+  async create(data: Partial<IChatRoom>, session?: any): Promise<IChatRoom> {
+    try {
+      logger.info(`[CHAT TRACE][Repository] create payload:`, data);
+      return await super.create(data, session);
+    } catch (error) {
+      logger.error(`[CHAT TRACE][Repository] create FAILED:`, {
+        error,
+        message: (error as Error).message,
+        stack: (error as Error).stack,
+        payload: data
+      });
+      throw error;
+    }
   }
 }

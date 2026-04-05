@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import type { JwtPayload } from "jsonwebtoken";
 import { AppError } from "../utils/AppError.js";
 import { HttpStatusCode } from "../constants/httpStatus.js";
+import { logger } from "../utils/logger.js";
 
 declare module "express-serve-static-core" {
   interface Request {
@@ -49,6 +50,11 @@ export const requireAuth = (
     });
 
     const decoded = jwt.verify(token, JWT_SECRET) as CustomJwtPayload;
+
+    logger.info(`[CHAT TRACE][Auth] Decoded Token:`, {
+      userId: decoded.id,
+      role: decoded.role
+    });
 
     console.log('✅ Token verified:', {
       id: decoded.id,

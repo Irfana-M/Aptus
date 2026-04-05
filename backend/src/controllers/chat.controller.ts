@@ -29,6 +29,8 @@ export class ChatController {
       const userId = authReq.user.id;
       const role = authReq.user.role;
 
+      logger.info(`[CHAT TRACE][Controller] sendMessage Request:`, { sessionId, userId, role });
+
       if (!sessionId) throw new AppError(MESSAGES.COMMON.ID_REQUIRED("Session"), HttpStatusCode.BAD_REQUEST);
 
       const message = await this._chatService.sendMessage(sessionId, userId, role, content);
@@ -38,7 +40,12 @@ export class ChatController {
         data: message
       });
     } catch (error: unknown) {
-      logger.error("Error in ChatController.sendMessage:", error);
+      logger.error("[CHAT TRACE][Controller] Error in sendMessage:", {
+        sessionId: req.params.sessionId,
+        userId: (req as any).user?.id,
+        message: (error as Error).message,
+        stack: (error as Error).stack
+      });
       const appError = error as { statusCode?: number; message?: string };
       res.status(appError.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
@@ -54,6 +61,8 @@ export class ChatController {
       const userId = authReq.user.id;
       const role = authReq.user.role;
 
+      logger.info(`[CHAT TRACE][Controller] getChatHistory Request:`, { sessionId, userId, role });
+
       if (!sessionId) throw new AppError(MESSAGES.COMMON.ID_REQUIRED("Session"), HttpStatusCode.BAD_REQUEST);
 
       const history = await this._chatService.getChatHistory(sessionId, userId, role);
@@ -63,7 +72,12 @@ export class ChatController {
         data: history
       });
     } catch (error: unknown) {
-      logger.error("Error in ChatController.getChatHistory:", error);
+      logger.error("[CHAT TRACE][Controller] Error in getChatHistory:", {
+        sessionId: req.params.sessionId,
+        userId: (req as any).user?.id,
+        message: (error as Error).message,
+        stack: (error as Error).stack
+      });
       const appError = error as { statusCode?: number; message?: string };
       res.status(appError.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR).json({
         success: false,
@@ -75,6 +89,11 @@ export class ChatController {
   async initiateChat(req: Request, res: Response): Promise<void> {
       try {
         const { sessionId } = req.params;
+        const authReq = req as AuthenticatedRequest;
+        const userId = authReq.user?.id;
+        const role = authReq.user?.role;
+
+        logger.info(`[CHAT TRACE][Controller] initiateChat Request:`, { sessionId, userId, role });
 
         if (!sessionId) throw new AppError(MESSAGES.COMMON.ID_REQUIRED("Session"), HttpStatusCode.BAD_REQUEST);
 
@@ -84,7 +103,12 @@ export class ChatController {
               data: room
           });
       } catch (error: unknown) {
-          logger.error("Error in ChatController.initiateChat:", error);
+          logger.error("[CHAT TRACE][Controller] Error in initiateChat:", {
+            sessionId: req.params.sessionId,
+            userId: (req as any).user?.id,
+            message: (error as Error).message,
+            stack: (error as Error).stack
+          });
           const appError = error as { statusCode?: number; message?: string };
           res.status(appError.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR).json({
               success: false,

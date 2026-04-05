@@ -34,6 +34,12 @@ export class ChatService implements IChatService {
     // 1. Try finding a standard Session (Booking)
     try {
         const session = await this._sessionRepo.findById(id);
+        logger.info(`[CHAT TRACE][Service] _findSessionOrTrial - Session lookup result:`, { 
+            id, 
+            found: !!session,
+            status: session?.status,
+            sessionType: (session as any)?.sessionType
+        });
         if (session) {
               const s = session as unknown as { 
                 _id: { toString(): string }, 
@@ -60,6 +66,11 @@ export class ChatService implements IChatService {
     // 2. Try finding a Trial Class
     try {
         const trial = await this._trialClassRepo.findById(id);
+        logger.info(`[CHAT TRACE][Service] _findSessionOrTrial - Trial lookup result:`, { 
+            id, 
+            found: !!trial,
+            status: (trial as any)?.status
+        });
         
         if (trial) {
             const trialWithIds = trial as unknown as { 
@@ -92,7 +103,7 @@ export class ChatService implements IChatService {
         logger.error(`Error finding TrialClass ${id}:`, _e);
     }
 
-    logger.warn(`_findSessionOrTrial failed for ID: ${id} (Neither Session nor Trial)`);
+    logger.warn(`[CHAT TRACE][Service] _findSessionOrTrial failed for ID: ${id} (Neither Session nor Trial)`);
     return null;
   }
 
@@ -102,13 +113,15 @@ export class ChatService implements IChatService {
 
     let room = await this._chatRoomRepo.findBySessionId(sessionId);
     if (!room) {
-      room = await this._chatRoomRepo.create({
+      const payload = {
         sessionId: session._id as unknown as import('mongoose').Schema.Types.ObjectId,
         mentorId: session.mentorId as unknown as import('mongoose').Schema.Types.ObjectId,
         participantIds: session.participants.map(participant => participant.userId) as unknown as import('mongoose').Schema.Types.ObjectId[],
         isActive: true
-      });
-      logger.info(`Chat room created for session: ${sessionId}`);
+      };
+      logger.info(`[CHAT TRACE][Service] initiateChatRoom - Creating room with payload:`, payload);
+      room = await this._chatRoomRepo.create(payload);
+      logger.info(`[CHAT TRACE][Service] Chat room created for session: ${sessionId}`);
     }
     return room;
   }
@@ -133,7 +146,7 @@ export class ChatService implements IChatService {
     
     // Auto-create room if missing (Self-healing)
     if (!room) {
-        logger.warn(`⚠️ Chat room missing for active session ${sessionId}, auto-creating...`);
+        logger.info(`[CHAT TRACE][Service] sendMessage - Chat room missing for session ${sessionId}, triggering auto-creation...`);
         room = await this.initiateChatRoom(sessionId);
     }
 
@@ -141,7 +154,18 @@ export class ChatService implements IChatService {
     const isMentor = session.mentorId.toString() === senderId;
     const isEnrolled = session.participants.some(participant => participant.userId.toString() === senderId);
     
+    logger.info(`[CHAT TRACE][Service] sendMessage Permission Check:`, {
+        sessionId,
+        senderId,
+        senderRole,
+        isMentor,
+        isEnrolled,
+        mentorIdInSession: session.mentorId,
+        participantsInSession: session.participants.map(p => p.userId)
+    });
+
     if (!isMentor && !isEnrolled && senderRole !== 'admin') {
+      logger.warn(`[CHAT TRACE][Service] sendMessage ACCESS DENIED:`, { sessionId, senderId, senderRole });
       throw new AppError("Access denied to this chat room", HttpStatusCode.FORBIDDEN);
     }
 
@@ -178,7 +202,19 @@ export class ChatService implements IChatService {
     const isEnrolled = session.participants.some(participant => participant.userId.toString() === userId);
     const isAdmin = userRole === 'admin';
     
+    logger.info(`[CHAT TRACE][Service] getChatHistory Permission Check:`, {
+        sessionId,
+        userId,
+        userRole,
+        isMentor,
+        isEnrolled,
+        isAdmin,
+        mentorIdInSession: session.mentorId,
+        participantsInSession: session.participants.map(p => p.userId)
+    });
+
     if (!isMentor && !isEnrolled && !isAdmin) {
+      logger.warn(`[CHAT TRACE][Service] getChatHistory ACCESS DENIED:`, { sessionId, userId, userRole });
       throw new AppError("Access denied to this chat history", HttpStatusCode.FORBIDDEN);
     }
 
