@@ -25,7 +25,7 @@ const loginLimiter = rateLimit({
 // Stricter limiter for registration and OTP routes (spam protection)
 const registerLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5,
+  max: 10,
   message: { success: false, message: "Too many requests. Please try again after 15 minutes." },
   standardHeaders: true,
   legacyHeaders: false,
