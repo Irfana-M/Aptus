@@ -20,6 +20,7 @@ import { HttpStatusCode } from "../constants/httpStatus.js";
 import { STUDENT_CANCEL_CUTOFF_HOURS } from "../config/leavePolicy.config.js";
 import { BOOKING_STATUS, SESSION_STATUS } from "../constants/status.constants.js";
 import { combineISTToUTC } from "../utils/time.util.js";
+import { SessionModel } from "../models/scheduling/session.model.js";
 
 @injectable()
 export class SessionService implements ISessionService {
@@ -265,9 +266,10 @@ export class SessionService implements ISessionService {
                 newCount: newParticipants.length
               });
 
-              await this.sessionRepo.updateById(sessionId, {
-                participants: newParticipants
-              } as any);
+              await SessionModel.updateOne(
+                { _id: sessionId },
+                { $addToSet: { participants: { $each: newParticipants || [] } } }
+              );
             }
           }
         }
