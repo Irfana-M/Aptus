@@ -855,8 +855,18 @@ async getStudentTrialClasses(studentId: string, status?: string): Promise<TrialC
 
     logger.info(`AdminService: Successfully fetched ${trialClassesDto.length} trial classes`);
     
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return formatPaginatedResult(trialClassesDto, result.total, { page, limit }) as any;
+    const totalPages = Math.ceil(result.total / limit);
+    
+    return {
+      trialClasses: trialClassesDto,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalTrialClasses: result.total,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      }
+    };
   } catch (error: unknown) {
     logger.error("AdminService: Error fetching all trial classes", error);
     if (error instanceof AppError) throw error;

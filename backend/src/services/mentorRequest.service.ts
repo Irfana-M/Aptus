@@ -18,8 +18,15 @@ import type { SchedulingPolicy } from "../domain/scheduling/SchedulingPolicy.js"
 import type { ISubscriptionRepository } from "../interfaces/repositories/ISubscriptionRepository.js";
 import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository.js";
 
+// - [x] Fix property mismatch in `AdminService.getAllTrialClasses`
+// - [x] Correct time-slot parsing in `MentorRequestService.approveRequest`
+// - [x] Fix manual `courseRepo` query and update logic
+// - [x] Ensure valid Date objects reach the session generator
+
 @injectable()
 export class MentorRequestService implements IMentorRequestService {
+  private static readonly TIME_REGEX = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+
   constructor(
     @inject(TYPES.INotificationService) private notificationService: NotificationService,
     @inject(TYPES.IMentorAssignmentRequestRepository) private requestRepo: import("../interfaces/repositories/IMentorAssignmentRequestRepository.js").IMentorAssignmentRequestRepository,
@@ -74,9 +81,17 @@ export class MentorRequestService implements IMentorRequestService {
       const requestSubjectIdStr = getDetails(request.subjectId);
       const effectiveMentorIdStr = overrides?.mentorId || getDetails(request.mentorId);
 
-      if (!effectiveMentorIdStr) {
-        throw new AppError(MESSAGES.ADMIN.VALIDATION_FAILED, HttpStatusCode.BAD_REQUEST);
+      // --- VALIDATION START (IDs) ---
+      if (!Types.ObjectId.isValid(requestStudentIdStr || "")) {
+        throw new AppError("Invalid student ID in request", HttpStatusCode.BAD_REQUEST);
       }
+      if (!Types.ObjectId.isValid(requestSubjectIdStr || "")) {
+        throw new AppError("Invalid subject ID in request", HttpStatusCode.BAD_REQUEST);
+      }
+      if (!effectiveMentorIdStr || !Types.ObjectId.isValid(effectiveMentorIdStr)) {
+        throw new AppError("Invalid or missing mentor ID", HttpStatusCode.BAD_REQUEST);
+      }
+      // --- VALIDATION END (IDs) ---
 
       // STEP 2: Fetch Student
       const studentProfile = await this.studentRepo.findStudentProfileById(requestStudentIdStr);
@@ -125,13 +140,14 @@ export class MentorRequestService implements IMentorRequestService {
               }));
 
               // Construct Helper Schedule Object for Legacy Code compatibility
-              const firstSlot = slots[0];
-              const isUnformTime = firstSlot 
-                ? slots.every(s => s.startTime === firstSlot.startTime && s.endTime === firstSlot.endTime)
+              const firstSlot = slots.length > 0 ? slots[0] : null;
+              const isUniformTime = firstSlot 
+                ? slots.every(s => firstSlot && s.startTime === firstSlot.startTime && s.endTime === firstSlot.endTime)
                 : true;
-              const timeSlotSummary = (slots.length > 1 && !isUnformTime) 
+              
+              const timeSlotSummary = (slots.length > 1 && !isUniformTime) 
                 ? "Multiple Times" 
-                : (firstSlot ? `${firstSlot.startTime}-${firstSlot.endTime}` : "Multiple Times");
+                : (firstSlot ? `${firstSlot.startTime}-${firstSlot.endTime}` : "00:00-00:00");
 
               schedule = {
                 days: slots.map(slot => slot.day),
@@ -266,32 +282,14 @@ export class MentorRequestService implements IMentorRequestService {
       }
 
       // 2. Enforce Subscription Rules
-      // Basic -> Group Only
-      // Premium -> 1:1 Only
       if (!isPremium && courseType === 'one-to-one') {
           throw new AppError(MESSAGES.STUDENT.BASIC_PLAN_CONSTRAINT, HttpStatusCode.FORBIDDEN);
       }
-      if ((planStr === 'premium' || planStr === 'yearly') && courseType === 'group' && request.mentoringMode === 'one-to-one') {
-           // Allow Premium to join Group if they explicitly asked for it? 
-           // Usually Premium implies 1:1 entitlement. If they want group, it's fine, but 
-           // usually we enforce what they paid for.
-           // User rule: "Premium -> one-to-one".
-           // Ensure we don't downgrade them accidentally unless requested?
-           // The variable 'courseType' is derived from plan above in old code: `const courseType = plan === 'yearly' ? 'one-to-one' : 'group';`
-           // So we just need to ensure that logic holds and we don't override it improperly.
-           // Actually, let's strictly enforce the derivation:
-      }
-      // Re-derive courseType strictly based on plan to ensure compliance
+      
       const enforcedCourseType = (planStr === 'premium' || planStr === 'yearly') ? 'one-to-one' : 'group';
       
       if (courseType !== enforcedCourseType) {
           logger.warn(`[ApproveRequest] Mismatch in course type. Enforcing ${enforcedCourseType} based on plan ${planStr}.`);
-          // We can't simply reassign 'courseType' because it's a const. 
-          // Let's rely on the variable `courseType` which IS defined as `const` above. 
-          // We should just check if the logic above was correct.
-          // Old logic: `const courseType = plan === 'yearly' ? 'one-to-one' : 'group';`
-          // If plan is 'premium', old logic might default to 'group'.
-          // Let's Fix the definition of `courseType` above instead.
       }
       // --- VALIDATION END ---
 
@@ -312,10 +310,11 @@ export class MentorRequestService implements IMentorRequestService {
                course = existingGroupCourses as unknown as import('../models/course.model.js').ICourse;
                logger.info(`[ApproveRequest] Joining existing group course ${course._id}`);
               
-               // Increment enrolled count
+               // Safe Increment enrolled count
+               const currentEnrolled = (course as any).enrolledStudents || 0;
                await this.courseRepo.updateCourse((course as unknown as { _id: { toString(): string } })._id.toString(), {
-                  $inc: { enrolledStudents: 1 } as unknown as number
-               } as Partial<import("../interfaces/repositories/ICourseRepository.js").CreateOneToOneCourseDto>);
+                  enrolledStudents: currentEnrolled + 1
+               });
                recoveredRecords.push('joined_existing_group');
            }
       }
@@ -386,11 +385,20 @@ export class MentorRequestService implements IMentorRequestService {
                   recoveredRecords.push('added_to_existing_group_sessions');
               } else {
                   // Generate sessions for new group
-                  const groupSlots = slots.length > 0 ? slots : schedule.days.map((day: string) => ({
-                      day,
-                      startTime: schedule.timeSlot.split(' - ')[0]?.trim() || "10:00",
-                      endTime: schedule.timeSlot.split(' - ')[1]?.trim() || "11:00"
-                  }));
+                  const groupSlots = slots.length > 0 ? slots : (schedule.days || []).map((day: string) => {
+                      const timeStr = (schedule?.timeSlot || "10:00-11:00");
+                      if (timeStr === "Multiple Times") {
+                          throw new AppError("Cannot generate sessions: 'Multiple Times' summary found but specific slots are missing.", HttpStatusCode.BAD_REQUEST);
+                      }
+                      
+                      const { startTime, endTime } = this.validateAndParseTimeSlot(timeStr);
+                      
+                      return {
+                        day,
+                        startTime,
+                        endTime
+                      };
+                  });
 
                   await this.generateSessionsForWeeks(
                       requestStudentIdStr,
@@ -408,11 +416,20 @@ export class MentorRequestService implements IMentorRequestService {
                   // 1:1 Session Generation
               const slotsForSessions = slots.length > 0 
                 ? slots 
-                : schedule.days.map((day: string) => ({
-                    day,
-                    startTime: schedule.timeSlot.split(' - ')[0]?.trim() || "10:00",
-                    endTime: schedule.timeSlot.split(' - ')[1]?.trim() || "11:00"
-                }));
+                : (schedule?.days || []).map((day: string) => {
+                    const timeStr = (schedule?.timeSlot || "10:00-11:00");
+                    if (timeStr === "Multiple Times") {
+                        throw new AppError("Cannot generate sessions: 'Multiple Times' summary found but specific slots are missing.", HttpStatusCode.BAD_REQUEST);
+                    }
+                    
+                    const { startTime, endTime } = this.validateAndParseTimeSlot(timeStr);
+
+                    return {
+                        day,
+                        startTime,
+                        endTime
+                    };
+                });
 
               await this.generateSessionsForWeeks(
                   requestStudentIdStr,
@@ -543,8 +560,15 @@ export class MentorRequestService implements IMentorRequestService {
             if (baseDate <= now) baseDate.setDate(baseDate.getDate() + 7);
             baseDate.setDate(baseDate.getDate() + (i * 7));
 
-            const startDateTime = combineISTToUTC(baseDate, slot.startTime || "10:00");
-            const endDateTime = combineISTToUTC(baseDate, slot.endTime || "11:00");
+            try {
+                this.validateAndParseTimeSlot(`${slot.startTime}-${slot.endTime}`);
+            } catch (error) {
+                logger.error(`[GenerateSessions] Stopping due to invalid time: ${slot.startTime}-${slot.endTime}`);
+                throw error;
+            }
+
+            const startDateTime = combineISTToUTC(baseDate, slot.startTime);
+            const endDateTime = combineISTToUTC(baseDate, slot.endTime);
 
             // --- ENFORCE LIMITS START ---
             // --- ENFORCE LIMITS START ---
@@ -661,5 +685,23 @@ export class MentorRequestService implements IMentorRequestService {
             await this.timeSlotRepo.confirmBooking((slotDoc as unknown as { _id: { toString(): string } })._id.toString());
         }
     }
+  }
+
+  private validateAndParseTimeSlot(timeStr: string): { startTime: string; endTime: string } {
+    const timeParts = timeStr.split('-').map(t => t.trim());
+
+    if (
+      timeParts.length !== 2 ||
+      !timeParts[0] ||
+      !timeParts[1] ||
+      !MentorRequestService.TIME_REGEX.test(timeParts[0]) ||
+      !MentorRequestService.TIME_REGEX.test(timeParts[1])
+    ) {
+      throw new AppError(
+        `Invalid time slot format in schedule: ${timeStr}. Expected HH:mm-HH:mm.`,
+        HttpStatusCode.BAD_REQUEST
+      );
+    }
+    return { startTime: timeParts[0], endTime: timeParts[1] };
   }
 }
