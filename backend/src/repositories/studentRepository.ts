@@ -572,7 +572,7 @@ async findAllWithTrialStats(page: number, limit: number) {
     }
   }
 
-  async findStudentProfileById(id: string): Promise<DetailedStudentProfile | null> {
+  async findStudentProfileById(id: string, traceId?: string): Promise<DetailedStudentProfile | null> {
     try {
       logger.debug(`Finding complete student profile by ID: ${id}`);
       logger.info(`Initiating detailed student profile fetch: ${id}`);
@@ -598,6 +598,16 @@ async findAllWithTrialStats(page: number, limit: number) {
         })
         .lean()
         .exec();
+
+      if (student && traceId) {
+          const g = (student as any).gradeId;
+          logger.info(`[${traceId}] [Repository] gradeId state after DB fetch:`, {
+            value: g,
+            type: typeof g,
+            isObject: typeof g === "object",
+            has_id: g && typeof g === "object" && "_id" in g
+          });
+      }
 
       if (!student) {
         logger.debug(`Student not found with ID: ${id}`);
@@ -658,7 +668,7 @@ async findAllWithTrialStats(page: number, limit: number) {
           console.log("🔍 [DEBUG] No profileImage or profileImageKey found in student document");
       }
 
-      const baseProfile = StudentMapper.toStudentAuthUser(student as unknown as StudentAuthUser);
+      const baseProfile = StudentMapper.toStudentAuthUser(student as unknown as StudentAuthUser, traceId);
 
       return {
         ...baseProfile,

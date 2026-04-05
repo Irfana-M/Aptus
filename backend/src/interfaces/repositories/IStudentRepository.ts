@@ -27,7 +27,7 @@ export interface IStudentRepository extends IBaseRepository<StudentAuthUser> {
     students: unknown[];
     totalStudents: number;
   }>;
-  findStudentProfileById(id: string): Promise<unknown>;
+  findStudentProfileById(id: string, traceId?: string): Promise<unknown>;
   updatePreferredTimeSlotStatus(
     studentId: string,
     subjectId: string,

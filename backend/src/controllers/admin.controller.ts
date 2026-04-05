@@ -857,10 +857,12 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
          timeSlot
       });
 
-      res.status(HttpStatusCode.OK).json({
+      const responseBody = {
         success: true,
         message: "Mentor assigned successfully",
-      });
+      };
+      logger.info(`[AdminController.assignMentor] Final Response:`, responseBody);
+      res.status(HttpStatusCode.OK).json(responseBody);
     } catch (error: unknown) {
       next(error);
     }
@@ -881,10 +883,12 @@ getStudentTrialClasses = async (req: Request, res: Response, next: NextFunction)
         timeSlot
       });
 
-      res.status(HttpStatusCode.OK).json({
+      const responseBody = {
         success: true,
         message: "Mentor reassigned successfully",
-      });
+      };
+      logger.info(`[AdminController.reassignMentor] Final Response:`, responseBody);
+      res.status(HttpStatusCode.OK).json(responseBody);
     } catch (error: unknown) {
       next(error);
     }

@@ -64,8 +64,9 @@ export class MentorRequestService implements IMentorRequestService {
     isFreshApproval: boolean,
     recoveredRecords: string[]
   }> {
+    const traceId = `GRADE_TRACE_${Date.now()}`;
     try {
-      logger.info(`[ApproveRequest] Starting approval for request ${requestId} by admin ${adminId}`);
+      logger.info(`[${traceId}] [Service.approveRequest] Starting approval for request ${requestId} by admin ${adminId}`);
 
       // STEP 1: Fetch MentorAssignmentRequest
       const request = await this.requestRepo.findById(requestId);
@@ -94,10 +95,18 @@ export class MentorRequestService implements IMentorRequestService {
       // --- VALIDATION END (IDs) ---
 
       // STEP 2: Fetch Student
-      const studentProfile = await this.studentRepo.findStudentProfileById(requestStudentIdStr);
+      const studentProfile = await this.studentRepo.findStudentProfileById(requestStudentIdStr, traceId);
       if (!studentProfile) {
         throw new AppError(MESSAGES.STUDENT.NOT_FOUND, HttpStatusCode.NOT_FOUND);
       }
+
+      const sp = studentProfile as any;
+      logger.info(`[${traceId}] [Service.approveRequest] studentProfile.gradeId state immediately after fetch:`, {
+        value: sp.gradeId,
+        type: typeof sp.gradeId,
+        isObject: typeof sp.gradeId === "object",
+        has_id: sp.gradeId && typeof sp.gradeId === "object" && "_id" in sp.gradeId
+      });
 
       const isFreshApproval = request.status !== 'approved';
       const recoveredRecords: string[] = [];
@@ -202,20 +211,37 @@ export class MentorRequestService implements IMentorRequestService {
       }
 
       // GRADE RESOLUTION
-      const finalGradeId = (studentProfile as unknown as { gradeId?: { _id?: { toString(): string } } | { toString(): string } }).gradeId;
+      const rawGradeId = (studentProfile as unknown as { gradeId?: any }).gradeId;
       let finalGradeIdStr: string | null = null;
       
-      if (finalGradeId) {
-          if (typeof finalGradeId === 'object' && '_id' in finalGradeId && finalGradeId._id) {
-              finalGradeIdStr = finalGradeId._id.toString();
-          } else {
-              finalGradeIdStr = finalGradeId.toString();
+      logger.info(`[${traceId}] [Service.approveRequest] Starting GRADE RESOLUTION with rawGradeId:`, {
+        value: rawGradeId,
+        type: typeof rawGradeId
+      });
+
+      if (rawGradeId) {
+          if (typeof rawGradeId === 'object' && rawGradeId !== null && '_id' in rawGradeId) {
+              // Path for populated object
+              logger.info(`[${traceId}] [Service.approveRequest] Branch: Grade is populated object`);
+              finalGradeIdStr = rawGradeId._id.toString();
+          } else if (typeof rawGradeId === 'string' && rawGradeId !== "[object Object]") {
+              // Path for already stringified ID
+              logger.info(`[${traceId}] [Service.approveRequest] Branch: Grade is already string`);
+              finalGradeIdStr = rawGradeId;
+          } else if (rawGradeId.toString && typeof rawGradeId.toString === 'function') {
+              // Path for ObjectId or other types
+              const str = rawGradeId.toString();
+              logger.info(`[${traceId}] [Service.approveRequest] Branch: Grade using .toString()`, { result: str });
+              if (str !== "[object Object]") {
+                  finalGradeIdStr = str;
+              }
           }
       }
-
-      if (!finalGradeIdStr && (studentProfile as unknown as import('../interfaces/models/student.interface.js').StudentProfile).academicDetails?.grade) {
-          const gradeStr = (studentProfile as unknown as import('../interfaces/models/student.interface.js').StudentProfile).academicDetails!.grade;
-          // Try to lookup Grade by name or number
+      
+      // Fallback to academicDetails string parsing if ID resolution failed
+      if (!finalGradeIdStr && (studentProfile as unknown as any).academicDetails?.grade) {
+          const gradeStr = (studentProfile as unknown as any).academicDetails.grade;
+          logger.info(`[${traceId}] [Service.approveRequest] Branch: Fallback to academicDetails.grade mapping`, { gradeStr });
           const gradeNum = parseInt(gradeStr.replace(/\D/g, ''));
           const foundGrade = await this.gradeRepo.findOne({ 
             $or: [
@@ -225,14 +251,20 @@ export class MentorRequestService implements IMentorRequestService {
           });
           
           if (foundGrade) {
-              finalGradeIdStr = (foundGrade as unknown as { _id: { toString(): string } })._id.toString();
-              logger.info(`Resolved Grade ID ${finalGradeIdStr} for string "${gradeStr}"`);
+              finalGradeIdStr = (foundGrade as any)._id.toString();
+              logger.info(`[${traceId}] [Service.approveRequest] Resolved Grade ID ${finalGradeIdStr} from string "${gradeStr}"`);
           }
       }
 
-      if (!finalGradeIdStr) {
-         throw new AppError(MESSAGES.ADMIN.VALIDATION_FAILED, HttpStatusCode.BAD_REQUEST);
+      if (!finalGradeIdStr || finalGradeIdStr === "[object Object]") {
+          logger.error(`[${traceId}] [Service.approveRequest] CRITICAL: Grade resolution FAILED!`, {
+            finalGradeIdStr,
+            studentId: requestStudentIdStr
+          });
+          throw new AppError("Student profile is missing a valid Grade ID mapping. Please check student academic details.", HttpStatusCode.BAD_REQUEST);
       }
+
+      logger.info(`[${traceId}] [Service.approveRequest] Successfully resolved finalGradeIdStr: ${finalGradeIdStr}`);
 
       // --- VALIDATION START ---
       // 1. Validate Mentor Availability
@@ -294,11 +326,17 @@ export class MentorRequestService implements IMentorRequestService {
       // --- VALIDATION END ---
 
       // STEP 4: Create/Update Course
-
+if (!Types.ObjectId.isValid(finalGradeIdStr)) {
+  throw new AppError(
+    "Invalid Grade ID format",
+    HttpStatusCode.BAD_REQUEST
+  );
+}
       if (courseType === 'group') {
           // FIND EXISTING GROUP COURSE WITH CAPACITY (limit from DB plan)
           const existingGroupCourses = await this.courseRepo.findOne({
             subject: new Types.ObjectId(requestSubjectIdStr),
+            
             grade: new Types.ObjectId(finalGradeIdStr || ""),
             courseType: 'group',
             status: 'booked',

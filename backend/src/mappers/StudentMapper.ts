@@ -15,6 +15,7 @@ import type { StudentBaseResponseDto } from "../dtos/auth/UserResponseDTO.js";
 import { StudentOnboardingStatus } from "../enums/studentOnboarding.enum.js";
 import { ApprovalStatus } from "../domain/enums/ApprovalStatus.js";
 import { Types } from "mongoose";
+import { logger } from "../utils/logger.js";
 
 
 export class StudentMapper {
@@ -29,12 +30,21 @@ export class StudentMapper {
     };
   }
 
-  static toResponseDto(student: StudentAuthUser | (StudentAuthUser & { toObject: () => StudentAuthUser })): StudentProfile {
+  static toResponseDto(student: StudentAuthUser | (StudentAuthUser & { toObject: () => StudentAuthUser }), traceId?: string): StudentProfile {
     const data = (student && 'toObject' in student && typeof student.toObject === 'function') 
       ? student.toObject() 
       : student as StudentAuthUser;
 
-    return {
+    if (traceId) {
+      logger.info(`[${traceId}] [Mapper.toResponseDto] Input gradeId:`, {
+        value: data.gradeId,
+        type: typeof data.gradeId,
+        isObject: typeof data.gradeId === "object",
+        has_id: data.gradeId && typeof data.gradeId === "object" && "_id" in data.gradeId
+      });
+    }
+
+    const result: StudentProfile = {
       _id: data._id,
       fullName: data.fullName || "",
       email: data.email || "",
@@ -59,16 +69,47 @@ export class StudentMapper {
       subscription: data.subscription as SubscriptionDetails | undefined,
       authProvider: data.authProvider,
       googleId: data.googleId,
-      gradeId: data.gradeId ? new Types.ObjectId(data.gradeId as string) : undefined,
+      gradeId: (() => {
+          const g = data.gradeId;
+
+          if (!g) return undefined;
+
+          // Populated object
+          if (typeof g === 'object' && g !== null && '_id' in g) {
+            return (g as any)._id?.toString();
+          }
+
+          // Already string
+          if (typeof g === 'string' && g !== "[object Object]") {
+            return g;
+          }
+
+          // ObjectId or other types
+          if (g.toString && typeof g.toString === 'function') {
+            const str = g.toString();
+            return str !== "[object Object]" ? str : undefined;
+          }
+
+          return undefined;
+      })(),
       onboardingStatus: data.onboardingStatus,
       preferencesCompleted: data.preferencesCompleted as boolean | undefined,
-      preferredSubjects: data.preferredSubjects?.map(id => new Types.ObjectId(id as string)),
+      preferredSubjects: data.preferredSubjects?.map(id => (typeof id === 'object' && id !== null && '_id' in id) ? (id as any)._id : id),
       preferredTimeSlots: data.preferredTimeSlots?.map((slot) => ({
-        subjectId: new Types.ObjectId(slot.subjectId as string),
+        subjectId: (slot.subjectId && typeof slot.subjectId === 'object' && '_id' in slot.subjectId) ? (slot.subjectId as any)._id : slot.subjectId,
         slots: slot.slots,
         status: (slot as unknown as { status?: string }).status as 'preferences_submitted' | 'mentor_requested' | 'mentor_assigned' | 'active' | 'reassigned'
       })),
     };
+
+    if (traceId) {
+      logger.info(`[${traceId}] [Mapper.toResponseDto] Output gradeId:`, {
+        value: result.gradeId,
+        type: typeof result.gradeId
+      });
+    }
+
+    return result;
   }
 
   static toProfileUpdate(
@@ -337,12 +378,21 @@ export class StudentMapper {
 
 
   
-  static toStudentAuthUser(student: StudentAuthUser | (StudentAuthUser & { toObject: () => StudentAuthUser })): StudentAuthUser {
+  static toStudentAuthUser(student: StudentAuthUser | (StudentAuthUser & { toObject: () => StudentAuthUser }), traceId?: string): StudentAuthUser {
     const s = (student && 'toObject' in student && typeof student.toObject === 'function') 
       ? student.toObject() 
       : student as StudentAuthUser;
 
-    return {
+    if (traceId) {
+      logger.info(`[${traceId}] [Mapper.toStudentAuthUser] Input gradeId:`, {
+        value: s.gradeId,
+        type: typeof s.gradeId,
+        isObject: typeof s.gradeId === "object",
+        has_id: s.gradeId && typeof s.gradeId === "object" && "_id" in s.gradeId
+      });
+    }
+
+    const result: StudentAuthUser = {
       _id: s._id.toString(),
       fullName: s.fullName,
       email: s.email,
@@ -377,22 +427,34 @@ export class StudentMapper {
       isTrialCompleted: s.isTrialCompleted || false,
       hasPaid: s.hasPaid ?? ((s.subscription?.status === 'active') || false),
       onboardingStatus: s.onboardingStatus || StudentOnboardingStatus.REGISTERED,
-      gradeId: s.gradeId?.toString(),
+      gradeId: (s.gradeId && typeof s.gradeId === 'object' && '_id' in s.gradeId) 
+        ? (s.gradeId as any)._id.toString() 
+        : s.gradeId?.toString(),
       preferencesCompleted: s.preferencesCompleted,
       preferredSubjects: s.preferredSubjects?.map(id => {
-        if (typeof id === 'object' && id !== null && (id as any).subjectName) {
-            return id;
+        if (typeof id === 'object' && id !== null) {
+            if ('_id' in id) return (id as any)._id.toString();
+            if ((id as any).subjectName) return id; // Keep object if it has name but no ID? (unlikely)
         }
         return id.toString();
       }),
       preferredTimeSlots: s.preferredTimeSlots?.map((slot) => ({
-        subjectId: (slot.subjectId && typeof slot.subjectId === 'object' && (slot.subjectId as any).subjectName)
-            ? slot.subjectId
+        subjectId: (slot.subjectId && typeof slot.subjectId === 'object')
+            ? ('_id' in slot.subjectId ? (slot.subjectId as any)._id.toString() : slot.subjectId)
             : slot.subjectId?.toString() || "",
         slots: slot.slots,
         status: (slot as unknown as { status?: string }).status || ""
       })),
     };
+
+    if (traceId) {
+      logger.info(`[${traceId}] [Mapper.toStudentAuthUser] Output gradeId:`, {
+        value: result.gradeId,
+        type: typeof result.gradeId
+      });
+    }
+
+    return result;
   }
 
   static toStudentResponseDto(student: StudentAuthUser | (StudentAuthUser & { toObject: () => StudentAuthUser })): StudentBaseResponseDto {
