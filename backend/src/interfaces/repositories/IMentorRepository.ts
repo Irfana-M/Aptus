@@ -1,6 +1,6 @@
-import type { MentorProfile, LeaveEntry } from "../models/mentor.interface.js";
-import type { IBaseRepository } from "./IBaseRepository.js";
-import type { MentorPaginationParams } from "@/dtos/shared/paginationTypes.js";
+import type { MentorProfile, LeaveEntry } from "../models/mentor.interface";
+import type { IBaseRepository } from "./IBaseRepository";
+import type { MentorPaginationParams } from "@/dtos/shared/paginationTypes";
 import type { ClientSession } from "mongoose";
 
 export interface MentorPaginatedResult {
@@ -13,7 +13,7 @@ export interface LeavePaginatedResult {
   total: number;
 }
 
-import { LEAVE_STATUS } from "../../constants/status.constants.js";
+import { LEAVE_STATUS } from "../../constants/status.constants";
 
 export interface IMentorRepository extends IBaseRepository<MentorProfile> {
   getPaginatedLeaves(params: {

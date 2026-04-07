@@ -1,4 +1,4 @@
-import { PlanType } from '../enums/plan.enum.js';
+import { PlanType } from '../enums/plan.enum';
 
 export const PLAN_LIMITS = {
   [PlanType.BASIC]: {

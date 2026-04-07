@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { SubscriptionPlanModel } from '../models/subscription/subscriptionPlan.model.js';
+import { SubscriptionPlanModel } from '../models/subscription/subscriptionPlan.model';
 
 dotenv.config();
 

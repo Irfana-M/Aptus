@@ -1,6 +1,6 @@
-import type { IBaseRepository } from "./IBaseRepository.js";
-import type { IExam } from "../../models/exam.model.js";
-import type { IExamResult } from "../../models/examResult.model.js";
+import type { IBaseRepository } from "./IBaseRepository";
+import type { IExam } from "../../models/exam.model";
+import type { IExamResult } from "../../models/examResult.model";
 
 export interface IExamRepository extends IBaseRepository<IExam> {
   findBySubjectAndGrade(subjectId: string, gradeId: string): Promise<IExam[]>;

@@ -1,10 +1,10 @@
-import type { AdminLoginResponseDto } from "@/dtos/admin/AdminLoginResponseDTO.js";
-import type { DashboardDataDto } from "@/dtos/admin/AdminLoginResponseDTO.js";
-import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO.js";
-import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO.js";
-import type { MentorProfile } from "../models/mentor.interface.js";
-import type { TrialClassResponseDto } from "@/dtos/student/trialClassDTO.js";
-import type { MentorPaginationParams, StudentPaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes.js";
+import type { AdminLoginResponseDto } from "@/dtos/admin/AdminLoginResponseDTO";
+import type { DashboardDataDto } from "@/dtos/admin/AdminLoginResponseDTO";
+import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO";
+import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
+import type { MentorProfile } from "../models/mentor.interface";
+import type { TrialClassResponseDto } from "@/dtos/student/trialClassDTO";
+import type { MentorPaginationParams, StudentPaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes";
 
 export interface IAdminService {
   unblockStudent(studentId: string): unknown;
@@ -100,6 +100,6 @@ export interface IAdminService {
     }
   ): Promise<void>;
   searchStudents(query: string): Promise<StudentBaseResponseDto[]>;
-  getFinanceStats(): Promise<import("@/dtos/admin/AdminLoginResponseDTO.js").FinanceDashboardDataDto>;
+  getFinanceStats(): Promise<import("@/dtos/admin/AdminLoginResponseDTO").FinanceDashboardDataDto>;
 }
 

@@ -1,13 +1,13 @@
 import { injectable } from "inversify";
-import { TrialClass, type ITrialClassDocument } from "@/models/student/trialClass.model.js";
-import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository.js";
-import { logger } from "@/utils/logger.js";
+import { TrialClass, type ITrialClassDocument } from "@/models/student/trialClass.model";
+import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
+import { logger } from "@/utils/logger";
 import { Types, type FilterQuery, type UpdateQuery } from "mongoose";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
-import { AppError } from "@/utils/AppError.js";
-import { getPaginationParams } from "@/utils/pagination.util.js";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import { AppError } from "@/utils/AppError";
+import { getPaginationParams } from "@/utils/pagination.util";
 
-import { BaseRepository } from "./baseRepository.js";
+import { BaseRepository } from "./baseRepository";
 
 @injectable()
 export class TrialClassRepository extends BaseRepository<ITrialClassDocument> implements ITrialClassRepository {

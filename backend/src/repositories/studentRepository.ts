@@ -1,24 +1,24 @@
-import type { IStudentRepository, StudentPaginatedResult } from "@/interfaces/repositories/IStudentRepository.js";
+import type { IStudentRepository, StudentPaginatedResult } from "@/interfaces/repositories/IStudentRepository";
 import type {
   StudentAuthUser,
   AuthUser,
-} from "@/interfaces/auth/auth.interface.js";
-import type { StudentProfile } from "@/interfaces/models/student.interface.js";
+} from "@/interfaces/auth/auth.interface";
+import type { StudentProfile } from "@/interfaces/models/student.interface";
 // BaseRepository import removed
-import { StudentModel } from "@/models/student/student.model.js";
-import { StudentMapper } from "@/mappers/StudentMapper.js";
-import { AppError } from "@/utils/AppError.js";
-import { MESSAGES } from "@/constants/messages.constants.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
-import { logger } from "@/utils/logger.js";
+import { StudentModel } from "@/models/student/student.model";
+import { StudentMapper } from "@/mappers/StudentMapper";
+import { AppError } from "@/utils/AppError";
+import { MESSAGES } from "@/constants/messages.constants";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import { logger } from "@/utils/logger";
 import { injectable } from "inversify";
-import { getSignedFileUrl } from "@/utils/s3Upload.js";
+import { getSignedFileUrl } from "@/utils/s3Upload";
 import type { FilterQuery, PipelineStage } from "mongoose";
-import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO.js";
-import { BaseRepository } from "./baseRepository.js";
-import { getPaginationParams } from "@/utils/pagination.util.js";
+import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
+import { BaseRepository } from "./baseRepository";
+import { getPaginationParams } from "@/utils/pagination.util";
 import type { Document, ClientSession, Model } from "mongoose";
-import type { StudentPaginationParams } from "@/dtos/shared/paginationTypes.js";
+import type { StudentPaginationParams } from "@/dtos/shared/paginationTypes";
 
 export interface DetailedStudentProfile extends Partial<StudentAuthUser> {
   trialClasses: unknown[];
@@ -615,7 +615,7 @@ async findAllWithTrialStats(page: number, limit: number) {
       }
 
       // Fetch trial classes separately
-      const { TrialClass } = await import("../models/student/trialClass.model.js");
+      const { TrialClass } = await import("../models/student/trialClass.model");
       const trialClasses = await TrialClass
         .find({ student: id })
         .populate('subject', 'subjectName')
@@ -625,7 +625,7 @@ async findAllWithTrialStats(page: number, limit: number) {
         .exec();
 
       // Fetch enrollments separately
-      const { Enrollment } = await import("../models/enrollment.model.js");
+      const { Enrollment } = await import("../models/enrollment.model");
       const enrollments = await Enrollment
         .find({ student: id })
         .populate({

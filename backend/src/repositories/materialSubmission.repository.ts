@@ -1,6 +1,6 @@
 import { injectable } from 'inversify';
-import { MaterialSubmission, type IMaterialSubmission } from '../models/materialSubmission.model.js';
-import type { IMaterialSubmissionRepository } from '../interfaces/repositories/IMaterialSubmissionRepository.js';
+import { MaterialSubmission, type IMaterialSubmission } from '../models/materialSubmission.model';
+import type { IMaterialSubmissionRepository } from '../interfaces/repositories/IMaterialSubmissionRepository';
 
 @injectable()
 export class MaterialSubmissionRepository implements IMaterialSubmissionRepository {

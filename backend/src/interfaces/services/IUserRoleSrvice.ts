@@ -1,5 +1,5 @@
-import type {  StudentBaseResponseDto } from "../../dtos/auth/UserResponseDTO.js";
-import type { MentorResponseDto } from "../../dtos/mentor/MentorResponseDTO.js";
+import type {  StudentBaseResponseDto } from "../../dtos/auth/UserResponseDTO"
+import type { MentorResponseDto } from "../../dtos/mentor/MentorResponseDTO";
 
 export interface TrialClassAuthData {
   id?: string | undefined;

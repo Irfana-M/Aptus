@@ -1,8 +1,8 @@
 import { injectable } from "inversify";
-import { BaseRepository } from "./baseRepository.js";
-import { Enrollment } from "../models/enrollment.model.js";
-import type { IEnrollment } from "../models/enrollment.model.js";
-import type { IStudentEnrollmentRepository } from "../interfaces/repositories/IStudentEnrollmentRepository.js";
+import { BaseRepository } from "./baseRepository";
+import { Enrollment } from "../models/enrollment.model";
+import type { IEnrollment } from "../models/enrollment.model";
+import type { IStudentEnrollmentRepository } from "../interfaces/repositories/IStudentEnrollmentRepository";
 
 @injectable()
 export class StudentEnrollmentRepository extends BaseRepository<IEnrollment> implements IStudentEnrollmentRepository {

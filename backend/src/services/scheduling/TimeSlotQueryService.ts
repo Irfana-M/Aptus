@@ -1,8 +1,8 @@
 import { injectable } from "inversify";
-import { TimeSlotModel } from "../../models/scheduling/timeSlot.model.js";
+import { TimeSlotModel } from "../../models/scheduling/timeSlot.model"
 
-import type { ITimeSlotQueryService } from "../../interfaces/services/ITimeSlotQueryService.js";
-import type { ITimeSlot } from "../../interfaces/models/timeSlot.interface.js";
+import type { ITimeSlotQueryService } from "../../interfaces/services/ITimeSlotQueryService";
+import type { ITimeSlot } from "../../interfaces/models/timeSlot.interface";
 
 @injectable()
 export class TimeSlotQueryService implements ITimeSlotQueryService {

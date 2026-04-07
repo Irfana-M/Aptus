@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { container } from "../inversify.config.js";
-import { TYPES } from "../types.js";
-import { ExamController } from "../controllers/exam.controller.js";
-import { AuthMiddleware } from "../middlewares/authMiddleware.js";
-import { requireAccess } from "../middlewares/studentAccessMiddleware.js";
-import { AccessState } from "../constants/accessControl.js";
+import { container } from "../inversify.config";
+import { TYPES } from "../types";
+import { ExamController } from "../controllers/exam.controller";
+import { AuthMiddleware } from "../middlewares/authMiddleware";
+import { requireAccess } from "../middlewares/studentAccessMiddleware";
+import { AccessState } from "../constants/accessControl";
 
 const examRouter = Router();
 const examController = container.get<ExamController>(TYPES.ExamController);

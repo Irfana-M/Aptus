@@ -1,26 +1,26 @@
-import type { ITrialClassDocument } from "@/models/student/trialClass.model.js";
-import type { OnboardingEvent } from "@/enums/studentOnboarding.enum.js";
+import type { ITrialClassDocument } from "@/models/student/trialClass.model";
+import type { OnboardingEvent } from "@/enums/studentOnboarding.enum";
 
 import { inject, injectable } from "inversify";
-import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository.js";
-import type { ITrialClassService } from "@/interfaces/services/ITrialClassService.js";
-import type { IStudentService } from "@/interfaces/services/IStudentService.js";
-import type { IAttendanceService } from "@/interfaces/services/IAttendanceService.js";
-import type { TrialEligibilityPolicy } from "@/domain/policy/TrialEligibilityPolicy.js";
-import type { TrialClassRequestDto, TrialClassResponseDto } from "@/dtos/student/trialClassDTO.js";
-import type { INotificationService } from "@/interfaces/services/INotificationService.js";
-import { TYPES } from "@/types.js";
-import { logger } from "@/utils/logger.js";
-import { AppError } from "@/utils/AppError.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
-import { MESSAGES } from "@/constants/messages.constants.js";
-import { TrialClassMapper } from "@/mappers/trialClassMapper.js";
+import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
+import type { ITrialClassService } from "@/interfaces/services/ITrialClassService";
+import type { IStudentService } from "@/interfaces/services/IStudentService";
+import type { IAttendanceService } from "@/interfaces/services/IAttendanceService";
+import type { TrialEligibilityPolicy } from "@/domain/policy/TrialEligibilityPolicy";
+import type { TrialClassRequestDto, TrialClassResponseDto } from "@/dtos/student/trialClassDTO";
+import type { INotificationService } from "@/interfaces/services/INotificationService";
+import { TYPES } from "@/types";
+import { logger } from "@/utils/logger";
+import { AppError } from "@/utils/AppError";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import { MESSAGES } from "@/constants/messages.constants";
+import { TrialClassMapper } from "@/mappers/trialClassMapper";
 import { Types } from "mongoose";
-import type { IMentorRepository } from "@/interfaces/repositories/IMentorRepository.js";
-import type { ICourseRepository } from "@/interfaces/repositories/ICourseRepository.js";
-import type { ISessionRepository } from "@/interfaces/repositories/ISessionRepository.js";
-import { InternalEventEmitter, EVENTS } from "@/utils/InternalEventEmitter.js";
-import { combineISTToUTC } from "../utils/time.util.js";
+import type { IMentorRepository } from "@/interfaces/repositories/IMentorRepository";
+import type { ICourseRepository } from "@/interfaces/repositories/ICourseRepository";
+import type { ISessionRepository } from "@/interfaces/repositories/ISessionRepository";
+import { InternalEventEmitter, EVENTS } from "@/utils/InternalEventEmitter";
+import { combineISTToUTC } from "../utils/time.util";
 
 @injectable()
 export class TrialClassService implements ITrialClassService {
@@ -291,7 +291,7 @@ export class TrialClassService implements ITrialClassService {
 
       if (!updatedTrial) throw new AppError(MESSAGES.TRIAL_CLASS.FEEDBACK_FAILED, HttpStatusCode.INTERNAL_SERVER_ERROR);
 
-      const { StudentModel } = await import("../models/student/student.model.js");
+      const { StudentModel } = await import("../models/student/student.model");
       await StudentModel.findByIdAndUpdate(trialStudentId, { isTrialCompleted: true });
       
       // Advance onboarding status to FEEDBACK_SUBMITTED
@@ -379,7 +379,7 @@ export class TrialClassService implements ITrialClassService {
 
       if (status === "completed") {
       const trialStudentId = this.getStringId(updated.student);
-      const { StudentModel } = await import("../models/student/student.model.js");
+      const { StudentModel } = await import("../models/student/student.model");
       await StudentModel.findByIdAndUpdate(trialStudentId, { isTrialCompleted: true });
       logger.info(`✅ Student ${trialStudentId} marked as isTrialCompleted: true`);
 
@@ -445,7 +445,7 @@ export class TrialClassService implements ITrialClassService {
 
 
   private async validateSubjectExists(subjectId: string): Promise<void> {
-    const { Subject } = await import("../models/subject.model.js");
+    const { Subject } = await import("../models/subject.model");
     const subject = await Subject.findById(subjectId);
 
     if (!subject) throw new AppError(MESSAGES.ADMIN.COURSE_NOT_FOUND, HttpStatusCode.BAD_REQUEST);
@@ -539,8 +539,8 @@ export class TrialClassService implements ITrialClassService {
       const dayOfWeek = this.getDayName(dateObj);
       
       // Resolve Subject
-      const { Subject } = await import("../models/subject.model.js");
-      let subject: import('../models/subject.model.js').ISubject | null;
+      const { Subject } = await import("../models/subject.model");
+      let subject: import('../models/subject.model').ISubject | null;
       
       if (Types.ObjectId.isValid(subjectId)) {
         subject = await Subject.findById(subjectId);
@@ -620,12 +620,12 @@ export class TrialClassService implements ITrialClassService {
   }
 
   // Auto-assign best available mentor
-  async autoAssignMentor(subjectId: string, date: string, timeSlot: string): Promise<import('../interfaces/models/mentor.interface.js').MentorProfile> {
+  async autoAssignMentor(subjectId: string, date: string, timeSlot: string): Promise<import('../interfaces/models/mentor.interface').MentorProfile> {
     try {
       const dateObj = new Date(date);
       const dayOfWeek = this.getDayName(dateObj);
       
-      const { Subject } = await import("../models/subject.model.js");
+      const { Subject } = await import("../models/subject.model");
       const subject = await Subject.findById(subjectId);
       if (!subject) throw new AppError(MESSAGES.ADMIN.COURSE_NOT_FOUND, HttpStatusCode.NOT_FOUND);
       

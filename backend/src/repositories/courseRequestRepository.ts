@@ -1,8 +1,8 @@
-import { BaseRepository } from "./baseRepository.js";
-import { CourseRequestModel } from "../models/courseRequest.model.js";
-import type { CourseRequestDocument } from "../models/courseRequest.model.js";
+import { BaseRepository } from "./baseRepository";
+import { CourseRequestModel } from "../models/courseRequest.model";
+import type { CourseRequestDocument } from "../models/courseRequest.model";
 import { injectable } from "inversify";
-import type { ICourseRequestRepository } from "../interfaces/repositories/ICourseRequestRepository.js";
+import type { ICourseRequestRepository } from "../interfaces/repositories/ICourseRequestRepository";
 
 @injectable()
 export class CourseRequestRepository extends BaseRepository<CourseRequestDocument> implements ICourseRequestRepository {

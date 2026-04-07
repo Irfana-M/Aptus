@@ -1,21 +1,21 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types.js";
-import type { IStudyMaterialService } from "../interfaces/services/IStudyMaterialService.js";
-import type { IStudyMaterialRepository } from "../interfaces/repositories/IStudyMaterialRepository.js";
-import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository.js";
-import type { IAssignmentSubmissionRepository } from "../interfaces/repositories/IAssignmentSubmissionRepository.js";
-import type { IBookingRepository } from "../interfaces/repositories/IBookingRepository.js";
-import type { ISubjectRepository } from "../interfaces/repositories/ISubjectRepository.js";
-import type { IStudyMaterial, IAssignmentSubmission } from "../interfaces/models/studyMaterial.interface.js";
-import { uploadFileToS3 } from "../utils/s3Upload.js";
-import { logger } from "../utils/logger.js";
-import { AppError } from "../utils/AppError.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository.js";
-import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository.js";
-import type { INotificationService } from "../interfaces/services/INotificationService.js";
-import { MESSAGES } from "../constants/messages.constants.js";
-import type { AssignmentResponseDto } from "../dtos/shared/AssignmentResponseDTO.js";
+import { TYPES } from "../types";
+import type { IStudyMaterialService } from "../interfaces/services/IStudyMaterialService";
+import type { IStudyMaterialRepository } from "../interfaces/repositories/IStudyMaterialRepository";
+import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository";
+import type { IAssignmentSubmissionRepository } from "../interfaces/repositories/IAssignmentSubmissionRepository";
+import type { IBookingRepository } from "../interfaces/repositories/IBookingRepository";
+import type { ISubjectRepository } from "../interfaces/repositories/ISubjectRepository";
+import type { IStudyMaterial, IAssignmentSubmission } from "../interfaces/models/studyMaterial.interface";
+import { uploadFileToS3 } from "../utils/s3Upload";
+import { logger } from "../utils/logger";
+import { AppError } from "../utils/AppError";
+import { HttpStatusCode } from "../constants/httpStatus";
+import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
+import type { INotificationService } from "../interfaces/services/INotificationService";
+import { MESSAGES } from "../constants/messages.constants";
+import type { AssignmentResponseDto } from "../dtos/shared/AssignmentResponseDTO";
 
 @injectable()
 export class StudyMaterialService implements IStudyMaterialService {

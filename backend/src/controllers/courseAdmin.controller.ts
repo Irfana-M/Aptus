@@ -1,15 +1,15 @@
 import type { Request, Response, NextFunction } from "express";
 import { injectable, inject } from "inversify";
-import type { ICourseAdminService } from "../interfaces/services/ICourseAdminService.js"
-import {TYPES} from "@/types.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
-import { logger } from "@/utils/logger.js";
-import type { CoursePaginationParams } from "@/dtos/shared/paginationTypes.js";
-import type { SubjectResponseDto } from "@/dtos/student/subject.dto.js";
-import { AppError } from "@/utils/AppError.js";
-import { getPaginationParams } from "@/utils/pagination.util.js";
-import { MESSAGES } from "@/constants/messages.constants.js";
-import { CourseStatus } from "@/enums/course.enum.js";
+import type { ICourseAdminService } from "../interfaces/services/ICourseAdminService"
+import {TYPES} from "@/types";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import { logger } from "@/utils/logger";
+import type { CoursePaginationParams } from "@/dtos/shared/paginationTypes";
+import type { SubjectResponseDto } from "@/dtos/student/subject.dto";
+import { AppError } from "@/utils/AppError";
+import { getPaginationParams } from "@/utils/pagination.util";
+import { MESSAGES } from "@/constants/messages.constants";
+import { CourseStatus } from "@/enums/course.enum";
 
 @injectable()
 export class CourseAdminController {

@@ -1,20 +1,20 @@
-import { MentorModel } from "../models/mentor/mentor.model.js";
-import type { IMentorRepository, MentorPaginatedResult, LeavePaginatedResult } from "../interfaces/repositories/IMentorRepository.js";
-import type { MentorProfile, LeaveEntry } from "../interfaces/models/mentor.interface.js";
-import { BaseRepository } from "./baseRepository.js";
+import { MentorModel } from "../models/mentor/mentor.model";
+import type { IMentorRepository, MentorPaginatedResult, LeavePaginatedResult } from "../interfaces/repositories/IMentorRepository"
+import type { MentorProfile, LeaveEntry } from "../interfaces/models/mentor.interface";
+import { BaseRepository } from "./baseRepository";
 import { Model, type Document, type PipelineStage, type ClientSession, type UpdateQuery, Types } from "mongoose";
 import type { FilterQuery } from "mongoose";
-import { logger } from "../utils/logger.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { getSignedFileUrl } from "../utils/s3Upload.js";
+import { logger } from "../utils/logger";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { getSignedFileUrl } from "../utils/s3Upload";
 import { injectable } from "inversify";
-import { AppError } from "../utils/AppError.js";
-import { MESSAGES } from "../constants/messages.constants.js";
-import { Subject } from "../models/subject.model.js";
-import { normalizeTimeTo24h } from "../utils/time.util.js";
-import type { MentorPaginationParams } from "@/dtos/shared/paginationTypes.js";
-import { getPaginationParams } from "@/utils/pagination.util.js";
-import { LEAVE_STATUS } from "../constants/status.constants.js";
+import { AppError } from "../utils/AppError";
+import { MESSAGES } from "../constants/messages.constants";
+import { Subject } from "../models/subject.model";
+import { normalizeTimeTo24h } from "../utils/time.util";
+import type { MentorPaginationParams } from "@/dtos/shared/paginationTypes";
+import { getPaginationParams } from "@/utils/pagination.util";
+import { LEAVE_STATUS } from "../constants/status.constants";
 
 @injectable()
 export class MentorRepository

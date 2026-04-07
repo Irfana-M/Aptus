@@ -1,22 +1,22 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types.js";
-import { type IMentorAssignmentRequest } from "../models/mentorAssignmentRequest.model.js";
-import { NotificationService } from "./NotificationService.js";
-import { InternalEventEmitter } from "../utils/InternalEventEmitter.js";
-import { EVENTS } from "../utils/InternalEventEmitter.js";
-import { combineISTToUTC } from "../utils/time.util.js";
-import { AppError } from "../utils/AppError.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { logger } from "../utils/logger.js";
+import { TYPES } from "../types";
+import { type IMentorAssignmentRequest } from "../models/mentorAssignmentRequest.model";
+import { NotificationService } from "./NotificationService";
+import { InternalEventEmitter } from "../utils/InternalEventEmitter";
+import { EVENTS } from "../utils/InternalEventEmitter";
+import { combineISTToUTC } from "../utils/time.util";
+import { AppError } from "../utils/AppError";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { logger } from "../utils/logger";
 import { Types } from "mongoose";
-import { MESSAGES } from "../constants/messages.constants.js";
+import { MESSAGES } from "../constants/messages.constants";
 
 import { v4 as uuidv4 } from 'uuid';
 
-import type { IMentorRequestService } from "../interfaces/services/IMentorRequestService.js";
-import type { SchedulingPolicy } from "../domain/scheduling/SchedulingPolicy.js";
-import type { ISubscriptionRepository } from "../interfaces/repositories/ISubscriptionRepository.js";
-import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository.js";
+import type { IMentorRequestService } from "../interfaces/services/IMentorRequestService";
+import type { SchedulingPolicy } from "../domain/scheduling/SchedulingPolicy";
+import type { ISubscriptionRepository } from "../interfaces/repositories/ISubscriptionRepository";
+import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository";
 
 // - [x] Fix property mismatch in `AdminService.getAllTrialClasses`
 // - [x] Correct time-slot parsing in `MentorRequestService.approveRequest`
@@ -29,14 +29,14 @@ export class MentorRequestService implements IMentorRequestService {
 
   constructor(
     @inject(TYPES.INotificationService) private notificationService: NotificationService,
-    @inject(TYPES.IMentorAssignmentRequestRepository) private requestRepo: import("../interfaces/repositories/IMentorAssignmentRequestRepository.js").IMentorAssignmentRequestRepository,
-    @inject(TYPES.IStudentRepository) private studentRepo: import("../interfaces/repositories/IStudentRepository.js").IStudentRepository,
-    @inject(TYPES.ICourseRepository) private courseRepo: import("../interfaces/repositories/ICourseRepository.js").ICourseRepository,
-    @inject(TYPES.IEnrollmentLinkRepository) private enrollmentLinkRepo: import("../interfaces/repositories/IEnrollmentLinkRepository.js").IEnrollmentLinkRepository,
-    @inject(TYPES.ISessionRepository) private sessionRepo: import("../interfaces/repositories/ISessionRepository.js").ISessionRepository,
-    @inject(TYPES.IGradeRepository) private gradeRepo: import("../interfaces/repositories/IGradeRepository.js").IGradeRepository,
-    @inject(TYPES.ITimeSlotRepository) private timeSlotRepo: import("../interfaces/repositories/ITimeSlotRepository.js").ITimeSlotRepository,
-    @inject(TYPES.IMentorRepository) private mentorRepo: import("../interfaces/repositories/IMentorRepository.js").IMentorRepository,
+    @inject(TYPES.IMentorAssignmentRequestRepository) private requestRepo: import("../interfaces/repositories/IMentorAssignmentRequestRepository").IMentorAssignmentRequestRepository,
+    @inject(TYPES.IStudentRepository) private studentRepo: import("../interfaces/repositories/IStudentRepository").IStudentRepository,
+    @inject(TYPES.ICourseRepository) private courseRepo: import("../interfaces/repositories/ICourseRepository").ICourseRepository,
+    @inject(TYPES.IEnrollmentLinkRepository) private enrollmentLinkRepo: import("../interfaces/repositories/IEnrollmentLinkRepository").IEnrollmentLinkRepository,
+    @inject(TYPES.ISessionRepository) private sessionRepo: import("../interfaces/repositories/ISessionRepository").ISessionRepository,
+    @inject(TYPES.IGradeRepository) private gradeRepo: import("../interfaces/repositories/IGradeRepository").IGradeRepository,
+    @inject(TYPES.ITimeSlotRepository) private timeSlotRepo: import("../interfaces/repositories/ITimeSlotRepository").ITimeSlotRepository,
+    @inject(TYPES.IMentorRepository) private mentorRepo: import("../interfaces/repositories/IMentorRepository").IMentorRepository,
     @inject(TYPES.ISubscriptionRepository) private subscriptionRepo: ISubscriptionRepository,
     @inject(TYPES.ITrialClassRepository) private trialClassRepo: ITrialClassRepository,
     @inject(TYPES.SchedulingPolicy) private schedulingPolicy: SchedulingPolicy,
@@ -132,7 +132,7 @@ export class MentorRequestService implements IMentorRequestService {
           };
       } else {
           // Automatic from Student Preferences
-          const matchedSlot = (studentProfile as unknown as import('../interfaces/models/student.interface.js').StudentProfile).preferredTimeSlots?.find(
+          const matchedSlot = (studentProfile as unknown as import('../interfaces/models/student.interface').StudentProfile).preferredTimeSlots?.find(
             (slot) => {
               const s = slot as unknown as { subjectId?: { _id?: { toString(): string }, toString(): string } };
               const slotSubjectId = s.subjectId?._id ? s.subjectId._id.toString() : s.subjectId?.toString();
@@ -171,7 +171,7 @@ export class MentorRequestService implements IMentorRequestService {
       }
 
       // STEP 3: Validate Subscription
-      const studentWithType = studentProfile as unknown as import('../interfaces/models/student.interface.js').StudentProfile;
+      const studentWithType = studentProfile as unknown as import('../interfaces/models/student.interface').StudentProfile;
       const subscription = studentWithType.subscription;
       if (!subscription || subscription.status !== 'active') {
           throw new AppError(MESSAGES.ENROLLMENT.NOT_FOUND, HttpStatusCode.FORBIDDEN);
@@ -345,7 +345,7 @@ if (!Types.ObjectId.isValid(finalGradeIdStr)) {
           } as Record<string, unknown>);
            
            if (existingGroupCourses) {
-               course = existingGroupCourses as unknown as import('../models/course.model.js').ICourse;
+               course = existingGroupCourses as unknown as import('../models/course.model').ICourse;
                logger.info(`[ApproveRequest] Joining existing group course ${course._id}`);
               
                // Safe Increment enrolled count
@@ -373,7 +373,7 @@ if (!Types.ObjectId.isValid(finalGradeIdStr)) {
             courseType,
             maxStudents: courseType === 'group' ? maxGroupStudents : 1,
             enrolledStudents: courseType === 'group' ? 1 : 0
-          } as unknown as import("../interfaces/repositories/ICourseRepository.js").CreateOneToOneCourseDto)) as import("../models/course.model.js").ICourse;
+          } as unknown as import("../interfaces/repositories/ICourseRepository").CreateOneToOneCourseDto)) as import("../models/course.model").ICourse;
           recoveredRecords.push(courseType === 'group' ? 'group_course_created' : 'course_created');
       }
 
@@ -386,7 +386,7 @@ if (!Types.ObjectId.isValid(finalGradeIdStr)) {
               student: new Types.ObjectId(requestStudentIdStr) as unknown as import('mongoose').Schema.Types.ObjectId,
               course: new Types.ObjectId(courseIdForLink) as unknown as import('mongoose').Schema.Types.ObjectId,
               status: 'active' as 'active' | 'pending_payment' | 'cancelled',
-          } as unknown as Partial<import('../models/enrollment.model.js').IEnrollment>);
+          } as unknown as Partial<import('../models/enrollment.model').IEnrollment>);
           enrollmentId = (newLink as unknown as { _id: { toString(): string } })._id.toString();
           recoveredRecords.push('enrollment_link_created');
       } else {
@@ -675,7 +675,7 @@ if (!Types.ObjectId.isValid(finalGradeIdStr)) {
                         status: 'available',
                         maxStudents: courseType === 'group' ? 10 : 1,
                         currentStudentCount: 0
-                    } as unknown as import('../interfaces/models/timeSlot.interface.js').ITimeSlot);
+                    } as unknown as import('../interfaces/models/timeSlot.interface').ITimeSlot);
                 } catch (error) {
                     const errorObj = error as { code?: number };
                     if (errorObj.code === 11000) {
@@ -717,7 +717,7 @@ if (!Types.ObjectId.isValid(finalGradeIdStr)) {
                 mentorStatus: 'scheduled' as const
             };
 
-            await this.sessionRepo.create(sessionData as unknown as import('../interfaces/models/session.interface.js').ISession);
+            await this.sessionRepo.create(sessionData as unknown as import('../interfaces/models/session.interface').ISession);
 
             // 4. Confirm Booking (BOOKED state)
             await this.timeSlotRepo.confirmBooking((slotDoc as unknown as { _id: { toString(): string } })._id.toString());

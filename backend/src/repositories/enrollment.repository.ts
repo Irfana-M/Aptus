@@ -1,11 +1,11 @@
 import { injectable, inject } from "inversify";
 import { type ClientSession } from "mongoose";
-import { Course, type ICourse } from "../models/course.model.js";
-import type { IEnrollmentRepository, CreateEnrollmentDto } from "../interfaces/repositories/IEnrollmentRepository.js";
-import { BaseRepository } from "./baseRepository.js";
-import type { CoursePaginationParams, CoursePaginatedResult } from "@/dtos/shared/paginationTypes.js";
-import { TYPES } from "../types.js";
-import type { ICourseRepository, CreateOneToOneCourseDto } from "../interfaces/repositories/ICourseRepository.js";
+import { Course, type ICourse } from "../models/course.model";
+import type { IEnrollmentRepository, CreateEnrollmentDto } from "../interfaces/repositories/IEnrollmentRepository";
+import { BaseRepository } from "./baseRepository";
+import type { CoursePaginationParams, CoursePaginatedResult } from "@/dtos/shared/paginationTypes";
+import { TYPES } from "../types";
+import type { ICourseRepository, CreateOneToOneCourseDto } from "../interfaces/repositories/ICourseRepository";
 
 @injectable()
 export class EnrollmentRepository extends BaseRepository<ICourse> implements IEnrollmentRepository {

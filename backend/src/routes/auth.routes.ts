@@ -1,17 +1,17 @@
 import { Router } from "express";
-import { AUTH_ROUTES } from "../constants/routes.js";
-import passport from "../config/passport.config.js";
-import { generateAccessToken, generateRefreshToken } from "../utils/jwt.util.js";
-import { config } from "../config/app.config.js";
-import { env } from "../utils/env.js";
+import { AUTH_ROUTES } from "../constants/routes";
+import passport from "../config/passport.config";
+import { generateAccessToken, generateRefreshToken } from "../utils/jwt.util";
+import { config } from "../config/app.config";
+import { env } from "../utils/env";
 import type { Request, Response, NextFunction } from "express";
-import { container } from "../inversify.config.js";
-import { TYPES } from "../types.js";
+import { container } from "../inversify.config";
+import { TYPES } from "../types";
 import rateLimit from "express-rate-limit";
 
-import { validateBody } from "../middlewares/validate.middleware.js";
-import { studentRegisterSchema } from "../validations/authValidation/signup.validation.js";
-import { loginSchema } from "../validations/authValidation/login.validation.js";
+import { validateBody } from "../middlewares/validate.middleware";
+import { studentRegisterSchema } from "../validations/authValidation/signup.validation";
+import { loginSchema } from "../validations/authValidation/login.validation";
 
 // Rate limiter for login and forgot-password (brute-force protection)
 const loginLimiter = rateLimit({
@@ -31,8 +31,8 @@ const registerLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-import type { AuthController } from "../controllers/auth.controller.js";
-import type { OtpController } from "../controllers/otp.controller.js";
+import type { AuthController } from "../controllers/auth.controller";
+import type { OtpController } from "../controllers/otp.controller";
 // Unused models removed
 interface GoogleUser {
   id: string;
@@ -132,8 +132,8 @@ router.get(
         // Self-healing: If flag is false but user might have completed a trial
         if (role === 'student' && isTrialCompletedString === 'false') {
           try {
-            const { TrialClass } = await import("../models/student/trialClass.model.js");
-            const { StudentModel } = await import("../models/student/student.model.js");
+            const { TrialClass } = await import("../models/student/trialClass.model");
+            const { StudentModel } = await import("../models/student/student.model");
             
             const completedTrial = await TrialClass.findOne({
               student: googleUser._id,
@@ -178,7 +178,7 @@ router.post(AUTH_ROUTES.SIGNUP_VERIFY_OTP, registerLimiter, (req, res, next) => 
 router.post(AUTH_ROUTES.SIGNUP_RESEND_OTP, registerLimiter, (req, res, next) => otpController.resendOtp(req, res, next));
 router.post(AUTH_ROUTES.LOGIN, loginLimiter, validateBody(loginSchema), (req: Request, res: Response, next: NextFunction) => authController.login(req, res, next));
 router.post(AUTH_ROUTES.FORGOT_PASSWORD_SEND_OTP, loginLimiter, (req, res, next) => authController.sendForgotPasswordOtp(req, res, next));
-import { requireAuth } from "../middlewares/authMiddleware.js";
+import { requireAuth } from "../middlewares/authMiddleware";
 
 router.post(AUTH_ROUTES.REFRESH, (req, res, next) => authController.refreshAccessToken(req, res, next));
 router.get(AUTH_ROUTES.ME, requireAuth, (req, res, next) => authController.getMe(req, res, next));

@@ -1,13 +1,13 @@
 import type { Request, Response } from 'express';
 import { injectable, inject } from "inversify";
-import { TYPES } from "@/types.js";
-import type { IVideoCallService } from "@/interfaces/services/IVideoCallService.js";
-import { logger } from "@/utils/logger.js";
-import { AppError } from "@/utils/AppError.js";
-import { HttpStatusCode } from '@/constants/httpStatus.js';
-import { MESSAGES } from '@/constants/messages.constants.js';
-import { UserRole } from '@/enums/user.enum.js';
-import { CallStatus } from '@/enums/videoCall.enum.js';
+import { TYPES } from "@/types";
+import type { IVideoCallService } from "@/interfaces/services/IVideoCallService";
+import { logger } from "@/utils/logger";
+import { AppError } from "@/utils/AppError";
+import { HttpStatusCode } from '@/constants/httpStatus';
+import { MESSAGES } from '@/constants/messages.constants';
+import { UserRole } from '@/enums/user.enum';
+import { CallStatus } from '@/enums/videoCall.enum';
 
 
 

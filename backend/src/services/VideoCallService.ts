@@ -1,22 +1,22 @@
 import { injectable, inject } from "inversify";
-import type { ITrialClassDocument } from "../models/student/trialClass.model.js";
-import { TYPES } from "@/types.js";
-import type { IVideoCallService } from "@/interfaces/services/IVideoCallService.js";
-import type { IVideoCallRepository } from "@/interfaces/repositories/IVideoCallRepository.js";
-import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository.js";
+import type { ITrialClassDocument } from "../models/student/trialClass.model"
+import { TYPES } from "@/types";
+import type { IVideoCallService } from "@/interfaces/services/IVideoCallService";
+import type { IVideoCallRepository } from "@/interfaces/repositories/IVideoCallRepository";
+import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
 import type {
   JoinCallRequestDto,
   CallEndedDto,
-} from "../dtos/webrtcDTO.js";
-import { logger } from "@/utils/logger.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
-import { AppError } from "@/utils/AppError.js";
+} from "../dtos/webrtcDTO";
+import { logger } from "@/utils/logger";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import { AppError } from "@/utils/AppError";
 import { Types } from "mongoose";
-import type { IUserRoleService } from "@/interfaces/services/IUserRoleSrvice.js";
-import type { IAttendanceService } from "@/interfaces/services/IAttendanceService.js";
+import type { IUserRoleService } from "@/interfaces/services/IUserRoleSrvice";
+import type { IAttendanceService } from "@/interfaces/services/IAttendanceService";
 
-import { fileLogger } from "@/utils/fileLogger.js";
-import type { ISessionRepository } from "@/interfaces/repositories/ISessionRepository.js";
+import { fileLogger } from "@/utils/fileLogger";
+import type { ISessionRepository } from "@/interfaces/repositories/ISessionRepository";
 
 @injectable()
 export class VideoCallService implements IVideoCallService {

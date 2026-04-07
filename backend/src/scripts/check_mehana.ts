@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import '../models/student/student.model.js';
-import '../models/scheduling/session.model.js';
+import '../models/student/student.model';
+import '../models/scheduling/session.model';
 
 dotenv.config();
 

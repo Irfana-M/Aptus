@@ -6,16 +6,16 @@ import type {
   ParentInfo,
   contactInfo,
   AcademicDetails
-} from "../interfaces/models/student.interface.js";
+} from "../interfaces/models/student.interface";
 import type {
   StudentAuthUser,
   AuthUser,
-} from "../interfaces/auth/auth.interface.js";
-import type { StudentBaseResponseDto } from "../dtos/auth/UserResponseDTO.js";
-import { StudentOnboardingStatus } from "../enums/studentOnboarding.enum.js";
-import { ApprovalStatus } from "../domain/enums/ApprovalStatus.js";
+} from "../interfaces/auth/auth.interface";
+import type { StudentBaseResponseDto } from "../dtos/auth/UserResponseDTO";
+import { StudentOnboardingStatus } from "../enums/studentOnboarding.enum";
+import { ApprovalStatus } from "../domain/enums/ApprovalStatus";
 import { Types } from "mongoose";
-import { logger } from "../utils/logger.js";
+import { logger } from "../utils/logger";
 
 
 export class StudentMapper {

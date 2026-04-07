@@ -1,20 +1,20 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types.js";
+import { TYPES } from "../types";
 import type { NextFunction, Request, Response } from "express";
-import type { IAuthService } from "../interfaces/services/IauthService.js";
-import { studentRegisterSchema } from "../validations/authValidation/signup.validation.js";
-import { loginSchema } from "../validations/authValidation/login.validation.js";
-import type { IOtpService } from "../interfaces/services/IOtpService.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { MESSAGES } from "../constants/messages.constants.js";
-import { logger } from "../utils/logger.js";
-import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO.js";
-import type { LoginUserDto } from "../dtos/auth/LoginUserDTO.js";
-import type { SendOtpDto } from "../dtos/auth/OtpDTO.js";
-import { UserRole } from "../enums/user.enum.js";
-import { generateAccessToken, verifyRefreshToken } from "@/utils/jwt.util.js";
-import { AppError } from "@/utils/AppError.js";
-import { config } from "../config/app.config.js";
+import type { IAuthService } from "../interfaces/services/IauthService";
+import { studentRegisterSchema } from "../validations/authValidation/signup.validation";
+import { loginSchema } from "../validations/authValidation/login.validation";
+import type { IOtpService } from "../interfaces/services/IOtpService";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { MESSAGES } from "../constants/messages.constants";
+import { logger } from "../utils/logger";
+import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO";
+import type { LoginUserDto } from "../dtos/auth/LoginUserDTO";
+import type { SendOtpDto } from "../dtos/auth/OtpDTO";
+import { UserRole } from "../enums/user.enum";
+import { generateAccessToken, verifyRefreshToken } from "@/utils/jwt.util";
+import { AppError } from "@/utils/AppError";
+import { config } from "../config/app.config";
 
 @injectable()
 export class AuthController {

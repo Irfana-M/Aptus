@@ -1,14 +1,14 @@
 import { inject, injectable } from "inversify";
-import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository.js";
-import type { IGradeRepository } from "@/interfaces/repositories/IGradeRepository.js";
-import type { SubjectResponseDto } from "@/dtos/student/subject.dto.js";
-import { TYPES } from "@/types.js";
-import { logger } from "@/utils/logger.js";
-import { AppError } from "@/utils/AppError.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
-import type { ISubjectService } from "@/interfaces/services/ISubjectService.js";
-import type { ISubject } from "@/models/subject.model.js";
-import { MESSAGES } from "@/constants/messages.constants.js";
+import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository";
+import type { IGradeRepository } from "@/interfaces/repositories/IGradeRepository";
+import type { SubjectResponseDto } from "@/dtos/student/subject.dto";
+import { TYPES } from "@/types";
+import { logger } from "@/utils/logger";
+import { AppError } from "@/utils/AppError";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import type { ISubjectService } from "@/interfaces/services/ISubjectService";
+import type { ISubject } from "@/models/subject.model";
+import { MESSAGES } from "@/constants/messages.constants";
 
 @injectable()
 export class SubjectService implements ISubjectService {

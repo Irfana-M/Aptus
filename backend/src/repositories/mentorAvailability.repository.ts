@@ -1,9 +1,9 @@
 import { injectable } from "inversify";
 import mongoose from "mongoose";
-import { BaseRepository } from "./baseRepository.js";
-import { MentorAvailabilityModel } from "../models/mentor/mentorAvailability.model.js";
-import type { IMentorAvailability } from "../interfaces/models/mentorAvailability.interface.js";
-import type { IMentorAvailabilityRepository } from "../interfaces/repositories/IMentorAvailabilityRepository.js";
+import { BaseRepository } from "./baseRepository";
+import { MentorAvailabilityModel } from "../models/mentor/mentorAvailability.model";
+import type { IMentorAvailability } from "../interfaces/models/mentorAvailability.interface";
+import type { IMentorAvailabilityRepository } from "../interfaces/repositories/IMentorAvailabilityRepository";
 
 @injectable()
 export class MentorAvailabilityRepository extends BaseRepository<IMentorAvailability> implements IMentorAvailabilityRepository {

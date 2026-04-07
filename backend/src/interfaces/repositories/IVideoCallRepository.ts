@@ -1,4 +1,4 @@
-import type { IVideoCallDocument } from "@/interfaces/models/videoCall.interface.js";
+import type { IVideoCallDocument } from "@/interfaces/models/videoCall.interface";
 import { Types } from "mongoose";
 
 export interface IVideoCallRepository {

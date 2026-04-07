@@ -1,16 +1,16 @@
 import { Router } from "express";
-import { MENTOR_ROUTES } from "../constants/routes.js";
-import { MentorController } from "../controllers/mentor.controller.js";
+import { MENTOR_ROUTES } from "../constants/routes";
+import { MentorController } from "../controllers/mentor.controller";
 
-import { requireAuth } from "../middlewares/authMiddleware.js";
-import { requireRole } from "../middlewares/role.middleware.js";
-import { upload } from "../middlewares/upload.middleware.js";
-import { container } from "../inversify.config.js";
-import { TYPES } from "../types.js";
-import { MentorTrialClassController } from "../controllers/mentorTrialClass.controller.js";
-import { CourseController } from "../controllers/course.controller.js";
-import { StudyMaterialController } from "../controllers/studyMaterial.controller.js";
-import { MentorDashboardController } from "../controllers/mentorDashboard.controller.js";
+import { requireAuth } from "../middlewares/authMiddleware";
+import { requireRole } from "../middlewares/role.middleware";
+import { upload } from "../middlewares/upload.middleware";
+import { container } from "../inversify.config";
+import { TYPES } from "../types";
+import { MentorTrialClassController } from "../controllers/mentorTrialClass.controller";
+import { CourseController } from "../controllers/course.controller";
+import { StudyMaterialController } from "../controllers/studyMaterial.controller";
+import { MentorDashboardController } from "../controllers/mentorDashboard.controller";
 
 const mentorRouter = Router();
 

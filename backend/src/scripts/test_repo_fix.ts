@@ -1,12 +1,12 @@
 import 'reflect-metadata';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { SessionRepository } from '../repositories/session.repository.js';
-import '../models/subject.model.js';
-import '../models/student/student.model.js';
-import '../models/mentor/mentor.model.js';
-import '../models/scheduling/session.model.js';
-import '../models/grade.model.js';
+import { SessionRepository } from '../repositories/session.repository';
+import '../models/subject.model';
+import '../models/student/student.model';
+import '../models/mentor/mentor.model';
+import '../models/scheduling/session.model';
+import '../models/grade.model';
 
 dotenv.config();
 

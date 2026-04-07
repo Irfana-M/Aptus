@@ -1,5 +1,5 @@
-import type { IStudyMaterial, IAssignmentSubmission } from "../models/studyMaterial.interface.js";
-import type { AssignmentResponseDto } from "../../dtos/shared/AssignmentResponseDTO.js";
+import type { IStudyMaterial, IAssignmentSubmission } from "../models/studyMaterial.interface";
+import type { AssignmentResponseDto } from "../../dtos/shared/AssignmentResponseDTO";
 
 export interface IStudyMaterialService {
   uploadMaterial(data: {

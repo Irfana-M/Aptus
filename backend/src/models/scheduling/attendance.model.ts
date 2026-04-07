@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import type { IAttendance } from '../../interfaces/models/attendance.interface.js';
+import type { IAttendance } from '../../interfaces/models/attendance.interface';
 
 const attendanceSchema = new Schema<IAttendance>(
   {

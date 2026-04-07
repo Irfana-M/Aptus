@@ -1,40 +1,40 @@
 import { injectable, inject } from 'inversify';
 import type {
   IMentorRepository,
-} from "../interfaces/repositories/IMentorRepository.js";
-import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository.js";
-import type { IMentorAuthRepository } from '@/interfaces/repositories/IMentorAuthRepository.js';
-import type { AuthUser } from "../interfaces/auth/auth.interface.js";
-import type { IEmailService } from "../interfaces/services/IEmailService.js";
-import type { MentorProfile } from "../interfaces/models/mentor.interface.js";
-import type { IMentorService } from "../interfaces/services/IMentorService.js";
-import type { ISessionRepository } from '../interfaces/repositories/ISessionRepository.js';
-import type { ISchedulingService } from '../interfaces/services/ISchedulingService.js';
-import type { ICourseRepository } from '../interfaces/repositories/ICourseRepository.js';
-import type { IMentorAvailabilityRepository } from '../interfaces/repositories/IMentorAvailabilityRepository.js';
-import type { ITimeSlotRepository } from '../interfaces/repositories/ITimeSlotRepository.js';
-import { logger } from "../utils/logger.js";
-import { getErrorMessage } from "../utils/errorUtils.js";
-import { uploadFileToS3 } from "../utils/s3Upload.js";
-import { TYPES } from '../types.js';
+} from "../interfaces/repositories/IMentorRepository";
+import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository";
+import type { IMentorAuthRepository } from '@/interfaces/repositories/IMentorAuthRepository';
+import type { AuthUser } from "../interfaces/auth/auth.interface";
+import type { IEmailService } from "../interfaces/services/IEmailService";
+import type { MentorProfile } from "../interfaces/models/mentor.interface";
+import type { IMentorService } from "../interfaces/services/IMentorService";
+import type { ISessionRepository } from '../interfaces/repositories/ISessionRepository';
+import type { ISchedulingService } from '../interfaces/services/ISchedulingService';
+import type { ICourseRepository } from '../interfaces/repositories/ICourseRepository';
+import type { IMentorAvailabilityRepository } from '../interfaces/repositories/IMentorAvailabilityRepository';
+import type { ITimeSlotRepository } from '../interfaces/repositories/ITimeSlotRepository';
+import { logger } from "../utils/logger";
+import { getErrorMessage } from "../utils/errorUtils";
+import { uploadFileToS3 } from "../utils/s3Upload";
+import { TYPES } from '../types';
 import mongoose from "mongoose";
-import { MESSAGES } from '../constants/messages.constants.js';
-import type { RegisterUserDto } from '@/dtos/auth/RegisteruserDTO.js';
-import type { MentorResponseDto } from '@/dtos/mentor/MentorResponseDTO.js';
-import { MentorMapper } from '@/mappers/MentorMapper.js';
-import { TrialClassMapper } from '@/mappers/trialClassMapper.js';
-import type { TrialClassResponseDto } from "@/dtos/student/trialClassDTO.js";
-import { AppError } from '../utils/AppError.js';
-import { HttpStatusCode } from '../constants/httpStatus.js';
-import { MENTOR_LEAVE_CUTOFF_HOURS } from '../config/leavePolicy.config.js';
+import { MESSAGES } from '../constants/messages.constants';
+import type { RegisterUserDto } from '@/dtos/auth/RegisteruserDTO';
+import type { MentorResponseDto } from '@/dtos/mentor/MentorResponseDTO';
+import { MentorMapper } from '@/mappers/MentorMapper';
+import { TrialClassMapper } from '@/mappers/trialClassMapper';
+import type { TrialClassResponseDto } from "@/dtos/student/trialClassDTO";
+import { AppError } from '../utils/AppError';
+import { HttpStatusCode } from '../constants/httpStatus';
+import { MENTOR_LEAVE_CUTOFF_HOURS } from '../config/leavePolicy.config';
 
-import type { ILeavePolicyService } from '../interfaces/services/ILeavePolicyService.js';
-import { LEAVE_STATUS } from '../constants/status.constants.js';
-import { DomainEvent } from '../constants/events.js';
-import type { InternalEventEmitter } from '../utils/InternalEventEmitter.js';
-import type { LeaveEntry } from '../interfaces/models/mentor.interface.js';
-import { StatusLogger } from '../utils/statusLogger.js';
-import type { LeavePaginatedResult } from '../interfaces/repositories/IMentorRepository.js';
+import type { ILeavePolicyService } from '../interfaces/services/ILeavePolicyService';
+import { LEAVE_STATUS } from '../constants/status.constants';
+import { DomainEvent } from '../constants/events';
+import type { InternalEventEmitter } from '../utils/InternalEventEmitter';
+import type { LeaveEntry } from '../interfaces/models/mentor.interface';
+import { StatusLogger } from '../utils/statusLogger';
+import type { LeavePaginatedResult } from '../interfaces/repositories/IMentorRepository';
 
 @injectable()
 export class MentorService implements IMentorService {
@@ -512,7 +512,7 @@ export class MentorService implements IMentorService {
           continue;
         }
 
-        const slots = avail.slots.map((slot: import('../interfaces/models/mentor.interface.js').TimeSlot) => ({
+        const slots = avail.slots.map((slot: import('../interfaces/models/mentor.interface').TimeSlot) => ({
           startTime: slot.startTime,
           endTime: slot.endTime
         }));

@@ -1,5 +1,5 @@
 import { Schema, Document } from "mongoose";
-import { SESSION_STATUS } from "../../constants/status.constants.js";
+import { SESSION_STATUS } from "../../constants/status.constants";
 
 export interface ISessionParticipant {
   userId: Schema.Types.ObjectId;

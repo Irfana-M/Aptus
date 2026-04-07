@@ -1,11 +1,11 @@
 import type { Request, Response } from "express";
 import { inject, injectable } from "inversify";
-import { TYPES } from "@/types.js";
-import type { IGradeService } from "@/interfaces/services/IGradeService.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
-import { logger } from "@/utils/logger.js";
-import { AppError } from "@/utils/AppError.js";
-import { MESSAGES } from "@/constants/messages.constants.js";
+import { TYPES } from "@/types";
+import type { IGradeService } from "@/interfaces/services/IGradeService";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import { logger } from "@/utils/logger";
+import { AppError } from "@/utils/AppError";
+import { MESSAGES } from "@/constants/messages.constants";
 
 @injectable()
 export class GradeController {

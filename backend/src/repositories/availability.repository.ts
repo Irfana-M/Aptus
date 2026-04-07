@@ -1,9 +1,9 @@
 import { injectable } from "inversify";
 import type { ClientSession } from "mongoose";
-import { BaseRepository } from "./baseRepository.js";
-import type { ITimeSlot } from "../interfaces/models/timeSlot.interface.js";
-import { TimeSlotModel } from "../models/scheduling/timeSlot.model.js";
-import type { IAvailabilityRepository } from "../interfaces/repositories/IAvailabilityRepository.js";
+import { BaseRepository } from "./baseRepository";
+import type { ITimeSlot } from "../interfaces/models/timeSlot.interface";
+import { TimeSlotModel } from "../models/scheduling/timeSlot.model";
+import type { IAvailabilityRepository } from "../interfaces/repositories/IAvailabilityRepository";
 
 @injectable()
 export class AvailabilityRepository extends BaseRepository<ITimeSlot> implements IAvailabilityRepository {

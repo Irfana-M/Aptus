@@ -1,8 +1,8 @@
 
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import { Grade } from "../models/grade.model.js";
-import { Subject } from "../models/subject.model.js";
+import { Grade } from "../models/grade.model";
+import { Subject } from "../models/subject.model";
 
 dotenv.config();
 

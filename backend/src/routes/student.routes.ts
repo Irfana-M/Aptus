@@ -1,21 +1,21 @@
 import { Router } from "express";
-import { STUDENT_ROUTES } from "../constants/routes.js";
-import { container } from "../inversify.config.js";
-import { TYPES } from "../types.js";
-import { TrialClassController } from "../controllers/trialClass.controller.js";
-import { GradeController } from "../controllers/grade.controller.js";
-import { SubjectController } from "../controllers/subject.controller.js";
-import { requireAuth } from "../middlewares/authMiddleware.js";
-import { requireRole } from "../middlewares/role.middleware.js";
-import { requireAccess } from "../middlewares/studentAccessMiddleware.js";
-import { AccessState } from "../constants/accessControl.js";
-import { validateBody } from "../middlewares/validate.middleware.js";
-import { updateStudentProfileSchema } from "../validators/student.validator.js";
-import type { ISessionService } from "../interfaces/services/ISessionService.js";
-import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository.js";
-import type { ITimeSlot } from "../interfaces/models/timeSlot.interface.js";
+import { STUDENT_ROUTES } from "../constants/routes";
+import { container } from "../inversify.config";
+import { TYPES } from "../types";
+import { TrialClassController } from "../controllers/trialClass.controller";
+import { GradeController } from "../controllers/grade.controller";
+import { SubjectController } from "../controllers/subject.controller";
+import { requireAuth } from "../middlewares/authMiddleware";
+import { requireRole } from "../middlewares/role.middleware";
+import { requireAccess } from "../middlewares/studentAccessMiddleware";
+import { AccessState } from "../constants/accessControl";
+import { validateBody } from "../middlewares/validate.middleware";
+import { updateStudentProfileSchema } from "../validators/student.validator";
+import type { ISessionService } from "../interfaces/services/ISessionService";
+import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository";
+import type { ITimeSlot } from "../interfaces/models/timeSlot.interface";
 
-import { StudyMaterialController } from "../controllers/studyMaterial.controller.js";
+import { StudyMaterialController } from "../controllers/studyMaterial.controller";
 
 const studentRouter = Router();
 
@@ -98,7 +98,7 @@ studentRouter.get(
 );
 
 // === FULL ACCESS ROUTES (Requires Active Subscription) ===
-import { CourseRequestController } from "../controllers/courseRequest.controller.js";
+import { CourseRequestController } from "../controllers/courseRequest.controller";
 const courseRequestController = container.get<CourseRequestController>(TYPES.CourseRequestController);
 
 studentRouter.post(
@@ -109,7 +109,7 @@ studentRouter.post(
   courseRequestController.createRequest.bind(courseRequestController)
 );
 
-import { CourseController } from "../controllers/course.controller.js";
+import { CourseController } from "../controllers/course.controller";
 const courseController = container.get<CourseController>(TYPES.CourseController);
 
 studentRouter.get(
@@ -129,8 +129,8 @@ studentRouter.get(
 );
 
 // === ACCOUNT & PROFILE ROUTES ===
-import { StudentController } from "../controllers/student.controller.js";
-import { upload } from "../middlewares/upload.middleware.js";
+import { StudentController } from "../controllers/student.controller";
+import { upload } from "../middlewares/upload.middleware";
 const studentController = container.get<StudentController>(TYPES.StudentController);
 const sessionService = container.get<ISessionService>(TYPES.ISessionService);
 
@@ -226,7 +226,7 @@ studentRouter.get(
             const now = new Date();
             const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
             
-            const bookings = await import("../models/scheduling/booking.model.js").then(m => m.BookingModel.find({ studentId, status: 'scheduled' }).lean());
+            const bookings = await import("../models/scheduling/booking.model").then(m => m.BookingModel.find({ studentId, status: 'scheduled' }).lean());
             
             const debugInfo = {
                 studentId,

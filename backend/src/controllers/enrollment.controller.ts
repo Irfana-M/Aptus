@@ -1,14 +1,14 @@
 import { injectable, inject } from "inversify";
 import type { Request, Response, NextFunction } from "express";
-import { TYPES } from "../types.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { AppError } from "../utils/AppError.js";
-import type { IEnrollmentService } from "../interfaces/services/IEnrollmentService.js";
-import { getPaginationParams } from "@/utils/pagination.util.js";
-import { logger } from "@/utils/logger.js";
-import { MESSAGES } from "../constants/messages.constants.js";
-import { EnrollmentStatus } from "@/enums/enrollment.enum.js";
-import { UserRole } from "@/enums/user.enum.js";
+import { TYPES } from "../types";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { AppError } from "../utils/AppError";
+import type { IEnrollmentService } from "../interfaces/services/IEnrollmentService";
+import { getPaginationParams } from "@/utils/pagination.util";
+import { logger } from "@/utils/logger";
+import { MESSAGES } from "../constants/messages.constants";
+import { EnrollmentStatus } from "@/enums/enrollment.enum";
+import { UserRole } from "@/enums/user.enum";
 
 interface AuthenticatedRequest extends Request {
   user?: {

@@ -1,19 +1,19 @@
-import { StudentModel } from "../models/student/student.model.js";
+import { StudentModel } from "../models/student/student.model";
 // Unused Document, Model imports removed
-import type { StudentProfile } from "../interfaces/models/student.interface.js";
-import type { IVerificationRepository } from "../interfaces/repositories/IVerificationRepository.js";
+import type { StudentProfile } from "../interfaces/models/student.interface";
+import type { IVerificationRepository } from "../interfaces/repositories/IVerificationRepository";
 
-import type { IStudentAuthRepository } from "../interfaces/repositories/IStudentAuthRepository.js";
-import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO.js";
-import type { AuthUser, StudentAuthUser } from "../interfaces/auth/auth.interface.js";
+import type { IStudentAuthRepository } from "../interfaces/repositories/IStudentAuthRepository";
+import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO";
+import type { AuthUser, StudentAuthUser } from "../interfaces/auth/auth.interface";
 // Unused BaseRepository import removed
 
-import { StudentMapper } from "@/mappers/StudentMapper.js";
+import { StudentMapper } from "@/mappers/StudentMapper";
 import bcrypt from "bcryptjs";
-import { logger } from "../utils/logger.js";
+import { logger } from "../utils/logger";
 import { injectable } from "inversify";
-import { AppError } from "@/utils/AppError.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
+import { AppError } from "@/utils/AppError";
+import { HttpStatusCode } from "@/constants/httpStatus";
 
 @injectable()
 export class StudentAuthRepository

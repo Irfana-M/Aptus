@@ -1,6 +1,6 @@
 
-import type { ISession } from "../models/session.interface.js";
-import type { IBaseRepository } from './IBaseRepository.js';
+import type { ISession } from "../models/session.interface";
+import type { IBaseRepository } from './IBaseRepository';
 
 export interface ISessionRepository extends IBaseRepository<ISession> {
   findUpcomingByStudent(studentId: string, pagination?: { skip: number; limit: number }, filter?: { startDate?: Date | undefined; endDate?: Date | undefined }): Promise<ISession[]>;

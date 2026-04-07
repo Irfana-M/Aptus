@@ -1,5 +1,5 @@
-import type { MentorResponseDto } from "../mentor/MentorResponseDTO.js";
-import type { StudentBaseResponseDto } from "../auth/UserResponseDTO.js";
+import type { MentorResponseDto } from "../mentor/MentorResponseDTO";
+import type { StudentBaseResponseDto } from "../auth/UserResponseDTO";
 
 export interface AdminLoginResponseDto {
   admin: AdminResponseDto;

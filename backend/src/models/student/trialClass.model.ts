@@ -1,6 +1,6 @@
-import type { StudentAuthUser } from "@/interfaces/auth/auth.interface.js";
-import type { ISubject } from "@/interfaces/models/subject.interface.js";
-import type { MentorProfile } from "@/interfaces/models/user.interface.js";
+import type { StudentAuthUser } from "@/interfaces/auth/auth.interface";
+import type { ISubject } from "@/interfaces/models/subject.interface";
+import type { MentorProfile } from "@/interfaces/models/user.interface";
 import { Schema, model, Document, Types } from "mongoose";
 
 export interface ITrialClassDocument extends Document {

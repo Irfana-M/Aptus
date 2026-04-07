@@ -1,5 +1,5 @@
-import type { ITrialClassDocument } from "@/models/student/trialClass.model.js";
-import type { IBaseRepository } from "./IBaseRepository.js";
+import type { ITrialClassDocument } from "@/models/student/trialClass.model";
+import type { IBaseRepository } from "./IBaseRepository";
 import type { FilterQuery } from "mongoose";
 
 export interface ITrialClassRepository extends IBaseRepository<ITrialClassDocument> {

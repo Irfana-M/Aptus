@@ -1,4 +1,4 @@
-import { ApprovalStatus } from '../../domain/enums/ApprovalStatus.js';
+import { ApprovalStatus } from '../../domain/enums/ApprovalStatus'
 
 export interface MentorRegisterInput {
   fullName: string;
@@ -58,7 +58,7 @@ export interface Availability {
   slots: TimeSlot[];
 }
 
-import { LEAVE_STATUS } from '../../constants/status.constants.js';
+import { LEAVE_STATUS } from '../../constants/status.constants';
 
 export interface LeaveEntry {
   startDate: Date;

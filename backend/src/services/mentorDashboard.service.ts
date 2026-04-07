@@ -1,19 +1,19 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "@/types.js";
-import type { IMentorDashboardService } from "@/interfaces/services/IMentorDashboardService.js";
-import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository.js";
-import type { IMentorRepository } from "@/interfaces/repositories/IMentorRepository.js";
-import type { IVideoCallRepository } from "@/interfaces/repositories/IVideoCallRepository.js";
-import { logger } from "@/utils/logger.js";
-import { AppError } from "@/utils/AppError.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
-import type { ITrialClassDocument } from "@/models/student/trialClass.model.js";
-import type { ICourseRepository } from "@/interfaces/repositories/ICourseRepository.js";
-import type { IStudyMaterialRepository } from "@/interfaces/repositories/IStudyMaterialRepository.js";
-import type { ICourse } from "@/models/course.model.js";
-import type { IStudyMaterial } from "../interfaces/models/studyMaterial.interface.js";
-import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository.js";
-import type { ISession } from "../interfaces/models/session.interface.js";
+import { TYPES } from "@/types";
+import type { IMentorDashboardService } from "@/interfaces/services/IMentorDashboardService";
+import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
+import type { IMentorRepository } from "@/interfaces/repositories/IMentorRepository";
+import type { IVideoCallRepository } from "@/interfaces/repositories/IVideoCallRepository";
+import { logger } from "@/utils/logger";
+import { AppError } from "@/utils/AppError";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import type { ITrialClassDocument } from "@/models/student/trialClass.model";
+import type { ICourseRepository } from "@/interfaces/repositories/ICourseRepository";
+import type { IStudyMaterialRepository } from "@/interfaces/repositories/IStudyMaterialRepository";
+import type { ICourse } from "@/models/course.model";
+import type { IStudyMaterial } from "../interfaces/models/studyMaterial.interface";
+import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository";
+import type { ISession } from "../interfaces/models/session.interface";
 import type {
   DashboardDataDto,
   TodaySessionDto,
@@ -22,7 +22,7 @@ import type {
   CalendarEventDto,
   AssignedStudentsResponseDto,
   DashboardStats,
-} from "../interfaces/models/mentorDashboard.interface.js";
+} from "../interfaces/models/mentorDashboard.interface";
 
 interface AssignedStudent {
   id: string;

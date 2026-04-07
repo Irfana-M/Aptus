@@ -1,18 +1,18 @@
 import { injectable, inject } from "inversify";
 import mongoose from "mongoose";
-import { TYPES } from "../../types.js";
-import { logger } from "../../utils/logger.js";
-import { getErrorMessage } from "../../utils/errorUtils.js";
-import { AppError } from "../../utils/AppError.js";
-import { HttpStatusCode } from "../../constants/httpStatus.js";
-import type { ISlotGenerationService } from "../../interfaces/services/ISlotGenerationService.js";
-import type { IMentorRepository } from "../../interfaces/repositories/IMentorRepository.js";
-import type { IBookingSyncService } from "../../interfaces/services/IBookingSyncService.js";
-import type { IMentorAvailabilityRepository } from "../../interfaces/repositories/IMentorAvailabilityRepository.js";
-import type { IStudentEnrollmentRepository } from "../../interfaces/repositories/IStudentEnrollmentRepository.js";
-import type { ICourseRepository } from "../../interfaces/repositories/ICourseRepository.js";
-import type { ITimeSlotRepository } from "../../interfaces/repositories/ITimeSlotRepository.js";
-import { combineISTToUTC } from "../../utils/time.util.js";
+import { TYPES } from "../../types";
+import { logger } from "../../utils/logger";
+import { getErrorMessage } from "../../utils/errorUtils";
+import { AppError } from "../../utils/AppError";
+import { HttpStatusCode } from "../../constants/httpStatus";
+import type { ISlotGenerationService } from "../../interfaces/services/ISlotGenerationService";
+import type { IMentorRepository } from "../../interfaces/repositories/IMentorRepository";
+import type { IBookingSyncService } from "../../interfaces/services/IBookingSyncService";
+import type { IMentorAvailabilityRepository } from "../../interfaces/repositories/IMentorAvailabilityRepository";
+import type { IStudentEnrollmentRepository } from "../../interfaces/repositories/IStudentEnrollmentRepository";
+import type { ICourseRepository } from "../../interfaces/repositories/ICourseRepository";
+import type { ITimeSlotRepository } from "../../interfaces/repositories/ITimeSlotRepository";
+import { combineISTToUTC } from "../../utils/time.util";
 
 @injectable()
 export class SlotGenerationService implements ISlotGenerationService {

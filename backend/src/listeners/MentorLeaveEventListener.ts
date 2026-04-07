@@ -1,11 +1,11 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types.js";
-import { InternalEventEmitter } from "../utils/InternalEventEmitter.js";
-import { DomainEvent } from "../constants/events.js";
-import type { ILeaveManagementService } from "../interfaces/services/ILeaveManagementService.js";
-import type { INotificationService } from "../interfaces/services/INotificationService.js";
-import { logger } from "../utils/logger.js";
-import { getErrorMessage } from "../utils/errorUtils.js";
+import { TYPES } from "../types";
+import { InternalEventEmitter } from "../utils/InternalEventEmitter";
+import { DomainEvent } from "../constants/events";
+import type { ILeaveManagementService } from "../interfaces/services/ILeaveManagementService";
+import type { INotificationService } from "../interfaces/services/INotificationService";
+import { logger } from "../utils/logger";
+import { getErrorMessage } from "../utils/errorUtils";
 
 @injectable()
 export class MentorLeaveEventListener {

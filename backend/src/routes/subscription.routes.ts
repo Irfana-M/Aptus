@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { container } from '../inversify.config.js';
-import { TYPES } from '../types.js';
-import { SubscriptionController } from '../controllers/subscription.controller.js';
+import { container } from '../inversify.config';
+import { TYPES } from '../types';
+import { SubscriptionController } from '../controllers/subscription.controller';
 
 const router = Router();
 const subscriptionController = container.get<SubscriptionController>(TYPES.SubscriptionController);

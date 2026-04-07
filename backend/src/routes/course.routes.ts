@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { TYPES } from '../types.js';
-import { container } from '../inversify.config.js';
-import { CourseController } from '../controllers/course.controller.js';
-import { requireAuth } from '../middlewares/authMiddleware.js';
+import { TYPES } from '../types';
+import { container } from '../inversify.config';
+import { CourseController } from '../controllers/course.controller';
+import { requireAuth } from '../middlewares/authMiddleware';
 
 const router = Router();
 const controller = container.get<CourseController>(TYPES.CourseController);

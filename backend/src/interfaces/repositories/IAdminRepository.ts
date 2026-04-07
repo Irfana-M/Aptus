@@ -1,4 +1,4 @@
-import type { IAdmin } from "../models/admin.interface.js";
+import type { IAdmin } from "../models/admin.interface"
 
 export interface IAdminRepository {
   findAll(): Promise<IAdmin[]>;

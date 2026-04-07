@@ -1,4 +1,4 @@
-import type { PaginationMeta } from "@/dtos/shared/paginationTypes.js";
+import type { PaginationMeta } from "@/dtos/shared/paginationTypes";
 
 export interface PaginationQueryParams {
   page: number;

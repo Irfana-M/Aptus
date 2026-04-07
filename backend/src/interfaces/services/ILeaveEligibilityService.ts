@@ -1,4 +1,4 @@
-import type { ISession } from "../models/session.interface.js";
+import type { ISession } from "../models/session.interface";
 
 export interface SessionEligibility {
     id: string;

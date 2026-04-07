@@ -1,7 +1,7 @@
-import { ApprovalStatus } from "../../domain/enums/ApprovalStatus.js";
-import { StudentStatus } from "../../enums/student.enum.js";
-import { CourseStatus } from "../../enums/course.enum.js";
-import { UserVerificationStatus } from "../../enums/userVerification.enum.js";
+import { ApprovalStatus } from "../../domain/enums/ApprovalStatus"
+import { StudentStatus } from "../../enums/student.enum";
+import { CourseStatus } from "../../enums/course.enum";
+import { UserVerificationStatus } from "../../enums/userVerification.enum";
 
 export interface PaginationParams {
   page?: number | undefined;

@@ -1,6 +1,6 @@
 import { injectable } from "inversify";
-import { ISessionPolicyService } from "../../interfaces/services/ISessionPolicyService.js";
-import { STUDENT_CANCEL_CUTOFF_HOURS } from "../../config/leavePolicy.config.js";
+import { ISessionPolicyService } from "../../interfaces/services/ISessionPolicyService";
+import { STUDENT_CANCEL_CUTOFF_HOURS } from "../../config/leavePolicy.config";
 
 @injectable()
 export class SessionPolicyService implements ISessionPolicyService {

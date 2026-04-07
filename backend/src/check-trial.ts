@@ -1,6 +1,6 @@
 
 
-import { TrialClass } from "./models/student/trialClass.model.js";
+import { TrialClass } from "./models/student/trialClass.model";
 import mongoose from "mongoose";
 
 async function checkTrialClass() {

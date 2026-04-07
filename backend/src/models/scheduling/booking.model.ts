@@ -1,6 +1,6 @@
 import mongoose, { Schema } from 'mongoose';
-import type { IBooking } from '../../interfaces/models/booking.interface.js';
-import { BOOKING_STATUS } from '../../constants/status.constants.js';
+import type { IBooking } from '../../interfaces/models/booking.interface';
+import { BOOKING_STATUS } from '../../constants/status.constants';
 
 const bookingSchema = new Schema<IBooking>(
   {

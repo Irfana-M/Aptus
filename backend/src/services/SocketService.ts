@@ -1,20 +1,20 @@
 import { injectable, inject } from "inversify";
 import { Server, Socket } from 'socket.io';
 import type { Server as HttpServer } from 'http';
-import { logger } from "@/utils/logger.js";
-import { TYPES } from "@/types.js";
-import type { IVideoCallService } from "@/interfaces/services/IVideoCallService.js";
-import type { ISocketService } from "@/interfaces/services/ISocketService.js";
+import { logger } from "@/utils/logger";
+import { TYPES } from "@/types";
+import type { IVideoCallService } from "@/interfaces/services/IVideoCallService";
+import type { ISocketService } from "@/interfaces/services/ISocketService";
 import type {
   JoinCallRequestDto,
   WebRTCOfferDto,
   WebRTCAnswerDto,
   WebRTCIceCandidateDto,
   CallEndedDto
-} from "../dtos/webrtcDTO.js";
+} from "../dtos/webrtcDTO";
 import fs from "fs";
 import jwt from 'jsonwebtoken';
-import type { IUserRoleService } from "@/interfaces/services/IUserRoleSrvice.js";
+import type { IUserRoleService } from "@/interfaces/services/IUserRoleSrvice";
 
 interface JwtPayload {
   id: string;

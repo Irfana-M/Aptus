@@ -1,18 +1,18 @@
 import { Router } from "express";
-import { ADMIN_ROUTES } from "../constants/routes.js";
-import { AdminController } from "../controllers/admin.controller.js";
-import { requireAuth } from "../middlewares/authMiddleware.js";
-import { requireRole } from "../middlewares/role.middleware.js";
-import { container } from "../inversify.config.js";
-import { TYPES } from "../types.js";
-import { CourseAdminController } from "../controllers/courseAdmin.controller.js";
-import { StudentController } from "../controllers/student.controller.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { type IMentorRequestService } from "../interfaces/services/IMentorRequestService.js";
+import { ADMIN_ROUTES } from "../constants/routes";
+import { AdminController } from "../controllers/admin.controller";
+import { requireAuth } from "../middlewares/authMiddleware";
+import { requireRole } from "../middlewares/role.middleware";
+import { container } from "../inversify.config";
+import { TYPES } from "../types";
+import { CourseAdminController } from "../controllers/courseAdmin.controller";
+import { StudentController } from "../controllers/student.controller";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { type IMentorRequestService } from "../interfaces/services/IMentorRequestService";
 
-import { validateBody, validateObjectId } from "../middlewares/validate.middleware.js";
-import { updateMentorProfileSchema } from "../validators/mentor.validator.js";
-import { updateStudentProfileSchema } from "../validators/student.validator.js";
+import { validateBody, validateObjectId } from "../middlewares/validate.middleware";
+import { updateMentorProfileSchema } from "../validators/mentor.validator";
+import { updateStudentProfileSchema } from "../validators/student.validator";
 const adminRouter = Router();
 
 const adminController = container.get<AdminController>(TYPES.AdminController);
@@ -22,13 +22,13 @@ const courseAdminController = container.get<CourseAdminController>(
 
 
 const studentController = container.get<StudentController>(TYPES.StudentController);
-import { MentorController } from "../controllers/mentor.controller.js";
+import { MentorController } from "../controllers/mentor.controller";
 const mentorController = container.get<MentorController>(TYPES.MentorController);
-import { CourseRequestController } from "../controllers/courseRequest.controller.js";
+import { CourseRequestController } from "../controllers/courseRequest.controller";
 const courseRequestController = container.get<CourseRequestController>(TYPES.CourseRequestController);
-import { PaymentController } from "../controllers/payment.controller.js";
+import { PaymentController } from "../controllers/payment.controller";
 const paymentController = container.get<PaymentController>(TYPES.PaymentController);
-import { EnrollmentController } from "../controllers/enrollment.controller.js";
+import { EnrollmentController } from "../controllers/enrollment.controller";
 const enrollmentController = container.get<EnrollmentController>(TYPES.EnrollmentController);
 
 adminRouter.post(ADMIN_ROUTES.LOGIN, adminController.login);

@@ -1,6 +1,6 @@
 import { injectable } from "inversify";
-import type { IExam, IQuestion } from "../../models/exam.model.js";
-import type { StudentAuthUser } from "../../interfaces/auth/auth.interface.js";
+import type { IExam, IQuestion } from "../../models/exam.model";
+import type { StudentAuthUser } from "../../interfaces/auth/auth.interface";
 
 @injectable()
 export class ExamAccessPolicyService {

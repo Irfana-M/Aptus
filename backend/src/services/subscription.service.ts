@@ -1,14 +1,14 @@
 import { injectable, inject } from 'inversify';
 import mongoose from 'mongoose';
-import { TYPES } from '../types.js';
-import type { IStudentRepository } from '../interfaces/repositories/IStudentRepository.js';
-import type { IStudentService } from '../interfaces/services/IStudentService.js';
-import { InternalEventEmitter } from '../utils/InternalEventEmitter.js';
-import { EVENTS } from '../utils/InternalEventEmitter.js';
-import { logger } from '../utils/logger.js';
-import type { StudentDocument } from '../models/student/student.model.js';
-import type { ISubscriptionService } from '../interfaces/services/ISubscriptionService.js';
-import type { ISubscriptionRepository } from '../interfaces/repositories/ISubscriptionRepository.js';
+import { TYPES } from '../types';
+import type { IStudentRepository } from '../interfaces/repositories/IStudentRepository';
+import type { IStudentService } from '../interfaces/services/IStudentService';
+import { InternalEventEmitter } from '../utils/InternalEventEmitter';
+import { EVENTS } from '../utils/InternalEventEmitter';
+import { logger } from '../utils/logger';
+import type { StudentDocument } from '../models/student/student.model';
+import type { ISubscriptionService } from '../interfaces/services/ISubscriptionService';
+import type { ISubscriptionRepository } from '../interfaces/repositories/ISubscriptionRepository';
 
 @injectable()
 export class SubscriptionService implements ISubscriptionService {
@@ -71,7 +71,7 @@ export class SubscriptionService implements ISubscriptionService {
 
     
     try {
-        const { StudentOnboardingStatus } = await import('../enums/studentOnboarding.enum.js');
+        const { StudentOnboardingStatus } = await import('../enums/studentOnboarding.enum');
         await this._studentService.advanceOnboarding(studentId, 'SUBSCRIBED' as any);
     } catch (error) {
         logger.error(`Failed to advance onboarding for student ${studentId} to SUBSCRIBED`, error);

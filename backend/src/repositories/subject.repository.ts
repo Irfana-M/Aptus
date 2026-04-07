@@ -1,10 +1,10 @@
 import { Types } from "mongoose";
 import { injectable } from "inversify";
-import { Subject, type ISubject } from "@/models/subject.model.js";
-import { Grade } from "@/models/grade.model.js";
-import { logger } from "@/utils/logger.js";
-import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository.js";
-import { BaseRepository } from "./baseRepository.js";
+import { Subject, type ISubject } from "@/models/subject.model";
+import { Grade } from "@/models/grade.model";
+import { logger } from "@/utils/logger";
+import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository";
+import { BaseRepository } from "./baseRepository";
 
 @injectable()
 export class SubjectRepository extends BaseRepository<ISubject> implements ISubjectRepository {

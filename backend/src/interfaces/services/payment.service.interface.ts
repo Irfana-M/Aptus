@@ -1,4 +1,4 @@
-import type { IPayment } from "../../models/payment.model.js";
+import type { IPayment } from "../../models/payment.model";
 import Stripe from "stripe";
 
 export interface IPaymentService {

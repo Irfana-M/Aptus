@@ -1,4 +1,4 @@
-import { HttpStatusCode } from "../constants/httpStatus.js";
+import { HttpStatusCode } from "../constants/httpStatus";
 
 export class AppError extends Error {
   public readonly statusCode: HttpStatusCode;

@@ -1,8 +1,8 @@
 import { injectable } from 'inversify';
-import type { ITimeSlot } from '../../interfaces/models/timeSlot.interface.js';
-import type { IBooking } from '../../interfaces/models/booking.interface.js';
-import type { StudentProfile } from '../../interfaces/models/student.interface.js';
-import type { MentorProfile } from '../../interfaces/models/mentor.interface.js';
+import type { ITimeSlot } from '../../interfaces/models/timeSlot.interface';
+import type { IBooking } from '../../interfaces/models/booking.interface';
+import type { StudentProfile } from '../../interfaces/models/student.interface';
+import type { MentorProfile } from '../../interfaces/models/mentor.interface';
 
 export interface PolicyResult {
   allowed: boolean;

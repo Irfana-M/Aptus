@@ -1,15 +1,15 @@
 import type { Request, Response } from 'express';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../types.js';
-import type { IPaymentService } from '@/interfaces/services/payment.service.interface.js';
-import type { IStudentService } from "@/interfaces/services/IStudentService.js";
-import type { ISubscriptionService } from "@/interfaces/services/ISubscriptionService.js";
-import { getPaginationParams, formatPaginatedResult } from '@/utils/pagination.util.js';
-import { HttpStatusCode } from '@/constants/httpStatus.js';
-import { MESSAGES } from '@/constants/messages.constants.js';
-import { SubscriptionStatus } from '@/enums/subscription.enum.js';
-import { PaymentStatus } from '@/enums/payment.enum.js';
-import { logger } from '@/utils/logger.js';
+import { TYPES } from '../types';
+import type { IPaymentService } from '@/interfaces/services/payment.service.interface';
+import type { IStudentService } from "@/interfaces/services/IStudentService";
+import type { ISubscriptionService } from "@/interfaces/services/ISubscriptionService";
+import { getPaginationParams, formatPaginatedResult } from '@/utils/pagination.util';
+import { HttpStatusCode } from '@/constants/httpStatus';
+import { MESSAGES } from '@/constants/messages.constants';
+import { SubscriptionStatus } from '@/enums/subscription.enum';
+import { PaymentStatus } from '@/enums/payment.enum';
+import { logger } from '@/utils/logger';
 
 @injectable()
 export class PaymentController {

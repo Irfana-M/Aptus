@@ -1,5 +1,5 @@
-import type { IBooking } from "../models/booking.interface.js";
-import type { ITimeSlot } from "../models/timeSlot.interface.js";
+import type { IBooking } from "../models/booking.interface";
+import type { ITimeSlot } from "../models/timeSlot.interface";
 
 export interface ISchedulingService {
 

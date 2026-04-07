@@ -1,10 +1,10 @@
 import { injectable } from 'inversify';
 import type { ClientSession, FilterQuery, UpdateQuery } from 'mongoose';
-import { BaseRepository } from './baseRepository.js';
-import type { IBookingRepository } from '../interfaces/repositories/IBookingRepository.js';
-import type { IBooking } from '../interfaces/models/booking.interface.js';
-import { BookingModel } from '../models/scheduling/booking.model.js';
-import { logger } from '../utils/logger.js';
+import { BaseRepository } from './baseRepository';
+import type { IBookingRepository } from '../interfaces/repositories/IBookingRepository';
+import type { IBooking } from '../interfaces/models/booking.interface';
+import { BookingModel } from '../models/scheduling/booking.model';
+import { logger } from '../utils/logger';
 
 @injectable()
 export class BookingRepository extends BaseRepository<IBooking> implements IBookingRepository {

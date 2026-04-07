@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { StudentModel } from '../models/student/student.model.js';
-import { PaymentModel } from '../models/payment.model.js';
+import { StudentModel } from '../models/student/student.model';
+import { PaymentModel } from '../models/payment.model';
 
 dotenv.config();
 

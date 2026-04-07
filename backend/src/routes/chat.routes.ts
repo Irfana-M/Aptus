@@ -1,8 +1,8 @@
 import express from "express";
-import { container } from "../inversify.config.js";
-import { TYPES } from "../types.js";
-import { ChatController } from "../controllers/chat.controller.js";
-import { requireAuth } from "../middlewares/authMiddleware.js";
+import { container } from "../inversify.config";
+import { TYPES } from "../types";
+import { ChatController } from "../controllers/chat.controller";
+import { requireAuth } from "../middlewares/authMiddleware";
 
 const chatRouter = express.Router();
 const chatController = container.get<ChatController>(TYPES.ChatController);

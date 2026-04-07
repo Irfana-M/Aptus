@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose";
-import type { MentorProfile } from "@/interfaces/models/mentor.interface.js";
-import { ApprovalStatus } from "../../domain/enums/ApprovalStatus.js";
-import { LEAVE_STATUS } from "../../constants/status.constants.js";
+import type { MentorProfile } from "@/interfaces/models/mentor.interface"
+import { ApprovalStatus } from "../../domain/enums/ApprovalStatus";
+import { LEAVE_STATUS } from "../../constants/status.constants";
 const academicQualificationSchema = new Schema({
   institutionName: String,
   degree: String,

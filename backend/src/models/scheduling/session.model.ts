@@ -1,6 +1,6 @@
 import mongoose, { Schema } from "mongoose";
-import type { ISession, ISessionParticipant } from "../../interfaces/models/session.interface.js";
-import { SESSION_STATUS } from "../../constants/status.constants.js";
+import type { ISession, ISessionParticipant } from "../../interfaces/models/session.interface";
+import { SESSION_STATUS } from "../../constants/status.constants";
 
 const participantSchema = new Schema(
   {

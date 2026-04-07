@@ -1,7 +1,7 @@
 import { injectable } from 'inversify';
 import jwt from 'jsonwebtoken';
-import type { ISessionAccessService, IJoinLinkTokenPayload } from '../../interfaces/services/ISessionAccessService.js';
-import { logger } from '../../utils/logger.js';
+import type { ISessionAccessService, IJoinLinkTokenPayload } from '../../interfaces/services/ISessionAccessService';
+import { logger } from '../../utils/logger';
 
 @injectable()
 export class SessionAccessService implements ISessionAccessService {

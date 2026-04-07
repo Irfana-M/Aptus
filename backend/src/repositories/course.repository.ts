@@ -1,17 +1,17 @@
-import { BaseRepository } from "./baseRepository.js";
+import { BaseRepository } from "./baseRepository";
 import { Model, type FilterQuery, type PipelineStage, type UpdateQuery } from "mongoose";
-import { Course, type ICourse } from "@/models/course.model.js";
-import { Enrollment } from "@/models/enrollment.model.js";
+import { Course, type ICourse } from "@/models/course.model";
+import { Enrollment } from "@/models/enrollment.model";
 import { injectable } from "inversify";
-import type { ICourseRepository, CreateOneToOneCourseDto, CoursePaginatedResult } from "@/interfaces/repositories/ICourseRepository.js";
-import type { CoursePaginationParams } from "@/dtos/shared/paginationTypes.js";
-import { logger } from "@/utils/logger.js";
-import { getSignedFileUrl } from "@/utils/s3Upload.js";
-import { getPaginationParams } from "@/utils/pagination.util.js";
+import type { ICourseRepository, CreateOneToOneCourseDto, CoursePaginatedResult } from "@/interfaces/repositories/ICourseRepository";
+import type { CoursePaginationParams } from "@/dtos/shared/paginationTypes";
+import { logger } from "@/utils/logger";
+import { getSignedFileUrl } from "@/utils/s3Upload";
+import { getPaginationParams } from "@/utils/pagination.util";
 import type { ClientSession } from "mongoose";
 
-import { AppError } from "@/utils/AppError.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
+import { AppError } from "@/utils/AppError";
+import { HttpStatusCode } from "@/constants/httpStatus";
 
 
 interface PopulatedMentor {

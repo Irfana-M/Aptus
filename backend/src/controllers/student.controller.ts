@@ -1,14 +1,14 @@
 import { injectable, inject } from "inversify";
 import type { Request, Response, NextFunction } from "express";
-import { TYPES } from "../types.js";
-import type { IStudentService } from "../interfaces/services/IStudentService.js";
-import type { ISessionService } from "../interfaces/services/ISessionService.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { AppError } from "../utils/AppError.js";
-import { logger } from "../utils/logger.js";
-import type { IMentorRequestService } from "../interfaces/services/IMentorRequestService.js";
-import { MESSAGES } from "../constants/messages.constants.js";
-import { UserRole } from "../enums/user.enum.js";
+import { TYPES } from "../types";
+import type { IStudentService } from "../interfaces/services/IStudentService";
+import type { ISessionService } from "../interfaces/services/ISessionService";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { AppError } from "../utils/AppError";
+import { logger } from "../utils/logger";
+import type { IMentorRequestService } from "../interfaces/services/IMentorRequestService";
+import { MESSAGES } from "../constants/messages.constants";
+import { UserRole } from "../enums/user.enum";
 
 interface AuthenticatedRequest extends Request {
   user: {

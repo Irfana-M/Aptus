@@ -1,38 +1,38 @@
-import type { IAuthRepository } from "../interfaces/auth/IAuthRepository.js";
-import type { IOtpService } from "../interfaces/services/IOtpService.js";
-import type { IEmailService } from "../interfaces/services/IEmailService.js";
-import type { IStudentAuthRepository } from "../interfaces/repositories/IStudentAuthRepository.js";
-import type { IMentorAuthRepository } from "../interfaces/repositories/IMentorAuthRepository.js";
-import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository.js";
-import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository.js";
-import type { LoginUserDto } from "../dtos/auth/LoginUserDTO.js";
-import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO.js";
-import { hashPassword, comparePasswords } from "../utils/password.utils.js";
-import { generateAccessToken, generateRefreshToken } from "../utils/jwt.util.js";
-import type { IAuthService, UserContextResponse } from "../interfaces/services/IauthService.js";
+import type { IAuthRepository } from "../interfaces/auth/IAuthRepository";
+import type { IOtpService } from "../interfaces/services/IOtpService";
+import type { IEmailService } from "../interfaces/services/IEmailService";
+import type { IStudentAuthRepository } from "../interfaces/repositories/IStudentAuthRepository";
+import type { IMentorAuthRepository } from "../interfaces/repositories/IMentorAuthRepository";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
+import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository";
+import type { LoginUserDto } from "../dtos/auth/LoginUserDTO";
+import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO";
+import { hashPassword, comparePasswords } from "../utils/password.utils";
+import { generateAccessToken, generateRefreshToken } from "../utils/jwt.util";
+import type { IAuthService, UserContextResponse } from "../interfaces/services/IauthService";
 import type {
   AuthUser,
   MentorAuthUser,
   StudentAuthUser,
-} from "../interfaces/auth/auth.interface.js";
-import type { IProfileService } from "../interfaces/services/IProfileService.js";
-import { logger } from "../utils/logger.js";
-import type { SendOtpDto } from "../dtos/auth/OtpDTO.js";
-import type { VerifyOtpDto } from "../dtos/auth/VerifyOtpDTO.js";
+} from "../interfaces/auth/auth.interface";
+import type { IProfileService } from "../interfaces/services/IProfileService";
+import { logger } from "../utils/logger";
+import type { SendOtpDto } from "../dtos/auth/OtpDTO";
+import type { VerifyOtpDto } from "../dtos/auth/VerifyOtpDTO";
 // ForgotPasswordDto import removed as it is unused
 import type {
   MentorBaseResponseDto,
   StudentBaseResponseDto,
-} from "@/dtos/auth/UserResponseDTO.js";
-import { UserMapper } from "@/mappers/userMapper.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
-import { AppError } from "@/utils/AppError.js";
+} from "@/dtos/auth/UserResponseDTO";
+import { UserMapper } from "@/mappers/userMapper";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import { AppError } from "@/utils/AppError";
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types.js";
+import { TYPES } from "../types";
 import * as crypto from 'crypto';
-import { InternalEventEmitter, EVENTS } from "../utils/InternalEventEmitter.js";
-import { MESSAGES } from "../constants/messages.constants.js";
-import { UserRole } from "../enums/user.enum.js";
+import { InternalEventEmitter, EVENTS } from "../utils/InternalEventEmitter";
+import { MESSAGES } from "../constants/messages.constants";
+import { UserRole } from "../enums/user.enum";
 
 // ... (existing imports)
 

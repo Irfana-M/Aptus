@@ -1,19 +1,19 @@
 import { injectable, inject } from "inversify";
 import mongoose from "mongoose";
-import { TYPES } from "../types.js";
-import { logger } from "../utils/logger.js";
-import { AppError } from "../utils/AppError.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { STUDENT_CANCEL_CUTOFF_HOURS } from "../config/leavePolicy.config.js";
-import { MESSAGES } from "../constants/messages.constants.js";
-import { BOOKING_STATUS } from "../constants/status.constants.js";
+import { TYPES } from "../types";
+import { logger } from "../utils/logger";
+import { AppError } from "../utils/AppError";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { STUDENT_CANCEL_CUTOFF_HOURS } from "../config/leavePolicy.config";
+import { MESSAGES } from "../constants/messages.constants";
+import { BOOKING_STATUS } from "../constants/status.constants";
 
-import type { ISchedulingService } from "../interfaces/services/ISchedulingService.js";
-import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository.js";
-import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository.js";
-import type { IBookingRepository } from "../interfaces/repositories/IBookingRepository.js";
-import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository.js";
-import type { SchedulingOrchestrator } from "./scheduling/SchedulingOrchestrator.js";
+import type { ISchedulingService } from "../interfaces/services/ISchedulingService";
+import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository";
+import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository";
+import type { IBookingRepository } from "../interfaces/repositories/IBookingRepository";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
+import type { SchedulingOrchestrator } from "./scheduling/SchedulingOrchestrator";
 
 
 
@@ -26,10 +26,10 @@ export class SchedulingService implements ISchedulingService {
     @inject(TYPES.IBookingRepository) private _bookingRepo: IBookingRepository,
     @inject(TYPES.IStudentRepository) private _studentRepo: IStudentRepository,
     @inject(TYPES.SchedulingOrchestrator) private _orchestrator: SchedulingOrchestrator,
-    @inject(TYPES.IBookingSyncService) private _bookingSyncService: import("../interfaces/services/IBookingSyncService.js").IBookingSyncService,
-    @inject(TYPES.ILeaveManagementService) private _leaveManagementService: import("../interfaces/services/ILeaveManagementService.js").ILeaveManagementService,
-    @inject(TYPES.ITimeSlotQueryService) private _timeSlotQueryService: import("../interfaces/services/ITimeSlotQueryService.js").ITimeSlotQueryService,
-    @inject(TYPES.ISlotGenerationService) private _slotGenerationService: import("../interfaces/services/ISlotGenerationService.js").ISlotGenerationService
+    @inject(TYPES.IBookingSyncService) private _bookingSyncService: import("../interfaces/services/IBookingSyncService").IBookingSyncService,
+    @inject(TYPES.ILeaveManagementService) private _leaveManagementService: import("../interfaces/services/ILeaveManagementService").ILeaveManagementService,
+    @inject(TYPES.ITimeSlotQueryService) private _timeSlotQueryService: import("../interfaces/services/ITimeSlotQueryService").ITimeSlotQueryService,
+    @inject(TYPES.ISlotGenerationService) private _slotGenerationService: import("../interfaces/services/ISlotGenerationService").ISlotGenerationService
   ) {}
 
   async generateSlots(projectionDays: number): Promise<void> {
@@ -42,7 +42,7 @@ export class SchedulingService implements ISchedulingService {
     return this._slotGenerationService.generateMentorSlots(mentorId, projectionDays);
   }
 
-   async bookSlot(studentId: string, slotId: string, studentSubjectId: string): Promise<import("../interfaces/models/booking.interface.js").IBooking> {
+   async bookSlot(studentId: string, slotId: string, studentSubjectId: string): Promise<import("../interfaces/models/booking.interface").IBooking> {
     logger.info(`Delegating booking for slot ${slotId} to Orchestrator`);
     return await this._orchestrator.bookSession(studentId, slotId, studentSubjectId);
   }
@@ -97,7 +97,7 @@ export class SchedulingService implements ISchedulingService {
     return this._leaveManagementService.processLeaveImpact(mentorId, startDate, endDate);
   }
 
-  async getAvailableSlots(filters: Record<string, unknown>): Promise<import("../interfaces/models/timeSlot.interface.js").ITimeSlot[]> {
+  async getAvailableSlots(filters: Record<string, unknown>): Promise<import("../interfaces/models/timeSlot.interface").ITimeSlot[]> {
     logger.info(`Delegating slot query to TimeSlotQueryService`);
     return this._timeSlotQueryService.getAvailableSlots(filters);
   }

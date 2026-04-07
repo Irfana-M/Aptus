@@ -1,13 +1,13 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types.js";
+import { TYPES } from "../types";
 import type { Request, Response, NextFunction } from "express";
-import type { IExamService } from "../interfaces/services/IExamService.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { AppError } from "../utils/AppError.js";
-import { ExamResponseDTO } from "../dtos/exam/ExamResponseDTO.js";
-import type { IStudentService } from "../interfaces/services/IStudentService.js";
-import { MESSAGES } from "../constants/messages.constants.js";
-import { UserRole } from "../enums/user.enum.js";
+import type { IExamService } from "../interfaces/services/IExamService";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { AppError } from "../utils/AppError";
+import { ExamResponseDTO } from "../dtos/exam/ExamResponseDTO";
+import type { IStudentService } from "../interfaces/services/IStudentService";
+import { MESSAGES } from "../constants/messages.constants";
+import { UserRole } from "../enums/user.enum";
 
 @injectable()
 export class ExamController {

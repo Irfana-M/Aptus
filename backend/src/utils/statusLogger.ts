@@ -1,4 +1,4 @@
-import { logger } from "./logger.js";
+import { logger } from "./logger";
 
 export class StatusLogger {
   static logLeaveStatusChange(mentorId: string, leaveId: string, oldStatus: string, newStatus: string, actorId: string) {

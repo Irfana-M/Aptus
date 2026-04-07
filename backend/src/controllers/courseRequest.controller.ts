@@ -1,12 +1,12 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types.js";
+import { TYPES } from "../types";
 import type { Request, Response, NextFunction } from 'express';
-import type { ICourseRequestService } from '../interfaces/services/ICourseRequestService.js';
-import { getPaginationParams } from "@/utils/pagination.util.js";
-import { logger } from "@/utils/logger.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
-import { MESSAGES } from "@/constants/messages.constants.js";
-import { UserRole } from "@/enums/user.enum.js";
+import type { ICourseRequestService } from '../interfaces/services/ICourseRequestService';
+import { getPaginationParams } from "@/utils/pagination.util";
+import { logger } from "@/utils/logger";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import { MESSAGES } from "@/constants/messages.constants";
+import { UserRole } from "@/enums/user.enum";
 
 interface AuthRequest extends Request {
   user?: {

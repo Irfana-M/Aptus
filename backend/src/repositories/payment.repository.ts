@@ -1,6 +1,6 @@
 import { injectable } from "inversify";
-import { PaymentModel, type IPayment } from "../models/payment.model.js";
-import type { IPaymentRepository } from "../interfaces/repositories/IPaymentRepository.js";
+import { PaymentModel, type IPayment } from "../models/payment.model";
+import type { IPaymentRepository } from "../interfaces/repositories/IPaymentRepository";
 
 @injectable()
 export class PaymentRepository implements IPaymentRepository {

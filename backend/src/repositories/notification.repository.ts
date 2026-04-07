@@ -1,9 +1,9 @@
 import { injectable } from 'inversify';
 import type { ClientSession } from 'mongoose';
-import { BaseRepository } from './baseRepository.js';
-import type { INotificationRepository } from '../interfaces/repositories/INotificationRepository.js';
-import type { INotification } from '../interfaces/models/notification.interface.js';
-import { NotificationModel } from '../models/notification.model.js';
+import { BaseRepository } from './baseRepository'
+import type { INotificationRepository } from '../interfaces/repositories/INotificationRepository';
+import type { INotification } from '../interfaces/models/notification.interface';
+import { NotificationModel } from '../models/notification.model';
 
 @injectable()
 export class NotificationRepository extends BaseRepository<INotification> implements INotificationRepository {

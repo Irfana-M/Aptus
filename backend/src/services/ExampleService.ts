@@ -1,7 +1,7 @@
 import { injectable, inject } from "inversify";
-import type { IExampleService } from "../interfaces/services/IExampleService.js";
-import type { IExampleRepository } from "../interfaces/repositories/IExampleRepository.js";
-import { TYPES } from "../types.js";
+import type { IExampleService } from "../interfaces/services/IExampleService";
+import type { IExampleRepository } from "../interfaces/repositories/IExampleRepository";
+import { TYPES } from "../types";
 
 @injectable()
 export class ExampleService implements IExampleService {

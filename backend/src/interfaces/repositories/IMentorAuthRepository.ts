@@ -1,6 +1,6 @@
-import type { AuthUser, MentorAuthUser } from "../auth/auth.interface.js";
-import type { IAuthRepository } from "../auth/IAuthRepository.js";
-import type { MentorProfile } from "../models/mentor.interface.js";
+import type { AuthUser, MentorAuthUser } from "../auth/auth.interface";
+import type { IAuthRepository } from "../auth/IAuthRepository";
+import type { MentorProfile } from "../models/mentor.interface";
 
 export interface IMentorAuthRepository extends IAuthRepository<MentorAuthUser> {
   updateProfile(id: string, data: Partial<MentorProfile>): Promise<MentorProfile | null>;

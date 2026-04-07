@@ -1,9 +1,9 @@
 import type { Request, Response, NextFunction } from 'express';
-import type { INotificationService } from '../interfaces/services/INotificationService.js';
-import { HttpStatusCode } from '../constants/httpStatus.js';
-import { AppError } from '../utils/AppError.js';
-import { MESSAGES } from '../constants/messages.constants.js';
-import { getPaginationParams, formatStandardizedPaginatedResult } from '../utils/pagination.util.js';
+import type { INotificationService } from '../interfaces/services/INotificationService';
+import { HttpStatusCode } from '../constants/httpStatus';
+import { AppError } from '../utils/AppError';
+import { MESSAGES } from '../constants/messages.constants';
+import { getPaginationParams, formatStandardizedPaginatedResult } from '../utils/pagination.util';
 
 export class NotificationController {
   constructor(

@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
-import { SessionModel } from '../models/scheduling/session.model.js';
-import { logger } from '../utils/logger.js';
+import { SessionModel } from '../models/scheduling/session.model';
+import { logger } from '../utils/logger';
 import dotenv from 'dotenv';
 dotenv.config();
 

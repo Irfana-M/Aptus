@@ -1,11 +1,11 @@
 
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types.js";
+import { TYPES } from "../types";
 import type { Request, Response, NextFunction } from "express";
-import type { IAvailabilityService } from "../interfaces/services/IAvailabilityService.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
-import { MESSAGES } from "@/constants/messages.constants.js";
-import { logger } from "../utils/logger.js";
+import type { IAvailabilityService } from "../interfaces/services/IAvailabilityService";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import { MESSAGES } from "@/constants/messages.constants";
+import { logger } from "../utils/logger";
 
 @injectable()
 export class AvailabilityController {

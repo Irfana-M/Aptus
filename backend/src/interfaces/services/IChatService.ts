@@ -1,4 +1,4 @@
-import type { IChatRoom, IChatMessage } from "../models/chat.interface.js";
+import type { IChatRoom, IChatMessage } from "../models/chat.interface";
 
 export interface IChatService {
 

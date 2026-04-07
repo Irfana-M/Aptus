@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
-import { AppError } from '../utils/AppError.js';
-import { HttpStatusCode } from '../constants/httpStatus.js';
+import { AppError } from '../utils/AppError';
+import { HttpStatusCode } from '../constants/httpStatus';
 
 export const validateBody = (schema: any) => {
   return (req: Request, res: Response, next: NextFunction): void => {

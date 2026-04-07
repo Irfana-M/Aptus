@@ -1,5 +1,5 @@
 import { injectable } from "inversify";
-import type { IExampleRepository } from "../interfaces/repositories/IExampleRepository.js";
+import type { IExampleRepository } from "../interfaces/repositories/IExampleRepository";
 
 @injectable()
 export class ExampleRepository implements IExampleRepository {

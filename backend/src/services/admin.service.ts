@@ -1,52 +1,52 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types.js";
-import type { IAdminRepository } from "../interfaces/repositories/IAdminRepository.js";
-import { generateAccessToken, generateRefreshToken } from "../utils/jwt.util.js";
-import { comparePasswords } from "../utils/password.utils.js";
-import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository.js";
-import { logger } from "../utils/logger.js";
-import type { MentorProfile } from "../interfaces/models/mentor.interface.js";
-import type { IStudentRepository } from "@/interfaces/repositories/IStudentRepository.js";
-import { AppError } from "../utils/AppError.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { MESSAGES } from "../constants/messages.constants.js";
-import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO.js";
-import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO.js";
-import type { IAdminService } from "@/interfaces/services/IAdminService.js";
-import { AdminMapper } from "@/mappers/AdminMapper.js";
-import { MentorMapper } from "@/mappers/MentorMapper.js";
-import type { ICourseRepository } from "@/interfaces/repositories/ICourseRepository.js";
-import type { IEnrollmentLinkRepository } from "@/interfaces/repositories/IEnrollmentLinkRepository.js";
+import { TYPES } from "../types"
+import type { IAdminRepository } from "../interfaces/repositories/IAdminRepository";
+import { generateAccessToken, generateRefreshToken } from "../utils/jwt.util";
+import { comparePasswords } from "../utils/password.utils";
+import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository";
+import { logger } from "../utils/logger";
+import type { MentorProfile } from "../interfaces/models/mentor.interface";
+import type { IStudentRepository } from "@/interfaces/repositories/IStudentRepository";
+import { AppError } from "../utils/AppError";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { MESSAGES } from "../constants/messages.constants";
+import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO";
+import type { StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
+import type { IAdminService } from "@/interfaces/services/IAdminService";
+import { AdminMapper } from "@/mappers/AdminMapper";
+import { MentorMapper } from "@/mappers/MentorMapper";
+import type { ICourseRepository } from "@/interfaces/repositories/ICourseRepository";
+import type { IEnrollmentLinkRepository } from "@/interfaces/repositories/IEnrollmentLinkRepository";
 import type {
   AdminLoginResponseDto,
   DashboardDataDto,
-} from "@/dtos/admin/AdminLoginResponseDTO.js";
-import { getSignedFileUrl } from "@/utils/s3Upload.js";
-import type { IEmailService } from "@/interfaces/services/IEmailService.js";
-import { StudentMapper } from "@/mappers/StudentMapper.js";
+} from "@/dtos/admin/AdminLoginResponseDTO";
+import { getSignedFileUrl } from "@/utils/s3Upload";
+import type { IEmailService } from "@/interfaces/services/IEmailService";
+import { StudentMapper } from "@/mappers/StudentMapper";
 import bcrypt from "bcryptjs";
-import type { SubscriptionDetails } from "@/dtos/auth/UserResponseDTO.js";
-import { TrialClassMapper } from "@/mappers/trialClassMapper.js";
-import { type ITrialClassDocument } from "@/models/student/trialClass.model.js";
-import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository.js";
-import type { TrialClassResponseDto } from "@/dtos/student/trialClassDTO.js";
-import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository.js";
-import type { MentorPaginationParams, StudentPaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes.js";
-import { formatPaginatedResult } from "@/utils/pagination.util.js";
-import { InternalEventEmitter } from "@/utils/InternalEventEmitter.js";
-import { EVENTS } from "@/utils/InternalEventEmitter.js";
-import { normalizeTimeTo24h, isSlotMatching } from "../utils/time.util.js";
-import { ApprovalStatus } from "@/domain/enums/ApprovalStatus.js";
-import type { IPaymentRepository } from "@/interfaces/repositories/IPaymentRepository.js";
-import type { FinanceDashboardDataDto } from "@/dtos/admin/AdminLoginResponseDTO.js";
+import type { SubscriptionDetails } from "@/dtos/auth/UserResponseDTO";
+import { TrialClassMapper } from "@/mappers/trialClassMapper";
+import { type ITrialClassDocument } from "@/models/student/trialClass.model";
+import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
+import type { TrialClassResponseDto } from "@/dtos/student/trialClassDTO";
+import type { ISubjectRepository } from "@/interfaces/repositories/ISubjectRepository";
+import type { MentorPaginationParams, StudentPaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes";
+import { formatPaginatedResult } from "@/utils/pagination.util";
+import { InternalEventEmitter } from "@/utils/InternalEventEmitter";
+import { EVENTS } from "@/utils/InternalEventEmitter";
+import { normalizeTimeTo24h, isSlotMatching } from "../utils/time.util";
+import { ApprovalStatus } from "@/domain/enums/ApprovalStatus";
+import type { IPaymentRepository } from "@/interfaces/repositories/IPaymentRepository";
+import type { FinanceDashboardDataDto } from "@/dtos/admin/AdminLoginResponseDTO";
 
 
 
-import type { IMentorRequestService } from "../interfaces/services/IMentorRequestService.js";
-import type { IMentorAssignmentRequestRepository } from "@/interfaces/repositories/IMentorAssignmentRequestRepository.js";
-import type { ISessionRepository } from "@/interfaces/repositories/ISessionRepository.js";
-import type { ITimeSlotRepository } from "@/interfaces/repositories/ITimeSlotRepository.js";
-import type { INotificationService } from "@/interfaces/services/INotificationService.js";
+import type { IMentorRequestService } from "../interfaces/services/IMentorRequestService";
+import type { IMentorAssignmentRequestRepository } from "@/interfaces/repositories/IMentorAssignmentRequestRepository";
+import type { ISessionRepository } from "@/interfaces/repositories/ISessionRepository";
+import type { ITimeSlotRepository } from "@/interfaces/repositories/ITimeSlotRepository";
+import type { INotificationService } from "@/interfaces/services/INotificationService";
 
 @injectable()
 export class AdminService implements IAdminService {
@@ -684,8 +684,8 @@ async getStudentsWithTrialStats(page: number, limit: number) {
       return {
         success: true,
         data: {
-          students: (result.students as unknown as import('../interfaces/models/student.interface.js').StudentProfile[]).map(student => {
-            const authUser = { ...student, role: 'student' as const } as unknown as import('../interfaces/auth/auth.interface.js').StudentAuthUser;
+          students: (result.students as unknown as import('../interfaces/models/student.interface').StudentProfile[]).map(student => {
+            const authUser = { ...student, role: 'student' as const } as unknown as import('../interfaces/auth/auth.interface').StudentAuthUser;
             return StudentMapper.toStudentResponseDto(authUser);
           }),
           pagination: {
@@ -1043,7 +1043,7 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
       
       // STEP 1: Find existing course for this student and subject
       const existingCourses = await this._courseRepo.findByStudent(studentId);
-      const course = existingCourses.find((c: import('../models/course.model.js').ICourse) => 
+      const course = existingCourses.find((c: import('../models/course.model').ICourse) => 
         (c.subject.toString() === subjectId) &&
         c.isActive && c.status !== 'cancelled'
       );
@@ -1245,7 +1245,7 @@ async getTrialClassDetails(trialClassId: string): Promise<TrialClassResponseDto>
       logger.info(`AdminService: Searching students with query: ${query}`);
       const students = await this._studentRepo.searchStudents(query);
       return students.map(student => {
-        const authUser = { ...(student as unknown as Record<string, unknown>), role: 'student' as const } as unknown as import('../interfaces/auth/auth.interface.js').StudentAuthUser;
+        const authUser = { ...(student as unknown as Record<string, unknown>), role: 'student' as const } as unknown as import('../interfaces/auth/auth.interface').StudentAuthUser;
         return StudentMapper.toStudentResponseDto(authUser);
       });
     } catch (error: unknown) {

@@ -1,11 +1,11 @@
 import nodeCron from 'node-cron';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../types.js';
-import type { INotificationService } from '../interfaces/services/INotificationService.js';
-import type { ISchedulingService } from '../interfaces/services/ISchedulingService.js';
-import type { ISessionService } from '../interfaces/services/ISessionService.js';
-import type { IStudyMaterialService } from '../interfaces/services/IStudyMaterialService.js';
-import { logger } from '../utils/logger.js';
+import { TYPES } from '../types';
+import type { INotificationService } from '../interfaces/services/INotificationService';
+import type { ISchedulingService } from '../interfaces/services/ISchedulingService';
+import type { ISessionService } from '../interfaces/services/ISessionService';
+import type { IStudyMaterialService } from '../interfaces/services/IStudyMaterialService';
+import { logger } from '../utils/logger';
 
 @injectable()
 export class CronService {

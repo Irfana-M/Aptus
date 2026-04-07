@@ -1,12 +1,12 @@
 import type { Request, Response } from "express";
 import { inject, injectable } from "inversify";
-import { TYPES } from "../types.js";
-import type { IAttendanceService } from "@/interfaces/services/IAttendanceService.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
-import { logger } from "@/utils/logger.js";
-import { AppError } from "@/utils/AppError.js";
-import { MESSAGES } from "@/constants/messages.constants.js";
-import { UserRole } from "@/enums/user.enum.js";
+import { TYPES } from "../types";
+import type { IAttendanceService } from "@/interfaces/services/IAttendanceService";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import { logger } from "@/utils/logger";
+import { AppError } from "@/utils/AppError";
+import { MESSAGES } from "@/constants/messages.constants";
+import { UserRole } from "@/enums/user.enum";
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -37,11 +37,11 @@ export class AttendanceController {
 
       // Detect session model (Try Session first, then TrialClass)
       let sessionModel: 'Session' | 'TrialClass' = 'Session';
-      const { SessionModel } = await import("../models/scheduling/session.model.js");
+      const { SessionModel } = await import("../models/scheduling/session.model");
       const session = await SessionModel.findById(sessionId);
       
       if (!session) {
-          const { TrialClass } = await import("../models/student/trialClass.model.js");
+          const { TrialClass } = await import("../models/student/trialClass.model");
           const trial = await TrialClass.findById(sessionId);
           if (trial) {
               sessionModel = 'TrialClass';
@@ -82,11 +82,11 @@ export class AttendanceController {
 
       // Detect session model
       let sessionModel: 'Session' | 'TrialClass' = 'Session';
-      const { SessionModel } = await import("../models/scheduling/session.model.js");
+      const { SessionModel } = await import("../models/scheduling/session.model");
       const session = await SessionModel.findById(sessionId);
       
       if (!session) {
-          const { TrialClass } = await import("../models/student/trialClass.model.js");
+          const { TrialClass } = await import("../models/student/trialClass.model");
           const trial = await TrialClass.findById(sessionId);
           if (trial) {
               sessionModel = 'TrialClass';

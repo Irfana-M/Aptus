@@ -1,8 +1,8 @@
 import { injectable } from "inversify";
-import { BaseRepository } from "./baseRepository.js";
-import type { IChatMessage } from "../interfaces/models/chat.interface.js";
-import { ChatMessageModel } from "../models/scheduling/chatMessage.model.js";
-import type { IChatMessageRepository } from "../interfaces/repositories/IChatMessageRepository.js";
+import { BaseRepository } from "./baseRepository";
+import type { IChatMessage } from "../interfaces/models/chat.interface";
+import { ChatMessageModel } from "../models/scheduling/chatMessage.model";
+import type { IChatMessageRepository } from "../interfaces/repositories/IChatMessageRepository";
 
 @injectable()
 export class ChatMessageRepository extends BaseRepository<IChatMessage> implements IChatMessageRepository {

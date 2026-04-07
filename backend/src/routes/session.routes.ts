@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { container } from "../inversify.config.js";
-import { TYPES } from "../types.js";
-import { SessionController } from "../controllers/session.controller.js";
-import type { ISessionService } from "../interfaces/services/ISessionService.js";
-import { requireAuth } from "../middlewares/authMiddleware.js";
-import { requireRole } from "../middlewares/role.middleware.js";
+import { container } from "../inversify.config";
+import { TYPES } from "../types";
+import { SessionController } from "../controllers/session.controller";
+import type { ISessionService } from "../interfaces/services/ISessionService";
+import { requireAuth } from "../middlewares/authMiddleware";
+import { requireRole } from "../middlewares/role.middleware";
 
 
 const router = Router();

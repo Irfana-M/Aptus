@@ -1,29 +1,29 @@
 import { injectable, inject } from 'inversify';
 
-import type { IStudentService } from "../interfaces/services/IStudentService.js";
-import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository.js";
-import type { IGradeRepository } from "../interfaces/repositories/IGradeRepository.js";
-import type { AuthUser } from "../interfaces/auth/auth.interface.js";
-import { logger } from "../utils/logger.js";
-import { getErrorMessage } from "../utils/errorUtils.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { TYPES } from '../types.js';
-import type { StudentBaseResponseDto } from '@/dtos/auth/UserResponseDTO.js';
-import { StudentMapper } from '@/mappers/StudentMapper.js';
-import type { StudentProfile, StudentRegisterInput, AcademicDetails, contactInfo, ParentInfo } from '@/interfaces/models/student.interface.js';
-import { AppError } from '@/utils/AppError.js';
-import { MESSAGES } from '@/constants/messages.constants.js';
+import type { IStudentService } from "../interfaces/services/IStudentService";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
+import type { IGradeRepository } from "../interfaces/repositories/IGradeRepository";
+import type { AuthUser } from "../interfaces/auth/auth.interface";
+import { logger } from "../utils/logger";
+import { getErrorMessage } from "../utils/errorUtils";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { TYPES } from '../types';
+import type { StudentBaseResponseDto } from '@/dtos/auth/UserResponseDTO';
+import { StudentMapper } from '@/mappers/StudentMapper';
+import type { StudentProfile, StudentRegisterInput, AcademicDetails, contactInfo, ParentInfo } from '@/interfaces/models/student.interface';
+import { AppError } from '@/utils/AppError';
+import { MESSAGES } from '@/constants/messages.constants';
 
-import type { INotificationService } from '../interfaces/services/INotificationService.js';
-import { InternalEventEmitter } from '../utils/InternalEventEmitter.js';
-import { EVENTS } from '../utils/InternalEventEmitter.js';
-import { PLAN_LIMITS } from '../constants/plans.js';
-import { PlanType } from '../enums/plan.enum.js';
-import type { ICourseRepository } from '../interfaces/repositories/ICourseRepository.js';
-import { OnboardingEvent, StudentOnboardingStatus } from '../enums/studentOnboarding.enum.js';
-import type { IEnrollmentService } from '../interfaces/services/IEnrollmentService.js';
-import type { ICourseRequestRepository } from '../interfaces/repositories/ICourseRequestRepository.js';
-import type { ISubjectRepository } from '../interfaces/repositories/ISubjectRepository.js';
+import type { INotificationService } from '../interfaces/services/INotificationService';
+import { InternalEventEmitter } from '../utils/InternalEventEmitter';
+import { EVENTS } from '../utils/InternalEventEmitter';
+import { PLAN_LIMITS } from '../constants/plans';
+import { PlanType } from '../enums/plan.enum';
+import type { ICourseRepository } from '../interfaces/repositories/ICourseRepository';
+import { OnboardingEvent, StudentOnboardingStatus } from '../enums/studentOnboarding.enum';
+import type { IEnrollmentService } from '../interfaces/services/IEnrollmentService';
+import type { ICourseRequestRepository } from '../interfaces/repositories/ICourseRequestRepository';
+import type { ISubjectRepository } from '../interfaces/repositories/ISubjectRepository';
 
 @injectable()
 export class StudentService implements IStudentService {
@@ -31,7 +31,7 @@ export class StudentService implements IStudentService {
     @inject(TYPES.IStudentRepository) private _studentRepo: IStudentRepository,
     @inject(TYPES.IGradeRepository) private _gradeRepo: IGradeRepository,
     @inject(TYPES.INotificationService) private _notificationService: INotificationService,
-    @inject(TYPES.IMentorAssignmentRequestRepository) private _mentorRequestRepo: import("../interfaces/repositories/IMentorAssignmentRequestRepository.js").IMentorAssignmentRequestRepository,
+    @inject(TYPES.IMentorAssignmentRequestRepository) private _mentorRequestRepo: import("../interfaces/repositories/IMentorAssignmentRequestRepository").IMentorAssignmentRequestRepository,
     @inject(TYPES.ICourseRepository) private _courseRepo: ICourseRepository,
     @inject(TYPES.IEnrollmentService) private _enrollmentService: IEnrollmentService,
     @inject(TYPES.ICourseRequestRepository) private _courseRequestRepo: ICourseRequestRepository,
@@ -225,7 +225,7 @@ export class StudentService implements IStudentService {
       const maxSize = 5 * 1024 * 1024;
       if (f.size > maxSize) throw new Error("File too large (max 5MB)");
 
-      const { uploadFileToS3 } = await import("../utils/s3Upload.js");
+      const { uploadFileToS3 } = await import("../utils/s3Upload");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const imageKey = await uploadFileToS3(f as any); 
 
@@ -256,11 +256,11 @@ export class StudentService implements IStudentService {
     }
   }
 
-  async advanceOnboarding(studentId: string, event: import('../enums/studentOnboarding.enum.js').OnboardingEvent): Promise<void> {
+  async advanceOnboarding(studentId: string, event: import('../enums/studentOnboarding.enum').OnboardingEvent): Promise<void> {
     try {
       // Lazy load to avoid circular dependency issues if any, though Domain/Policy should be clean
-      const { StudentOnboardingPolicy } = await import('../domain/policy/StudentOnboardingPolicy.js');
-      const { StudentOnboardingStatus } = await import('../enums/studentOnboarding.enum.js');
+      const { StudentOnboardingPolicy } = await import('../domain/policy/StudentOnboardingPolicy');
+      const { StudentOnboardingStatus } = await import('../enums/studentOnboarding.enum');
 
       const student = await this._studentRepo.findStudentProfileById(studentId);
       if (!student) throw new AppError(MESSAGES.AUTH.USER_NOT_FOUND, HttpStatusCode.NOT_FOUND);
@@ -350,7 +350,7 @@ export class StudentService implements IStudentService {
       // 3. Update profile
       const updateData: Partial<StudentProfile> = {
         preferredSubjects: preferences.map(preference => preference.subjectId) as unknown as import('mongoose').Types.ObjectId[],
-        preferredTimeSlots: preferences as unknown as import('../interfaces/models/student.interface.js').SubjectPreference[],
+        preferredTimeSlots: preferences as unknown as import('../interfaces/models/student.interface').SubjectPreference[],
         preferencesCompleted: true
       };
       
@@ -419,7 +419,7 @@ export class StudentService implements IStudentService {
 
       // 5. Advance onboarding
       try {
-        await this.advanceOnboarding(studentId, 'PREFERENCES_COMPLETED' as import('../enums/studentOnboarding.enum.js').OnboardingEvent);
+        await this.advanceOnboarding(studentId, 'PREFERENCES_COMPLETED' as import('../enums/studentOnboarding.enum').OnboardingEvent);
       } catch (error) {
         logger.warn(`Failed to advance onboarding to PREFERENCES_COMPLETED for ${studentId}`, { error: getErrorMessage(error) });
       }

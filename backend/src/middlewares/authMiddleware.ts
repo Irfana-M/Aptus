@@ -1,9 +1,9 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import type { JwtPayload } from "jsonwebtoken";
-import { AppError } from "../utils/AppError.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { logger } from "../utils/logger.js";
+import { AppError } from "../utils/AppError";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { logger } from "../utils/logger";
 
 declare module "express-serve-static-core" {
   interface Request {
@@ -99,7 +99,7 @@ export const requireAuth = (
   }
 };
 
-import { requireRole } from "./role.middleware.js";
+import { requireRole } from "./role.middleware";
 
 export class AuthMiddleware {
   static verifyToken = requireAuth;

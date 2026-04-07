@@ -1,4 +1,4 @@
-import type { IExam, IQuestion } from "../../models/exam.model.js";
+import type { IExam, IQuestion } from "../../models/exam.model";
 
 interface SanitizedOption {
   text: string;

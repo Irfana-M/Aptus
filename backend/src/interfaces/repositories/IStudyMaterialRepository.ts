@@ -1,5 +1,5 @@
-import type { IStudyMaterial } from "../models/studyMaterial.interface.js";
-import type { IBaseRepository } from "./IBaseRepository.js";
+import type { IStudyMaterial } from "../models/studyMaterial.interface";
+import type { IBaseRepository } from "./IBaseRepository";
 
 export interface IStudyMaterialRepository extends IBaseRepository<IStudyMaterial> {
   findBySessionId(sessionId: string): Promise<IStudyMaterial[]>;

@@ -1,9 +1,9 @@
 import { injectable } from "inversify";
-import { BaseRepository } from "./baseRepository.js";
-import type { IStudentSubscription, ISubscriptionPlan } from "../interfaces/models/subscription.interface.js";
-import { StudentSubscriptionModel } from "../models/subscription/studentSubscription.model.js";
-import { SubscriptionPlanModel } from "../models/subscription/subscriptionPlan.model.js";
-import type { ISubscriptionRepository } from "../interfaces/repositories/ISubscriptionRepository.js";
+import { BaseRepository } from "./baseRepository";
+import type { IStudentSubscription, ISubscriptionPlan } from "../interfaces/models/subscription.interface";
+import { StudentSubscriptionModel } from "../models/subscription/studentSubscription.model";
+import { SubscriptionPlanModel } from "../models/subscription/subscriptionPlan.model";
+import type { ISubscriptionRepository } from "../interfaces/repositories/ISubscriptionRepository";
 import { Types } from "mongoose";
 
 @injectable()

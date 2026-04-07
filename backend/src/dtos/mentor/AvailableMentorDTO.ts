@@ -1,4 +1,4 @@
-import type { MentorProfile, SubjectProficency } from "../../interfaces/models/mentor.interface.js";
+import type { MentorProfile, SubjectProficency } from "../../interfaces/models/mentor.interface";
 export class AvailableMentorDto {
   _id: string;
   id: string;

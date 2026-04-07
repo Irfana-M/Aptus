@@ -1,8 +1,8 @@
-import type { RegisterUserDto } from "@/dtos/auth/RegisteruserDTO.js";
-import type { MentorProfile } from "../models/mentor.interface.js";
-import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO.js";
-import type { LeavePaginatedResult } from "../repositories/IMentorRepository.js";
-import { LEAVE_STATUS } from "../../constants/status.constants.js";
+import type { RegisterUserDto } from "@/dtos/auth/RegisteruserDTO"
+import type { MentorProfile } from "../models/mentor.interface";
+import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO";
+import type { LeavePaginatedResult } from "../repositories/IMentorRepository";
+import { LEAVE_STATUS } from "../../constants/status.constants";
 
 export interface IMentorService {
   registerMentor(data: RegisterUserDto): Promise<unknown>;

@@ -1,4 +1,4 @@
-import type { JoinCallRequestDto, CallEndedDto } from "../../dtos/webrtcDTO.js";
+import type { JoinCallRequestDto, CallEndedDto } from "../../dtos/webrtcDTO";
 
 export interface IVideoCallService {
   initializeCall(sessionId: string, userId: string, userRole: 'mentor' | 'student'): Promise<{ success: boolean; meetLink?: string | undefined}>;

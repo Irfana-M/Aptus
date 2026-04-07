@@ -1,18 +1,18 @@
 
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types.js";
-import type { IAvailabilityService } from "../interfaces/services/IAvailabilityService.js";
-import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository.js";
-import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository.js";
-import type { IMentorAvailabilityRepository } from "../interfaces/repositories/IMentorAvailabilityRepository.js";
-import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository.js";
-import type { Availability, MentorProfile, TimeSlot } from "../interfaces/models/mentor.interface.js";
-import { AppError } from "../utils/AppError.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { logger } from "../utils/logger.js";
+import { TYPES } from "../types";
+import type { IAvailabilityService } from "../interfaces/services/IAvailabilityService";
+import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository";
+import type { ITrialClassRepository } from "../interfaces/repositories/ITrialClassRepository";
+import type { IMentorAvailabilityRepository } from "../interfaces/repositories/IMentorAvailabilityRepository";
+import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository";
+import type { Availability, MentorProfile, TimeSlot } from "../interfaces/models/mentor.interface";
+import { AppError } from "../utils/AppError";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { logger } from "../utils/logger";
 import { Types } from "mongoose";
-import { isSlotMatching, isShiftMatching } from "../utils/time.util.js";
-import { MESSAGES } from "../constants/messages.constants.js";
+import { isSlotMatching, isShiftMatching } from "../utils/time.util";
+import { MESSAGES } from "../constants/messages.constants";
 
 @injectable()
 export class AvailabilityService implements IAvailabilityService {

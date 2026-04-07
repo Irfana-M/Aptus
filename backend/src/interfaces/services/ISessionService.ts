@@ -1,5 +1,5 @@
-import type { ISession } from '../models/session.interface.js';
-import type { LeaveEligibilityResponse } from './ILeaveEligibilityService.js';
+import type { ISession } from '../models/session.interface';
+import type { LeaveEligibilityResponse } from './ILeaveEligibilityService';
 
 export interface CreateSessionDto {
   mentorId: string;

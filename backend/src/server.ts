@@ -2,14 +2,14 @@ import "reflect-metadata";
 import dotenv from "dotenv";
 dotenv.config();
 
-import app from "./app.js";
-import { container } from "./inversify.config.js";
+import app from "./app";
+import { container } from "./inversify.config";
 (global as unknown as { container: typeof container }).container = container;
-import { SocketService } from "./services/SocketService.js";
-import { CronService } from "./services/CronService.js";
-import { NotificationManager } from "./services/NotificationManager.js";
-import { MentorLeaveEventListener } from "./listeners/MentorLeaveEventListener.js";
-import { TYPES } from "./types.js";
+import { SocketService } from "./services/SocketService";
+import { CronService } from "./services/CronService";
+import { NotificationManager } from "./services/NotificationManager";
+import { MentorLeaveEventListener } from "./listeners/MentorLeaveEventListener";
+import { TYPES } from "./types";
 
 const PORT = process.env.PORT || 5000;
 

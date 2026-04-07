@@ -1,26 +1,26 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types.js";
-import type { ISessionService } from "../interfaces/services/ISessionService.js";
-import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository.js";
-import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository.js";
-import type { ISession, ISessionParticipant } from "../interfaces/models/session.interface.js";
-import type { INotificationService } from "../interfaces/services/INotificationService.js";
-import type { ISchedulingService } from "../interfaces/services/ISchedulingService.js";
-import type { IAttendanceService } from "../interfaces/services/IAttendanceService.js";
+import { TYPES } from "../types";
+import type { ISessionService } from "../interfaces/services/ISessionService";
+import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository";
+import type { ITimeSlotRepository } from "../interfaces/repositories/ITimeSlotRepository";
+import type { ISession, ISessionParticipant } from "../interfaces/models/session.interface";
+import type { INotificationService } from "../interfaces/services/INotificationService";
+import type { ISchedulingService } from "../interfaces/services/ISchedulingService";
+import type { IAttendanceService } from "../interfaces/services/IAttendanceService";
 
-import type { IBookingRepository } from "../interfaces/repositories/IBookingRepository.js";
-import type { ISubjectRepository } from "../interfaces/repositories/ISubjectRepository.js";
-import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository.js";
-import type { ILeaveEligibilityService, LeaveEligibilityResponse } from "../interfaces/services/ILeaveEligibilityService.js";
-import { logger } from "../utils/logger.js";
+import type { IBookingRepository } from "../interfaces/repositories/IBookingRepository";
+import type { ISubjectRepository } from "../interfaces/repositories/ISubjectRepository";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
+import type { ILeaveEligibilityService, LeaveEligibilityResponse } from "../interfaces/services/ILeaveEligibilityService";
+import { logger } from "../utils/logger";
 import { Types } from "mongoose";
-import { MESSAGES } from "../constants/messages.constants.js";
-import { AppError } from "../utils/AppError.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { STUDENT_CANCEL_CUTOFF_HOURS } from "../config/leavePolicy.config.js";
-import { BOOKING_STATUS, SESSION_STATUS } from "../constants/status.constants.js";
-import { combineISTToUTC } from "../utils/time.util.js";
-import { SessionModel } from "../models/scheduling/session.model.js";
+import { MESSAGES } from "../constants/messages.constants";
+import { AppError } from "../utils/AppError";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { STUDENT_CANCEL_CUTOFF_HOURS } from "../config/leavePolicy.config";
+import { BOOKING_STATUS, SESSION_STATUS } from "../constants/status.constants";
+import { combineISTToUTC } from "../utils/time.util";
+import { SessionModel } from "../models/scheduling/session.model";
 
 @injectable()
 export class SessionService implements ISessionService {
@@ -777,7 +777,7 @@ export class SessionService implements ISessionService {
       logger.info(`[SessionService] Activating join links for window ${from.toISOString()} to ${to.toISOString()}`);
 
       // Dynamic import to avoid circular dependencies
-      const { SessionAccessService } = await import('./scheduling/SessionAccessService.js');
+      const { SessionAccessService } = await import('./scheduling/SessionAccessService');
       const sessionAccessService = new SessionAccessService();
 
       // 1. Find booked slots in the time window

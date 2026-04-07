@@ -1,14 +1,14 @@
 import { injectable, inject } from 'inversify';
 import { Types, Schema } from 'mongoose';
-import { TYPES } from '../types.js';
-import type { INotificationRepository } from '../interfaces/repositories/INotificationRepository.js';
-import type { INotificationService } from '../interfaces/services/INotificationService.js';
-import type { IEmailService } from '../interfaces/services/IEmailService.js';
-import type { ISocketService } from '../interfaces/services/ISocketService.js';
-import type { INotification, NotificationType, NotificationChannel } from '../interfaces/models/notification.interface.js';
-import { logger } from '../utils/logger.js';
-import { MESSAGES } from '../constants/messages.constants.js';
-import { StatusLogger } from '../utils/statusLogger.js';
+import { TYPES } from '../types';
+import type { INotificationRepository } from '../interfaces/repositories/INotificationRepository';
+import type { INotificationService } from '../interfaces/services/INotificationService';
+import type { IEmailService } from '../interfaces/services/IEmailService';
+import type { ISocketService } from '../interfaces/services/ISocketService';
+import type { INotification, NotificationType, NotificationChannel } from '../interfaces/models/notification.interface';
+import { logger } from '../utils/logger';
+import { MESSAGES } from '../constants/messages.constants';
+import { StatusLogger } from '../utils/statusLogger';
 
 @injectable()
 export class NotificationService implements INotificationService {

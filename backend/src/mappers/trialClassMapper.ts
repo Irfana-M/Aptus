@@ -1,5 +1,5 @@
-import type { ITrialClassDocument } from "../models/student/trialClass.model.js";
-import type { TrialClassResponseDto } from "../dtos/student/trialClassDTO.js";
+import type { ITrialClassDocument } from "../models/student/trialClass.model";
+import type { TrialClassResponseDto } from "../dtos/student/trialClassDTO";
 
 import mongoose from "mongoose";
 

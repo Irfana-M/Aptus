@@ -1,13 +1,13 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../../types.js";
-import { ILeaveEligibilityService, LeaveEligibilityResponse, SessionEligibility } from "../../interfaces/services/ILeaveEligibilityService.js";
-import { ISessionPolicyService } from "../../interfaces/services/ISessionPolicyService.js";
-import { ISession } from "../../interfaces/models/session.interface.js";
+import { TYPES } from "../../types"
+import { ILeaveEligibilityService, LeaveEligibilityResponse, SessionEligibility } from "../../interfaces/services/ILeaveEligibilityService";
+import { ISessionPolicyService } from "../../interfaces/services/ISessionPolicyService";
+import { ISession } from "../../interfaces/models/session.interface";
 
 @injectable()
 export class LeaveEligibilityService implements ILeaveEligibilityService {
     constructor(
-        @inject(TYPES.ISessionPolicyService) private _policyService: import("../../interfaces/services/ISessionPolicyService.js").ISessionPolicyService
+        @inject(TYPES.ISessionPolicyService) private _policyService: import("../../interfaces/services/ISessionPolicyService").ISessionPolicyService
     ) {}
 
     computeStudentEligibility(sessions: ISession[], currentTime: Date): LeaveEligibilityResponse {

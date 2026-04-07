@@ -1,12 +1,12 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types.js";
+import { TYPES } from "../types";
 import type { Request, Response } from "express";
-import type { IStudyMaterialService } from "../interfaces/services/IStudyMaterialService.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { logger } from "../utils/logger.js";
-import { getSignedFileUrl } from "../utils/s3Upload.js";
-import { MESSAGES } from "../constants/messages.constants.js";
-import { UserRole } from "../enums/user.enum.js";
+import type { IStudyMaterialService } from "../interfaces/services/IStudyMaterialService";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { logger } from "../utils/logger";
+import { getSignedFileUrl } from "../utils/s3Upload";
+import { MESSAGES } from "../constants/messages.constants";
+import { UserRole } from "../enums/user.enum";
 
 interface ExtendedRequest extends Request {
   user?: {

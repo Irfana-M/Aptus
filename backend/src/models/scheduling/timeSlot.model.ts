@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import type { ITimeSlot } from '../../interfaces/models/timeSlot.interface.js';
+import type { ITimeSlot } from '../../interfaces/models/timeSlot.interface';
 
 const timeSlotSchema = new Schema<ITimeSlot>(
   {

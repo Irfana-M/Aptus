@@ -1,13 +1,13 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "@/types.js";
+import { TYPES } from "@/types";
 import type { Request, Response } from "express";
-import type { IMentorDashboardService } from "@/interfaces/services/IMentorDashboardService.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
-import { AppError } from "@/utils/AppError.js";
-import { logger } from "@/utils/logger.js";
-import { MESSAGES } from "@/constants/messages.constants.js";
-import { getPaginationParams, formatStandardizedPaginatedResult } from "@/utils/pagination.util.js";
-import { UserRole } from "@/enums/user.enum.js";
+import type { IMentorDashboardService } from "@/interfaces/services/IMentorDashboardService";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import { AppError } from "@/utils/AppError";
+import { logger } from "@/utils/logger";
+import { MESSAGES } from "@/constants/messages.constants";
+import { getPaginationParams, formatStandardizedPaginatedResult } from "@/utils/pagination.util";
+import { UserRole } from "@/enums/user.enum";
 
 interface AuthenticatedRequest extends Request {
   user?: {

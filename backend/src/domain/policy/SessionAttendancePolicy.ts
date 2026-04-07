@@ -1,7 +1,7 @@
 import { injectable } from "inversify";
-import { AppError } from "../../utils/AppError.js";
-import { HttpStatusCode } from "../../constants/httpStatus.js";
-import type { IBooking } from "../../interfaces/models/booking.interface.js";
+import { AppError } from "../../utils/AppError";
+import { HttpStatusCode } from "../../constants/httpStatus";
+import type { IBooking } from "../../interfaces/models/booking.interface";
 
 @injectable()
 export class SessionAttendancePolicy {

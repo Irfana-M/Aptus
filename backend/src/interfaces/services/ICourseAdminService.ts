@@ -1,7 +1,7 @@
-import { AvailableMentorDto } from "../../dtos/mentor/AvailableMentorDTO.js";
-import type { GradeResponseDto } from "../../dtos/student/grade.dto.js";
-import type { SubjectResponseDto } from "../../dtos/student/subject.dto.js";
-import type { CoursePaginationParams,PaginatedResponse } from "../../dtos/shared/paginationTypes.js";
+import { AvailableMentorDto } from "../../dtos/mentor/AvailableMentorDTO";
+import type { GradeResponseDto } from "../../dtos/student/grade.dto";
+import type { SubjectResponseDto } from "../../dtos/student/subject.dto";
+import type { CoursePaginationParams,PaginatedResponse } from "../../dtos/shared/paginationTypes";
 export interface CreateCourseParams {
     gradeId: string;
     subjectId: string;

@@ -1,6 +1,6 @@
 
 import mongoose from 'mongoose';
-import { MentorModel } from './models/mentor/mentor.model.js';
+import { MentorModel } from './models/mentor/mentor.model';
 
 import dotenv from 'dotenv';
 

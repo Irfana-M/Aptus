@@ -1,18 +1,18 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types.js";
-import type { IUserRoleService, VerificationResponse, UserExistenceResponse, UserEmailResponse, TrialClassAuthData } from "@/interfaces/services/IUserRoleSrvice.js";
-import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository.js";
-import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository.js";
-import type {  StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO.js";
-import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO.js";
-import { logger } from "../utils/logger.js";
-import { MentorMapper } from "@/mappers/MentorMapper.js";
-import { StudentMapper } from "@/mappers/StudentMapper.js";
-import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository.js";
-import { verifyAccessToken } from "../utils/jwt.util.js";
+import { TYPES } from "../types";
+import type { IUserRoleService, VerificationResponse, UserExistenceResponse, UserEmailResponse, TrialClassAuthData } from "@/interfaces/services/IUserRoleSrvice";
+import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
+import type {  StudentBaseResponseDto } from "@/dtos/auth/UserResponseDTO";
+import type { MentorResponseDto } from "@/dtos/mentor/MentorResponseDTO";
+import { logger } from "../utils/logger";
+import { MentorMapper } from "@/mappers/MentorMapper";
+import { StudentMapper } from "@/mappers/StudentMapper";
+import type { ITrialClassRepository } from "@/interfaces/repositories/ITrialClassRepository";
+import { verifyAccessToken } from "../utils/jwt.util";
 import { Types } from "mongoose";
-import { MESSAGES } from "@/constants/messages.constants.js";
-import type { ISessionRepository } from "@/interfaces/repositories/ISessionRepository.js";
+import { MESSAGES } from "@/constants/messages.constants";
+import type { ISessionRepository } from "@/interfaces/repositories/ISessionRepository";
 
 @injectable()
 export class UserRoleService implements IUserRoleService {

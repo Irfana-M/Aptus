@@ -1,12 +1,12 @@
 import type { Request, Response } from "express";
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types.js";
-import type { IChatService } from "../interfaces/services/IChatService.js";
-import { AppError } from "../utils/AppError.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { UserRole } from "../enums/user.enum.js";
-import { logger } from "../utils/logger.js";
-import { MESSAGES } from "../constants/messages.constants.js";
+import { TYPES } from "../types";
+import type { IChatService } from "../interfaces/services/IChatService";
+import { AppError } from "../utils/AppError";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { UserRole } from "../enums/user.enum";
+import { logger } from "../utils/logger";
+import { MESSAGES } from "../constants/messages.constants";
 
 interface AuthenticatedRequest extends Request {
   user: {

@@ -1,11 +1,11 @@
 import type { Request, Response } from "express";
 import { inject, injectable } from "inversify";
-import { TYPES } from "@/types.js";
-import type { ISubjectService } from "@/interfaces/services/ISubjectService.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
-import { logger } from "@/utils/logger.js";
-import { AppError } from "@/utils/AppError.js";
-import { MESSAGES } from "@/constants/messages.constants.js";
+import { TYPES } from "@/types";
+import type { ISubjectService } from "@/interfaces/services/ISubjectService";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import { logger } from "@/utils/logger";
+import { AppError } from "@/utils/AppError";
+import { MESSAGES } from "@/constants/messages.constants";
 
 @injectable()
 export class SubjectController {

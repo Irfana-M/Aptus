@@ -1,4 +1,4 @@
-import type { IMaterialSubmission } from '../../models/materialSubmission.model.js';
+import type { IMaterialSubmission } from '../../models/materialSubmission.model';
 
 export interface IMaterialSubmissionRepository {
   create(data: Partial<IMaterialSubmission>): Promise<IMaterialSubmission>;

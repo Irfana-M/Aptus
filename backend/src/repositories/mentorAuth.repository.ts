@@ -1,17 +1,17 @@
-import { MentorModel } from "../models/mentor/mentor.model.js";
+import { MentorModel } from "../models/mentor/mentor.model";
 import type {
   AuthUser,
   MentorAuthUser,
-} from "../interfaces/auth/auth.interface.js";
-import type { IVerificationRepository } from "../interfaces/repositories/IVerificationRepository.js";
-import type { IAuthRepository } from "../interfaces/auth/IAuthRepository.js";
-import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO.js";
-import type { MentorProfile } from "../interfaces/models/mentor.interface.js";
-import type { IMentorAuthRepository } from "../interfaces/repositories/IMentorAuthRepository.js";
+} from "../interfaces/auth/auth.interface";
+import type { IVerificationRepository } from "../interfaces/repositories/IVerificationRepository";
+import type { IAuthRepository } from "../interfaces/auth/IAuthRepository";
+import type { RegisterUserDto } from "../dtos/auth/RegisteruserDTO";
+import type { MentorProfile } from "../interfaces/models/mentor.interface";
+import type { IMentorAuthRepository } from "../interfaces/repositories/IMentorAuthRepository";
 import bcrypt from "bcryptjs";
-import { logger } from "../utils/logger.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { AppError } from "@/utils/AppError.js";
+import { logger } from "../utils/logger";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { AppError } from "@/utils/AppError";
 import { injectable } from "inversify";
 
 

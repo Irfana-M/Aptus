@@ -1,15 +1,15 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../../types.js";
-import type { IChatService } from "../../interfaces/services/IChatService.js";
-import type { IChatRoomRepository } from "../../interfaces/repositories/IChatRoomRepository.js";
-import type { ITrialClassRepository } from "../../interfaces/repositories/ITrialClassRepository.js";
-import type { IChatMessageRepository } from "../../interfaces/repositories/IChatMessageRepository.js";
-import type { ISessionRepository } from "../../interfaces/repositories/ISessionRepository.js";
-import type { ISocketService } from "../../interfaces/services/ISocketService.js";
-import type { IChatRoom, IChatMessage } from "../../interfaces/models/chat.interface.js";
-import { AppError } from "../../utils/AppError.js";
-import { HttpStatusCode } from "../../constants/httpStatus.js";
-import { logger } from "../../utils/logger.js";
+import { TYPES } from "../../types"
+import type { IChatService } from "../../interfaces/services/IChatService";
+import type { IChatRoomRepository } from "../../interfaces/repositories/IChatRoomRepository";
+import type { ITrialClassRepository } from "../../interfaces/repositories/ITrialClassRepository";
+import type { IChatMessageRepository } from "../../interfaces/repositories/IChatMessageRepository";
+import type { ISessionRepository } from "../../interfaces/repositories/ISessionRepository";
+import type { ISocketService } from "../../interfaces/services/ISocketService";
+import type { IChatRoom, IChatMessage } from "../../interfaces/models/chat.interface";
+import { AppError } from "../../utils/AppError";
+import { HttpStatusCode } from "../../constants/httpStatus";
+import { logger } from "../../utils/logger";
 import { Types } from "mongoose";
 
 @injectable()

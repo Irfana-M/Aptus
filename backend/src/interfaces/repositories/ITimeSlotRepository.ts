@@ -1,6 +1,6 @@
 import type { FilterQuery, ClientSession, UpdateQuery } from 'mongoose';
-import type { IBaseRepository } from './IBaseRepository.js';
-import type { ITimeSlot } from '../models/timeSlot.interface.js';
+import type { IBaseRepository } from './IBaseRepository';
+import type { ITimeSlot } from '../models/timeSlot.interface';
 
 export interface ITimeSlotRepository extends IBaseRepository<ITimeSlot> {
   reserveCapacity(slotId: string, session?: ClientSession): Promise<ITimeSlot | null>;

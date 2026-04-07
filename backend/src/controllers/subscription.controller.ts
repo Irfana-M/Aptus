@@ -1,8 +1,8 @@
 import type { Request, Response } from 'express';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../types.js';
-import type { ISubscriptionService } from '../interfaces/services/ISubscriptionService.js';
-import { HttpStatusCode } from '../constants/httpStatus.js';
+import { TYPES } from '../types';
+import type { ISubscriptionService } from '../interfaces/services/ISubscriptionService';
+import { HttpStatusCode } from '../constants/httpStatus';
 
 @injectable()
 export class SubscriptionController {

@@ -1,12 +1,12 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "@/types.js";
+import { TYPES } from "@/types";
 import type { Request, Response } from "express";
-import type { ITrialClassService } from "@/interfaces/services/ITrialClassService.js";
-import { logger } from "@/utils/logger.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
-import { AppError } from "@/utils/AppError.js";
-import { MESSAGES } from "@/constants/messages.constants.js";
-import { getPaginationParams, formatStandardizedPaginatedResult } from "@/utils/pagination.util.js";
+import type { ITrialClassService } from "@/interfaces/services/ITrialClassService";
+import { logger } from "@/utils/logger";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import { AppError } from "@/utils/AppError";
+import { MESSAGES } from "@/constants/messages.constants";
+import { getPaginationParams, formatStandardizedPaginatedResult } from "@/utils/pagination.util";
 
 @injectable()
 export class MentorTrialClassController {

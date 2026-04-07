@@ -1,8 +1,8 @@
 import Stripe from 'stripe';
 import { injectable, inject } from 'inversify';
-import type { IPaymentService } from '../interfaces/services/payment.service.interface.js';
-import { TYPES } from '../types.js';
-import type { IPaymentRepository } from '../interfaces/repositories/IPaymentRepository.js';
+import type { IPaymentService } from '../interfaces/services/payment.service.interface';
+import { TYPES } from '../types';
+import type { IPaymentRepository } from '../interfaces/repositories/IPaymentRepository';
 
 @injectable()
 export class PaymentService implements IPaymentService {

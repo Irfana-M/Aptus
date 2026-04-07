@@ -1,5 +1,5 @@
 import { Schema, Document } from "mongoose";
-import { BOOKING_STATUS } from "../../constants/status.constants.js";
+import { BOOKING_STATUS } from "../../constants/status.constants";
 
 export interface IBooking extends Document {
   studentId: Schema.Types.ObjectId;

@@ -1,14 +1,14 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types.js";
-import { ILeavePolicyService } from "../interfaces/services/ILeavePolicyService.js";
-import { MENTOR_LEAVE_CUTOFF_HOURS } from "../config/leavePolicy.config.js";
-import { AppError } from "../utils/AppError.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { MESSAGES } from "../constants/messages.constants.js";
-import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository.js";
-import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository.js";
-import { LEAVE_STATUS } from "../constants/status.constants.js";
-import { StatusLogger } from "../utils/statusLogger.js";
+import { TYPES } from "../types";
+import { ILeavePolicyService } from "../interfaces/services/ILeavePolicyService";
+import { MENTOR_LEAVE_CUTOFF_HOURS } from "../config/leavePolicy.config";
+import { AppError } from "../utils/AppError";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { MESSAGES } from "../constants/messages.constants";
+import type { ISessionRepository } from "../interfaces/repositories/ISessionRepository";
+import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository";
+import { LEAVE_STATUS } from "../constants/status.constants";
+import { StatusLogger } from "../utils/statusLogger";
 
 @injectable()
 export class LeavePolicyService implements ILeavePolicyService {

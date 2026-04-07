@@ -1,4 +1,4 @@
-import { SCHEDULING_CONFIG } from "../../constants/schedulingDecision.js";
+import { SCHEDULING_CONFIG } from "../../constants/schedulingDecision";
 
 export interface CancellationResult {
   shouldRefundSession: boolean;

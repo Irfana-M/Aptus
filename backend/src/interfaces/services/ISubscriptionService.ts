@@ -1,4 +1,4 @@
-import type { StudentDocument } from "../../models/student/student.model.js";
+import type { StudentDocument } from "../../models/student/student.model";
 
 export interface ISubscriptionService {
   activateSubscription(studentId: string, planCode: string, subjectCount: number, paymentIntentId: string, sessionId: string, paymentId?: string): Promise<StudentDocument>;

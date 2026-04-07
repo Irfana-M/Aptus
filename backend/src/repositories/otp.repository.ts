@@ -1,8 +1,8 @@
-import { OtpModel } from "../models/otp.model.js";
+import { OtpModel } from "../models/otp.model";
 import type { Document, Model } from "mongoose";
-import type { IOtp } from "../interfaces/models/otp.interface.js";
-import { BaseRepository } from "./baseRepository.js";
-import { logger } from "../utils/logger.js";
+import type { IOtp } from "../interfaces/models/otp.interface";
+import { BaseRepository } from "./baseRepository";
+import { logger } from "../utils/logger";
 import { injectable } from "inversify";
 
 @injectable()

@@ -1,7 +1,7 @@
-import { AppError } from "@/utils/AppError.js";
-import { logger } from "@/utils/logger.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
-import type { IBaseRepository } from "@/interfaces/repositories/IBaseRepository.js";
+import { AppError } from "@/utils/AppError";
+import { logger } from "@/utils/logger";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import type { IBaseRepository } from "@/interfaces/repositories/IBaseRepository";
 import { injectable } from "inversify";
 
 import { Model, Document, SortOrder, Types } from "mongoose";

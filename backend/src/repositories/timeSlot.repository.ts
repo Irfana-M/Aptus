@@ -1,10 +1,10 @@
 import { injectable } from 'inversify';
 import { Types } from 'mongoose';
 import type { ClientSession, FilterQuery, QueryOptions, UpdateQuery } from 'mongoose';
-import { BaseRepository } from './baseRepository.js';
-import type { ITimeSlotRepository } from '../interfaces/repositories/ITimeSlotRepository.js';
-import type { ITimeSlot } from '../interfaces/models/timeSlot.interface.js';
-import { TimeSlotModel } from '../models/scheduling/timeSlot.model.js';
+import { BaseRepository } from './baseRepository';
+import type { ITimeSlotRepository } from '../interfaces/repositories/ITimeSlotRepository';
+import type { ITimeSlot } from '../interfaces/models/timeSlot.interface';
+import { TimeSlotModel } from '../models/scheduling/timeSlot.model';
 
 @injectable()
 export class TimeSlotRepository extends BaseRepository<ITimeSlot> implements ITimeSlotRepository {

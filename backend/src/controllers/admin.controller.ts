@@ -1,19 +1,19 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types.js";
+import { TYPES } from "../types";
 import type { Request, Response, NextFunction } from "express";
-import type { IAdminService } from "../interfaces/services/IAdminService.js";
-import { logger } from "../utils/logger.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { MESSAGES } from "../constants/messages.constants.js";
-import { generateAccessToken, verifyRefreshToken } from "@/utils/jwt.util.js";
-import { AppError } from "@/utils/AppError.js";
-import { config } from "../config/app.config.js";
-import { getPaginationParams, formatStandardizedPaginatedResult } from "@/utils/pagination.util.js";
-import type { MentorPaginationParams, StudentPaginationParams } from "@/dtos/shared/paginationTypes.js";
-import { UserRole } from "@/enums/user.enum.js";
-import { ApprovalStatus } from "@/domain/enums/ApprovalStatus.js";
-import { StudentStatus } from "@/enums/student.enum.js";
-import { UserVerificationStatus } from "@/enums/userVerification.enum.js";
+import type { IAdminService } from "../interfaces/services/IAdminService";
+import { logger } from "../utils/logger";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { MESSAGES } from "../constants/messages.constants";
+import { generateAccessToken, verifyRefreshToken } from "@/utils/jwt.util";
+import { AppError } from "@/utils/AppError";
+import { config } from "../config/app.config";
+import { getPaginationParams, formatStandardizedPaginatedResult } from "@/utils/pagination.util";
+import type { MentorPaginationParams, StudentPaginationParams } from "@/dtos/shared/paginationTypes";
+import { UserRole } from "@/enums/user.enum";
+import { ApprovalStatus } from "@/domain/enums/ApprovalStatus";
+import { StudentStatus } from "@/enums/student.enum";
+import { UserVerificationStatus } from "@/enums/userVerification.enum";
 
 interface AuthenticatedRequest extends Request {
   user?: {

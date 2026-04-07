@@ -1,5 +1,5 @@
-import type { CoursePaginationParams } from "@/dtos/shared/paginationTypes.js";
-import type { ICourse } from "@/models/course.model.js";
+import type { CoursePaginationParams } from "@/dtos/shared/paginationTypes";
+import type { ICourse } from "@/models/course.model";
 
 export interface CreateOneToOneCourseDto {
   grade: string;
@@ -26,7 +26,7 @@ export interface CoursePaginatedResult {
   total: number;
 }
 
-import type { IBaseRepository } from "./IBaseRepository.js";
+import type { IBaseRepository } from "./IBaseRepository";
 import type { ClientSession } from "mongoose";
 
 export interface ICourseRepository extends IBaseRepository<ICourse> {

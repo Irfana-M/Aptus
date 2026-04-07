@@ -1,10 +1,10 @@
 import { injectable, inject } from "inversify";
-import { TYPES } from "../types.js";
+import { TYPES } from "../types";
 import type { Request, Response, NextFunction } from "express";
-import type { IOtpService } from "../interfaces/services/IOtpService.js";
-import { AppError } from "../utils/AppError.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { MESSAGES } from "../constants/messages.constants.js";
+import type { IOtpService } from "../interfaces/services/IOtpService";
+import { AppError } from "../utils/AppError";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { MESSAGES } from "../constants/messages.constants";
 
 @injectable()
 export class OtpController {

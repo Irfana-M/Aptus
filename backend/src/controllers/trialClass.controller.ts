@@ -1,14 +1,14 @@
 import type { Request, Response } from "express";
 import { inject, injectable } from "inversify";
-import { TYPES } from "../types.js";
-import type { ITrialClassService } from "@/interfaces/services/ITrialClassService.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
-import { logger } from "@/utils/logger.js";
-import { AppError } from "@/utils/AppError.js";
-import { MESSAGES } from "@/constants/messages.constants.js";
-import { getPaginationParams, formatStandardizedPaginatedResult } from "@/utils/pagination.util.js";
-import { UserRole } from "@/enums/user.enum.js";
-import { TrialClassStatus } from "@/enums/trialClass.enum.js";
+import { TYPES } from "../types";
+import type { ITrialClassService } from "@/interfaces/services/ITrialClassService";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import { logger } from "@/utils/logger";
+import { AppError } from "@/utils/AppError";
+import { MESSAGES } from "@/constants/messages.constants";
+import { getPaginationParams, formatStandardizedPaginatedResult } from "@/utils/pagination.util";
+import { UserRole } from "@/enums/user.enum";
+import { TrialClassStatus } from "@/enums/trialClass.enum";
 
 interface ExtendedRequest extends Request {
   user?: {

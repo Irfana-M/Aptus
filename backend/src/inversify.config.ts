@@ -1,109 +1,109 @@
 import "reflect-metadata";
 import { Container } from "inversify";
-import { TYPES } from "./types.js";
+import { TYPES } from "./types";
 
 // Import ALL classes
-import { AuthRepository } from "./repositories/auth.repository.js";
-import { AdminRepository } from "./repositories/admin.repository.js";
-import { MentorRepository } from "./repositories/mentorRepository.js";
-import { StudentRepository } from "./repositories/studentRepository.js";
-import { OtpRepository } from "./repositories/otp.repository.js";
-import { StudentAuthRepository } from "./repositories/studentAuth.repository.js";
-import { MentorAuthRepository } from "./repositories/mentorAuth.repository.js";
-import { TrialClassRepository } from "./repositories/trialClass.repository.js";
-import { GradeRepository } from "./repositories/grade.repository.js";
-import { SubjectRepository } from "./repositories/subject.repository.js";
-import type { ICourseRequestRepository } from "./interfaces/repositories/ICourseRequestRepository.js";
+import { AuthRepository } from "./repositories/auth.repository";
+import { AdminRepository } from "./repositories/admin.repository";
+import { MentorRepository } from "./repositories/mentorRepository";
+import { StudentRepository } from "./repositories/studentRepository";
+import { OtpRepository } from "./repositories/otp.repository";
+import { StudentAuthRepository } from "./repositories/studentAuth.repository";
+import { MentorAuthRepository } from "./repositories/mentorAuth.repository";
+import { TrialClassRepository } from "./repositories/trialClass.repository";
+import { GradeRepository } from "./repositories/grade.repository";
+import { SubjectRepository } from "./repositories/subject.repository";
+import type { ICourseRequestRepository } from "./interfaces/repositories/ICourseRequestRepository";
 // import type { ISessionService } from "./interfaces/services/ISessionService";
 // import { SessionService } from "./services/session/session.service";
-import type { IAttendanceService } from "./interfaces/services/IAttendanceService.js";
-import { AttendanceService } from "./services/session/AttendanceService.js";
-import { VideoCallRepository } from "./repositories/VideoCallRepository.js";
-import { TimeSlotRepository } from "./repositories/timeSlot.repository.js";
-import { BookingRepository } from "./repositories/booking.repository.js";
-import { SubscriptionService } from "./services/subscription.service.js";
-import { NotificationRepository } from "./repositories/notification.repository.js";
-import { ChatRoomRepository } from "./repositories/chatRoom.repository.js";
-import { ChatMessageRepository } from "./repositories/chatMessage.repository.js";
-import { SchedulingOrchestrator } from "./services/scheduling/SchedulingOrchestrator.js";
-import { SchedulingPolicy } from "./domain/scheduling/SchedulingPolicy.js";
-import { TrialEligibilityPolicy } from "./domain/policy/TrialEligibilityPolicy.js";
-import { SessionAttendancePolicy } from "./domain/policy/SessionAttendancePolicy.js";
-import { NotificationService } from "./services/NotificationService.js";
-import { NotificationManager } from "./services/NotificationManager.js";
-import { SessionAccessService } from "./services/scheduling/SessionAccessService.js";
-import { CronService } from "./services/CronService.js";
-import { InternalEventEmitter } from "./utils/InternalEventEmitter.js";
-import type { IEnrollmentLinkRepository } from "./interfaces/repositories/IEnrollmentLinkRepository.js";
-import { EnrollmentLinkRepository } from "./repositories/enrollmentLink.repository.js";
-import type { IAvailabilityRepository } from "./interfaces/repositories/IAvailabilityRepository.js";
-import { AvailabilityRepository } from "./repositories/availability.repository.js";
-import { MentorAssignmentRequestRepository } from "./repositories/mentorAssignmentRequest.repository.js";
-import { AttendanceRepository } from "./repositories/attendance.repository.js";
-import type { IAttendanceRepository } from "./interfaces/repositories/IAttendanceRepository.js";
+import type { IAttendanceService } from "./interfaces/services/IAttendanceService";
+import { AttendanceService } from "./services/session/AttendanceService";
+import { VideoCallRepository } from "./repositories/VideoCallRepository";
+import { TimeSlotRepository } from "./repositories/timeSlot.repository";
+import { BookingRepository } from "./repositories/booking.repository";
+import { SubscriptionService } from "./services/subscription.service";
+import { NotificationRepository } from "./repositories/notification.repository";
+import { ChatRoomRepository } from "./repositories/chatRoom.repository";
+import { ChatMessageRepository } from "./repositories/chatMessage.repository";
+import { SchedulingOrchestrator } from "./services/scheduling/SchedulingOrchestrator";
+import { SchedulingPolicy } from "./domain/scheduling/SchedulingPolicy";
+import { TrialEligibilityPolicy } from "./domain/policy/TrialEligibilityPolicy";
+import { SessionAttendancePolicy } from "./domain/policy/SessionAttendancePolicy";
+import { NotificationService } from "./services/NotificationService";
+import { NotificationManager } from "./services/NotificationManager";
+import { SessionAccessService } from "./services/scheduling/SessionAccessService";
+import { CronService } from "./services/CronService";
+import { InternalEventEmitter } from "./utils/InternalEventEmitter";
+import type { IEnrollmentLinkRepository } from "./interfaces/repositories/IEnrollmentLinkRepository";
+import { EnrollmentLinkRepository } from "./repositories/enrollmentLink.repository";
+import type { IAvailabilityRepository } from "./interfaces/repositories/IAvailabilityRepository";
+import { AvailabilityRepository } from "./repositories/availability.repository";
+import { MentorAssignmentRequestRepository } from "./repositories/mentorAssignmentRequest.repository";
+import { AttendanceRepository } from "./repositories/attendance.repository";
+import type { IAttendanceRepository } from "./interfaces/repositories/IAttendanceRepository";
 
-import { AuthService } from "./services/auth.service.js";
-import { AdminService } from "./services/admin.service.js";
-import { MentorService } from "./services/mentor.services.js";
-import { OtpService } from "./services/otp.services.js";
-import { NodemailerService } from "./services/email.service.js";
-import { ProfileService } from "./services/profile.service.js";
-import { StudentService } from "./services/student.services.js";
-import { TrialClassService } from "./services/trialClass.service.js";
-import { GradeService } from "./services/grade.service.js";
-import { SubjectService } from "./services/subject.service.js";
-import { VideoCallService } from "./services/VideoCallService.js";
-import { SocketService } from "./services/SocketService.js";
-import { UserRoleService } from "./services/userRole.service.js";
-import { SchedulingService } from "./services/scheduling.service.js";
-import { AvailabilityService } from "./services/availability.service.js";
-import { ChatService } from "./services/scheduling/ChatService.js";
-import { ImageService } from "./services/imageService.js";
+import { AuthService } from "./services/auth.service";
+import { AdminService } from "./services/admin.service";
+import { MentorService } from "./services/mentor.services";
+import { OtpService } from "./services/otp.services";
+import { NodemailerService } from "./services/email.service";
+import { ProfileService } from "./services/profile.service";
+import { StudentService } from "./services/student.services";
+import { TrialClassService } from "./services/trialClass.service";
+import { GradeService } from "./services/grade.service";
+import { SubjectService } from "./services/subject.service";
+import { VideoCallService } from "./services/VideoCallService";
+import { SocketService } from "./services/SocketService";
+import { UserRoleService } from "./services/userRole.service";
+import { SchedulingService } from "./services/scheduling.service";
+import { AvailabilityService } from "./services/availability.service";
+import { ChatService } from "./services/scheduling/ChatService";
+import { ImageService } from "./services/imageService";
 
-import { AuthController } from "./controllers/auth.controller.js";
-import { AdminController } from "./controllers/admin.controller.js";
-import { MentorController } from "./controllers/mentor.controller.js";
-import { OtpController } from "./controllers/otp.controller.js";
-import { TrialClassController } from "./controllers/trialClass.controller.js";
-import { GradeController } from "./controllers/grade.controller.js";
-import { SubjectController } from "./controllers/subject.controller.js";
-import { RoleController } from "./controllers/role.controller.js";
-import { VideoCallController } from "./controllers/videoCall.controller.js";
-import { MentorTrialClassController } from "./controllers/mentorTrialClass.controller.js";
-import { AttendanceController } from "./controllers/attendance.controller.js";
-import { ChatController } from "./controllers/chat.controller.js";
-import { CourseAdminController } from "./controllers/courseAdmin.controller.js";
-import { AvailabilityController } from "./controllers/availability.controller.js";
-import { CourseRepository } from "./repositories/course.repository.js";
-import { CourseAdminService } from "./services/courseAdminService.js";
-import { CourseService } from "./services/course.service.js";
+import { AuthController } from "./controllers/auth.controller";
+import { AdminController } from "./controllers/admin.controller";
+import { MentorController } from "./controllers/mentor.controller";
+import { OtpController } from "./controllers/otp.controller";
+import { TrialClassController } from "./controllers/trialClass.controller";
+import { GradeController } from "./controllers/grade.controller";
+import { SubjectController } from "./controllers/subject.controller";
+import { RoleController } from "./controllers/role.controller";
+import { VideoCallController } from "./controllers/videoCall.controller";
+import { MentorTrialClassController } from "./controllers/mentorTrialClass.controller";
+import { AttendanceController } from "./controllers/attendance.controller";
+import { ChatController } from "./controllers/chat.controller";
+import { CourseAdminController } from "./controllers/courseAdmin.controller";
+import { AvailabilityController } from "./controllers/availability.controller";
+import { CourseRepository } from "./repositories/course.repository";
+import { CourseAdminService } from "./services/courseAdminService";
+import { CourseService } from "./services/course.service";
 
 // Session (Consolidated)
-import { MentorRequestService } from "./services/mentorRequest.service.js";
-import type { ISessionRepository } from "./interfaces/repositories/ISessionRepository.js";
-import { SessionRepository } from "./repositories/session.repository.js";
-import type { ISessionService } from "./interfaces/services/ISessionService.js";
-import { SessionService } from "./services/session.service.js";
-import { SessionPolicyService } from "./services/session/SessionPolicyService.js";
-import { LeaveEligibilityService } from "./services/scheduling/LeaveEligibilityService.js";
-import type { ISessionPolicyService } from "./interfaces/services/ISessionPolicyService.js";
-import type { ILeaveEligibilityService } from "./interfaces/services/ILeaveEligibilityService.js";
-import type { ILeavePolicyService } from "./interfaces/services/ILeavePolicyService.js";
-import { LeavePolicyService } from "./services/LeavePolicyService.js";
+import { MentorRequestService } from "./services/mentorRequest.service";
+import type { ISessionRepository } from "./interfaces/repositories/ISessionRepository";
+import { SessionRepository } from "./repositories/session.repository";
+import type { ISessionService } from "./interfaces/services/ISessionService";
+import { SessionService } from "./services/session.service";
+import { SessionPolicyService } from "./services/session/SessionPolicyService";
+import { LeaveEligibilityService } from "./services/scheduling/LeaveEligibilityService";
+import type { ISessionPolicyService } from "./interfaces/services/ISessionPolicyService";
+import type { ILeaveEligibilityService } from "./interfaces/services/ILeaveEligibilityService";
+import type { ILeavePolicyService } from "./interfaces/services/ILeavePolicyService";
+import { LeavePolicyService } from "./services/LeavePolicyService";
 
-import { StudyMaterialRepository } from "./repositories/studyMaterial.repository.js";
-import { StudyMaterialService } from "./services/studyMaterial.service.js";
-import { StudyMaterialController } from "./controllers/studyMaterial.controller.js";
-import type { IStudyMaterialRepository } from "./interfaces/repositories/IStudyMaterialRepository.js";
-import type { IStudyMaterialService } from "./interfaces/services/IStudyMaterialService.js";
-import { ExampleRepository } from "./repositories/ExampleRepository.js";
-import { ExampleService } from "./services/ExampleService.js";
-import { MentorLeaveEventListener } from "./listeners/MentorLeaveEventListener.js";
-import { ExampleController } from "./controllers/example.controller.js";
-import { PaymentRepository } from "./repositories/payment.repository.js";
-import { SubscriptionRepository } from "./repositories/subscription.repository.js";
-import type { IPaymentRepository } from "./interfaces/repositories/IPaymentRepository.js";
-import type { ISubscriptionRepository } from "./interfaces/repositories/ISubscriptionRepository.js";
+import { StudyMaterialRepository } from "./repositories/studyMaterial.repository";
+import { StudyMaterialService } from "./services/studyMaterial.service";
+import { StudyMaterialController } from "./controllers/studyMaterial.controller";
+import type { IStudyMaterialRepository } from "./interfaces/repositories/IStudyMaterialRepository";
+import type { IStudyMaterialService } from "./interfaces/services/IStudyMaterialService";
+import { ExampleRepository } from "./repositories/ExampleRepository";
+import { ExampleService } from "./services/ExampleService";
+import { MentorLeaveEventListener } from "./listeners/MentorLeaveEventListener";
+import { ExampleController } from "./controllers/example.controller";
+import { PaymentRepository } from "./repositories/payment.repository";
+import { SubscriptionRepository } from "./repositories/subscription.repository";
+import type { IPaymentRepository } from "./interfaces/repositories/IPaymentRepository";
+import type { ISubscriptionRepository } from "./interfaces/repositories/ISubscriptionRepository";
 
 const container = new Container({ defaultScope: "Singleton" });
 
@@ -136,20 +136,20 @@ container.bind(TYPES.IExampleRepository).to(ExampleRepository);
 container.bind<IPaymentRepository>(TYPES.IPaymentRepository).to(PaymentRepository);
 container.bind<ISubscriptionRepository>(TYPES.ISubscriptionRepository).to(SubscriptionRepository);
 
-import { AssignmentSubmissionRepository } from "./repositories/studyMaterial.repository.js";
-import type { IAssignmentSubmissionRepository } from "./interfaces/repositories/IAssignmentSubmissionRepository.js";
+import { AssignmentSubmissionRepository } from "./repositories/studyMaterial.repository";
+import type { IAssignmentSubmissionRepository } from "./interfaces/repositories/IAssignmentSubmissionRepository";
 container.bind<IAssignmentSubmissionRepository>(TYPES.IAssignmentSubmissionRepository).to(AssignmentSubmissionRepository);
 
-import { StudentSubjectRepository } from "./repositories/studentSubject.repository.js";
-import type { IStudentSubjectRepository } from "./interfaces/repositories/IStudentSubjectRepository.js";
+import { StudentSubjectRepository } from "./repositories/studentSubject.repository";
+import type { IStudentSubjectRepository } from "./interfaces/repositories/IStudentSubjectRepository";
 container.bind<IStudentSubjectRepository>(TYPES.IStudentSubjectRepository).to(StudentSubjectRepository);
 
-import { MentorAvailabilityRepository } from "./repositories/mentorAvailability.repository.js";
-import type { IMentorAvailabilityRepository } from "./interfaces/repositories/IMentorAvailabilityRepository.js";
+import { MentorAvailabilityRepository } from "./repositories/mentorAvailability.repository";
+import type { IMentorAvailabilityRepository } from "./interfaces/repositories/IMentorAvailabilityRepository";
 container.bind<IMentorAvailabilityRepository>(TYPES.IMentorAvailabilityRepository).to(MentorAvailabilityRepository);
 
-import { StudentEnrollmentRepository } from "./repositories/studentEnrollment.repository.js";
-import type { IStudentEnrollmentRepository } from "./interfaces/repositories/IStudentEnrollmentRepository.js";
+import { StudentEnrollmentRepository } from "./repositories/studentEnrollment.repository";
+import type { IStudentEnrollmentRepository } from "./interfaces/repositories/IStudentEnrollmentRepository";
 container.bind<IStudentEnrollmentRepository>(TYPES.IStudentEnrollmentRepository).to(StudentEnrollmentRepository);
 
 // === DOMAIN POLICIES ===
@@ -202,25 +202,25 @@ container.bind(TYPES.IChatService).to(ChatService);
 container.bind(TYPES.ISubscriptionService).to(SubscriptionService);
 container.bind(TYPES.InternalEventEmitter).to(InternalEventEmitter).inSingletonScope();
 
-import { PricingService } from "./services/session/PricingService.js";
+import { PricingService } from "./services/session/PricingService";
 container.bind(TYPES.IPricingService).to(PricingService);
 container.bind<IStudyMaterialService>(TYPES.IStudyMaterialService).to(StudyMaterialService);
 container.bind(TYPES.IExampleService).to(ExampleService);
 
-import { BookingSyncService } from "./services/scheduling/BookingSyncService.js";
-import type { IBookingSyncService } from "./interfaces/services/IBookingSyncService.js";
+import { BookingSyncService } from "./services/scheduling/BookingSyncService";
+import type { IBookingSyncService } from "./interfaces/services/IBookingSyncService";
 container.bind<IBookingSyncService>(TYPES.IBookingSyncService).to(BookingSyncService);
 
-import { LeaveManagementService } from "./services/scheduling/LeaveManagementService.js";
-import type { ILeaveManagementService } from "./interfaces/services/ILeaveManagementService.js";
+import { LeaveManagementService } from "./services/scheduling/LeaveManagementService";
+import type { ILeaveManagementService } from "./interfaces/services/ILeaveManagementService";
 container.bind<ILeaveManagementService>(TYPES.ILeaveManagementService).to(LeaveManagementService);
 
-import { TimeSlotQueryService } from "./services/scheduling/TimeSlotQueryService.js";
-import type { ITimeSlotQueryService } from "./interfaces/services/ITimeSlotQueryService.js";
+import { TimeSlotQueryService } from "./services/scheduling/TimeSlotQueryService";
+import type { ITimeSlotQueryService } from "./interfaces/services/ITimeSlotQueryService";
 container.bind<ITimeSlotQueryService>(TYPES.ITimeSlotQueryService).to(TimeSlotQueryService);
 
-import { SlotGenerationService } from "./services/scheduling/SlotGenerationService.js";
-import type { ISlotGenerationService } from "./interfaces/services/ISlotGenerationService.js";
+import { SlotGenerationService } from "./services/scheduling/SlotGenerationService";
+import type { ISlotGenerationService } from "./interfaces/services/ISlotGenerationService";
 container.bind<ISlotGenerationService>(TYPES.ISlotGenerationService).to(SlotGenerationService);
 
 // === CONTROLLERS ===
@@ -231,7 +231,7 @@ container.bind(TYPES.OtpController).to(OtpController);
 container.bind(TYPES.TrialClassController).to(TrialClassController);
 container.bind(TYPES.GradeController).to(GradeController);
 container.bind(TYPES.SubjectController).to(SubjectController);
-import { StudentController } from "./controllers/student.controller.js";
+import { StudentController } from "./controllers/student.controller";
 
 container.bind(TYPES.RoleController).to(RoleController);
 container.bind(TYPES.VideoCallController).to(VideoCallController).inSingletonScope();
@@ -245,7 +245,7 @@ container.bind(TYPES.StudyMaterialController).to(StudyMaterialController);
 container.bind(TYPES.IExampleController).to(ExampleController);
 
 
-import { SubscriptionController } from "./controllers/subscription.controller.js";
+import { SubscriptionController } from "./controllers/subscription.controller";
 container.bind(TYPES.SubscriptionController).to(SubscriptionController);
 
 
@@ -254,12 +254,12 @@ container.bind(TYPES.SubscriptionController).to(SubscriptionController);
 
 
 // Course Request Bindings
-import { CourseRequestRepository } from "./repositories/courseRequestRepository.js";
-import { CourseRequestService } from "./services/courseRequestService.js";
-import { CourseRequestController } from "./controllers/courseRequest.controller.js";
+import { CourseRequestRepository } from "./repositories/courseRequestRepository";
+import { CourseRequestService } from "./services/courseRequestService";
+import { CourseRequestController } from "./controllers/courseRequest.controller";
 
-import type { ICourseRequestService } from "./interfaces/services/ICourseRequestService.js";
-import type { ISubjectService } from "./interfaces/services/ISubjectService.js";
+import type { ICourseRequestService } from "./interfaces/services/ICourseRequestService";
+import type { ISubjectService } from "./interfaces/services/ISubjectService";
 
 container
   .bind<ICourseRequestRepository>(TYPES.ICourseRequestRepository)
@@ -269,7 +269,7 @@ container
   .bind<ICourseRequestService>(TYPES.ICourseRequestService)
   .to(CourseRequestService);
 
-import { CourseController } from "./controllers/course.controller.js";
+import { CourseController } from "./controllers/course.controller";
 
 container
   .bind<CourseRequestController>(TYPES.CourseRequestController)
@@ -280,31 +280,31 @@ container
   .to(CourseController);
 
 // Payment Bindings
-import { PaymentService } from "./services/payment.service.js";
-import { PaymentController } from "./controllers/payment.controller.js";
+import { PaymentService } from "./services/payment.service";
+import { PaymentController } from "./controllers/payment.controller";
 
 container.bind(TYPES.IPaymentService).to(PaymentService);
 container.bind(TYPES.PaymentController).to(PaymentController);
 
 // Enrollment Bindings
-import { EnrollmentRepository } from "./repositories/enrollment.repository.js";
-import { EnrollmentService } from "./services/enrollment.service.js";
-import { EnrollmentController } from "./controllers/enrollment.controller.js";
+import { EnrollmentRepository } from "./repositories/enrollment.repository";
+import { EnrollmentService } from "./services/enrollment.service";
+import { EnrollmentController } from "./controllers/enrollment.controller";
 
 container.bind(TYPES.IEnrollmentRepository).to(EnrollmentRepository);
 container.bind(TYPES.IEnrollmentService).to(EnrollmentService);
 container.bind(TYPES.EnrollmentController).to(EnrollmentController);
 
 // Mentor Dashboard Bindings
-import { MentorDashboardService } from "./services/mentorDashboard.service.js";
-import { MentorDashboardController } from "./controllers/mentorDashboard.controller.js";
+import { MentorDashboardService } from "./services/mentorDashboard.service";
+import { MentorDashboardController } from "./controllers/mentorDashboard.controller";
 
 container.bind(TYPES.IMentorDashboardService).to(MentorDashboardService);
 container.bind(TYPES.MentorDashboardController).to(MentorDashboardController);
 
 
 // Mentor Request
-import type { IMentorRequestService } from "./interfaces/services/IMentorRequestService.js"; // Add import
+import type { IMentorRequestService } from "./interfaces/services/IMentorRequestService"; // Add import
 container.bind<IMentorRequestService>(TYPES.IMentorRequestService).to(MentorRequestService);
 
 // Session
@@ -315,14 +315,14 @@ container.bind<ILeaveEligibilityService>(TYPES.ILeaveEligibilityService).to(Leav
 container.bind<ILeavePolicyService>(TYPES.ILeavePolicyService).to(LeavePolicyService);
 
 
-import type { IExamRepository } from "./interfaces/repositories/IExamRepository.js";
-import { ExamRepository } from "./repositories/exam.repository.js";
-import type { IExamService } from "./interfaces/services/IExamService.js";
-import { ExamService } from "./services/exam.service.js";
-import { ExamController } from "./controllers/exam.controller.js";
-import { ExamAccessPolicyService } from "./services/exam/ExamAccessPolicyService.js";
-import { ExamScoringService } from "./services/exam/ExamScoringService.js";
-import { ExamResultEnricher } from "./services/exam/ExamResultEnricher.js";
+import type { IExamRepository } from "./interfaces/repositories/IExamRepository";
+import { ExamRepository } from "./repositories/exam.repository";
+import type { IExamService } from "./interfaces/services/IExamService";
+import { ExamService } from "./services/exam.service";
+import { ExamController } from "./controllers/exam.controller";
+import { ExamAccessPolicyService } from "./services/exam/ExamAccessPolicyService";
+import { ExamScoringService } from "./services/exam/ExamScoringService";
+import { ExamResultEnricher } from "./services/exam/ExamResultEnricher";
 
 // Exam Bindings
 container

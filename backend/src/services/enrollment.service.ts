@@ -1,19 +1,19 @@
 import { injectable, inject } from "inversify";
 import { Types } from "mongoose";
-import type { IEnrollment } from "../models/enrollment.model.js";
-import { logger } from "../utils/logger.js";
-import { getErrorMessage } from "../utils/errorUtils.js";
-import { TYPES } from "../types.js";
-import type { IEnrollmentRepository } from "../interfaces/repositories/IEnrollmentRepository.js";
-import type { IEnrollmentLinkRepository } from "../interfaces/repositories/IEnrollmentLinkRepository.js";
-import type { ICourseRepository } from "../interfaces/repositories/ICourseRepository.js";
-import type { IEnrollmentService } from "../interfaces/services/IEnrollmentService.js";
-import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository.js";
-import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository.js";
-import type { PaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes.js";
-import { formatPaginatedResult, getPaginationParams } from "@/utils/pagination.util.js";
-import { ImageService } from "./imageService.js";
-import { MESSAGES } from "@/constants/messages.constants.js";
+import type { IEnrollment } from "../models/enrollment.model";
+import { logger } from "../utils/logger";
+import { getErrorMessage } from "../utils/errorUtils";
+import { TYPES } from "../types";
+import type { IEnrollmentRepository } from "../interfaces/repositories/IEnrollmentRepository";
+import type { IEnrollmentLinkRepository } from "../interfaces/repositories/IEnrollmentLinkRepository";
+import type { ICourseRepository } from "../interfaces/repositories/ICourseRepository";
+import type { IEnrollmentService } from "../interfaces/services/IEnrollmentService";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
+import type { IMentorRepository } from "../interfaces/repositories/IMentorRepository";
+import type { PaginationParams, PaginatedResponse } from "@/dtos/shared/paginationTypes";
+import { formatPaginatedResult, getPaginationParams } from "@/utils/pagination.util";
+import { ImageService } from "./imageService";
+import { MESSAGES } from "@/constants/messages.constants";
 
 @injectable()
 export class EnrollmentService implements IEnrollmentService {

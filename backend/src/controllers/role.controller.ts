@@ -1,16 +1,16 @@
 import type { Request, Response } from 'express';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '@/types.js';
-import type { IUserRoleService } from '@/interfaces/services/IUserRoleSrvice.js';
+import { TYPES } from '@/types';
+import type { IUserRoleService } from '@/interfaces/services/IUserRoleSrvice';
 import { 
   verifyAccessToken 
-} from '../utils/jwt.util.js'; 
-import { logger } from '@/utils/logger.js';
-import type { MentorResponseDto } from '@/dtos/mentor/MentorResponseDTO.js';
-import type { StudentBaseResponseDto } from '@/dtos/auth/UserResponseDTO.js';
-import { MESSAGES } from '@/constants/messages.constants.js';
-import { HttpStatusCode } from '@/constants/httpStatus.js';
-import { UserRole } from '@/enums/user.enum.js';
+} from '../utils/jwt.util'; 
+import { logger } from '@/utils/logger';
+import type { MentorResponseDto } from '@/dtos/mentor/MentorResponseDTO';
+import type { StudentBaseResponseDto } from '@/dtos/auth/UserResponseDTO';
+import { MESSAGES } from '@/constants/messages.constants';
+import { HttpStatusCode } from '@/constants/httpStatus';
+import { UserRole } from '@/enums/user.enum';
 
 @injectable()
 export class RoleController {

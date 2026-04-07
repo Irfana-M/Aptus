@@ -1,6 +1,6 @@
 import type { ClientSession } from 'mongoose';
-import type { IBaseRepository } from './IBaseRepository.js';
-import type { INotification } from '../models/notification.interface.js';
+import type { IBaseRepository } from './IBaseRepository';
+import type { INotification } from '../models/notification.interface';
 
 export interface INotificationRepository extends IBaseRepository<INotification> {
   findPendingNotifications(session?: ClientSession): Promise<INotification[]>;

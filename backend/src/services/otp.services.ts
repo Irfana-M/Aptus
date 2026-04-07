@@ -1,16 +1,16 @@
 import { injectable, inject } from 'inversify';
-import type { IOtpService } from "../interfaces/services/IOtpService.js";
-import type { IOtpRepository } from "../interfaces/repositories/IOtpRepository.js";
-import type { IVerificationRepository } from "../interfaces/repositories/IVerificationRepository.js";
-import { generateRandomOtp } from "../utils/otp.utils.js";
-import type { IOtp } from "../interfaces/models/otp.interface.js";
-import type { IAuthRepository } from '@/interfaces/auth/IAuthRepository.js';
-import { logger } from "../utils/logger.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import type { IEmailService } from "../interfaces/services/IEmailService.js";
-import { TYPES } from '../types.js';
-import { AppError } from '../utils/AppError.js';
-import { MESSAGES } from '../constants/messages.constants.js';
+import type { IOtpService } from "../interfaces/services/IOtpService";
+import type { IOtpRepository } from "../interfaces/repositories/IOtpRepository";
+import type { IVerificationRepository } from "../interfaces/repositories/IVerificationRepository";
+import { generateRandomOtp } from "../utils/otp.utils";
+import type { IOtp } from "../interfaces/models/otp.interface";
+import type { IAuthRepository } from '@/interfaces/auth/IAuthRepository';
+import { logger } from "../utils/logger";
+import { HttpStatusCode } from "../constants/httpStatus";
+import type { IEmailService } from "../interfaces/services/IEmailService";
+import { TYPES } from '../types';
+import { AppError } from '../utils/AppError';
+import { MESSAGES } from '../constants/messages.constants';
 
 @injectable()
 export class OtpService implements IOtpService {

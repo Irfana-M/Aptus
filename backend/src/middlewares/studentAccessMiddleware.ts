@@ -1,13 +1,13 @@
 import type { Request, Response, NextFunction } from "express";
-import { AccessState, ACCESS_STATE_HIERARCHY } from "../constants/accessControl.js";
-import { StudentAccessResolver } from "../utils/StudentAccessResolver.js";
-import { HttpStatusCode } from "../constants/httpStatus.js";
-import { logger } from "../utils/logger.js";
-import { container } from "../inversify.config.js";
-import { TYPES } from "../types.js";
-import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository.js";
-import type { StudentProfile } from "../interfaces/models/student.interface.js";
-import type { StudentAuthUser } from "../interfaces/auth/auth.interface.js";
+import { AccessState, ACCESS_STATE_HIERARCHY } from "../constants/accessControl";
+import { StudentAccessResolver } from "../utils/StudentAccessResolver";
+import { HttpStatusCode } from "../constants/httpStatus";
+import { logger } from "../utils/logger";
+import { container } from "../inversify.config";
+import { TYPES } from "../types";
+import type { IStudentRepository } from "../interfaces/repositories/IStudentRepository";
+import type { StudentProfile } from "../interfaces/models/student.interface";
+import type { StudentAuthUser } from "../interfaces/auth/auth.interface";
 
 declare module "express-serve-static-core" {
   interface Request {

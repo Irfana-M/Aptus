@@ -1,8 +1,8 @@
 import { injectable } from "inversify";
-import { BaseRepository } from "./baseRepository.js";
-import { AttendanceModel } from "../models/scheduling/attendance.model.js";
-import type { IAttendance } from "../interfaces/models/attendance.interface.js";
-import type { IAttendanceRepository } from "../interfaces/repositories/IAttendanceRepository.js";
+import { BaseRepository } from "./baseRepository";
+import { AttendanceModel } from "../models/scheduling/attendance.model";
+import type { IAttendance } from "../interfaces/models/attendance.interface";
+import type { IAttendanceRepository } from "../interfaces/repositories/IAttendanceRepository";
 
 @injectable()
 export class AttendanceRepository extends BaseRepository<IAttendance> implements IAttendanceRepository {

@@ -1,9 +1,9 @@
 import { injectable } from "inversify";
-import { MentorAssignmentRequest, type IMentorAssignmentRequest } from "../models/mentorAssignmentRequest.model.js";
-import { type IMentorAssignmentRequestRepository } from "../interfaces/repositories/IMentorAssignmentRequestRepository.js";
-import { AppError } from "@/utils/AppError.js";
-import { HttpStatusCode } from "@/constants/httpStatus.js";
-import { logger } from "@/utils/logger.js";
+import { MentorAssignmentRequest, type IMentorAssignmentRequest } from "../models/mentorAssignmentRequest.model";
+import { type IMentorAssignmentRequestRepository } from "../interfaces/repositories/IMentorAssignmentRequestRepository";
+import { AppError } from "@/utils/AppError";
+import { HttpStatusCode } from "@/constants/httpStatus";
+import { logger } from "@/utils/logger";
 import mongoose, { type FilterQuery } from "mongoose";
 
 @injectable()
